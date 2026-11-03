@@ -1,57 +1,66 @@
-# Research Opportunity Workbench 🔬
+# Research Atlas — 自动化科研选题工作台
 
-A cumulative, evidence-linked workbench for interdisciplinary research-topic discovery. The MVP searches scholarly metadata for urban-planning problems **and** transferable computer-science methods. It stores versioned hypotheses, supporting paper links and researcher feedback.
+A research intelligence workbench that continuously links **urban research questions**, **computer-science methods**, **scholarly evidence** and **versioned research opportunities**.
 
-**MVP 0.1 (development):** OpenAlex retrieval, DOI deduplication, simple method taxonomy, research-profile onboarding, rolling idea pool, history, Markdown reports, Streamlit dashboard, mocked-API tests and opt-in GitHub Actions scheduling.
+## What is implemented (v0.2)
 
-**Limits:** Method matching is a heuristic, *not* a novelty assessment, a comprehensive literature review or an autonomous multi-agent system.
+- **Next.js 16 frontend** (\`frontend/\`): Chinese research dashboard, paper library, rolling ideas, profile editor, agent console, execution traces, evolution history and weekly brief.
+- **FastAPI backend** (\`backend/api.py\`): profile, paper, ideas, feedback and durable task endpoints.
+- **Research Agent** (\`backend/agent.py\`): bounded tool calls to OpenAlex, local paper library, research profile and existing ideas. Can run with OpenAI Responses API. With no API key, deliberately offers a **bibliographic preview only**.
+- **Research Skills** (\`skills/\`): evidence-based paper reading, method transfer and idea criticism, loaded into model instructions.
+- **Task worker** (\`backend/worker.py\`): database-backed tasks with progress steps, separate worker for cloud deployments.
+- **Existing Python core** (\`research_workbench/\`): OpenAlex ingestion, DOI normalization, rolling ideas, versioned feedback, weekly Markdown and opt-in weekly schedule.
+- **CI**: backend unit/integration tests, Streamlit legacy smoke test, TypeScript checks and Next.js build.
 
-## Run locally
+**Important:** This codebase is a tested development MVP, not an already-deployed website or verified multi-agent research service. Academic novelty must be evaluated by reading primary sources.
 
-Requires Python 3.10+:
+## Start the full stack locally
 
-```bash
+Requires Python 3.10+ and Node.js 22.
+
+**Terminal 1 — FastAPI:**
+
+\`\`\`bash
 git clone https://github.com/Hu-py/research-opportunity-workbench.git
 cd research-opportunity-workbench
-python -m venv .venv
+# checkout feat/nextjs-fastapi-agent until PR is merged
+git switch feat/nextjs-fastapi-agent
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -e '.[test]'
-cp examples/profile.example.json my-profile.json
-# Edit your private profile; the filename is git-ignored
-research-wb profile-import my-profile.json
-research-wb ingest --days 30
-research-wb ideate
-research-wb weekly --days 14
-streamlit run app.py
-```
+pip install -e '.[test,ai]'
+uvicorn backend.api:app --reload --port 8000
+\`\`\`
 
-SQLite at `data/research.db` is the local default. The Research profile tab provides an alternative JSON editor. An imported profile must define `research_lines` with stable `id`, `name`, unresolved `problem`, `keywords`, `search_queries` and `method_queries`. Computational queries need not mention urban studies. Each idea corresponds to a stable research line × method, so new paper evidence updates the same idea instead of producing unrelated duplicates.
+**Terminal 2 — Next.js:**
 
-Run tests:
+\`\`\`bash
+cd research-opportunity-workbench/frontend
+npm install
+printf 'BACKEND_URL=http://127.0.0.1:8000\n' > .env.local
+npm run dev
+\`\`\`
 
-```bash
-python -m pytest -q
-```
+Open **http://localhost:3000**. In local development, no login is required if \`APP_PASSWORD\` is unset, and backend auth is disabled if \`API_BEARER_TOKEN\` is unset. **Do not use this unsecured configuration on public networks.**
 
-## Weekly automation
+1. Go to **研究者画像** and save your own research lines. The built-in profile is illustrative only.
+2. Go to **科研总览** and click **更新论文情报**.
+3. Go to **Research Agent**, enter a research question, and inspect tool traces/results.
+4. Provide \`OPENAI_API_KEY\` only in the backend environment to enable true model reasoning; without it, Agent exploration is deliberately labeled “无模型模式”.
+5. Review evidence and update idea status, then check version history and the weekly brief.
 
-`.github/workflows/weekly.yml` is scheduled on **Mondays 09:17 Asia/Shanghai** but **disabled by default**. For cumulative weekly runs, provide a persistent PostgreSQL database, not SQLite on an ephemeral GitHub runner.
+The local database defaults to \`data/research.db\` (git-ignored); it persists between restarts. The legacy Streamlit prototype remains at \`app.py\` and is **not** the new frontend.
 
-1. Set Actions secret `DATABASE_URL` to a private PostgreSQL URI (`postgresql+psycopg://...`).
-2. Import your profile into that database locally with `DATABASE_URL` set.
-3. Set Actions variable `ENABLE_WEEKLY=true` to opt in.
-4. Optionally set SMTP variables `SMTP_HOST`, `SMTP_PORT`, and secrets `SMTP_USER`, `SMTP_PASSWORD`, `REPORT_TO` for emailed digests.
-5. Test the workflow manually and review the logs. Without email, the Markdown report is an Actions artifact only.
+## Production / Cloud deployment
 
-**Privacy:** This GitHub repository was observed to be **public**. Do not commit research materials, API keys, unpublished manuscripts or participant data. Make the repository private before enabling reports containing personal research topics. The database and email system need their own access controls.
+Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAPI/Worker and private PostgreSQL configuration, security boundaries and secrets. The repository is public as of development; **never commit API keys, researcher CVs, unpublished manuscripts, participant data or private PDFs.**
 
-## Source and inference safeguards
+## Architecture and tests
 
-- [OpenAlex](https://openalex.org/) provides the first metadata feed. Searches use a publication-date filter and may miss papers newly indexed with old publication dates; periodic backfilling and additional sources are planned.
-- Every hypothesis links to indexed paper records. This does **not** mean those papers conclusively support the target application. Always read original papers and check prior art.
-- `score` is only a screening priority from evidence count and overlapping keywords; it is not a verified novelty or acceptance estimate.
-- Status values: `candidate`, `watch`, `shortlist`, `experiment`, `rejected`, `archived`. Feedback creates a new historical version and excluded ideas are not automatically revived.
+- [Architecture, API and data/agent boundaries](docs/ARCHITECTURE.md)
+- \`python -m pytest -q\`
+- \`cd frontend && npm run typecheck && npm run build\`
+- API docs in local development: \`http://localhost:8000/docs\`
 
-## Next development
+### Follow-up milestones
 
-Semantic Scholar recommendations, Zotero sync, arXiv/OpenReview/ACL venue verification, DOI/preprint identity reconciliation, hybrid search and RAG, critically sourced LLM reviews, researcher-document imports, refined opportunity evaluation, and eventual research-to-experiment handoffs.
+Full-text Zotero/RAG ingestion, Semantic Scholar and venue verification, method embeddings, true novelty search against prior art, profile document upload, per-task cost logging, job recovery and secure team accounts are **not yet implemented**.

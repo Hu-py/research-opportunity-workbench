@@ -2,25 +2,44 @@ name: CI
 on:
   push:
   pull_request:
+
 jobs:
-  tests:
+  backend:
+    name: Python API, Agent & legacy tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install app and test dependencies
-        run: python -m pip install -e '.[test]'
-      - name: Python source checks
-        run: python -m compileall -q app.py research_workbench
-      - name: Backend tests
+      - name: Install API, Agent and test dependencies
+        run: python -m pip install -e '.[test,ai,legacy-ui]'
+      - name: Compile Python sources
+        run: python -m compileall -q app.py backend research_workbench
+      - name: Run backend integration tests
         run: python -m pytest -q
-      - name: Streamlit page smoke test
+      - name: Streamlit legacy UI smoke test
         run: |
           python - <<'PY'
           from streamlit.testing.v1 import AppTest
-          app = AppTest.from_file("app.py", default_timeout=30).run()
-          assert not app.exception, app.exception
-          print("Streamlit dashboard rendered successfully")
+          app=AppTest.from_file("app.py",default_timeout=30).run()
+          assert not app.exception,app.exception
           PY
+
+  frontend:
+    name: Next.js build and TypeScript
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
