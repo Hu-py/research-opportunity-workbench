@@ -48,7 +48,7 @@ if str(secret("WORKBENCH_REQUIRE_AUTH", "")).lower() in ("1","true","yes"):
                 else: st.error("密码不正确")
         st.stop()
 
-Session=session_factory()
+Session=session_factory(url=secret("DATABASE_URL") or None)
 NAV=[
     ("📊","科研总览"),
     ("📚","论文情报库"),
@@ -263,7 +263,7 @@ with Session() as db:
     else:
         hero("系统设置与数据安全","控制数据库、自动化推送与云端部署的前置配置。","WORKBENCH SETTINGS")
         st.subheader("运行状态")
-        db_url=os.getenv("DATABASE_URL","")
+        db_url=secret("DATABASE_URL","")
         st.write("数据库：", "外部持久化数据库已配置" if db_url else "本地 SQLite（演示/本地使用）")
         st.write("登录保护：", "已启用" if str(secret("WORKBENCH_REQUIRE_AUTH","")).lower() in ("1","true","yes") else "未启用")
         st.write("科研方向：",len(all_lines),"个")
