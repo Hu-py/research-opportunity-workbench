@@ -11,3 +11,12 @@ __pycache__/
 /reports/
 /my-profile.json
 .streamlit/secrets.toml
+
+# Next.js application
+frontend/node_modules/
+frontend/.next/
+frontend/.vercel/
+frontend/*.tsbuildinfo
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local

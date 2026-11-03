@@ -1,52 +1,89 @@
-# Deploy the Research Opportunity Workbench
+# Cloud deployment — Next.js + FastAPI + PostgreSQL
 
-## 1. Safety and persistence
+The new frontend is in \`frontend/\`. The old Streamlit deployment guide has been superseded.
 
-The repository is currently public. The workbench's researcher profiles and idea feedback are **private research records**, so do not deploy without access control.
+## Prerequisites
 
-Streamlit Community Cloud instances do not provide durable local SQLite storage. Use a PostgreSQL service for any real long-term workflow. Configure database TLS and restricted roles on the DB service. Do not paste credentials into Git files.
+- GitHub repository at \`Hu-py/research-opportunity-workbench\`, new branch \`feat/nextjs-fastapi-agent\`.
+- A private PostgreSQL database with backups (e.g. managed Postgres/Supabase).
+- A cloud service able to run a continuously available Python API **and** a separate background worker (e.g. Render/Railway).
+- Vercel/another Node-compatible host for the Next.js frontend.
+- Your own long random strings for \`APP_PASSWORD\`, \`SESSION_SECRET\` (32+ chars) and \`API_BEARER_TOKEN\`; do not paste real values into Git.
 
-## 2. Deploy in Streamlit Community Cloud
+## A. Provision private database
 
-1. Open https://share.streamlit.io/ and sign in with GitHub.
-2. Click **Create app** → **Yup, I have an app**.
-3. Repository: `Hu-py/research-opportunity-workbench`
-4. Branch: `feat/research-mvp` (switch to `main` after merging PR).
-5. Main file path: `app.py`.
-6. Under **Advanced settings → Secrets**, set the following (replace placeholders):
+Create a dedicated database and least-privilege user. Prefer TLS and backups. Both FastAPI and Worker must use the **same** \`DATABASE_URL\` (SQLAlchemy form \`postgresql+psycopg://...\`). Existing SQLAlchemy tables are created at startup; production schema migrations have not yet been added.
 
-```toml
-WORKBENCH_REQUIRE_AUTH = "true"
-APP_PASSWORD = "replace-with-long-random-password"
-DATABASE_URL = "postgresql+psycopg://USER:PASSWORD@HOST:5432/DB?sslmode=require"
-```
+## B. Deploy FastAPI service
 
-7. Deploy. Only the successful deployment will issue a real URL.
+Build from repository root with \`Dockerfile.api\`, port \`8000\`.
 
-**Do not put the above example values into the actual secrets.** Do not share the deployed URL/password broadly. The current simple password is a **prototype**, not enterprise-grade user identity management or per-user isolation.
+Set server-only environment variables:
 
-## 3. Initialization
+\`\`\`text
+APP_ENV=production
+DATABASE_URL=postgresql+psycopg://USER:PASS@DBHOST:5432/DB?sslmode=require
+API_BEARER_TOKEN=<a-long-independent-random-token>
+OPENAI_API_KEY=<optional-model-secret>
+OPENAI_MODEL=gpt-4.1-mini
+OPENALEX_API_KEY=<optional-OpenAlex-key>
+WORKER_MODE=queue
+\`\`\`
 
-The database schema is created automatically when opening the page. Open **研究者画像** and replace the example profile with your real research directions. Then open **科研总览** and select **更新文献与选题**. The first sync requires working OpenAlex network/API access.
+Leave \`OPENAI_API_KEY\` empty if you want the paper-only prototype first. \`GET /api/health\` is publicly accessible, while research APIs require \`Authorization: Bearer …\` when configured.
 
-Optional keys can be configured as environment secrets according to your OpenAlex account.
+**Never** set \`APP_ENV=development\` or leave \`API_BEARER_TOKEN\` blank on a publicly accessible API.
 
-## 4. Weekly briefing automation
+## C. Deploy the independent Worker
 
-The GitHub Actions scheduler is separate from the frontend. To enable recurring summaries, put the **same** `DATABASE_URL` in GitHub Actions Secrets, and set the Actions variable `ENABLE_WEEKLY=true`. Configure SMTP secrets to send email. Do not enable weekly jobs until testing the database connection.
+Build from repository root with \`Dockerfile.worker\`. Same \`DATABASE_URL\` as API, plus optional \`OPENAI_API_KEY\`, \`OPENAI_MODEL\`, \`OPENALEX_API_KEY\`. The worker polls durable queued tasks. Frontend displays task status until completion.
 
-## 5. Local development
+Do not assume Vercel serverless functions can host long-running Python agents. They only handle the Next.js UI and proxy.
 
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+## D. Deploy Next.js to Vercel
 
-For local use, the SQLite default is available and does not require access protection as long as the dashboard is not published to the internet.
+1. Import the same GitHub repository on https://vercel.com/new.
+2. Set **Root Directory** to \`frontend\`.
+3. Set Branch to \`feat/nextjs-fastapi-agent\` for a preview deployment, then use \`main\` after merging.
+4. Set server-side environment variables in Vercel project settings:
 
-## Known MVP limits
+\`\`\`text
+BACKEND_URL=https://your-api-service.example
+API_BEARER_TOKEN=<same-token-as-backend>
+APP_PASSWORD=<long-private-login-password>
+SESSION_SECRET=<random-string-with-at-least-32-characters>
+\`\`\`
 
-- The current app is a personal workbench, **not a public multi-user service**.
-- No full-text RAG, LLM autonomous peer review, or verified novelty detection.
-- Search scoring is heuristic; users must inspect original paper evidence.
-- Password in a simple app session is for private prototype use only.
+All four are server-side and must **not** be prefixed \`NEXT_PUBLIC_\`. Frontend calls \`/api/proxy/...\`; the Next.js server adds the backend bearer credential. Browser JavaScript never receives this secret. Cookies are signed, HttpOnly, SameSite=Strict, and Secure in production.
+
+The authentication method is **single-user prototype password auth** without built-in account management or rate limiting. Enable hosting firewall/rate limiting and upgrade to proper managed auth before team/public access.
+
+5. Deploy. Only the hosting platform can provide a live URL after successful build and runtime configuration.
+
+## E. Scheduled weekly updates
+
+The existing GitHub Actions workflow \`.github/workflows/weekly.yml\` is **opt-in** and must point to the *same* PostgreSQL \`DATABASE_URL\`. To enable it, set Actions variable \`ENABLE_WEEKLY=true\` and configure optional SMTP secrets (see \`.env.example\`). GitHub Actions runners are ephemeral; **never use SQLite on them to store cumulative research history**.
+
+## Data protection and limitations
+
+- The GitHub repository is currently public: keep personal research data and all secrets out of commits.
+- Set cloud platform access controls, database backups and network restrictions before importing unpublished work.
+- No multi-user isolation, abuse rate limiting, durable retries for crashed jobs, or migration framework yet.
+- Agent citations are drawn from retrieved source records, but AI analysis still needs human verification.
+
+## Local development
+
+Start FastAPI from repository root:
+\`\`\`bash
+pip install -e '.[test,ai]'
+uvicorn backend.api:app --reload --port 8000
+\`\`\`
+
+Start Next.js in \`frontend/\`:
+\`\`\`bash
+npm install
+echo 'BACKEND_URL=http://127.0.0.1:8000' > .env.local
+npm run dev
+\`\`\`
+
+In development, jobs are executed through FastAPI BackgroundTasks by default. In production, use the independent worker.

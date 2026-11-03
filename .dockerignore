@@ -1,0 +1,16 @@
+.git/
+.github/
+.venv/
+__pycache__/
+.pytest_cache/
+.next/
+node_modules/
+frontend/
+tests/
+.env
+.env.*
+data/
+reports/
+my-profile.json
+*.sqlite
+*.db
