@@ -1,0 +1,46 @@
+name: Weekly research brief
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * 1'
+      timezone: Asia/Shanghai
+jobs:
+  brief:
+    if: ${{ vars.ENABLE_WEEKLY == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate weekly brief using persistent database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+          OPENALEX_MAILTO: ${{ vars.OPENALEX_MAILTO }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
+          GITHUB_ACTIONS: 'true'
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo 'Missing DATABASE_URL for persistent history' >&2
+            exit 1
+          fi
+          pip install -e '.[postgres]'
+          if [ -n "$REPORT_TO" ]; then
+            research-wb weekly --email
+          else
+            research-wb weekly
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: research-brief-${{ github.run_id }}
+          path: reports/*.md
+          if-no-files-found: ignore
+          retention-days: 30

@@ -1,0 +1,25 @@
+{
+  "research_lines": [
+    {
+      "id": "urban_graph",
+      "name": "Urban graph learning",
+      "problem": "Reliable urban inference under limited labels and temporal change",
+      "keywords": [
+        "urban",
+        "graph",
+        "spatial",
+        "building"
+      ],
+      "search_queries": [
+        "urban graph neural network",
+        "urban representation learning"
+      ],
+      "method_queries": [
+        "self-supervised graph learning",
+        "spatiotemporal domain adaptation"
+      ]
+    }
+  ],
+  "excluded_terms": [],
+  "goals": "Find interdisciplinary research opportunities backed by real scholarly evidence."
+}

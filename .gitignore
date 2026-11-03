@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.sqlite
+*.db
+/data/
+/reports/
+/my-profile.json
+.streamlit/secrets.toml

@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install app and test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Python source checks
+        run: python -m compileall -q app.py research_workbench
+      - name: Backend tests
+        run: python -m pytest -q
+      - name: Streamlit page smoke test
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          app = AppTest.from_file("app.py", default_timeout=30).run()
+          assert not app.exception, app.exception
+          print("Streamlit dashboard rendered successfully")
+          PY

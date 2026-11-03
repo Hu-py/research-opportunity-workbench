@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "research-opportunity-workbench"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["httpx>=0.27,<1", "sqlalchemy>=2.0,<3", "streamlit>=1.38,<2"]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2,<4"]
+ai = ["openai>=1.60,<3"]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+research-wb = "research_workbench.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["research_workbench*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
