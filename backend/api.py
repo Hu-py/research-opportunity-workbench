@@ -30,6 +30,16 @@ from backend.discovery import (
 )
 from backend.discovery_runner import execute_discovery
 from backend.model_vault import ModelCredential, status as model_status, save as save_model_config, remove_key as remove_model_key
+from backend.profile_intelligence import (
+    ResearchProfileDraft, ResearchProfileDraftRevision, ProfileSynthesisRun,
+    bootstrap_from_env as bootstrap_research_profile,
+    list_studio as list_research_portraits,
+    start_generation as start_profile_synthesis,
+    execute_generation as execute_profile_synthesis,
+    update_draft as update_research_profile_draft,
+    apply_draft as apply_research_profile_draft,
+    discard_draft as discard_research_profile_draft,
+)
 from backend.ai_lab import (
     AIAnalysisRun, PaperUnderstanding, AIOpportunity,
     create_run as create_ai_run, create_scheduled_run as create_ai_scheduled,
@@ -118,6 +128,12 @@ async def lifespan(app:FastAPI):
             logging.getLogger("uvicorn.error").info(
                 "Curated team research imported: %d records",imported
             )
+    # One-time private curated draft. Never overwrites the active team profile.
+    research_seed=bootstrap_research_profile(factory)
+    if research_seed and research_seed["imported"]:
+        logging.getLogger("uvicorn.error").info(
+            "Research portrait draft bootstrapped privately: %s",research_seed["id"]
+        )
     bootstrap=cusp_bootstrap(factory)
     if bootstrap:
         logging.getLogger("uvicorn.error").info(
@@ -214,6 +230,16 @@ class RelationReviewRequest(BaseModel):
 class PaperReviewRequest(BaseModel):
     status:Literal["relevant","method","rejected","pending"]
     note:str=Field(default="",max_length=500)
+
+class ProfileSynthesisRequest(BaseModel):
+    notes:str=Field(default="",max_length=2000)
+
+class ResearchProfileDraftPatch(BaseModel):
+    expected_revision:int=Field(ge=1)
+    profile:dict
+
+class ResearchProfileApplyRequest(BaseModel):
+    expected_version:int=Field(ge=0)
 
 class ModelConfigRequest(BaseModel):
     key:str|None=Field(default=None,min_length=12,max_length=320)
@@ -454,6 +480,57 @@ def review_discovered_paper(candidate_id:str,data:PaperReviewRequest,
         return review_candidate(db,candidate_id,data.status,data.note,
                                 actor.id if actor else "")
     except ValueError as exc:raise HTTPException(404,str(exc)) from exc
+
+@app.get("/api/profile-intelligence",dependencies=[Depends(require_actor)])
+def research_profile_studio(db:Session=Depends(get_db)):
+    return list_research_portraits(db)
+
+@app.post("/api/profile-intelligence/generate",status_code=202,
+          dependencies=[Depends(require_actor)])
+def generate_research_profile(data:ProfileSynthesisRequest,
+                              background:BackgroundTasks,
+                              db:Session=Depends(get_db),
+                              actor:TeamMember|None=Depends(require_admin)):
+    if not team_auth_enabled():
+        raise HTTPException(403,"Admin team access required for model-based team profile changes")
+    try:
+        run=start_profile_synthesis(db,data.notes,actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_profile_synthesis,get_factory(),run.id)
+    return {"id":run.id,"status":run.status,
+            "note":"从非受限资产元信息、已有研究画像与审核成果提取新画像草稿；不会直接改写正式团队画像。"}
+
+@app.put("/api/profile-intelligence/drafts/{draft_id}",
+         dependencies=[Depends(require_actor)])
+def edit_research_profile_draft(draft_id:str,
+             data:ResearchProfileDraftPatch,
+             db:Session=Depends(get_db),
+             actor:TeamMember|None=Depends(require_admin)):
+    try:
+        return update_research_profile_draft(db,draft_id,
+            data.profile,data.expected_revision,actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(409 if "刷新" in str(exc) else 422,str(exc)) from exc
+
+@app.post("/api/profile-intelligence/drafts/{draft_id}/apply",
+          dependencies=[Depends(require_actor)])
+def publish_research_profile_draft(draft_id:str,
+             data:ResearchProfileApplyRequest,
+             db:Session=Depends(get_db),
+             actor:TeamMember|None=Depends(require_admin)):
+    if not team_auth_enabled():raise HTTPException(403,"Admin team access required")
+    try:
+        return apply_research_profile_draft(db,draft_id,data.expected_version,
+                                           actor.id if actor else "")
+    except ValueError as exc:
+        raise HTTPException(409 if "变化" in str(exc) else 422,str(exc)) from exc
+
+@app.post("/api/profile-intelligence/drafts/{draft_id}/discard",
+          dependencies=[Depends(require_actor)])
+def reject_research_profile_draft(draft_id:str,
+             db:Session=Depends(get_db),
+             actor:TeamMember|None=Depends(require_admin)):
+    try:return discard_research_profile_draft(db,draft_id,actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
 
 @app.get("/api/ai-lab",dependencies=[Depends(require_actor)])
 def ai_lab_overview(db:Session=Depends(get_db)):
