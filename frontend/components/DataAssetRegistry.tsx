@@ -10,7 +10,7 @@ type Asset={
 };
 type Proposal={
   title:string;hypothesis:string;caveat:string;
-  related_data:{id:string;name:string}[];evidence_level:string;
+  related_data:{id:string;name:string}[];related_research?:{id:string;title:string;url:string}[];evidence_level:string;
 };
 export default function DataAssetRegistry({canAdmin}:{canAdmin:boolean}){
   const [assets,setAssets]=useState<Asset[]>([]);
@@ -121,6 +121,9 @@ export default function DataAssetRegistry({canAdmin}:{canAdmin:boolean}){
           <div className="data-proposals">{proposals.map(p=><article className="data-proposal" key={p.title}>
             <h3>{p.title}</h3><p>{p.hypothesis}</p><p className="small muted"><b>前提：</b>{p.caveat}</p>
             <div className="repository-tags">{p.related_data.slice(0,4).map(a=><span key={a.id}>{a.name}</span>)}</div>
+            {!!p.related_research?.length&&<p className="small muted"><strong>可参考团队已有成果：</strong>{p.related_research.map((o,i)=>
+              <span key={o.id}>{i?"；":""}<a href={o.url} rel="noopener noreferrer" target="_blank">{o.title}</a></span>
+            )}</p>}
             <small>目录推断 · 待核验</small>
           </article>)}</div>}
       </section>
