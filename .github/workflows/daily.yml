@@ -1,0 +1,32 @@
+name: Daily paper intelligence
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '13 7 * * *'
+      timezone: Asia/Shanghai
+jobs:
+  ingest:
+    if: ${{ vars.ENABLE_DAILY == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[postgres]'
+      - name: Ingest and update cross-domain evidence without paid AI calls
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+          OPENALEX_MAILTO: ${{ vars.OPENALEX_MAILTO }}
+          GITHUB_ACTIONS: 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo 'Configure a persistent DATABASE_URL before enabling daily ingestion' >&2
+            exit 1
+          fi
+          research-wb daily

@@ -246,7 +246,7 @@ PROMPTS={
     '"method":"方法机制","limitations":"从摘要能确认的局限或未知",'
     '"evidence_level":"abstract或metadata"}]}。禁止补写未提供的实验结果。'),
 "generator":PROMPT_BASE+(
-    "迁移及候选选题生成。优先 1-2 个具体可证伪问题，最多 3 个。"
+    "迁移及候选选题生成。优先 1-2 个具体可证伪问题，最多 3 个。可尝试换方法、换研究主体、换环境、换数据、补空白与真实跨论文组合；合并近义切口，不能把未在摘要提及直接当作全文缺失。"
     "必须引用输入中真实存在的 paper_id 和 dataset_id，"
     "若没有合适数据可返回 dataset_ids 空数组并解释风险。"
     "输出 JSON："
@@ -255,12 +255,12 @@ PROMPTS={
     '"dataset_ids":["输入中的数据ID"],"baselines":["至少一个传统基线"],'
     '"minimal_experiment":"最小对照实验和指标","risks":["数据或新颖性风险"]}]}。'),
 "critic":PROMPT_BASE+(
-    "你是审稿人，需要反向质疑每条候选选题。没有额外定向先前研究检索时，"
+    "你是审稿人，需要反向质疑每条候选选题，逐项检查：规划问题、数据可得、构念有效、文献增量、研究规模。已登记数据不等于实际获得；可达不等于使用，描述不等于因果。A 级需人工全部核验，模型不得直接授予。没有额外定向先前研究检索时，"
     "必须标注创新性未核验。输出 JSON："
     '{"reviews":[{"title":"与输入候选完全一致的标题",'
     '"verdict":"值得小规模验证/需要补充证据/暂缓",'
     '"novelty_status":"尚未完成系统检索，创新性未核验",'
-    '"fatal_gaps":["最关键的缺口"],"revised_experiment":"修订后对照实验或停止标准"}]}。')
+    '"fatal_gaps":["最关键的缺口"],"minimum_data":["最小数据清单和合法获取路径"],"stop_conditions":["预检失败就停止的条件"],"revised_experiment":"修订后对照实验或停止标准"}]}。')
 }
 
 def _validated(stage,data,snapshot):
@@ -328,6 +328,8 @@ def _validated(stage,data,snapshot):
             cleaned[title]={"verdict":verdict,
                 "novelty_status":"尚未完成系统性先前研究检索，创新性未核验",
                 "fatal_gaps":_strings(item.get("fatal_gaps"),"fatal_gaps"),
+                "minimum_data":_strings(item.get("minimum_data",[]),"minimum_data"),
+                "stop_conditions":_strings(item.get("stop_conditions",[]),"stop_conditions"),
                 "revised_experiment":_require_text(item.get("revised_experiment"),"revised_experiment",1300)}
         if set(cleaned)!=titles:raise ValueError("审查没有覆盖每条选题")
         return {"reviews":cleaned}
@@ -365,7 +367,10 @@ def execute(factory,run_id,client=None):
                 if run.status!="running":return False
                 stage=run.stage
                 if stage=="done":
-                    run.status="completed";run.updated_at=now();db.commit();return True
+                    run.status="completed";run.updated_at=now();db.commit()
+                    from backend.radar_pipeline import sync_ai_opportunities
+                    sync_ai_opportunities(db)
+                    return True
                 snapshot=loads(run.snapshot_json)
                 cfg=db.get(ModelCredential,"deepseek")
                 key=load_key(db)

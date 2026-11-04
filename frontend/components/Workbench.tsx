@@ -12,11 +12,12 @@ import ResearchArchive from "@/components/ResearchArchive";
 import DataAssetRegistry from "@/components/DataAssetRegistry";
 import ResearchDiscovery from "@/components/ResearchDiscovery";
 import AIResearchLab from "@/components/AIResearchLab";
+import ResearchRadar from "@/components/ResearchRadar";
 import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "interest"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
+type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
 const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
   {key:"interest",label:"研究兴趣监测",caption:"Interest watchlist",icon:GitBranch},
   {key:"overview",label:"科研总览",caption:"Overview",icon:Layers3},
@@ -25,10 +26,13 @@ const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
   {key:"assets",label:"CUSP数据台账",caption:"Data metadata",icon:Database},
   {key:"discovery",label:"科研关联与文献发现",caption:"Discovery engine",icon:Search},
   {key:"ai-lab",label:"AI 选题实验台",caption:"DeepSeek research",icon:BrainCircuit},
+  {key:"radar",label:"科研雷达 · 选题评审",caption:"Research radar",icon:ShieldCheck},
   {key:"ideas",label:"研究选题池",caption:"Opportunities",icon:Lightbulb},
   {key:"agent",label:"Research Agent",caption:"Intelligent research",icon:BrainCircuit},
   {key:"history",label:"选题演化",caption:"Evolution",icon:GitBranch},
-  {key:"profile",label:"团队研究画像",caption:"Team research profile",icon:ShieldCheck},
+  {key:"profile",label:"正式团队画像",caption:"Official profile",icon:ShieldCheck},
+  {key:"profile-draft",label:"数据库初步画像",caption:"Evidence portrait",icon:Database},
+  {key:"profile-skill",label:"画像更新 Skill",caption:"Research profile workflow",icon:Workflow},
   {key:"brief",label:"每周科研简报",caption:"Weekly brief",icon:FileText},
   {key:"settings",label:"系统状态",caption:"System",icon:Settings2},
 ];
@@ -427,6 +431,7 @@ export default function Workbench(){
         {section==="assets"&&<DataAssetRegistry canAdmin={canAdmin}/>}
         {section==="discovery"&&<ResearchDiscovery canAdmin={canAdmin} canEdit={canEdit}/>} 
         {section==="ai-lab"&&<AIResearchLab canAdmin={canAdmin} canEdit={canEdit}/>} 
+        {section==="radar"&&<ResearchRadar canEdit={canEdit}/>} 
 
         {section==="ideas"&&<>
           <PageHeading kicker="RESEARCH OPPORTUNITIES" title="滚动研究选题池" subtitle="选题不会每周重新清零。新证据、方法和人工反馈都会持续更新同一条选题记录。"/>
@@ -538,6 +543,14 @@ export default function Workbench(){
           </section>
         </>}
 
+        {section==="profile-draft"&&<>
+          <PageHeading kicker="DATABASE-SOURCED PORTRAIT" title="数据库初步科研画像" subtitle="来自团队数据库的科研方向初稿：可核查成果、研究主线、证据 ID、方法瓶颈和实验条件。尚未人工发布的内容不自动成为正式画像。"/>
+          <ResearchProfileStudio canAdmin={canAdmin} onApplied={()=>void load()} view="draft"/>
+        </>}
+        {section==="profile-skill"&&<>
+          <PageHeading kicker="REUSABLE RESEARCH PROFILE SKILL" title="科研画像更新 Skill" subtitle="基于 PostgreSQL 的事实约束、版本差异和审阅机制，生成新的待审核画像草稿，不读取聊天记忆，不覆盖现有正式画像。"/>
+          <ResearchProfileStudio canAdmin={canAdmin} onApplied={()=>void load()} view="skill"/>
+        </>}
         {section==="profile"&&<>
           <PageHeading kicker="TEAM RESEARCH PROFILE" title="团队研究画像" subtitle="一套共享画像：团队定位、研究主线、数据资源和方法能力，供全体成员共用。"/>
           <section className="panel cusp-profile-summary">
@@ -547,7 +560,10 @@ export default function Workbench(){
             </div>
             <IconBtn className="btn-primary" onClick={()=>changeSection("assets")}><Database size={16}/> 查看 CUSP 数据台账 <ArrowRight size={16}/></IconBtn>
           </section>
-          <ResearchProfileStudio canAdmin={canAdmin} onApplied={()=>void load()}/>
+          <div className="inline-actions" style={{margin:"13px 0 20px"}}>
+             <IconBtn className="btn-secondary" onClick={()=>changeSection("profile-draft")}><Database size={15}/> 查看数据库初步画像 <ArrowRight size={15}/></IconBtn>
+             <IconBtn className="btn-secondary" onClick={()=>changeSection("profile-skill")}><Workflow size={15}/> 更新画像 Skill <ArrowRight size={15}/></IconBtn>
+           </div>
           <div className="content-grid"><section className="panel">
             <div className="panel-header"><div><span className="panel-kicker">ACTIVE RESEARCH</span><h2>研究主线</h2></div></div>
             {!profile?<Empty icon={ShieldCheck} title="尚未建立团队研究画像" body="右侧已提供一份可编辑示例，管理员保存后，全体成员即可共享。"/>:

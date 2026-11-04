@@ -10,6 +10,7 @@ from research_workbench.core import session_factory, get_profile, ingest, propos
 from backend.tasks import ResearchTask, claim, next_queued, event, utc_now
 from backend.agent import ResearchAgent
 from backend.interests import ingest_interests
+from backend.radar_pipeline import sync_ai_opportunities, generate_weekly
 
 def run_task(factory, task_id: str, already_claimed=False, client=None, model_client=None):
     with factory() as db:
@@ -38,7 +39,11 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
                 interest_stats=ingest_interests(db,days=14,per_query=6,client=client)
                 log("interests","已检索手动兴趣分支，并保留独立来源标签")
                 ideas=propose(db,profile)
-                result={"mode":"weekly","answer":weekly_report(db,profile),
+                log("radar","正在合并 AI 选题并进行五道可行性预审")
+                radar_stats=sync_ai_opportunities(db)
+                radar_report=generate_weekly(db)
+                result={"mode":"weekly","answer":weekly_report(db,profile)+"\n\n"+radar_report,
+                        "radar":radar_stats,
                         "papers":collected,"interest_papers":interest_stats,"ideas":ideas}
             else:
                 raise ValueError("Unsupported task")

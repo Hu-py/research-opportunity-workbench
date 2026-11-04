@@ -1,4 +1,4 @@
-name: Weekly research brief
+name: Weekly research intelligence
 on:
   workflow_dispatch:
   schedule:
@@ -15,32 +15,77 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Generate weekly brief using persistent database
+      - name: Install backend with PostgreSQL
+        run: pip install -e '.[postgres]'
+      - name: Generate persistent weekly intelligence
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
           OPENALEX_MAILTO: ${{ vars.OPENALEX_MAILTO }}
+          MODEL_VAULT_KEY: ${{ secrets.MODEL_VAULT_KEY }}
+          ENABLE_WEEKLY_AI: ${{ vars.ENABLE_WEEKLY_AI }}
           SMTP_HOST: ${{ vars.SMTP_HOST }}
           SMTP_PORT: ${{ vars.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           REPORT_TO: ${{ secrets.REPORT_TO }}
           GITHUB_ACTIONS: 'true'
+        shell: bash
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo 'Missing DATABASE_URL for persistent history' >&2
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo 'DATABASE_URL is required: GitHub runner disk is ephemeral' >&2
             exit 1
           fi
-          pip install -e '.[postgres]'
-          if [ -n "$REPORT_TO" ]; then
-            research-wb weekly --email
-          else
-            research-wb weekly
+          args=(weekly)
+          if [ "${ENABLE_WEEKLY_AI:-false}" = "true" ]; then
+            if [ -z "${MODEL_VAULT_KEY:-}" ]; then
+              echo 'ENABLE_WEEKLY_AI=true requires MODEL_VAULT_KEY' >&2
+              exit 1
+            fi
+            args+=(--ai)
           fi
-      - uses: actions/upload-artifact@v4
-        if: always()
+          if [ -n "${REPORT_TO:-}" ]; then args+=(--email); fi
+          research-wb "${args[@]}"
+      - name: Preserve private reports as downloadable artifact
+        if: ${{ github.event.repository.private }}
+        uses: actions/upload-artifact@v4
         with:
-          name: research-brief-${{ github.run_id }}
+          name: private-research-brief-${{ github.run_id }}
           path: reports/*.md
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 30
+
+  archive-private-report:
+    needs: brief
+    # Never commit potentially unpublished research ideas to a public repository.
+    if: ${{ github.event.repository.private && vars.ARCHIVE_REPORT_TO_GIT == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: private-research-brief-${{ github.run_id }}
+          path: reports
+      - name: Verify repository visibility and archive report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          private=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          if [ "$private" != "true" ]; then
+            echo 'Refusing to archive research material into a public repository' >&2
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f reports/*.md
+          if git diff --cached --quiet; then
+            echo 'No report changes to archive'
+          else
+            git commit -m 'docs(reports): private weekly research radar update'
+            git push
+          fi
