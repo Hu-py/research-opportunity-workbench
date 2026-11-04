@@ -50,9 +50,9 @@ def _score(line,source):
     common=sorted(tokens(topic)&tokens(source))[:4]
     if not hits and not common:return None
     score=min(90,42+17*hits+5*len(common))
-    reason=("主题关联"+str(hits)+" 类；" if hits else "")+(
-        "文本共同词："+", ".join(common) if common else "基于主题词")+
-        "。仅基于登记元数据，尚未经人工确认。"
+    reason=(("主题关联"+str(hits)+" 类；" if hits else "")+
+            ("文本共同词："+", ".join(common) if common else "基于主题词")+
+            "。仅基于登记元数据，尚未经人工确认。")
     return score,reason
 
 def suggestions(db,profile):
