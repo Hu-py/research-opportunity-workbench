@@ -29,6 +29,14 @@ from backend.discovery import (
     review_candidate,
 )
 from backend.discovery_runner import execute_discovery
+from backend.model_vault import ModelCredential, status as model_status, save as save_model_config, remove_key as remove_model_key
+from backend.ai_lab import (
+    AIAnalysisRun, PaperUnderstanding, AIOpportunity,
+    create_run as create_ai_run, create_scheduled_run as create_ai_scheduled,
+    execute as execute_ai_analysis, list_runs as list_ai_runs,
+    list_cards as list_ai_cards, review_card as review_ai_card,
+    resume as resume_ai_run,
+)
 from backend.cusp import (
     CuspDataset, CuspDatasetRevision, CuspImportRun,
     import_records as import_cusp_records, update_one as update_cusp_one,
@@ -207,6 +215,18 @@ class PaperReviewRequest(BaseModel):
     status:Literal["relevant","method","rejected","pending"]
     note:str=Field(default="",max_length=500)
 
+class ModelConfigRequest(BaseModel):
+    key:str|None=Field(default=None,min_length=12,max_length=320)
+    fast_model:Literal["deepseek-flash"]|None=None
+    reason_model:Literal["deepseek-v4-pro","deepseek-flash"]|None=None
+    daily_enabled:bool|None=None
+
+class AIAnalysisRequest(BaseModel):
+    line_id:str=Field(min_length=1,max_length=110)
+
+class AIReviewRequest(BaseModel):
+    status:Literal["shortlist","rejected","draft"]
+
 class LoginRequest(BaseModel):
     email:str=Field(min_length=3,max_length=255)
     password:str=Field(min_length=1,max_length=256)
@@ -336,8 +356,14 @@ def scheduled_refresh_achievements(request:Request,background:BackgroundTasks,
     discovered=create_run(db,get_profile(db),source="scheduled")
     if discovered:
         background.add_task(execute_discovery,get_factory(),discovered.id)
+    # Paid analysis is exclusively opt-in. This path does nothing while
+    # the admin's daily_enabled switch is false (initial default).
+    ai_run=create_ai_scheduled(db)
+    if ai_run:
+        background.add_task(execute_ai_analysis,get_factory(),ai_run.id)
     return {"id":run.id,"status":"queued",
-            "paper_discovery_id":discovered.id if discovered else None}
+            "paper_discovery_id":discovered.id if discovered else None,
+            "ai_analysis_id":ai_run.id if ai_run else None}
 
 @app.get("/api/data-assets",dependencies=[Depends(require_actor)])
 def data_assets(db:Session=Depends(get_db)):
@@ -427,6 +453,63 @@ def review_discovered_paper(candidate_id:str,data:PaperReviewRequest,
     try:
         return review_candidate(db,candidate_id,data.status,data.note,
                                 actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(404,str(exc)) from exc
+
+@app.get("/api/ai-lab",dependencies=[Depends(require_actor)])
+def ai_lab_overview(db:Session=Depends(get_db)):
+    return {"config":model_status(db),"runs":list_ai_runs(db),
+            "cards":list_ai_cards(db),
+            "note":"模型仅分析已审核论文的标题与摘要以及非受限数据属性。草稿不代表已验证的创新性。"}
+
+@app.put("/api/ai-lab/config",dependencies=[Depends(require_actor)])
+def ai_lab_model_save(data:ModelConfigRequest,db:Session=Depends(get_db),
+                      actor:TeamMember|None=Depends(require_admin)):
+    if not team_auth_enabled():
+        raise HTTPException(403,"Only an authenticated team administrator may save API keys")
+    try:
+        return save_model_config(db,actor.id if actor else "",key=data.key,
+            fast_model=data.fast_model,reason_model=data.reason_model,
+            daily_enabled=data.daily_enabled)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+
+@app.delete("/api/ai-lab/key",dependencies=[Depends(require_actor)])
+def ai_lab_model_remove(db:Session=Depends(get_db),
+                        actor:TeamMember|None=Depends(require_admin)):
+    if not team_auth_enabled():
+        raise HTTPException(403,"Only an authenticated team administrator may delete API keys")
+    return remove_model_key(db,actor.id if actor else "")
+
+@app.post("/api/ai-lab/run",status_code=202,dependencies=[Depends(require_actor)])
+def ai_lab_start(data:AIAnalysisRequest,background:BackgroundTasks,
+                 db:Session=Depends(get_db),
+                 actor:TeamMember|None=Depends(require_editor)):
+    try:
+        task=create_ai_run(db,data.line_id,source="manual",
+                           actor_id=actor.id if actor else None)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_ai_analysis,get_factory(),task.id)
+    return {"id":task.id,"status":"queued",
+            "note":"逐阶段保存，失败后可恢复；只有实际模型调用会产生 DeepSeek 费用。"}
+
+@app.post("/api/ai-lab/runs/{run_id}/resume",status_code=202,
+          dependencies=[Depends(require_actor)])
+def ai_lab_resume(run_id:str,background:BackgroundTasks,
+                  db:Session=Depends(get_db),
+                  actor:TeamMember|None=Depends(require_editor)):
+    try:
+        result=resume_ai_run(db,run_id)
+    except ValueError as exc:raise HTTPException(409,str(exc)) from exc
+    add_audit(db,"ai_analysis.resumed",actor.id if actor else None,run_id)
+    db.commit()
+    background.add_task(execute_ai_analysis,get_factory(),run_id)
+    return result
+
+@app.patch("/api/ai-lab/cards/{card_id}",dependencies=[Depends(require_actor)])
+def ai_lab_review(card_id:str,data:AIReviewRequest,
+                  db:Session=Depends(get_db),
+                  actor:TeamMember|None=Depends(require_editor)):
+    try:return review_ai_card(db,card_id,data.status,actor.id if actor else "")
     except ValueError as exc:raise HTTPException(404,str(exc)) from exc
 
 @app.get("/api/cusp/summary",dependencies=[Depends(require_actor)])
