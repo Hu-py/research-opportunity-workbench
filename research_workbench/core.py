@@ -89,6 +89,25 @@ def validate_profile(profile):
                 raise ValueError("Each line requires "+field+" as a string list")
         if not line["search_queries"] and not line["method_queries"]:
             raise ValueError("At least one search query is required")
+    team=profile.get("team")
+    if team is not None:
+        if not isinstance(team,dict):
+            raise ValueError("team must be an object")
+        for field in ("name","mission"):
+            if field in team and not isinstance(team[field],str):
+                raise ValueError("team."+field+" must be a string")
+        if "priorities" in team and (not isinstance(team["priorities"],list)
+               or not all(isinstance(x,str) for x in team["priorities"])):
+            raise ValueError("team.priorities must be a list of strings")
+    for field in ("methods","excluded_terms"):
+        values=profile.get(field,[])
+        if not isinstance(values,list) or not all(isinstance(x,str) for x in values):
+            raise ValueError(field+" must be a list of strings")
+    datasets=profile.get("datasets",[])
+    if not isinstance(datasets,list) or not all(isinstance(asset,dict)
+            and isinstance(asset.get("name"),str) and asset["name"].strip()
+            for asset in datasets):
+        raise ValueError("datasets must be a list of named objects")
 
 def set_profile(db,profile,commit=True):
     validate_profile(profile)
