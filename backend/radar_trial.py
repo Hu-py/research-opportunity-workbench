@@ -147,7 +147,7 @@ def _lexical_signal(query, paper):
     if not words:
         return "未评估"
     content = (paper["title"] + " " + paper["abstract"]).lower()
-    hits = sum(bool(re.search(r"\\b" + re.escape(word) + r"\\b", content)) for word in words)
+    hits = sum(bool(re.search(r"\b" + re.escape(word) + r"\b", content)) for word in words)
     return "字面相关候选" if hits >= max(1, (len(words) + 2)//3) else "需人工核对"
 
 
@@ -167,6 +167,8 @@ def execute_trial(factory, trial_id, *, client=None, days=60):
             errors = []
             found = {}
             matched = 0
+            future_dated = 0
+            today = date.today().isoformat()
             for entry in queries:
                 try:
                     works = query_openalex(entry["query"], since, 8, client=client)
@@ -178,6 +180,9 @@ def execute_trial(factory, trial_id, *, client=None, days=60):
                 for work in works:
                     paper = normalize_paper(work)
                     if not paper["title"] or not paper["url"].startswith("https://"):
+                        continue
+                    if paper["published"] and paper["published"] > today:
+                        future_dated += 1
                         continue
                     matched += 1
                     key = paper["id"]
@@ -199,8 +204,13 @@ def execute_trial(factory, trial_id, *, client=None, days=60):
                             item["query_indices"].append(idx)
                         if signal == "字面相关候选":
                             item["signal"] = signal
+            # The first screen should show likely matches, not simply the
+            # newest (sometimes irrelevant) OpenAlex records.
             items = sorted(found.values(),
-                           key=lambda p: p["published"], reverse=True)
+                           key=lambda p: (
+                               p["signal"] == "字面相关候选",
+                               bool(p["doi"]), p["published"]),
+                           reverse=True)
             report = {
                 "source": source,
                 "since": since,
@@ -212,12 +222,13 @@ def execute_trial(factory, trial_id, *, client=None, days=60):
                 "with_doi": sum(bool(p["doi"]) for p in items),
                 "with_abstract": sum(p["has_abstract"] for p in items),
                 "with_venue": sum(bool(p["venue"]) for p in items),
+                "future_dated_skipped": future_dated,
                 "lexically_relevant": sum(
                     p["signal"] == "字面相关候选" for p in items),
                 "failed_queries": errors,
                 "papers": items[:24],
                 "method": "OpenAlex 最近 60 天；最多 4 条数据库画像检索式，每条 8 条；"
-                          "只检查元数据完整性和词面相关性；"
+                          "排除晚于当前日期的发表记录，词面匹配优先显示；只检查元数据完整性和词面相关性；"
                           "未进行人工相关性、会议等级、创新性或全文质量认证。",
                 "next_step": "人工审核 DOI/摘要/研究问题后，才能把论文纳入正式选题和 LLM 阅读。",
             }
@@ -226,10 +237,10 @@ def execute_trial(factory, trial_id, *, client=None, days=60):
             row.error = (str(len(errors)) + " 条 OpenAlex 检索失败（仅记录错误类型）") if errors else ""
             row.updated_at = utcnow()
             db.commit()
-            LOG.info("RADAR_FIRST_SCAN status=%s queries=%d unique=%d doi=%d abstracts=%d lexical=%d failed=%d",
+            LOG.info("RADAR_FIRST_SCAN status=%s queries=%d unique=%d doi=%d abstracts=%d lexical=%d failed=%d future_skipped=%d",
                      row.status, len(queries), len(items),
                      report["with_doi"], report["with_abstract"],
-                     report["lexically_relevant"], len(errors))
+                     report["lexically_relevant"], len(errors), future_dated)
             # Paper titles are public OpenAlex metadata, not private team data.
             for item in items[:4]:
                 LOG.info("RADAR_FIRST_SCAN_PAPER title=%s doi=%s published=%s",

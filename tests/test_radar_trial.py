@@ -1,6 +1,6 @@
 """First-run Radar retrieval: real DB query provenance, fake external API offline."""
 import json
-from datetime import date
+from datetime import date,timedelta
 
 from sqlalchemy import select
 
@@ -41,8 +41,12 @@ def test_trial_uses_real_db_draft_and_does_not_approve_papers(tmp_path,monkeypat
         source,queries=radar_trial.choose_queries(db)[1],radar_trial.choose_queries(db)[0]
         assert source.startswith("database_evidence_draft:")
         assert queries[0]["query"]=="graph learning urban mobility"
+        future=dict(mock_work())
+        future["id"]="https://openalex.org/WFUTURE"
+        future["doi"]="https://doi.org/10.9999/future"
+        future["publication_date"]=(date.today()+timedelta(days=120)).isoformat()
         monkeypatch.setattr(radar_trial,"query_openalex",
-                            lambda query,since,limit,client=None:[mock_work()])
+                            lambda query,since,limit,client=None:[mock_work(),future])
         ident=radar_trial.create_trial(db)
     assert radar_trial.execute_trial(factory,ident) is True
     with factory() as db:
@@ -54,6 +58,8 @@ def test_trial_uses_real_db_draft_and_does_not_approve_papers(tmp_path,monkeypat
         assert report["with_doi"]==1
         assert report["with_abstract"]==1
         assert report["lexically_relevant"]==1
+        assert report["future_dated_skipped"]==2
+        assert all(p["published"]<=date.today().isoformat() for p in report["papers"])
         assert report["papers"][0]["doi"]=="10.9999/quality-check"
         assert db.scalars(select(Paper)).all()==[]
         assert radar_trial.create_trial(db,startup=True) is None

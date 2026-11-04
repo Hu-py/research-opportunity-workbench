@@ -24,6 +24,7 @@ type TrialReport={
   source:string;since:string;queries:{index:number;query:string;line_name:string;type:string}[];
   query_count:number;matched:number;unique_papers:number;with_doi:number;
   with_abstract:number;with_venue:number;lexically_relevant:number;
+  future_dated_skipped?:number;
   failed_queries:{query_index:number;error_type:string}[];
   papers:TrialPaper[];method:string;next_step:string;
 };
@@ -171,6 +172,7 @@ export default function ResearchRadar({canEdit}:{canEdit:boolean}){
               ["包含 DOI",data.sample.report.with_doi],
               ["包含摘要",data.sample.report.with_abstract],
               ["词面相关候选",data.sample.report.lexically_relevant],
+              ["未来日期已剔除",data.sample.report.future_dated_skipped],
             ].map(([label,value])=><div key={String(label)}
               style={{border:"1px solid #e9ecf3",borderRadius:9,padding:12}}>
               <span className="small muted">{label}</span>
