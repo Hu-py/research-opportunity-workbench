@@ -226,22 +226,44 @@ def public_asset(a):
             "sensitivity":a.sensitivity}
 
 def import_directory_listing(db,listing,actor_id=None):
-    """Ingest dataset *metadata*, not file bytes; tree indents are not trusted paths."""
+    """Store only sanitized relative metadata paths; accept both tree and path lists."""
     if len(listing)>50000:raise ValueError("Directory listing exceeds 50,000 characters")
     created=0;skipped=0
     unique=set()
+    parent={}
     for raw in listing.splitlines()[:600]:
-        line=re.sub(r"^[\s│├└─+|*]+","",raw).strip()
+        if not raw.strip():continue
+        tree=re.match(r"^((?:│   |    )*)([├└]──\s*)?(.*)$",raw)
+        if tree:
+            prefix,connector,leaf=tree.groups()
+            depth=len(prefix)//4
+            line=leaf.strip()
+            # When a tree connector exists, nested directories are inherited.
+            if connector:
+                for k in list(parent):
+                    if k>=depth:del parent[k]
+                base=[parent[k] for k in sorted(parent) if k<depth]
+                is_tree=True
+            else:
+                base=[]
+                is_tree=False
+        else:
+            line=raw.strip()
+            base=[]
+            is_tree=False
+            depth=0
         if not line or len(line)>380 or line.startswith(("#","//")):
             continue
-        # Accept either relative paths or the leaf names of a tree listing.
         line=line.strip(" \t").replace("\\","/")
         if line.startswith("/") or re.match(r"^[A-Za-z]:/",line) or ".." in line.split("/"):
             skipped+=1;continue
         suffix=line.rsplit(".",1)[-1].casefold() if "." in line else ""
+        if suffix not in FILE_TYPES and is_tree and "/" not in line:
+            parent[depth]=line.strip("/")
+            continue
         if suffix in SHAPE_SIDECARS or suffix not in FILE_TYPES:
             continue
-        path=line.strip("/")
+        path=("/".join(base+[line]) if is_tree else line).strip("/")
         if not path or path.casefold() in unique:continue
         unique.add(path.casefold())
         if db.get(ResearchDataAsset,asset_id(path)):
