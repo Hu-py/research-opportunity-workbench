@@ -148,3 +148,46 @@ def test_no_approval_from_read_only_requests(setup_db):
     assert client.get("/api/opportunity-engine",headers=headers).status_code==200
     with factory() as db:
         assert not db.scalars(select(SearchStrategy)).all()
+
+
+def test_openalex_errors_redact_credentials_in_new_and_legacy_runs():
+    from backend.openalex_errors import safe_openalex_error
+    from backend.discovery import safe_stored_error
+    import httpx
+    url="https://api.openalex.org/works?search=private-topic&api_key=SUPER_SECRET_TEST"
+    request=httpx.Request("GET",url)
+    response=httpx.Response(409,request=request)
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        message=safe_openalex_error(exc)
+        assert "HTTP 409" in message
+        assert "SUPER_SECRET_TEST" not in message
+        assert "private-topic" not in message
+        old=safe_stored_error("line1 | query | "+str(exc))
+        assert "HTTP 409" in old
+        assert "SUPER_SECRET_TEST" not in old
+        assert "private-topic" not in old
+    assert "HTTP 429" in safe_openalex_error(httpx.HTTPStatusError(
+        "failed",request=request,response=httpx.Response(429,request=request)))
+    assert "HTTP 403" in safe_openalex_error(httpx.HTTPStatusError(
+        "failed",request=request,response=httpx.Response(403,request=request)))
+    assert "历史" in safe_stored_error("unexpected plugin failure?api_key=SUPER_SECRET_TEST")
+    assert "SUPER_SECRET_TEST" not in safe_stored_error("unexpected plugin failure?api_key=SUPER_SECRET_TEST")
+
+
+def test_discovery_logs_safe_message_for_http_409(setup_db):
+    from backend.discovery import runs
+    factory,_,_=setup_db
+    with factory() as db:
+        task=create_run(db,get_profile(db),source="manual",line_id="vertical")
+    def reject(request):
+        return httpx.Response(409,request=request,json={"error":"keyless budget reached"})
+    with httpx.Client(transport=httpx.MockTransport(reject)) as http:
+        execute_discovery(factory,task.id,client=http)
+    with factory() as db:
+        report=runs(db)[0]
+        assert report["status"]=="failed"
+        assert "HTTP 409" in report["errors"][0]
+        assert "api.openalex.org" not in report["errors"][0]
+        assert "keyless budget" not in report["errors"][0]
