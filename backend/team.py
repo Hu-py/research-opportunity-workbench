@@ -24,6 +24,13 @@ SESSION_SECONDS = 7 * 24 * 60 * 60
 def timestamp() -> datetime:
     return datetime.now(timezone.utc)
 
+class LoginThrottle(Base):
+    __tablename__ = "team_login_throttle"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    failures: Mapped[int] = mapped_column(Integer, default=0)
+    window_until: Mapped[int] = mapped_column(Integer, default=0)
+    blocked_until: Mapped[int] = mapped_column(Integer, default=0)
+
 class TeamMember(Base):
     __tablename__ = "team_members"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -90,18 +97,36 @@ def public_member(m: TeamMember) -> dict:
     return {"id":m.id,"email":m.email,"name":m.name,"role":m.role,
             "active":m.active,"created_at":m.created_at.isoformat() if m.created_at else None}
 
-def login(db: Session,email: str,password: str) -> tuple[str,TeamMember] | None:
+def login(db: Session,email: str,password: str,client_address:str="") -> tuple[str,TeamMember] | None:
+    # Persistent per-account+origin throttling. Also use hosting WAF/rate limits in production.
     try:normalized=normalize_email(email)
     except ValueError:return None
-    member=db.scalar(select(TeamMember).where(TeamMember.email==normalized))
-    if member is None or not member.active:return None
-    try:
-        if not PASSWORD.verify(member.password_hash,password):return None
-    except (VerifyMismatchError,VerificationError):
+    gate_key=hashlib.sha256((normalized+"|"+client_address[:120]).encode()).hexdigest()
+    gate=db.get(LoginThrottle,gate_key)
+    now_seconds=int(time.time())
+    if gate and gate.blocked_until>now_seconds:
         return None
+    member=db.scalar(select(TeamMember).where(TeamMember.email==normalized))
+    good=False
+    if member and member.active:
+        try:good=PASSWORD.verify(member.password_hash,password)
+        except (VerifyMismatchError,VerificationError):good=False
+    if not good:
+        if gate is None:
+            gate=LoginThrottle(key=gate_key,failures=0,window_until=now_seconds+900)
+            db.add(gate)
+        if gate.window_until<=now_seconds:
+            gate.failures=0
+            gate.window_until=now_seconds+900
+        gate.failures+=1
+        if gate.failures>=6:gate.blocked_until=now_seconds+900
+        db.commit()
+        return None
+    if gate:
+        db.delete(gate)
     raw=secrets.token_urlsafe(48)
     db.add(TeamSession(token_sha256=hashlib.sha256(raw.encode()).hexdigest(),
-                       member_id=member.id, expires_at=int(time.time())+SESSION_SECONDS))
+                       member_id=member.id, expires_at=now_seconds+SESSION_SECONDS))
     add_audit(db,"member.login",member.id,member.id)
     db.commit()
     return raw,member
