@@ -90,14 +90,15 @@ def validate_profile(profile):
         if not line["search_queries"] and not line["method_queries"]:
             raise ValueError("At least one search query is required")
 
-def set_profile(db,profile):
+def set_profile(db,profile,commit=True):
     validate_profile(profile)
     p=db.get(Profile,1)
     if p is None:
         db.add(Profile(id=1,payload=json.dumps(profile,ensure_ascii=False)))
     else:
         p.payload=json.dumps(profile,ensure_ascii=False)
-    db.commit()
+    if commit:
+        db.commit()
 
 def get_profile(db):
     p=db.get(Profile,1)
