@@ -6,7 +6,7 @@ from research_workbench.core import Paper,session_factory
 from backend.ai_lab import AIOpportunity
 from backend.radar_pipeline import (
     RadarTopic,RadarTopicEvent,RadarReport,
-    assess,sync_ai_opportunities,generate_weekly,get_report,list_topics,
+    assess,sync_ai_opportunities,generate_weekly,get_report,list_topics,review_topic,
 )
 
 PAPER_ID="doi:10.1000/radar.test"
@@ -69,13 +69,19 @@ def test_radar_persists_and_merges_evidence_idempotently():
         assert topic.version==2
         assert len(json.loads(topic.ai_card_ids_json))==2
         assert db.scalar(select(func.count()).select_from(RadarTopicEvent))==2
+        reviewed=review_topic(db,topic.id,"shortlist","Verified network data preflight is next")
+        assert reviewed["status"]=="shortlist" and reviewed["version"]==3
+        assert reviewed["history"][0]["action"]=="human_review"
+        assert review_topic(db,topic.id,"shortlist")["version"]==3
+        assert sync_ai_opportunities(db)["revised_topics"]==0
+        assert db.get(RadarTopic,topic.id).status=="shortlist"
         report=generate_weekly(db,period="2026-W45")
         assert "五道评审门" in report
         assert "10.1000/radar.test" in report
         assert "未核验" in report
         assert db.get(RadarReport,"2026-W45") is not None
         assert get_report(db,"2026-W45")==report
-        assert list_topics(db)[0]["version"]==2
+        assert list_topics(db)[0]["version"]==3
         assert len(list_topics(db)[0]["papers"])==1
 
 def test_missing_source_not_accepted_as_evidence():
