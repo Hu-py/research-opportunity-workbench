@@ -58,7 +58,7 @@ def backend_response(kind,payload):
     if kind=="critic":
         return {"reviews":[{"title":p["title"],"verdict":"需要补充证据",
                 "novelty_status":"未核实","fatal_gaps":["缺少独立标注"],
-                "revised_experiment":"先开展空间外推留出实验"} for p in payload["ideas"]["ideas"]]}
+                "revised_experiment":"先开展空间外推留出实验"} for p in payload["ideas"]]}
     raise AssertionError(kind)
 
 def transport_handler(request,fail_on=None,malicious=False):
@@ -165,7 +165,7 @@ def test_four_stage_mock_analysis_and_cited_cards(lab):
     assert done.status_code==202,done.text
     with factory() as db:
         run=db.get(AIAnalysisRun,done.json()["id"])
-        assert run.status=="completed" and run.stage=="done"
+        assert run.status=="completed" and run.stage=="done", (run.stage,run.error)
         assert run.model_calls==4
         assert run.input_tokens==400 and run.output_tokens==320
         assert len(db.scalars(select(PaperUnderstanding)).all())==1
@@ -209,7 +209,7 @@ def test_failure_resume_and_invalid_paper_citation_rejected(lab):
     assert resumed.status_code==202
     with factory() as db:
         state=db.get(AIAnalysisRun,rid)
-        assert state.status=="completed" and state.model_calls==4
+        assert state.status=="completed" and state.model_calls==4, (state.stage,state.error)
         assert len(db.scalars(select(AIOpportunity)).all())==1
     def harmful(factory,id):
         with httpx.Client(transport=httpx.MockTransport(
