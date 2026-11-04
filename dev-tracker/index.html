@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#111b31"/>
+<title>Research Atlas | 开发进度控制台</title>
+<meta name="description" content="Research Atlas 自动化科研选题平台的独立开发进度、GitHub Issues、PR、CI 与验收证据看板。"/>
+<link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="identity"><div class="identity-icon">A<span>×</span></div><div><b>ATLAS <em>BUILD</em></b><small>ENGINEERING CONSOLE</small></div></div>
+    <div class="aside-label">DEVELOPMENT SPACE</div>
+    <nav class="side-nav" aria-label="开发进度导航">
+      <a class="side-link active" href="#overview"><span class="nav-ico">▦</span>开发总览</a>
+      <a class="side-link" href="#roadmap"><span class="nav-ico">☷</span>功能路线图</a>
+      <a class="side-link" href="#tasks"><span class="nav-ico">◫</span>研发任务</a>
+      <a class="side-link" href="#activity"><span class="nav-ico">↺</span>提交与测试</a>
+      <a class="side-link" href="#documentation"><span class="nav-ico">◇</span>验收与规范</a>
+    </nav>
+    <div class="aside-bottom">
+      <div class="source-box"><div class="source-line"><i class="live-dot"></i><span>LIVE GITHUB DATA</span></div><p>直接读取公开仓库事件，不保存开发凭证。</p><small id="sync-age">等待同步</small></div>
+      <a class="aside-repo" href="https://github.com/Hu-py/research-opportunity-workbench" target="_blank" rel="noopener noreferrer">↗ 查看源代码仓库</a>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div class="breadcrumbs"><span>RESEARCH ATLAS</span> <b>/</b> DEVELOPMENT</div>
+      <div class="top-actions"><span class="last-sync" id="last-sync">尚未连接 GitHub</span>
+        <button class="btn btn-quiet" id="refresh" title="刷新 GitHub 实时状态">↻ 刷新</button>
+        <a class="btn btn-dark" id="create-issue" href="https://github.com/Hu-py/research-opportunity-workbench/issues/new/choose" target="_blank" rel="noopener noreferrer">＋ 新建开发任务</a>
+      </div>
+    </header>
+    <div class="container">
+      <section id="overview" class="overview">
+        <div class="eyebrow">RESEARCH AUTOMATION / PRODUCT DELIVERY</div>
+        <div class="hero">
+          <div><h1>开发进度<span>控制台</span><span class="hero-deco">.</span></h1>
+            <p id="mission">正在加载项目开发目标……</p>
+            <div class="hero-labels"><span>Github Issues 驱动</span><span>PR/CI 实时关联</span><span>验收证据可追溯</span></div>
+          </div>
+          <div class="hero-orbit"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit-center">R<span>·</span>A</div></div>
+        </div>
+        <div class="warning" id="sync-notice" role="status">正在读取 GitHub 研发任务与 CI 状态……</div>
+        <div class="metrics" aria-label="真实开发指标">
+          <div class="metric"><div class="metric-icon violet">▦</div><span>正在跟踪</span><b id="metric-total">—</b><small>有记录的研发 Issues</small></div>
+          <div class="metric"><div class="metric-icon amber">◫</div><span>未完成任务</span><b id="metric-open">—</b><small>GitHub open Issues</small></div>
+          <div class="metric"><div class="metric-icon mint">✓</div><span>已关闭任务</span><b id="metric-closed">—</b><small>关闭不代表线上验收</small></div>
+          <div class="metric"><div class="metric-icon blue">⌁</div><span>待合并 PR</span><b id="metric-pr">—</b><small>GitHub Pull Requests</small></div>
+        </div>
+      </section>
+
+      <section id="roadmap" class="section-block">
+        <div class="section-heading"><div><div class="eyebrow">PRODUCT ARCHITECTURE</div><h2>功能路线图 <span>/ Milestone Map</span></h2>
+          <p>按研究基础、论文与方法、智能选题和自动化运行组织开发方向。</p></div>
+          <a class="subtle-link" href="https://github.com/Hu-py/research-opportunity-workbench/issues" target="_blank" rel="noopener noreferrer">查看 GitHub 任务 ↗</a>
+        </div>
+        <div id="track-grid" class="track-grid"></div>
+      </section>
+
+      <section id="tasks" class="section-block">
+        <div class="section-heading"><div><div class="eyebrow">WORK BREAKDOWN STRUCTURE</div><h2>开发任务与验收进度 <span>/ Task Board</span></h2>
+          <p>以 GitHub Issues 的真实状态为准。关闭任务需要关联 PR、验证记录和验收证据。</p></div>
+          <span class="tally" id="task-tally">等待更新</span>
+        </div>
+        <div class="toolbar">
+          <div class="tabs" id="status-filters">
+            <button class="tab active" data-state="all">全部</button>
+            <button class="tab" data-state="open">待完成</button>
+            <button class="tab" data-state="closed">已关闭</button>
+          </div>
+          <div class="toolbar-right"><select aria-label="筛选开发领域" id="track-filter"><option value="all">所有开发领域</option></select>
+          <input type="search" id="task-search" placeholder="搜索功能、Issue 编号、实现路径……" aria-label="搜索研发任务"/></div>
+        </div>
+        <div id="tasks-grid" class="tasks-grid"><div class="placeholder">载入研发任务中……</div></div>
+      </section>
+
+      <section id="activity" class="section-block">
+        <div class="section-heading"><div><div class="eyebrow">CONTINUOUS INTEGRATION</div><h2>开发动态与代码证据 <span>/ Live Engineering</span></h2>
+          <p>随着 main 分支提交、PR 合并和 CI 运行而自动变化。</p></div></div>
+        <div class="activity-grid">
+          <article class="panel ci-panel"><div class="panel-title"><div><span class="icon-box">⌁</span><b>最新 CI / 自动测试</b></div><a href="https://github.com/Hu-py/research-opportunity-workbench/actions" target="_blank" rel="noopener noreferrer">全部运行 ↗</a></div>
+            <div id="ci-view" class="ci-content"><p class="muted">正在加载测试记录……</p></div></article>
+          <article class="panel"><div class="panel-title"><div><span class="icon-box">↺</span><b>最近主分支提交</b></div><a href="https://github.com/Hu-py/research-opportunity-workbench/commits/main/" target="_blank" rel="noopener noreferrer">提交历史 ↗</a></div>
+            <div id="commit-view" class="commit-list"><p class="muted">正在加载提交记录……</p></div></article>
+        </div>
+        <div class="panel shipped-panel"><div class="panel-title"><div><span class="icon-box">✓</span><b>已合并的阶段性成果</b></div><span class="muted">代码交付 ≠ 实际运行验证</span></div><div id="shipped-list" class="shipped-list"></div></div>
+      </section>
+
+      <section id="documentation" class="section-block docs-block">
+        <div class="section-heading"><div><div class="eyebrow">ACCEPTANCE RULES</div><h2>如何让进度自动更新 <span>/ Workflow</span></h2></div>
+        <div class="how-grid">
+          <article><span class="how-no">01</span><b>建立开发任务</b><p>在 GitHub 创建 Issue，明确功能目标、技术路径、验收条件和预期结果。</p></article>
+          <article><span class="how-no">02</span><b>提交代码并关联任务</b><p>PR 描述中使用 <code>Closes #任务编号</code>，合并后 GitHub 自动关闭对应 Issue。</p></article>
+          <article><span class="how-no">03</span><b>自动测试与可视化</b><p>GitHub Actions 给出最新测试状态。本页自动刷新 Issues、PR 和 commits。</p></article>
+          <article><span class="how-no">04</span><b>补充真实验收结果</b><p>在 Issue 中添加线上验证、结果链接及阻塞项；不要把 CI 通过等同于科研验证。</p></article>
+        </div>
+        <div class="docs-links">
+          <a href="https://github.com/Hu-py/research-opportunity-workbench/issues/new/choose" target="_blank" rel="noopener noreferrer">＋ 新任务 / 问题</a>
+          <a href="https://github.com/Hu-py/research-opportunity-workbench/pulls" target="_blank" rel="noopener noreferrer">⌁ Pull Requests</a>
+          <a href="https://github.com/Hu-py/research-opportunity-workbench/actions" target="_blank" rel="noopener noreferrer">✓ CI 检查记录</a>
+        </div>
+      </section>
+      <footer><span>ATLAS BUILD · Standalone development tracker</span><span>Updated from GitHub · No mock execution results</span></footer>
+    </div>
+  </main>
+</div>
+<script src="./app.js" defer></script>
+</body></html>

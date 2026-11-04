@@ -43,3 +43,28 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+
+  dev-tracker:
+    name: Standalone tracker static sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate independent tracker JS
+        run: node --check dev-tracker/app.js
+      - name: Validate tracker schema and source references
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path("dev-tracker")
+          assert (p/"index.html").exists() and (p/"style.css").exists()
+          data=json.loads((p/"roadmap.json").read_text(encoding="utf-8"))
+          assert len(data["tracks"])>=3
+          issues=[m["issue"] for m in data["milestones"]]
+          assert len(issues)==len(set(issues))
+          assert all(m["track"] in {t["id"] for t in data["tracks"]} for m in data["milestones"])
+          assert "api.github.com" in (p/"app.js").read_text(encoding="utf-8")
+          print("Independent tracker schema valid")
+          PY

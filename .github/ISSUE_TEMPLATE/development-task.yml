@@ -1,0 +1,46 @@
+name: "研发功能 / Development Task"
+description: "记录科研自动化工作台的开发目标、实现方法、验收条件和结果证据"
+title: "[P1] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        此 Issue 会自动显示在独立研发进度控制台。请勿提交 API Key、研究者私人数据或未发表的敏感研究材料。
+  - type: textarea
+    id: objective
+    attributes:
+      label: 目标
+      description: 本功能解决什么问题？为什么需要？
+      placeholder: 在此描述具体能力与用户价值
+    validations:
+      required: true
+  - type: textarea
+    id: technical-path
+    attributes:
+      label: 技术路径
+      description: 计划实现的模块、技术方法、涉及文件或接口
+      placeholder: "数据库 → 检索 / LLM → API → 前端 → 测试"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收条件
+      description: 可用自动测试或真实样例核查的检查项
+      value: |
+        - [ ] 代码实现、测试通过
+        - [ ] 提供真实运行记录或结果示例
+        - [ ] 记录失败边界、权限与隐私检查
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 结果示例
+      description: 预期或已经形成的非敏感结果与链接
+      placeholder: "验证报告、PR、Run、公共论文 DOI、截图等"
+  - type: input
+    id: related
+    attributes:
+      label: 关联 PR / 模块
+      placeholder: "#17 或 backend/module.py"
