@@ -36,6 +36,7 @@ export default function CuspDatasetCatalogue({canAdmin}:{canAdmin:boolean}){
  const [draft,setDraft]=useState<Partial<CuspDataset>>({});
  const [history,setHistory]=useState<HistoryRecord[]>([]);
  const [busy,setBusy]=useState(false);
+ const [loaded,setLoaded]=useState(false);
  const [error,setError]=useState("");
  const [notice,setNotice]=useState("");
 
@@ -46,7 +47,7 @@ export default function CuspDatasetCatalogue({canAdmin}:{canAdmin:boolean}){
      api<{items:Proposal[]}>("cusp/opportunities"),
      api<{items:ImportRun[]}>("cusp/import-runs")
    ]);
-   setItems(a.items);setSummary(b);setIdeas(c.items);setRuns(d.items);
+   setItems(a.items);setSummary(b);setIdeas(c.items);setRuns(d.items);setLoaded(true);
  },[]);
  useEffect(()=>{void load().catch(e=>setError(String(e)));},[load]);
  useEffect(()=>{
@@ -113,7 +114,7 @@ export default function CuspDatasetCatalogue({canAdmin}:{canAdmin:boolean}){
    <div className="panel cusp-heading">
      <div><span className="panel-kicker">CUSP RESEARCH DATA REGISTER</span>
        <h2>团队既有数据总览</h2>
-       <p className="small muted">来源：《CUSP数据登记.xlsx》。这是一份内部数据目录与研究积累登记，不是实际数据文件，也不代表已接入数据库原始数据。</p>
+       <p className="small muted">来源：《CUSP数据登记.xlsx》。这里登记数据属性（名称、格式、时间、空间范围、来源及既有研究），不保存 SHP、CSV、影像等原始数据文件。</p>
      </div>
      <div className="cusp-actions">
        <button type="button" className="btn btn-secondary" disabled={busy} onClick={()=>void load()}><RefreshCw size={15}/> 刷新</button>
@@ -125,7 +126,7 @@ export default function CuspDatasetCatalogue({canAdmin}:{canAdmin:boolean}){
      </div>
    </div>
    <div className="repository-stat-row">
-     <div><strong>{summary?.total??0}</strong><span>已登记数据集</span></div>
+     <div><strong>{loaded?(summary?.total??0):"…"}</strong><span>已登记数据集（CUSP）</span></div>
      <div><strong>{summary?.f_drive_listed??0}</strong><span>F盘列已标记（非云端）</span></div>
      <div><strong>{summary?.research_used??0}</strong><span>已记录研究用途</span></div>
      <div><strong>{summary?.backup_unknown??0}</strong><span>备份状态未知</span></div>
