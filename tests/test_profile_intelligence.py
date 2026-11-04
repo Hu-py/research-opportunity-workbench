@@ -225,3 +225,43 @@ def test_llm_invalid_line_rejected_and_old_official_version_cannot_be_overwritte
     assert out.status_code==409
     with factory() as db:
         assert get_profile(db)["goals"]=="其他管理员新近更新了正式科研画像"
+
+
+def test_db_only_snapshot_references_are_real_and_source_is_traced(env):
+    factory,client,admin,_,monkeypatch=env
+    from backend.profile_database import evidence_inventory, database_draft
+    with factory() as db:
+        inventory=evidence_inventory(db)
+        assert inventory["evidence_source"]=="postgresql_only"
+        assert inventory["counts"]["data_assets_total"]==2
+        assert inventory["counts"]["data_assets_eligible"]==1
+        assert inventory["counts"]["data_assets_restricted_or_unclassified"]==1
+        draft,refs=database_draft(inventory)
+        assert len(draft["profile"]["research_lines"])==1
+        assert draft["profile"]["research_lines"][0]["name"]=="建筑垂直功能与演化"
+        valid={x["ref"] for section in ("datasets","team_achievements","approved_papers")
+               for x in inventory[section]}
+        assert set(refs)<=valid
+        assert all(set(item.get("evidence_refs",[]))<=valid
+                   for item in draft["analysis"]["line_insights"])
+        assert not any("个人隐私轨迹" in json.dumps(item,ensure_ascii=False)
+                       for item in inventory["datasets"])
+        assert "Private Custodian" not in json.dumps(inventory)
+
+def test_llm_invented_database_reference_is_rejected(env):
+    factory,client,admin,_,monkeypatch=env
+    with factory() as db:
+        save(db,"admin","ds-TEST-PROFILE-secret-key",reason_model="deepseek-flash")
+    def invented(*args,**kwargs):
+        raw=outline()
+        raw["analysis"]["line_insights"][0]["evidence_refs"]=["team_achievements:invented-paper"]
+        return raw,{"input_tokens":10,"output_tokens":10}
+    monkeypatch.setattr(studio,"request_json",invented)
+    started=client.post("/api/profile-intelligence/generate",headers=admin,json={})
+    assert started.status_code==202,started.text
+    with factory() as db:
+        latest=db.scalars(select(ProfileSynthesisRun)).first()
+        assert latest.status=="failed"
+        assert "不存在或受限" in latest.error
+        assert db.scalars(select(ResearchProfileDraft).where(
+            ResearchProfileDraft.source=="llm")).first() is None
