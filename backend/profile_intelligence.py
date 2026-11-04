@@ -369,8 +369,8 @@ def execute_generation(factory,run_id,client=None):
 
 def update_draft(db,ident,profile,expected_revision,actor):
     row=db.get(ResearchProfileDraft,ident)
-    if not row or row.status not in ("draft","applied"):
-        raise ValueError("只有有效画像草稿可以修改")
+    if not row or row.status not in ("draft","applied") or row.source=="curated_example":
+        raise ValueError("旧聊天画像草稿已经撤回，不可编辑或发布")
     if row.revision!=expected_revision:raise ValueError("草稿已被其他成员修改，请刷新")
     validated=_profile(profile)
     row.profile_json=pack(validated)
@@ -386,7 +386,8 @@ def update_draft(db,ident,profile,expected_revision,actor):
 
 def apply_draft(db,ident,expected_version,actor):
     row=db.get(ResearchProfileDraft,ident)
-    if not row or row.status!="draft":raise ValueError("草稿不存在或已处理")
+    if not row or row.status!="draft" or row.source=="curated_example":
+        raise ValueError("草稿不存在、已撤回或来源不符合数据库证据要求")
     actual=current_profile_version(db)
     if expected_version!=actual or row.base_version!=actual:
         raise ValueError("正式画像已经变化；请基于最新版本重新生成或检查后再应用")
