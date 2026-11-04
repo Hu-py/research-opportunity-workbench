@@ -25,6 +25,9 @@ from backend.interests import (
     recent_papers as interest_papers, ingest_interests,
 )
 from backend.worker import run_task
+from backend.radar_trial import (
+    RadarTrialRun, latest_trial, create_trial, execute_trial,
+)
 from backend.radar_pipeline import (
     RadarReport, list_topics as list_radar_topics, recent_reports as list_radar_reports,
     sync_ai_opportunities, generate_weekly as generate_radar_weekly,
@@ -177,6 +180,18 @@ async def lifespan(app:FastAPI):
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
     )
+    # Opt-in, single database-recorded first batch. No model calls, no
+    # automatically approved papers, and no repeated startup ingestion.
+    if os.getenv("RADAR_TRIAL_ON_STARTUP","").strip() == "1":
+        from threading import Thread
+        with factory() as db:
+            try:
+                trial_id = create_trial(db, startup=True)
+            except ValueError:
+                trial_id = None
+        if trial_id:
+            Thread(target=execute_trial, args=(factory,trial_id),
+                   daemon=True, name="radar-first-scan").start()
     if inline_worker_enabled():
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
@@ -903,8 +918,25 @@ def radar_overview(db:Session=Depends(get_db)):
     reports=list_radar_reports(db)
     latest=db.get(RadarReport,reports[0]["period"]) if reports else None
     return {"topics":list_radar_topics(db),"reports":reports,
+            "sample":latest_trial(db),
             "latest_markdown":latest.markdown if latest else "",
             "note":"AI 选题属于研究假设。数据已登记不代表已合法获取；自动评审不授予 A 级。"}
+
+@app.post("/api/radar/scan-sample",status_code=202,
+          dependencies=[Depends(require_actor)])
+def start_radar_trial(background:BackgroundTasks,db:Session=Depends(get_db),
+                      actor:TeamMember|None=Depends(require_editor)):
+    """Fetch a small real OpenAlex batch, stored separately for quality review."""
+    try:
+        trial_id=create_trial(db)
+    except ValueError as exc:
+        raise HTTPException(409,str(exc)) from exc
+    if actor is not None:
+        add_audit(db,"radar.trial_started",actor.id,trial_id)
+        db.commit()
+    background.add_task(execute_trial,get_factory(),trial_id)
+    return {"id":trial_id,"status":"queued",
+            "note":"只做真实文献元数据试抓取，不调用付费模型，不自动核验或发布。"}
 
 @app.patch("/api/radar/topics/{topic_id}",dependencies=[Depends(require_actor)])
 def radar_human_review(topic_id:str,data:RadarReviewRequest,

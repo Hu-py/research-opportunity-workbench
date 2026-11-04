@@ -81,3 +81,41 @@ pytest -q tests/test_radar_pipeline.py
 - Check evidence quality and near-duplicate grouping with a researcher (current clustering is conservative, lexical; does not magically identify all conceptual synonyms).
 
 The tool's grades are **only a triage mechanism**: B = promising but data preflight needed; C = blocked/uncertain; D = deferred. A is reserved for independent human verification of all five gates.
+
+## First real retrieval sample (review before automatic ingestion)
+
+The **科研雷达 · 选题评审** page has a **抓取一版真实论文** action. It
+reads up to four **non-placeholder search queries from the actual PostgreSQL
+database-evidence portrait**, falling back to officially registered queries
+only if the evidence draft has no eligible query. It requests up to eight
+OpenAlex works per query, limited to the previous 60 days.
+
+- Data are stored in the separate `radar_trial_runs` table, NOT inserted into
+  approved `papers`, `ideas` or official profiles.
+- The live UI shows query provenance and for each work: title, date, DOI,
+  source venue, abstract availability, and a weak lexical-overlap cue.
+- Bibliographic completeness and keyword overlap are **not** relevance,
+  peer-review quality, scientific novelty or legal data access. Do not equate
+  an OpenAlex venue label with a verified top conference.
+- Failed queries remain visible and do not silently count as zero results.
+- Five-minute manual cooldown protects free API quota.
+- No LLM is called. The separate AI Lab requires an admin-approved model
+  configuration and manually reviewed candidate papers.
+
+`POST /api/radar/scan-sample` queues a bounded run for editors and returns a
+run ID. `GET /api/radar` includes the latest run as `sample`. The UI polls
+while a run is active. On a service with no separate worker, FastAPI
+BackgroundTasks does the small scan; do not use it for a massive crawl.
+
+For **one explicitly approved** initial collection when the backend cannot be
+called from the current client, the Render service also recognizes
+`RADAR_TRIAL_ON_STARTUP=1`: it creates at most one database-wide trial on
+startup. Repeated deploys/restarts do not rerun it once a record exists. The
+server log prints the count and up to four **public OpenAlex** paper titles.
+Leave this flag unset for routine operations. This initial run is independent
+of the daily and weekly scheduled ingestion switches.
+
+Recommended acceptance: compare 10–20 titles and abstracts against the
+research questions, inspect source DOI links and dates, then classify
+relevant / related but not transferable / irrelevant. Only after this
+manual check should the official paper review and LLM reading proceed.

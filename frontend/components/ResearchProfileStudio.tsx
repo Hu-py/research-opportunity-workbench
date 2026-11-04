@@ -28,8 +28,8 @@ type Studio={
 const explainStatus=(s:string)=>s==="described"?"数据库已有描述":s==="planned"?"计划中":
   s==="verified"?"已核实":s==="inferred"?"推断待核":"待确认";
 
-export default function ResearchProfileStudio({canAdmin,onApplied}:{
- canAdmin:boolean;onApplied:()=>void
+export default function ResearchProfileStudio({canAdmin,onApplied,view="all"}:{
+ canAdmin:boolean;onApplied:()=>void;view?:"all"|"draft"|"skill"
 }){
  const [data,setData]=useState<Studio|null>(null);
  const [selected,setSelected]=useState("");
@@ -112,7 +112,7 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
  return <section className="panel research-profile-studio">
    <div className="panel-header">
      <div><span className="panel-kicker">RESEARCH PROFILE INTELLIGENCE · REUSABLE SKILL</span>
-       <h2>结构化科研画像分析原型</h2></div>
+       <h2>{view==="skill"?"基于数据库的画像更新流程":"结构化科研画像分析原型"}</h2></div>
      <BrainCircuit size={21}/>
    </div>
    <p className="small muted">
@@ -141,6 +141,7 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
    </div>}
    {error&&<div className="alert alert-error">{error}</div>}
    {notice&&<div className="alert alert-success">{notice}</div>}
+   {view!=="skill"&&<>
    <div className="profile-studio-toolbar">
      <label>
        画像草稿版本
@@ -221,6 +222,8 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
        </div>}
      </div>}
    </>:<div className="small-note">尚未生成数据库证据画像草稿；请刷新。</div>}
+   </>}
+   {view!=="draft"&&<>
    <div className="profile-studio-generate">
      <div><strong>让 LLM 仅根据数据库重新归纳科研画像</strong>
        <p className="small muted">生成时重新读取 PostgreSQL 的正式研究画像、已核验成果、人工审核论文及非受限 CUSP 属性。
@@ -241,5 +244,12 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
        {latest.error&&<p className="alert alert-error">{latest.error}</p>}
      </div>}
    </div>
+   <div className="profile-skill-summary">
+     <strong>可复用 Skill：<code>research_profile</code></strong>
+     <p className="small muted">数据证据清单 → 研究主线候选 → 研究瓶颈与方法能力 → 风险与可行性审查 → 带数据库 ID 的草稿 → 管理员审阅发布。所有推断和缺失证据都必须标注，模型不能自行将草稿发布。</p>
+     <a className="text-link" href="https://github.com/Hu-py/research-opportunity-workbench/blob/main/skills/research_profile/SKILL.md" target="_blank" rel="noopener noreferrer">查看完整 Skill 规范 ↗</a>
+     <p className="small muted">当前已保存 {data?.drafts.length??"—"} 份版本化草稿；正式画像 V{data?.profile_version??"—"}。请到「数据库初步画像」查看和审核新的草稿。</p>
+   </div>
+   </>}
  </section>;
 }
