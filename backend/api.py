@@ -375,6 +375,7 @@ def opportunity_engine(db:Session=Depends(get_db)):
     profile=get_profile(db)
     return {
         "profile_ready":bool(profile),
+        "openalex_key_configured":bool(os.getenv("OPENALEX_API_KEY","").strip()),
         "strategies":strategies(db,profile),
         "relations":list_links(db,profile),
         "candidates":candidates(db,limit=160),
