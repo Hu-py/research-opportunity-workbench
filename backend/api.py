@@ -122,6 +122,10 @@ async def lifespan(app:FastAPI):
             "Research database connection verified: dialect=%s",
             db.get_bind().dialect.name,
         )
+    logging.getLogger("uvicorn.error").info(
+        "OpenAlex API key configured: %s",
+        "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
+    )
     if inline_worker_enabled():
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
