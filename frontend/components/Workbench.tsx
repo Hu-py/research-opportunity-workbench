@@ -504,10 +504,24 @@ export default function Workbench(){
           <PageHeading kicker="TEAM RESEARCH PROFILE" title="团队研究画像" subtitle="一套共享画像：团队定位、研究主线、数据资源和方法能力，供全体成员共用。"/>
           <div className="content-grid"><section className="panel">
             <div className="panel-header"><div><span className="panel-kicker">ACTIVE RESEARCH</span><h2>研究主线</h2></div></div>
-            {!profile?<Empty icon={ShieldCheck} title="尚未建立团队研究画像" body="右侧已提供一份可编辑示例，修改后点击保存。"/>:
-              profile.research_lines.map(line=><div className="line-card" key={line.id}>
+            {!profile?<Empty icon={ShieldCheck} title="尚未建立团队研究画像" body="右侧已提供一份可编辑示例，管理员保存后，全体成员即可共享。"/>:
+              <>
+              {profile.team&&<div className="line-card">
+                <div className="line-icon"><ShieldCheck size={20}/></div>
+                <div><h3>{profile.team.name||"团队定位"}</h3>
+                  <p>{profile.team.mission||"等待补充团队研究定位"}</p>
+                  <small>{profile.team.priorities?.join(" · ")||""}</small>
+                </div>
+              </div>}
+              {profile.research_lines.map(line=><div className="line-card" key={line.id}>
                 <div className="line-icon"><Layers3 size={20}/></div><div><h3>{line.name}</h3><p>{line.problem}</p>
                 <small>{line.method_queries.join(" · ")}</small></div></div>)}
+              {(profile.datasets||[]).map((asset,i)=><div className="line-card" key={asset.name+"-"+i}>
+                <div className="line-icon"><Database size={20}/></div>
+                <div><h3>{asset.name}</h3><p>{asset.description||"团队共享数据资产"}</p>
+                  <small>{asset.access||"权限与来源待核验"}</small></div>
+              </div>)}
+              </>}
           </section>
           <section className="panel">
             <div className="panel-header"><div><span className="panel-kicker">PROFILE EDITOR</span><h2>管理研究画像</h2></div></div>
@@ -541,9 +555,45 @@ export default function Workbench(){
               <div className="panel settings-card" key={x.title}><div className="tool-icon"><x.icon size={22}/></div>
                 <h3>{x.title}</h3><p>{x.detail}</p><span>{x.flag}</span></div>)}
           </div>
+          {teamMode&&<section className="panel">
+            <div className="panel-header"><div><span className="panel-kicker">TEAM MEMBERS</span><h2>团队成员与权限</h2></div>
+              <span className="counter">{members.length||"共享"} 位成员</span></div>
+            {member?.role!=="admin"?<p className="small muted">当前身份：{member?.name||"成员"}（{member?.role||"未确认"}）。团队成员信息仅管理员可管理。</p>:<>
+              <div className="evidence-list">{members.map(m=><div className="evidence" key={m.id}>
+                <div><strong>{m.name} · {m.role==="admin"?"管理员":m.role==="researcher"?"研究成员":"只读成员"}</strong>
+                  <span>{m.email} · {m.active?"正常":"已停用"}</span></div>
+                <IconBtn disabled={busy||m.id===member.id} onClick={()=>void changeMember(m,!m.active)}>
+                  {m.active?"停用":"重新启用"}
+                </IconBtn>
+              </div>)}</div>
+              <div className="panel-actions" style={{justifyContent:"flex-start",marginTop:24}}>
+                <strong>新增成员</strong>
+              </div>
+              <div className="feedback-grid">
+                <label>姓名<input value={inviteName} onChange={e=>setInviteName(e.target.value)} placeholder="团队成员姓名"/></label>
+                <label>邮箱<input type="email" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="name@university.edu"/></label>
+              </div>
+              <div className="feedback-grid" style={{marginTop:12}}>
+                <label>角色<select value={inviteRole} onChange={e=>setInviteRole(e.target.value as "admin"|"researcher"|"viewer")}>
+                  <option value="researcher">研究成员</option><option value="viewer">只读成员</option>
+                  <option value="admin">管理员</option></select></label>
+                <label>初始密码<input type="password" autoComplete="new-password" value={invitePassword}
+                  onChange={e=>setInvitePassword(e.target.value)} placeholder="至少 12 字符，请通过安全渠道单独发给成员"/></label>
+                <IconBtn className="btn-primary" disabled={busy||invitePassword.length<12||!inviteEmail||inviteName.length<2} onClick={()=>void inviteMember()}>
+                  <Plus size={15}/> 创建成员
+                </IconBtn>
+              </div>
+              <p className="small muted">仅在数据库中保存 Argon2 密码哈希。成员无需独立知识库；全部成员共用论文与选题。</p>
+              <div className="panel-actions" style={{justifyContent:"flex-start",marginTop:24}}><strong>最近操作记录</strong></div>
+              <div className="evidence-list">{audits.slice(0,12).map(a=><div className="evidence" key={a.id}>
+                <div><strong>{a.action}</strong><span>{a.target} · {dateLabel(a.created_at)} · {a.note}</span></div>
+              </div>)}</div>
+            </>}
+          </section>}
           <section className="panel"><h2>上线前配置</h2><p className="small muted">
-            需要分别设置前端的 APP_PASSWORD、SESSION_SECRET、BACKEND_URL、API_BEARER_TOKEN，
-            以及后端的 APP_ENV、DATABASE_URL、API_BEARER_TOKEN。模型密钥只放后端。公开仓库不得包含个人未发表资料与密钥。
+            团队模式需要前后端同时设置 TEAM_AUTH_ENABLED=true，前端配置 BACKEND_URL 和 API_BEARER_TOKEN，
+            后端配置 APP_ENV、DATABASE_URL、API_BEARER_TOKEN，并先使用 CLI 创建首位管理员。
+            旧版 APP_PASSWORD 仅作为单用户兼容方案。模型密钥只放后端，公开仓库不得包含未发表资料和密钥。
           </p></section>
         </>}
       </div>
