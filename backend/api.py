@@ -4,13 +4,14 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import logging
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Literal
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text as sql_text
 from sqlalchemy.orm import Session
 
 from research_workbench.core import (
@@ -72,7 +73,13 @@ def require_admin(actor:TeamMember|None=Depends(require_actor)):
 async def lifespan(app:FastAPI):
     if os.getenv("APP_ENV","development").lower()=="production" and not os.getenv("API_BEARER_TOKEN"):
         raise RuntimeError("Set API_BEARER_TOKEN before production deployment")
-    get_factory()
+    factory=get_factory()
+    with factory() as db:
+        db.execute(sql_text("SELECT 1"))
+        logging.getLogger(__name__).info(
+            "Research database connection verified: dialect=%s",
+            db.get_bind().dialect.name,
+        )
     yield
 
 app=FastAPI(
