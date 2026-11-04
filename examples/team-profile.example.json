@@ -1,0 +1,64 @@
+{
+  "team": {
+    "name": "Example Research Laboratory",
+    "mission": "Interdisciplinary urban research and intelligent research workflows",
+    "priorities": [
+      "Evidence-grounded opportunities",
+      "Reproducible experiments",
+      "Cross-disciplinary methods"
+    ]
+  },
+  "goals": "Find high-quality, testable research questions that connect urban science with cutting-edge computational methods.",
+  "research_lines": [
+    {
+      "id": "urban_computing",
+      "name": "Urban spatial intelligence",
+      "problem": "Uncertain labels, heterogeneous data and generalization across urban environments",
+      "keywords": [
+        "urban",
+        "spatial",
+        "graph"
+      ],
+      "search_queries": [
+        "urban function mapping",
+        "urban spatial representation learning"
+      ],
+      "method_queries": [
+        "self-supervised graph learning",
+        "spatiotemporal graph model"
+      ]
+    },
+    {
+      "id": "resilience_agents",
+      "name": "Urban resilience and intelligent operations",
+      "problem": "Coordinating multiple objectives and dynamic changes under environmental constraints",
+      "keywords": [
+        "resilience",
+        "urban",
+        "agent"
+      ],
+      "search_queries": [
+        "urban resilience decision support",
+        "flood risk management"
+      ],
+      "method_queries": [
+        "multi agent planning",
+        "world model decision making"
+      ]
+    }
+  ],
+  "datasets": [
+    {
+      "name": "Example team dataset",
+      "description": "Replace with real team dataset overview. Do NOT upload private data to public GitHub.",
+      "access": "Private, metadata only"
+    }
+  ],
+  "methods": [
+    "GIS",
+    "graph learning",
+    "optimization",
+    "LLM research workflow"
+  ],
+  "excluded_terms": []
+}
