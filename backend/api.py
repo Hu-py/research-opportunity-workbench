@@ -116,9 +116,10 @@ class MemberUpdateRequest(BaseModel):
     role:Literal["admin","researcher","viewer"]|None=None
 
 @app.post("/api/auth/login",dependencies=[Depends(authenticate)])
-def auth_login(data:LoginRequest,db:Session=Depends(get_db)):
+def auth_login(data:LoginRequest,request:Request,db:Session=Depends(get_db)):
     if not team_auth_enabled():raise HTTPException(404,"Team authentication is disabled")
-    result=member_login(db,data.email,data.password)
+    address=request.client.host if request.client else "unknown"
+    result=member_login(db,data.email,data.password,address)
     if result is None:raise HTTPException(401,"Invalid credentials")
     token,member=result
     return {"token":token,"expires_in":SESSION_SECONDS,"member":public_member(member)}
