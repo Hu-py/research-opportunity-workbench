@@ -117,6 +117,10 @@ def matched_evidence(inventory,line):
         for row in rows:
             if source=="paper" and row.get("line_id")==line["id"]:
                 score=100
+            elif source=="achievement" and any(
+                x in row["tags"] for x in line.get("keywords",[])
+            ):
+                score=95  # actual topic-tag identity in verified output
             else:
                 hint=_score(line,texts(row))
                 score=hint[0] if hint else 0
@@ -146,19 +150,46 @@ def database_draft(inventory):
     official=inventory.get("profile") or {}
     raw_lines=official.get("research_lines",[])
     lines=[];insights=[];used=set();evidence_refs=set()
-    if raw_lines:
-        candidates=raw_lines
-    else:
-        # No profile: derive *labels* only from actual achievement tags and
-        # catalog categories. Do not invent scientific problems or methods.
-        tags=Counter(t for a in inventory["team_achievements"] for t in a["tags"])
-        names=[x for x,n in tags.most_common(5) if n>=2]
-        if not names:
-            names=list(inventory["dataset_categories"])[:5]
-        candidates=[{"id":"db_topic_"+str(i+1),"name":"数据库成果主题："+name,
-            "problem":"已有成果和数据登记表出现此主题；具体研究问题需要团队审核确认",
-            "keywords":[name],"search_queries":["urban spatial research methods"],
-            "method_queries":[]} for i,name in enumerate(names)]
+    # Keep registered official lines as inputs, but do not let a single
+    # (possibly demo) line hide all other evidence in 36 verified outputs.
+    candidates=list(raw_lines[:3])
+    tagged=Counter(t for a in inventory["team_achievements"] for t in a["tags"])
+    chosen=[]
+    for tag,count in tagged.most_common():
+        if count<2 or len(candidates)>=8:break
+        members=[x for x in inventory["team_achievements"] if tag in x["tags"]]
+        refs={x["ref"] for x in members}
+        # Avoid near-identical thematic clusters while allowing relevant
+        # overlaps between resilience/mobility/segregation, etc.
+        if any(len(refs&prev)/max(1,len(refs|prev))>.65 for prev in chosen):
+            continue
+        related=Counter(t for m in members for t in m["tags"] if t!=tag)
+        secondary=next((name for name,n in related.most_common()
+                        if n>=2),None)
+        term=[tag]+([secondary] if secondary else [])
+        example=next((x["title"] for x in members if x["kind"]=="paper"),
+                      members[0]["title"])
+        candidates.append({
+            "id":"db_theme_"+str(len(chosen)+1),
+            "name":"数据库成果簇："+tag+((" / "+secondary) if secondary else ""),
+            "problem":"实际成果表有 "+str(count)+" 项条目带有主题标签「"+tag+
+              "」；例：「"+example[:110]+"」。现有元信息尚不足以证实"
+              "统一的科学问题、共同方法或可复现的实验结果。",
+            "keywords":term,
+            "search_queries":["urban spatial research methods"],
+            "method_queries":[],
+        })
+        chosen.append(refs)
+    if not candidates:
+        # No official profile or usable achievements: even the placeholder
+        # must come from an actual CUSP category, not personal memory.
+        for i,name in enumerate(list(inventory["dataset_categories"])[:5]):
+            candidates.append({"id":"db_data_topic_"+str(i+1),
+                "name":"数据资产候选主题："+name,
+                "problem":"数据库存在这一类数据登记，但没有足够的团队成果证据；"
+                          "核心研究问题待团队明确。",
+                "keywords":[name],"search_queries":["urban spatial research methods"],
+                "method_queries":[]})
     for index,item in enumerate(candidates[:8]):
         base=str(item.get("id","db_line_"+str(index+1)))
         identifier=re.sub("[^a-z0-9_]","_",base.lower())
@@ -177,13 +208,15 @@ def database_draft(inventory):
         evidence_refs.update(refs)
         lines.append(line)
         datasets=[x["label"] for x in matches if x["category"]=="dataset"]
+        is_registered=item in raw_lines
         insight={"line_id":identifier,
-            "bottleneck":"正式画像登记的问题："+line["problem"]+
-                "。尚无独立方法评估结论；此字段不推断为团队已解决的问题。",
+            "bottleneck":("正式画像登记的问题：" if is_registered else
+                          "已核验成果主题聚类（候选）：" )+line["problem"]+
+                "。需要阅读论文摘要及核查研究方法；不能由题名推断已解决问题。",
             "next_experiment":"数据库未记录可核验的实验设计；需要根据引用成果与可获取的数据进一步确定基线和留出验证。",
             "data_requirements":(["需核查数据登记项："+x[:80] for x in datasets[:4]]
                 if datasets else ["当前数据登记中没有可自动确认的对应资产，需核查"]),
-            "evidence_status":"described" if raw_lines else "inferred",
+            "evidence_status":"described" if is_registered else "inferred",
             "evidence_refs":refs,
         }
         insights.append(insight)
@@ -198,7 +231,7 @@ def database_draft(inventory):
         "methods":model_methods,
         "excluded_terms":[],"datasets":[],"research_lines":lines}
     analysis={
-        "positioning":"此版依据工作台正式画像、已核验成果和CUSP非受限数据属性建立；主线名称优先延续已有正式画像，并非从对话记录或LLM猜测生成。",
+        "positioning":"本版综合 PostgreSQL 正式研究画像及已核验成果的高频主题标签进行聚类，并参考非受限 CUSP 数据属性。成果簇只是供审核的候选研究主线，不代表已经验证的研究问题或方法创新。",
         "method_capabilities":model_methods,
         "line_insights":insights,
         "cross_line_opportunities":["跨方向关联需要结合具体论文摘要、数据权限及字段兼容性审查；当前数据库元信息不足以认定新选题。"],
