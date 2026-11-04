@@ -182,16 +182,28 @@ async def lifespan(app:FastAPI):
     )
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
-    if os.getenv("RADAR_TRIAL_ON_STARTUP","").strip() == "1":
+    trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
+    if trial_mode in ("1","2"):
         from threading import Thread
         with factory() as db:
             try:
-                trial_id = create_trial(db, startup=True)
+                if trial_mode=="1":
+                    trial_id=create_trial(db,startup=True)
+                else:
+                    # Explicit one-time second QA run after fixing lexical
+                    # matching/future-dated OpenAlex metadata. Persist a marker
+                    # so Render restarts never repeat this paid-quota-free scan.
+                    trial_id="trial_quality_v2_20261104"
+                    if db.get(RadarTrialRun,trial_id):
+                        trial_id=None
+                    else:
+                        db.add(RadarTrialRun(id=trial_id))
+                        db.commit()
             except ValueError:
-                trial_id = None
+                trial_id=None
         if trial_id:
-            Thread(target=execute_trial, args=(factory,trial_id),
-                   daemon=True, name="radar-first-scan").start()
+            Thread(target=execute_trial,args=(factory,trial_id),
+                   daemon=True,name="radar-first-scan").start()
     if inline_worker_enabled():
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
