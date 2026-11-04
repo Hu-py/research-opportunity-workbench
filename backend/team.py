@@ -145,7 +145,7 @@ def save_team_profile(db:Session,payload:dict,actor_id:str,expected_version:int|
     current=current_profile_version(db)
     if expected_version is not None and expected_version!=current:
         raise ValueError("Profile changed by another member; reload before saving")
-    set_profile(db,payload)
+    set_profile(db,payload,commit=False)
     version=current+1
     db.add(TeamProfileRevision(version=version,
                                profile_json=json.dumps(payload,ensure_ascii=False),
