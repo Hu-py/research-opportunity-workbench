@@ -51,6 +51,12 @@ def authenticate(request: Request):
 def team_auth_enabled() -> bool:
     return os.getenv("TEAM_AUTH_ENABLED","").strip().lower() in ("true","1","yes")
 
+def inline_worker_enabled() -> bool:
+    # Explicit opt-in for short test tasks on a free Render web instance.
+    # Production defaults to the separate-worker queue even when no worker exists.
+    default = "queue" if os.getenv("APP_ENV", "development").lower()=="production" else "background"
+    return os.getenv("WORKER_MODE",default).strip().lower()=="background"
+
 def require_actor(request:Request,db:Session=Depends(get_db)):
     authenticate(request)
     if not team_auth_enabled():
@@ -81,6 +87,10 @@ async def lifespan(app:FastAPI):
         logging.getLogger("uvicorn.error").info(
             "Research database connection verified: dialect=%s",
             db.get_bind().dialect.name,
+        )
+    if inline_worker_enabled():
+        logging.getLogger("uvicorn.error").warning(
+            "Inline research jobs enabled: not durable across free-instance sleep or restarts"
         )
     yield
 
@@ -275,9 +285,26 @@ def tasks_start(data:TaskRequest,background:BackgroundTasks,db:Session=Depends(g
     task=enqueue(db,data.kind,data.query)
     add_audit(db,"task.created",actor.id if actor else None,task.id,"kind="+data.kind)
     db.commit()
-    # BackgroundTasks is a local development convenience, NOT a durable worker.
-    if os.getenv("APP_ENV","development")!="production" and os.getenv("WORKER_MODE","background")=="background":
+    # Opt-in fallback for free-host evaluation, NOT a durable worker.
+    # An interrupted process may leave a task queued/running. Never claim
+    # production-grade reliability without a separate worker.
+    if inline_worker_enabled():
         background.add_task(run_task,get_factory(),task.id)
+    return as_dict(task)
+
+@app.post("/api/tasks/{task_id}/dispatch",dependencies=[Depends(require_actor)])
+def dispatch_queued_task(task_id:str,background:BackgroundTasks,
+                         db:Session=Depends(get_db),
+                         actor:TeamMember|None=Depends(require_editor)):
+    if not inline_worker_enabled():
+        raise HTTPException(409,"Inline execution is disabled; use the dedicated worker")
+    task=db.get(ResearchTask,task_id)
+    if task is None:raise HTTPException(404,"Task not found")
+    if task.status!="queued":
+        raise HTTPException(409,"Only queued tasks can be dispatched again")
+    background.add_task(run_task,get_factory(),task.id)
+    add_audit(db,"task.dispatched",actor.id if actor else None,task.id)
+    db.commit()
     return as_dict(task)
 
 @app.get("/api/tasks/{task_id}",dependencies=[Depends(require_actor)])

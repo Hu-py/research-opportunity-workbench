@@ -233,6 +233,16 @@ export default function Workbench(){
     finally{setBusy(false);}
   }
 
+  async function dispatchExistingTask(task:Task){
+    if(task.status!=="queued")return;
+    setBusy(true);setError("");setNotice("");
+    try{
+      await api<Task>("tasks/"+task.id+"/dispatch",{method:"POST"});
+      setNotice("已请求后台执行排队任务；免费测试环境可能在休眠或重启时中断任务。");
+      void load();
+    }catch(e){setError(e instanceof Error?e.message:"请求执行失败");}
+    finally{setBusy(false);}
+  }
   async function saveFeedback(idea:Idea){
     setBusy(true);setError("");setNotice("");
     try{
@@ -454,7 +464,7 @@ export default function Workbench(){
                 {n:"回看历史选题",d:"降低重复推荐",icon:GitBranch}].map(x=>
                 <div className="tool-row" key={x.n}><div className="tool-icon"><x.icon size={17}/></div>
                 <div><strong>{x.n}</strong><small>{x.d}</small></div></div>)}
-              <div className="small-note"><ShieldCheck size={15}/> 选题创新性和论文结论仍需人工核验。</div>
+              <div className="small-note"><ShieldCheck size={15}/> 未配置模型 API 时仅运行真实文献检索预览，不生成 LLM 分析；选题创新性仍需人工核验。</div>
             </aside>
           </div>
           <section className="panel task-panel">
@@ -468,7 +478,12 @@ export default function Workbench(){
               <div><div className="task-status">
                 <span className={"task-dot "+selectedTask.status}/><strong>{selectedTask.status==="completed"?"已完成":selectedTask.status==="failed"?"执行失败":selectedTask.status==="running"?"运行中":"排队等待"}</strong>
                 <small>{selectedTask.id}</small></div>
-                {selectedTask.status==="queued"&&<p className="small muted">任务正在等待独立 Worker。若长期停留，请确认云端 Worker 已启动。</p>}
+                {selectedTask.status==="queued"&&<>
+                  <p className="small muted">任务已写入共享数据库。免费测试环境采用现有 API 执行短任务；休眠或重启可能导致执行中断。</p>
+                  {canEdit&&<IconBtn className="btn-secondary" disabled={busy} onClick={()=>void dispatchExistingTask(selectedTask)}>
+                    <Play size={15}/> 重新启动排队任务
+                  </IconBtn>}
+                </>}
                 <h4>执行过程</h4>
                 <div className="timeline">{selectedTask.events.length===0?<p className="small muted">等待后台任务启动…</p>:
                   selectedTask.events.map((event,i)=><div className="timeline-item" key={i}>
