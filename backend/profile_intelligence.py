@@ -22,6 +22,7 @@ from backend.model_vault import ModelCredential,load_key
 from backend.model_gateway import request_json,ModelCallError
 from backend.skill_loader import load_skills
 from backend.team import add_audit,current_profile_version,save_team_profile
+from backend.profile_database import evidence_inventory,database_draft,safe_overview
 
 def now():return datetime.now(timezone.utc)
 def pack(x):return json.dumps(x,ensure_ascii=False)
@@ -130,7 +131,8 @@ def _analysis(value,profile):
             "next_experiment":str(x.get("next_experiment",""))[:1200],
             "data_requirements":_texts(x.get("data_requirements",[]),"data_requirements",8),
             "evidence_status":x.get("evidence_status","inferred")
-              if x.get("evidence_status") in ("verified","described","inferred","planned") else "inferred"})
+              if x.get("evidence_status") in ("verified","described","inferred","planned") else "inferred",
+            "evidence_refs":_texts(x.get("evidence_refs",[]),"evidence_refs",24,330)})
     if {x["line_id"] for x in findings}!={x["id"] for x in profile["research_lines"]}:
         raise ValueError("画像分析没有覆盖全部研究主线")
     return {"positioning":str(value.get("positioning",""))[:1300],
@@ -140,10 +142,18 @@ def _analysis(value,profile):
         "evidence_gaps":_texts(value.get("evidence_gaps",[]),"evidence_gaps",12,550),
         "scope_cautions":_texts(value.get("scope_cautions",[]),"scope_cautions",10,550)}
 
-def _validated(raw):
+def _validated(raw,allowed_refs=None):
     if not isinstance(raw,dict):raise ValueError("画像内容格式不正确")
     profile=_profile(raw.get("profile"))
-    return profile,_analysis(raw.get("analysis"),profile)
+    analysis=_analysis(raw.get("analysis"),profile)
+    if allowed_refs is not None:
+        for item in analysis["line_insights"]:
+            if any(ref not in allowed_refs for ref in item["evidence_refs"]):
+                raise ValueError("模型引用了数据库中不存在或受限的证据 ID")
+            if item["evidence_status"]=="verified":
+                # Titles alone do not verify method or experimental conclusions.
+                item["evidence_status"]="described"
+    return profile,analysis
 
 def draft_view(row):
     return {"id":row.id,"source":row.source,"scope":row.scope,
@@ -163,14 +173,17 @@ def run_view(x):
 
 def list_studio(db):
     return {"profile_version":current_profile_version(db),
+        "evidence":safe_overview(evidence_inventory(db)),
         "drafts":[draft_view(x) for x in db.scalars(
-            select(ResearchProfileDraft).order_by(
+            select(ResearchProfileDraft).where(
+                ResearchProfileDraft.status!="discarded",
+                ResearchProfileDraft.source!="curated_example").order_by(
                 ResearchProfileDraft.created_at.desc()).limit(25)).all()],
         "runs":[run_view(x) for x in db.scalars(select(ProfileSynthesisRun).order_by(
             ProfileSynthesisRun.created_at.desc()).limit(20)).all()],
         "model_configured":bool(db.get(ModelCredential,"deepseek") and
            db.get(ModelCredential,"deepseek").encrypted_key),
-        "note":"示例基于对话整理，个人与合作课题不能自动认定为团队核验成果。发布画像需管理员确认。"}
+        "note":"研究画像只根据 PostgreSQL 正式画像、已核验成果、人工审过的论文和 CUSP 非受限属性生成。所有草稿须人工审核，不能由题名推断实际研究结论。"}
 
 def new_draft(db,raw,source="curated_example",scope="personal_collaborative",
               provenance=None,note="",model="",base_version=None,draft_id=None):
@@ -189,6 +202,57 @@ def new_draft(db,raw,source="curated_example",scope="personal_collaborative",
         profile_json=row.profile_json,actor_id="system"))
     db.commit()
     return row
+
+def initialize_database_draft(factory):
+    """Disavow the chat-derived seed and install DB-only, evidence-bound draft.
+
+    Idempotent on every restart, no alteration of the official team profile.
+    This is explicitly an evidence-linked deterministic prototype, not LLM.
+    """
+    with factory() as db:
+        removed=0
+        old=db.scalars(select(ResearchProfileDraft).where(
+            ResearchProfileDraft.status=="draft",
+            ResearchProfileDraft.source.in_(["curated_example","llm"]))).all()
+        for row in old:
+            # Only quarantine older LLM drafts where provenance explicitly
+            # admits an earlier chat-based example; new DB-only LLM drafts
+            # must stay available across future Render restarts.
+            if row.source=="llm" and not any(
+                "先前人工整理" in str(x) or "个人/合作画像草稿" in str(x)
+                for x in (unpack(row.provenance_json,[]) or [])
+            ):
+                continue
+            row.status="discarded"
+            row.note=("已作废：此前草稿引用聊天来源，不符合仅依据现有数据库的要求。"
+                      "禁止作为LLM画像证据；仅保留内部审计。")
+            row.updated_at=now()
+            removed+=1
+        db.flush()
+        inventory=evidence_inventory(db)
+        # A stable ID prevents duplicate drafts when free Render restarts.
+        material=pack({
+            "official_profile":inventory["profile"],
+            "achievement_ids":[x["ref"] for x in inventory["team_achievements"]],
+            "data_ids":[x["ref"] for x in inventory["datasets"]],
+            "paper_ids":[x["ref"] for x in inventory["approved_papers"]],
+            "verified_relations":inventory["confirmed_relations"]
+        })
+        ident="prof_db_"+hashlib.sha256(material.encode()).hexdigest()[:28]
+        existed=db.get(ResearchProfileDraft,ident)
+        if not existed:
+            draft,refs=database_draft(inventory)
+            existing_refs=["profiles:1"] if inventory["profile"] else []
+            new_draft(db,draft,source="database_snapshot",scope="team",
+                      provenance=existing_refs+refs,
+                      note=("本草稿仅由现有 PostgreSQL 表构造，未使用聊天记录或LLM。"
+                            "技术瓶颈源于已有正式画像，关联为可解释初筛，不代表成果验证。"),
+                      model="",draft_id=ident)
+        else:
+            db.commit()
+        return {"new":not bool(existed),"discarded_chat_drafts":removed,
+            "id":ident,"counts":inventory["counts"]}
+
 
 def bootstrap_from_env(factory):
     text=os.getenv("RESEARCH_PROFILE_BOOTSTRAP_B64","").strip()
@@ -211,49 +275,24 @@ def bootstrap_from_env(factory):
         raise ValueError("Initial research portrait bootstrap invalid") from exc
 
 def _snapshot(db,note):
-    base=get_profile(db)
-    all_drafts=db.scalars(select(ResearchProfileDraft).where(
-        ResearchProfileDraft.status.in_(["draft","applied"])
-        ).order_by(ResearchProfileDraft.created_at.desc()).limit(10)).all()
-    base_draft=next((d for d in all_drafts if d.source=="curated_example"),None)
-    assets=db.scalars(select(CuspDataset).order_by(CuspDataset.category,CuspDataset.name)).all()
-    assets=[{"name":x.name[:130],"category":x.category,"coverage":x.coverage[:85],
-             "period":x.period[:75],"format":x.format[:45]}
-           for x in assets if x.sensitivity in ("internal","public")
-             and sensitive_level(x.name)!="restricted"][:28]
-    works=db.scalars(select(TeamAchievement).where(
-        TeamAchievement.status=="verified").order_by(
-        TeamAchievement.year.desc()).limit(18)).all()
-    # No authors, team emails, custodians, F-drive paths or original sample data.
-    # Existing official profiles may use older/more permissive IDs and
-    # longer query lists. Safely project canonical text instead of requiring
-    # the existing record to satisfy the *new draft* validation rules.
-    safe_base=None
-    if base and isinstance(base,dict):
-        safe_base={"goals":str(base.get("goals",""))[:650],
-            "team":{"name":str((base.get("team") or {}).get("name",""))[:140],
-                    "mission":str((base.get("team") or {}).get("mission",""))[:450],
-                    "priorities":[str(x)[:100] for x in
-                        (base.get("team") or {}).get("priorities",[])[:8]]},
-            "methods":[str(x)[:100] for x in base.get("methods",[])[:20]],
-            "research_lines":[{
-                "id":str(x.get("id",""))[:80],
-                "name":str(x.get("name",""))[:180],
-                "problem":str(x.get("problem",""))[:450],
-                "keywords":[str(v)[:90] for v in x.get("keywords",[])[:12]],
-                "search_queries":[str(v)[:140] for v in x.get("search_queries",[])[:4]],
-                "method_queries":[str(v)[:140] for v in x.get("method_queries",[])[:4]]
-            } for x in base.get("research_lines",[])[:8] if isinstance(x,dict)]}
-    return {"existing_official_profile":safe_base,
-            "curated_example":({"profile":unpack(base_draft.profile_json),
-                "analysis":unpack(base_draft.analysis_json)}
-                if base_draft else None),
-            "verified_team_outputs":[{"title":x.title[:180],"year":x.year,
-                "kind":x.kind} for x in works],
-            "non_restricted_data_metadata":assets,
-            "reviewer_notes":note[:2000],
-            "evidence_note":"既往对话和示例草稿是描述性信息，不等于已核验的团队成果；数据只含元信息。",
-            "output_scope":"team_draft_needs_admin_review"}
+    """Strictly live PostgreSQL records. Never include historical chat drafts."""
+    inventory=evidence_inventory(db)
+    # Explicit, stable IDs allow the model and backend to prove provenance.
+    return {
+        "source_policy":"strict_postgresql_only",
+        "existing_official_profile":inventory["profile"],
+        "verified_team_outputs":inventory["team_achievements"],
+        "non_restricted_data_metadata":inventory["datasets"],
+        "human_approved_papers":inventory["approved_papers"],
+        "confirmed_line_relations":inventory["confirmed_relations"],
+        "inventory_counts":inventory["counts"],
+        "dataset_categories":inventory["dataset_categories"],
+        # Admin review notes are optional requirements, NOT independent evidence.
+        "reviewer_instructions_not_evidence":note[:1000],
+        "evidence_note":"只允许以上现有数据库记录。禁止使用聊天记录、被撤回的初始化草稿、或臆造的数据字段和团队成果。",
+        "output_scope":"team_draft_needs_admin_review"
+    }
+
 
 def start_generation(db,note="",actor_id=""):
     if not load_key(db):
@@ -285,22 +324,27 @@ def execute_generation(factory,run_id,client=None):
             if not key:raise ValueError("DeepSeek Key 已移除，请重新配置")
             model=row.model
             base_version=current_profile_version(db)
-        system=("你是精确的科研画像分析助手。你需要明确区分个人研究、合作项目、"
-                "已核验团队成果和未确认研究方向。不是所有讨论过的工作都已完成。"
-                "不能发明论文、数据可用性和团队已掌握的方法。给出问题驱动的科研主线，"
-                "交叉领域要体现数据与方法之间的真实关系。"
+        system=("你是数据库证据驱动的科研画像分析助手。所有事实必须来自本次提供的"
+                "PostgreSQL记录。不得使用任何历史聊天、先前个人案例或工作台之外的项目记忆。"
+                "团队成果为工作台已核验条目，但文献标题不等于已证明具体方法结论。"
+                "主线必须给出 evidence_refs（输入提供的 ref ID），并明确证据不足之处。"
+                "只能根据现有元信息提出假设，不能推断原始数据实际可用。"
                 "必须返回 JSON object，字段必须遵守以下可复用 Skill：\n"+
                 load_skills(("research_profile",)))
         result,usage=request_json(key,model,system,context,client=client,max_tokens=4200)
-        profile,analysis=_validated(result)
+        allowed_refs={x["ref"] for block in ("verified_team_outputs",
+                     "non_restricted_data_metadata","human_approved_papers")
+                     for x in context.get(block,[])}
+        profile,analysis=_validated(result,allowed_refs=allowed_refs)
         with factory() as db:
             run=db.get(ProfileSynthesisRun,run_id)
             if run.status!="running":return False
             draft=new_draft(db,{"profile":profile,"analysis":analysis},
                 source="llm",scope="team",base_version=base_version,model=model,
-                note="LLM 生成的候选团队画像；需核查课题归属、研究进度、时空数据和方法能力。",
-                provenance=["现有团队正式画像","先前人工整理的个人/合作画像草稿",
-                            "已核验团队成果的题名与年份","非受限 CUSP 数据属性"])
+                note="严格基于 PostgreSQL 中的团队成果、正式画像、CUSP 属性目录和人工审核论文生成；需核查方法推断与研究归属。",
+                provenance=["profiles:1"]+[ref for item in analysis["line_insights"]
+                            for ref in item["evidence_refs"]],
+                )
             run.draft_id=draft.id;run.status="completed";run.error=""
             run.input_tokens=usage["input_tokens"]
             run.output_tokens=usage["output_tokens"];run.updated_at=now()
@@ -325,8 +369,8 @@ def execute_generation(factory,run_id,client=None):
 
 def update_draft(db,ident,profile,expected_revision,actor):
     row=db.get(ResearchProfileDraft,ident)
-    if not row or row.status not in ("draft","applied"):
-        raise ValueError("只有有效画像草稿可以修改")
+    if not row or row.status not in ("draft","applied") or row.source=="curated_example":
+        raise ValueError("旧聊天画像草稿已经撤回，不可编辑或发布")
     if row.revision!=expected_revision:raise ValueError("草稿已被其他成员修改，请刷新")
     validated=_profile(profile)
     row.profile_json=pack(validated)
@@ -342,7 +386,8 @@ def update_draft(db,ident,profile,expected_revision,actor):
 
 def apply_draft(db,ident,expected_version,actor):
     row=db.get(ResearchProfileDraft,ident)
-    if not row or row.status!="draft":raise ValueError("草稿不存在或已处理")
+    if not row or row.status!="draft" or row.source=="curated_example":
+        raise ValueError("草稿不存在、已撤回或来源不符合数据库证据要求")
     actual=current_profile_version(db)
     if expected_version!=actual or row.base_version!=actual:
         raise ValueError("正式画像已经变化；请基于最新版本重新生成或检查后再应用")

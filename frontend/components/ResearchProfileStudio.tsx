@@ -6,25 +6,26 @@ import type {Profile} from "@/lib/types";
 
 type Insight={
  line_id:string;bottleneck:string;next_experiment:string;
- data_requirements:string[];evidence_status:string
+ data_requirements:string[];evidence_status:string;evidence_refs?:string[]
 };
 type Analysis={
  positioning:string;method_capabilities:string[];line_insights:Insight[];
  cross_line_opportunities:string[];evidence_gaps:string[];scope_cautions:string[]
 };
 type Draft={
- id:string;source:"llm"|"curated_example";scope:string;status:string;
+ id:string;source:"llm"|"database_snapshot";scope:string;status:string;
  base_version:number;revision:number;profile:Profile;analysis:Analysis;
  provenance:string[];note:string;model:string;applied_version:number|null;
  created_at:string
 };
 type Run={id:string;status:string;error:string;model:string;draft_id:string;
  input_tokens:number;output_tokens:number;created_at:string};
+type Evidence={source:string;counts:{achievements_verified:number;data_assets_total:number;data_assets_eligible:number;approved_papers:number;official_lines:number;confirmed_links:number};dataset_categories:Record<string,number>;official_line_names:string[];achievement_examples:{ref:string;title:string;year:number;kind:string}[];dataset_examples:{ref:string;name:string;category:string;period:string;coverage:string}[];note:string};
 type Studio={
- profile_version:number;drafts:Draft[];runs:Run[];model_configured:boolean;note:string
+ profile_version:number;drafts:Draft[];runs:Run[];model_configured:boolean;note:string;evidence:Evidence
 };
 
-const explainStatus=(s:string)=>s==="described"?"既往讨论":s==="planned"?"计划中":
+const explainStatus=(s:string)=>s==="described"?"数据库已有描述":s==="planned"?"计划中":
   s==="verified"?"已核实":s==="inferred"?"推断待核":"待确认";
 
 export default function ResearchProfileStudio({canAdmin,onApplied}:{
@@ -115,10 +116,29 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
      <BrainCircuit size={21}/>
    </div>
    <p className="small muted">
-     将科研问题、研究方法、数据条件与技术瓶颈分层梳理。下面的首次示例来自既往讨论，
-     仅代表个人与合作研究线索，不自动等同于团队已完成成果。后台可使用可复用
-     <code> research_profile </code>Skill 生成新版草稿。
+     只依据当前 PostgreSQL 的正式画像、已核验团队成果、人工审核论文和 CUSP 数据属性。
+     不使用历史聊天记录。研究主线的主题匹配属于候选线索，不代表科研结论、数据可用性或创新性已核实。
+     可使用 <code>research_profile</code> Skill 生成有来源的新版草稿。
    </p>
+   {data?.evidence&&<div className="profile-db-evidence">
+     <strong>本次画像依据 · PostgreSQL 实时记录</strong>
+     <div className="profile-db-stats">
+       <span>核验成果 <b>{data.evidence.counts.achievements_verified}</b></span>
+       <span>登记数据属性 <b>{data.evidence.counts.data_assets_total}</b></span>
+       <span>非受限资产 <b>{data.evidence.counts.data_assets_eligible}</b></span>
+       <span>人工审核论文 <b>{data.evidence.counts.approved_papers}</b></span>
+       <span>正式研究主线 <b>{data.evidence.counts.official_lines}</b></span>
+     </div>
+     <details><summary>展开核查证据条目与数据库来源</summary>
+       <div className="profile-db-sources">
+         <div><b>已核验成果题名</b>{data.evidence.achievement_examples.map(x=>
+           <p key={x.ref}>{x.year} · {x.title}<small>{x.ref}</small></p>)}</div>
+         <div><b>已登记数据属性</b>{data.evidence.dataset_examples.map(x=>
+           <p key={x.ref}>{x.name} · {x.period} · {x.coverage}<small>{x.ref}</small></p>)}</div>
+       </div>
+       <p className="small muted">{data.evidence.note}</p>
+     </details>
+   </div>}
    {error&&<div className="alert alert-error">{error}</div>}
    {notice&&<div className="alert alert-success">{notice}</div>}
    <div className="profile-studio-toolbar">
@@ -126,7 +146,7 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
        画像草稿版本
        <select value={selected} onChange={e=>setSelected(e.target.value)}>
          {data?.drafts.map(d=><option key={d.id} value={d.id}>{
-           d.source==="curated_example"?"首次整理实例":"LLM 生成"
+           d.source==="database_snapshot"?"数据库证据原型":"数据库 LLM 归纳"
          } · {d.profile.research_lines.length} 条主线 · {
            d.status==="applied"?"已发布 V"+d.applied_version:
            d.status==="discarded"?"已归档":"待审核"} · 修订 {d.revision}</option>)}
@@ -138,8 +158,8 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
    </div>
    {draft?<>
      <div className="profile-studio-tags">
-       <span><ShieldCheck size={14}/> {draft.source==="llm"?"LLM 归纳草稿":"基于既往资料手工整理"}</span>
-       <span><Database size={14}/> {draft.scope==="team"?"候选团队画像":"个人／合作研究画像"}</span>
+       <span><ShieldCheck size={14}/> {draft.source==="llm"?"数据库驱动 LLM 草稿":"数据库规则初稿（非 LLM）"}</span>
+       <span><Database size={14}/> {"候选团队画像，需审核"}</span>
        <span><Workflow size={14}/> 当前正式画像 V{data?.profile_version??0} · 草稿基于 V{draft.base_version}</span>
      </div>
      {draft.note&&<p className="small muted">{draft.note}</p>}
@@ -158,6 +178,7 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
              {insight&&<span className="profile-studio-evidence">{explainStatus(insight.evidence_status)}</span>}
            </div>
            <div className="profile-studio-line-details">
+             {!!insight?.evidence_refs?.length&&<p><b>数据库证据 ID：</b>{insight.evidence_refs.slice(0,8).join(" · ")}</p>}
              <p><b>技术瓶颈：</b>{insight?.bottleneck||"需要确认"}</p>
              <p><b>最小实验：</b>{insight?.next_experiment||"待定义"}</p>
              <p><b>数据条件：</b>{insight?.data_requirements?.join("；")||"待核查"}</p>
@@ -199,18 +220,18 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
          </button>
        </div>}
      </div>}
-   </>:<div className="small-note">尚未导入初始科研画像实例；可从下方进行 LLM 归纳。</div>}
+   </>:<div className="small-note">尚未生成数据库证据画像草稿；请刷新。</div>}
    <div className="profile-studio-generate">
-     <div><strong>让 LLM 重新归纳科研画像</strong>
-       <p className="small muted">使用现有正式画像、上述示例、已核验团队成果题名及非受限 CUSP 数据属性，
-       生成新的分层画像草稿，保留证据边界，绝不自动发布。</p></div>
+     <div><strong>让 LLM 仅根据数据库重新归纳科研画像</strong>
+       <p className="small muted">生成时重新读取 PostgreSQL 的正式研究画像、已核验成果、人工审核论文及非受限 CUSP 属性。
+       不会读取聊天记录或已撤回的旧草稿；每条结论需关联真实的数据库记录 ID。</p></div>
      <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} maxLength={2000}
-       placeholder="可补充更新：例如某条主线已经结题、一个课题属于合作研究、想优先关注的技术等…"/>
+       placeholder="可选：填写写作偏好或优先分析方向。该输入只作为指令，不当作研究事实。"/>
      <div className="inline-actions">
        <button className="btn btn-primary" disabled={busy||running||!canAdmin||!data?.model_configured}
          onClick={()=>void generate()}><Sparkles size={15}/> LLM 重新生成画像草稿</button>
        {!data?.model_configured&&<span className="small muted">
-         先到「AI 选题实验台」填写 DeepSeek Key；首次静态原型无需 Key。
+         先到「AI 选题实验台」填写 DeepSeek Key；数据库证据初稿无需 Key。
        </span>}
      </div>
      {latest&&<div className="profile-studio-run">
