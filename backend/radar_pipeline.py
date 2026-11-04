@@ -184,7 +184,8 @@ def sync_ai_opportunities(db, limit=180):
                 gates_json=dump(checked), paper_ids_json=dump(valid_paper_ids),
                 dataset_ids_json=dump(_as_list(card.dataset_ids_json)),
                 ai_card_ids_json=dump([card.id]), version=1,
-                status="candidate",
+                status=("shortlist" if card.status=="shortlist" else
+                        "rejected" if card.status=="rejected" else "candidate"),
             )
             db.add(match)
             db.flush()
