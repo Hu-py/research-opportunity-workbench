@@ -70,7 +70,7 @@ class ResearchRefreshRun(Base):
 
 def title_key(raw):
     norm=unicodedata.normalize("NFKC",raw or "").casefold()
-    return re.sub(r"[^\\w]+","",norm)
+    return re.sub(r"[^\w]+","",norm)
 
 def output_id(kind,title):
     key=(kind+"|"+title_key(title)).encode("utf-8")
@@ -231,11 +231,11 @@ def import_directory_listing(db,listing,actor_id=None):
     created=0;skipped=0
     unique=set()
     for raw in listing.splitlines()[:600]:
-        line=re.sub(r"^[\\s│├└─+|*]+","",raw).strip()
+        line=re.sub(r"^[\s│├└─+|*]+","",raw).strip()
         if not line or len(line)>380 or line.startswith(("#","//")):
             continue
         # Accept either relative paths or the leaf names of a tree listing.
-        line=line.strip(" \\t").replace("\\\\","/")
+        line=line.strip(" \t").replace("\\","/")
         if line.startswith("/") or re.match(r"^[A-Za-z]:/",line) or ".." in line.split("/"):
             skipped+=1;continue
         suffix=line.rsplit(".",1)[-1].casefold() if "." in line else ""
