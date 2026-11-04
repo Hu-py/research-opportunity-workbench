@@ -28,6 +28,7 @@ from backend.worker import run_task
 from backend.radar_pipeline import (
     RadarReport, list_topics as list_radar_topics, recent_reports as list_radar_reports,
     sync_ai_opportunities, generate_weekly as generate_radar_weekly,
+    review_topic as review_radar_topic,
 )
 from backend.bootstrap import bootstrap_admin_from_env
 from backend.discovery_links import list_links, review_link
@@ -292,6 +293,10 @@ class ModelConfigRequest(BaseModel):
 
 class AIAnalysisRequest(BaseModel):
     line_id:str=Field(min_length=1,max_length=110)
+
+class RadarReviewRequest(BaseModel):
+    status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
+    note:str=Field(default="",max_length=1500)
 
 class AIReviewRequest(BaseModel):
     status:Literal["shortlist","rejected","draft"]
@@ -900,6 +905,19 @@ def radar_overview(db:Session=Depends(get_db)):
     return {"topics":list_radar_topics(db),"reports":reports,
             "latest_markdown":latest.markdown if latest else "",
             "note":"AI 选题属于研究假设。数据已登记不代表已合法获取；自动评审不授予 A 级。"}
+
+@app.patch("/api/radar/topics/{topic_id}",dependencies=[Depends(require_actor)])
+def radar_human_review(topic_id:str,data:RadarReviewRequest,
+                       db:Session=Depends(get_db),
+                       actor:TeamMember|None=Depends(require_editor)):
+    try:
+        result=review_radar_topic(db,topic_id,data.status,data.note)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    if actor is not None:
+        add_audit(db,"radar.topic_reviewed",actor.id,topic_id,data.status)
+        db.commit()
+    return result
 
 @app.post("/api/radar/refresh",dependencies=[Depends(require_actor)])
 def radar_refresh(db:Session=Depends(get_db),
