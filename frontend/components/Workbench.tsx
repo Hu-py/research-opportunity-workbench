@@ -8,7 +8,7 @@ import {
   Search, Settings2, ShieldCheck, Sparkles, Workflow, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type {Idea, Overview, Paper, Profile, Task, TaskEvent} from "@/lib/types";
+import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
 type Section = "overview"|"papers"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
 const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
@@ -17,7 +17,7 @@ const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
   {key:"ideas",label:"研究选题池",caption:"Opportunities",icon:Lightbulb},
   {key:"agent",label:"Research Agent",caption:"Intelligent research",icon:BrainCircuit},
   {key:"history",label:"选题演化",caption:"Evolution",icon:GitBranch},
-  {key:"profile",label:"研究者画像",caption:"Research profile",icon:ShieldCheck},
+  {key:"profile",label:"团队研究画像",caption:"Team research profile",icon:ShieldCheck},
   {key:"brief",label:"每周科研简报",caption:"Weekly brief",icon:FileText},
   {key:"settings",label:"系统状态",caption:"System",icon:Settings2},
 ];
@@ -26,7 +26,10 @@ const statuses:Record<string,string>={
   experiment:"实验准备",rejected:"暂不考虑",archived:"已归档",
 };
 const defaultProfile:Profile={
-  goals:"发现城市科学与计算机方法交叉的、可被实验验证的研究机会",
+  goals:"让团队共同发现城市科学与计算机方法交叉的科研机会",
+  team:{name:"科研团队（示例）",mission:"通过跨学科协作发现有依据、可验证的研究方向",priorities:["可验证的研究创新"]},
+  datasets:[],
+  methods:[],
   excluded_terms:[],
   research_lines:[{
     id:"urban_function",
@@ -65,6 +68,16 @@ function EvidenceList({papers}:{papers:Paper[]}){
 export default function Workbench(){
   const [auth,setAuth]=useState<boolean|null>(null);
   const [loginPassword,setLoginPassword]=useState("");
+  const [loginEmail,setLoginEmail]=useState("");
+  const [teamMode,setTeamMode]=useState(false);
+  const [member,setMember]=useState<TeamMember|null>(null);
+  const [members,setMembers]=useState<TeamMember[]>([]);
+  const [audits,setAudits]=useState<TeamAudit[]>([]);
+  const [inviteEmail,setInviteEmail]=useState("");
+  const [inviteName,setInviteName]=useState("");
+  const [invitePassword,setInvitePassword]=useState("");
+  const [inviteRole,setInviteRole]=useState<"admin"|"researcher"|"viewer">("researcher");
+  const [profileVersion,setProfileVersion]=useState(0);
   const [loginBusy,setLoginBusy]=useState(false);
   const [section,setSection]=useState<Section>("overview");
   const [mobileOpen,setMobileOpen]=useState(false);
@@ -89,6 +102,8 @@ export default function Workbench(){
   const [question,setQuestion]=useState("");
   const [selectedTaskId,setSelectedTaskId]=useState("");
   const selectedTask=tasks.find(t=>t.id===selectedTaskId)||null;
+  const canAdmin=!teamMode || member?.role==="admin";
+  const canEdit=!teamMode || member?.role==="admin" || member?.role==="researcher";
 
   const load=useCallback(async()=>{
     setLoading(true);setError("");
@@ -97,7 +112,7 @@ export default function Workbench(){
       api<{items:Paper[]}>("papers?limit=300"),
       api<{items:Idea[]}>("ideas"),
       api<{items:Task[]}>("tasks"),
-      api<{profile:Profile|null}>("profile"),
+      api<{profile:Profile|null;version?:number}>("profile"),
       api<{markdown:string}>("brief"),
     ]);
     const [a,b,c,d,e,f]=result;
@@ -107,6 +122,7 @@ export default function Workbench(){
     if(d.status==="fulfilled")setTasks(d.value.items);
     if(e.status==="fulfilled"){
       setProfile(e.value.profile);
+      setProfileVersion(e.value.version||0);
       setProfileText(JSON.stringify(e.value.profile||defaultProfile,null,2));
     }
     if(f.status==="fulfilled")setBrief(f.value.markdown);
@@ -117,9 +133,23 @@ export default function Workbench(){
 
   useEffect(()=>{
     fetch("/api/session",{cache:"no-store"}).then(r=>r.json())
-      .then(d=>setAuth(Boolean(d.authenticated))).catch(()=>setAuth(false));
+      .then(d=>{
+        setTeamMode(Boolean(d.team));
+        setMember(d.member||null);
+        setAuth(Boolean(d.authenticated));
+      }).catch(()=>setAuth(false));
   },[]);
   useEffect(()=>{if(auth)void load();},[auth,load]);
+  useEffect(()=>{
+    if(!auth || !teamMode || member?.role!=="admin")return;
+    void Promise.allSettled([
+      api<{items:TeamMember[]}>("team/members"),
+      api<{items:TeamAudit[]}>("team/audit"),
+    ]).then(([a,b])=>{
+      if(a.status==="fulfilled")setMembers(a.value.items);
+      if(b.status==="fulfilled")setAudits(b.value.items);
+    });
+  },[auth,teamMode,member?.role]);
 
   useEffect(()=>{
     if(!auth || !tasks.some(t=>t.status==="queued"||t.status==="running"))return;
@@ -144,16 +174,16 @@ export default function Workbench(){
   async function login(){
     setLoginBusy(true);setError("");
     try{
-      const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:loginPassword})});
+      const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:loginPassword,email:loginEmail})});
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"登录失败");
-      setAuth(true);setLoginPassword("");
+      setAuth(true);setLoginPassword("");if(data.member)setMember(data.member);
     }catch(e){setError(e instanceof Error?e.message:"登录失败");}
     finally{setLoginBusy(false);}
   }
   async function logout(){
     await fetch("/api/logout",{method:"POST"});
-    setAuth(false);setOverview(null);setProfile(null);setTasks([]);
+    setAuth(false);setOverview(null);setProfile(null);setTasks([]);setMember(null);setMembers([]);
   }
   async function submit(kind:Task["kind"],query=""){
     setBusy(true);setError("");setNotice("");
@@ -170,12 +200,39 @@ export default function Workbench(){
     setBusy(true);setError("");setNotice("");
     try{
       const data=JSON.parse(profileText);
-      const r=await api<{profile:Profile}>("profile",{method:"PUT",body:JSON.stringify(data)});
-      setProfile(r.profile);setNotice("研究者画像已保存到私有数据库。");
+      if(teamMode)data.expected_version=profileVersion;
+      const r=await api<{profile:Profile;version:number}>("profile",{method:"PUT",body:JSON.stringify(data)});
+      setProfile(r.profile);setProfileVersion(r.version||0);setNotice("团队研究画像已保存，新版本已写入数据库。");
       void load();
     }catch(e){setError(e instanceof Error?e.message:"JSON 格式无效");}
     finally{setBusy(false);}
   }
+  async function inviteMember(){
+    setBusy(true);setError("");setNotice("");
+    try{
+      const m=await api<TeamMember>("team/members",{
+        method:"POST",
+        body:JSON.stringify({email:inviteEmail,name:inviteName,
+          temporary_password:invitePassword,role:inviteRole})
+      });
+      setMembers(prev=>[...prev,m]);
+      setInviteEmail("");setInviteName("");setInvitePassword("");
+      setNotice("成员已创建。请通过安全渠道单独告知其临时密码。");
+    }catch(e){setError(e instanceof Error?e.message:"创建成员失败");}
+    finally{setBusy(false);}
+  }
+  async function changeMember(m:TeamMember, active:boolean){
+    setBusy(true);setError("");setNotice("");
+    try{
+      const updated=await api<TeamMember>("team/members/"+m.id,{
+        method:"PATCH",body:JSON.stringify({active})
+      });
+      setMembers(prev=>prev.map(x=>x.id===updated.id?updated:x));
+      setNotice("成员状态已更新，并保留操作审计记录。");
+    }catch(e){setError(e instanceof Error?e.message:"更新失败");}
+    finally{setBusy(false);}
+  }
+
   async function saveFeedback(idea:Idea){
     setBusy(true);setError("");setNotice("");
     try{
@@ -209,15 +266,17 @@ export default function Workbench(){
   if(auth===null)return <div className="screen-center"><Spinner/><span>正在加载科研工作台…</span></div>;
   if(!auth)return <div className="login-page">
     <div className="login-visual"><div className="login-emblem"><BrainCircuit size={34}/></div>
-      <span className="overline">PERSONAL RESEARCH INTELLIGENCE</span>
+      <span className="overline">TEAM RESEARCH INTELLIGENCE</span>
       <h1>让每一篇论文，<br/>成为下一个研究机会。</h1>
       <p>跨领域知识发现 · 持续选题演化 · 可追溯科研 Agent</p>
       <div className="login-lines"><span/><span/><span/></div>
     </div>
     <div className="login-panel"><div className="login-card">
       <div className="lock"><LockKeyhole size={21}/></div>
-      <h2>登录科研工作台</h2><p>这是个人科研空间，请输入访问密码。</p>
+      <h2>登录科研工作台</h2><p>{teamMode?"使用团队成员邮箱和密码登录，共享科研知识库。":"请输入工作台访问密码。"}</p>
       <form onSubmit={e=>{e.preventDefault();void login();}}>
+        {teamMode&&<><label htmlFor="email">团队成员邮箱</label>
+        <input id="email" type="email" autoComplete="username" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="name@university.edu"/></>}
         <label htmlFor="pw">访问密码</label>
         <input id="pw" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="输入工作台密码"/>
         {error&&<p className="error">{error}</p>}
@@ -246,7 +305,7 @@ export default function Workbench(){
         <div className="status-panel"><span className="online-dot"/> <span>Research Agent</span>
           <small>服务状态取决于后端配置</small></div>
         <button className="account" onClick={()=>void logout()}><span className="avatar">R</span>
-          <span>个人科研空间<small>退出登录</small></span><LogOut size={16}/></button>
+          <span>{member?.name||"团队共享科研空间"}<small>{member?member.role+" · 退出登录":"退出登录"}</small></span><LogOut size={16}/></button>
       </div>
     </aside>
     <main className="main">
@@ -281,7 +340,7 @@ export default function Workbench(){
               {icon:BookOpen,n:overview?.papers||0,label:"已收录论文",hint:"跨学科文献资产"},
               {icon:Lightbulb,n:overview?.ideas||0,label:"滚动研究选题",hint:"持续追踪与更新"},
               {icon:GitBranch,n:overview?.revisions||0,label:"选题演化记录",hint:"所有修订有据可查"},
-              {icon:Layers3,n:overview?.research_lines||0,label:"研究方向",hint:"个人研究画像"},
+              {icon:Layers3,n:overview?.research_lines||0,label:"研究方向",hint:"共享团队画像"},
             ].map(item=><div className="stat-card" key={item.label}>
               <div className="stat-icon"><item.icon size={19}/></div><div className="stat-number">{item.n}</div>
               <strong>{item.label}</strong><small>{item.hint}</small></div>)}
@@ -291,8 +350,8 @@ export default function Workbench(){
               <div className="panel-header"><div><span className="panel-kicker">OPPORTUNITIES</span><h2>近期研究机会</h2></div>
                 <button className="text-link" onClick={()=>changeSection("ideas")}>查看全部 <ArrowUpRight size={16}/></button></div>
               {!ideas.length?<Empty icon={Lightbulb} title="等待发现第一个选题"
-                body="完善研究者画像并启动文献检索后，这里将展示可追溯的研究机会。"
-                action={<IconBtn className="btn-primary" onClick={()=>changeSection("profile")}>完善研究画像 <ArrowRight size={16}/></IconBtn>}/>:ideas.slice(0,4).map(i=>
+                body="完善团队研究画像并启动文献检索后，这里将展示可追溯的研究机会。"
+                action={<IconBtn className="btn-primary" onClick={()=>changeSection("profile")}>完善团队画像 <ArrowRight size={16}/></IconBtn>}/>:ideas.slice(0,4).map(i=>
                 <button key={i.id} className="opportunity-row" onClick={()=>{setExpandedIdea(i.id);changeSection("ideas");}}>
                   <div className="opportunity-icon"><Lightbulb size={19}/></div>
                   <div><strong>{i.title}</strong><small>{i.method} · v{i.version}</small></div>
@@ -302,7 +361,7 @@ export default function Workbench(){
             <section className="panel right-panel"><div className="panel-header"><div><span className="panel-kicker">QUICK ACTIONS</span><h2>科研任务</h2></div></div>
               <div className="quick-card"><div className="quick-icon"><Search size={18}/></div>
                 <div><strong>更新论文情报</strong><p>抓取新论文并刷新方法候选</p></div>
-                <IconBtn className="btn-secondary" onClick={()=>void submit("sync")} disabled={busy||!profile}><Play size={16}/></IconBtn></div>
+                <IconBtn className="btn-secondary" onClick={()=>void submit("sync")} disabled={busy||!profile||!canEdit}><Play size={16}/></IconBtn></div>
               <div className="quick-card"><div className="quick-icon lavender"><BrainCircuit size={18}/></div>
                 <div><strong>启动科研 Agent</strong><p>探索新研究问题及方法迁移</p></div>
                 <IconBtn className="btn-secondary" onClick={()=>changeSection("agent")}><ArrowRight size={16}/></IconBtn></div>
@@ -363,7 +422,7 @@ export default function Workbench(){
               <div className="feedback-grid"><label>选题状态<select value={feedbackStatus} onChange={e=>setFeedbackStatus(e.target.value)}>
                 {Object.entries(statuses).map(([s,label])=><option key={s} value={s}>{label}</option>)}</select></label>
                 <label>反馈备注<input value={feedbackNote} onChange={e=>setFeedbackNote(e.target.value)} placeholder="例如：已有数据可以先开展消融实验"/></label>
-                <IconBtn className="btn-primary" disabled={busy} onClick={()=>void saveFeedback(idea)}>保存反馈</IconBtn></div>
+                <IconBtn className="btn-primary" disabled={busy||!canEdit} onClick={()=>void saveFeedback(idea)}>保存反馈</IconBtn></div>
             </div>}
           </article>)}
         </>}
@@ -378,7 +437,7 @@ export default function Workbench(){
               <textarea className="prompt" rows={6} maxLength={2000} value={question} onChange={e=>setQuestion(e.target.value)}
                 placeholder="例如：我有多期建筑功能和路网数据，希望研究图神经网络如何提升跨时间的建筑垂直功能识别，请检索相关方法，并提出三个可验证的选题假设。"/>
               <div className="prompt-bottom"><span>{question.length}/2000</span>
-                <IconBtn className="btn-primary" disabled={busy||question.trim().length<6} onClick={()=>void submit("explore",question)}>
+                <IconBtn className="btn-primary" disabled={busy||!canEdit||question.trim().length<6} onClick={()=>void submit("explore",question)}>
                   {busy?<Spinner/>:<Sparkles size={17}/>} 发起科研任务 <ArrowRight size={16}/>
                 </IconBtn></div>
               <div className="prompt-examples">
@@ -442,19 +501,34 @@ export default function Workbench(){
         </>}
 
         {section==="profile"&&<>
-          <PageHeading kicker="RESEARCHER PROFILE" title="研究者画像" subtitle="描述你正在解决的问题、已有数据和方法能力；这些内容只存储在配置的科研数据库中。"/>
+          <PageHeading kicker="TEAM RESEARCH PROFILE" title="团队研究画像" subtitle="一套共享画像：团队定位、研究主线、数据资源和方法能力，供全体成员共用。"/>
           <div className="content-grid"><section className="panel">
             <div className="panel-header"><div><span className="panel-kicker">ACTIVE RESEARCH</span><h2>研究主线</h2></div></div>
-            {!profile?<Empty icon={ShieldCheck} title="尚未建立个人科研画像" body="右侧已提供一份可编辑示例，修改后点击保存。"/>:
-              profile.research_lines.map(line=><div className="line-card" key={line.id}>
+            {!profile?<Empty icon={ShieldCheck} title="尚未建立团队研究画像" body="右侧已提供一份可编辑示例，管理员保存后，全体成员即可共享。"/>:
+              <>
+              {profile.team&&<div className="line-card">
+                <div className="line-icon"><ShieldCheck size={20}/></div>
+                <div><h3>{profile.team.name||"团队定位"}</h3>
+                  <p>{profile.team.mission||"等待补充团队研究定位"}</p>
+                  <small>{profile.team.priorities?.join(" · ")||""}</small>
+                </div>
+              </div>}
+              {profile.research_lines.map(line=><div className="line-card" key={line.id}>
                 <div className="line-icon"><Layers3 size={20}/></div><div><h3>{line.name}</h3><p>{line.problem}</p>
                 <small>{line.method_queries.join(" · ")}</small></div></div>)}
+              {(profile.datasets||[]).map((asset,i)=><div className="line-card" key={asset.name+"-"+i}>
+                <div className="line-icon"><Database size={20}/></div>
+                <div><h3>{asset.name}</h3><p>{asset.description||"团队共享数据资产"}</p>
+                  <small>{asset.access||"权限与来源待核验"}</small></div>
+              </div>)}
+              </>}
           </section>
           <section className="panel">
             <div className="panel-header"><div><span className="panel-kicker">PROFILE EDITOR</span><h2>管理研究画像</h2></div></div>
-            <p className="small muted">当前支持结构化 JSON 编辑。简历、论文与其他材料导入将在下一阶段接入。</p>
-            <textarea className="code-editor" spellCheck={false} value={profileText} onChange={e=>setProfileText(e.target.value)} rows={19}/>
-            <div className="panel-actions"><IconBtn className="btn-primary" disabled={busy} onClick={()=>void saveProfile()}>
+            <p className="small muted">所有成员读取同一份团队画像；仅管理员能够保存修改。当前使用结构化 JSON，并保留历史版本。</p>
+            <p className="small muted">当前版本：V{profileVersion} {profile?.team?.name?" · "+profile.team.name:""}</p>
+            <textarea className="code-editor" spellCheck={false} readOnly={!canAdmin} value={profileText} onChange={e=>setProfileText(e.target.value)} rows={19}/>
+            <div className="panel-actions"><IconBtn className="btn-primary" disabled={busy||!canAdmin} onClick={()=>void saveProfile()}>
               <CheckCircle2 size={16}/> 验证并保存
             </IconBtn></div>
           </section></div>
@@ -477,17 +551,53 @@ export default function Workbench(){
             {[{icon:Database,title:"科研数据库",detail:"论文、画像、选题与任务结果持久化到后端数据库",flag:"已连接数量："+(overview?.papers||0)},
               {icon:BrainCircuit,title:"Research Agent",detail:"配置 OPENAI_API_KEY 后启动真实模型工具调用；否则只进行文献预览",flag:"模型配置由后端管理"},
               {icon:Workflow,title:"任务 Worker",detail:"生产环境需运行独立 worker 进程，以处理排队中的长任务",flag:"待执行："+tasks.filter(x=>x.status==="queued").length},
-              {icon:ShieldCheck,title:"访问控制",detail:"浏览器访问与后端 API 分开认证；密钥仅存于服务端",flag:"单用户实验版"}].map(x=>
+              {icon:ShieldCheck,title:"访问控制",detail:"浏览器访问与后端 API 分开认证；密钥仅存于服务端",flag:teamMode?"团队成员独立会话":"单用户兼容模式"}].map(x=>
               <div className="panel settings-card" key={x.title}><div className="tool-icon"><x.icon size={22}/></div>
                 <h3>{x.title}</h3><p>{x.detail}</p><span>{x.flag}</span></div>)}
           </div>
+          {teamMode&&<section className="panel">
+            <div className="panel-header"><div><span className="panel-kicker">TEAM MEMBERS</span><h2>团队成员与权限</h2></div>
+              <span className="counter">{members.length||"共享"} 位成员</span></div>
+            {member?.role!=="admin"?<p className="small muted">当前身份：{member?.name||"成员"}（{member?.role||"未确认"}）。团队成员信息仅管理员可管理。</p>:<>
+              <div className="evidence-list">{members.map(m=><div className="evidence" key={m.id}>
+                <div><strong>{m.name} · {m.role==="admin"?"管理员":m.role==="researcher"?"研究成员":"只读成员"}</strong>
+                  <span>{m.email} · {m.active?"正常":"已停用"}</span></div>
+                <IconBtn disabled={busy||m.id===member.id} onClick={()=>void changeMember(m,!m.active)}>
+                  {m.active?"停用":"重新启用"}
+                </IconBtn>
+              </div>)}</div>
+              <div className="panel-actions" style={{justifyContent:"flex-start",marginTop:24}}>
+                <strong>新增成员</strong>
+              </div>
+              <div className="feedback-grid">
+                <label>姓名<input value={inviteName} onChange={e=>setInviteName(e.target.value)} placeholder="团队成员姓名"/></label>
+                <label>邮箱<input type="email" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="name@university.edu"/></label>
+              </div>
+              <div className="feedback-grid" style={{marginTop:12}}>
+                <label>角色<select value={inviteRole} onChange={e=>setInviteRole(e.target.value as "admin"|"researcher"|"viewer")}>
+                  <option value="researcher">研究成员</option><option value="viewer">只读成员</option>
+                  <option value="admin">管理员</option></select></label>
+                <label>初始密码<input type="password" autoComplete="new-password" value={invitePassword}
+                  onChange={e=>setInvitePassword(e.target.value)} placeholder="至少 12 字符，请通过安全渠道单独发给成员"/></label>
+                <IconBtn className="btn-primary" disabled={busy||invitePassword.length<12||!inviteEmail||inviteName.length<2} onClick={()=>void inviteMember()}>
+                  <Plus size={15}/> 创建成员
+                </IconBtn>
+              </div>
+              <p className="small muted">仅在数据库中保存 Argon2 密码哈希。成员无需独立知识库；全部成员共用论文与选题。</p>
+              <div className="panel-actions" style={{justifyContent:"flex-start",marginTop:24}}><strong>最近操作记录</strong></div>
+              <div className="evidence-list">{audits.slice(0,12).map(a=><div className="evidence" key={a.id}>
+                <div><strong>{a.action}</strong><span>{a.target} · {dateLabel(a.created_at)} · {a.note}</span></div>
+              </div>)}</div>
+            </>}
+          </section>}
           <section className="panel"><h2>上线前配置</h2><p className="small muted">
-            需要分别设置前端的 APP_PASSWORD、SESSION_SECRET、BACKEND_URL、API_BEARER_TOKEN，
-            以及后端的 APP_ENV、DATABASE_URL、API_BEARER_TOKEN。模型密钥只放后端。公开仓库不得包含个人未发表资料与密钥。
+            团队模式需要前后端同时设置 TEAM_AUTH_ENABLED=true，前端配置 BACKEND_URL 和 API_BEARER_TOKEN，
+            后端配置 APP_ENV、DATABASE_URL、API_BEARER_TOKEN，并先使用 CLI 创建首位管理员。
+            旧版 APP_PASSWORD 仅作为单用户兼容方案。模型密钥只放后端，公开仓库不得包含未发表资料和密钥。
           </p></section>
         </>}
       </div>
-      <footer className="footer"><span>RESEARCH ATLAS · WORKBENCH V0.2</span>
+      <footer className="footer"><span>RESEARCH ATLAS · TEAM WORKBENCH V0.3</span>
         <span>Evidence before innovation claims · © Research Atlas</span></footer>
     </main>
   </div>;

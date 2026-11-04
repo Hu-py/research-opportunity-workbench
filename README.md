@@ -1,8 +1,8 @@
-# Research Atlas — 自动化科研选题工作台
+# Research Atlas — 团队共享科研智能工作台
 
 A research intelligence workbench that continuously links **urban research questions**, **computer-science methods**, **scholarly evidence** and **versioned research opportunities**.
 
-## What is implemented (v0.2)
+## What is implemented (v0.3 team development)
 
 - **Next.js 16 frontend** (\`frontend/\`): Chinese research dashboard, paper library, rolling ideas, profile editor, agent console, execution traces, evolution history and weekly brief.
 - **FastAPI backend** (\`backend/api.py\`): profile, paper, ideas, feedback and durable task endpoints.
@@ -13,6 +13,14 @@ A research intelligence workbench that continuously links **urban research quest
 - **CI**: backend unit/integration tests, Streamlit legacy smoke test, TypeScript checks and Next.js build.
 
 **Important:** This codebase is a tested development MVP, not an already-deployed website or verified multi-agent research service. Academic novelty must be evaluated by reading primary sources.
+
+## Shared 10-member laboratory mode
+
+**One research profile + one shared paper/idea corpus for the entire lab.** The team edition adds separate member accounts (admin, researcher and viewer), Argon2 password hashing, revocable sessions, role-checked APIs, profile revision history, member audit logs and team admin UI. Inactive members lose access immediately.
+
+This feature is **opt-in** with \`TEAM_AUTH_ENABLED=true\` on both Vercel and FastAPI; the existing personal prototype remains the compatibility default until a database and first administrator are configured. Do **not** enable team mode on Vercel before the persistent PostgreSQL backend is ready.
+
+Read [Team setup / migration / roles](docs/TEAM_SETUP.md) and use [Example team profile JSON](examples/team-profile.example.json). Existing papers/ideas and profile JSON are preserved; never commit actual confidential research data or passwords.
 
 ## Start the full stack locally
 
