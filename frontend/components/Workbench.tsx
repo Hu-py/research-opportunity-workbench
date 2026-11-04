@@ -17,7 +17,7 @@ const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
   {key:"overview",label:"科研总览",caption:"Overview",icon:Layers3},
   {key:"papers",label:"论文情报库",caption:"Literature",icon:BookOpen},
   {key:"repository",label:"团队既有成果",caption:"Research archive",icon:FileText},
-  {key:"assets",label:"研究数据资产",caption:"Data inventory",icon:Database},
+  {key:"assets",label:"CUSP数据台账",caption:"Data metadata",icon:Database},
   {key:"ideas",label:"研究选题池",caption:"Opportunities",icon:Lightbulb},
   {key:"agent",label:"Research Agent",caption:"Intelligent research",icon:BrainCircuit},
   {key:"history",label:"选题演化",caption:"Evolution",icon:GitBranch},
@@ -355,9 +355,12 @@ export default function Workbench(){
               {icon:Lightbulb,n:overview?.ideas||0,label:"滚动研究选题",hint:"持续追踪与更新"},
               {icon:GitBranch,n:overview?.revisions||0,label:"选题演化记录",hint:"所有修订有据可查"},
               {icon:Layers3,n:overview?.research_lines||0,label:"研究方向",hint:"共享团队画像"},
-            ].map(item=><div className="stat-card" key={item.label}>
+              {icon:Database,n:overview?.cusp_datasets||0,label:"CUSP既有数据",hint:"仅属性目录，不含源数据"},
+            ].map(item=><button type="button" className="stat-card stat-card-interactive" key={item.label}
+              title={item.label==="CUSP既有数据"?"查看已导入的 CUSP 数据属性台账":undefined}
+              onClick={()=>changeSection(item.label==="CUSP既有数据"?"assets":item.label==="已收录论文"?"papers":item.label==="滚动研究选题"?"ideas":item.label==="研究方向"?"profile":"history")}>
               <div className="stat-icon"><item.icon size={19}/></div><div className="stat-number">{item.n}</div>
-              <strong>{item.label}</strong><small>{item.hint}</small></div>)}
+              <strong>{item.label}</strong><small>{item.hint}</small></button>)}
           </div>
           <div className="content-grid">
             <section className="panel">
@@ -524,6 +527,13 @@ export default function Workbench(){
 
         {section==="profile"&&<>
           <PageHeading kicker="TEAM RESEARCH PROFILE" title="团队研究画像" subtitle="一套共享画像：团队定位、研究主线、数据资源和方法能力，供全体成员共用。"/>
+          <section className="panel cusp-profile-summary">
+            <div><span className="panel-kicker">TEAM DATA FOUNDATION</span>
+              <h2>团队现有数据属性：{overview?.cusp_datasets??"读取中"} 项</h2>
+              <p className="small muted">CUSP Excel 数据登记单独保存在 PostgreSQL 的 cusp_datasets 表，不会自动写进研究画像 JSON，也不包含原始数据文件。可以随时查看、编辑和更新。</p>
+            </div>
+            <IconBtn className="btn-primary" onClick={()=>changeSection("assets")}><Database size={16}/> 查看 CUSP 数据台账 <ArrowRight size={16}/></IconBtn>
+          </section>
           <div className="content-grid"><section className="panel">
             <div className="panel-header"><div><span className="panel-kicker">ACTIVE RESEARCH</span><h2>研究主线</h2></div></div>
             {!profile?<Empty icon={ShieldCheck} title="尚未建立团队研究画像" body="右侧已提供一份可编辑示例，管理员保存后，全体成员即可共享。"/>:
