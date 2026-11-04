@@ -22,6 +22,12 @@ from research_workbench.core import (
 from backend.tasks import ResearchTask, enqueue, as_dict
 from backend.worker import run_task
 from backend.bootstrap import bootstrap_admin_from_env
+from backend.repository import (
+    TeamAchievement, ResearchDataAsset, ResearchRefreshRun,
+    seed_verified, list_outputs, update_output_status, public_asset,
+    import_directory_listing, inferred_opportunities, create_refresh,
+    refresh_public_works,
+)
 from backend.team import (
     TeamMember, TeamProfileRevision, AuditEntry,
     SESSION_SECONDS, login as member_login, resolve_session, revoke_session,
@@ -83,6 +89,12 @@ async def lifespan(app:FastAPI):
     factory=get_factory()
     bootstrap_admin_from_env(factory)
     with factory() as db:
+        imported=seed_verified(db)
+        if imported:
+            logging.getLogger("uvicorn.error").info(
+                "Curated team research imported: %d records",imported
+            )
+    with factory() as db:
         db.execute(sql_text("SELECT 1"))
         logging.getLogger("uvicorn.error").info(
             "Research database connection verified: dialect=%s",
@@ -119,6 +131,19 @@ class ProfileRequest(BaseModel):
     datasets:list[dict]|None=None
     methods:list[str]|None=None
     expected_version:int|None=None
+
+class AchievementReviewRequest(BaseModel):
+    status:Literal["verified","review","rejected"]
+
+class DirectoryImportRequest(BaseModel):
+    listing:str=Field(min_length=1,max_length=50000)
+
+class DataAssetPatchRequest(BaseModel):
+    description:str|None=Field(default=None,max_length=1600)
+    spatial_scale:str|None=Field(default=None,max_length=250)
+    time_range:str|None=Field(default=None,max_length=250)
+    sensitivity:Literal["public","internal","restricted"]|None=None
+    fields:list[str]|None=Field(default=None,max_length=80)
 
 class LoginRequest(BaseModel):
     email:str=Field(min_length=3,max_length=255)
@@ -195,6 +220,91 @@ def team_profile_history(db:Session=Depends(get_db)):
     rows=db.scalars(select(TeamProfileRevision).order_by(TeamProfileRevision.version.desc()).limit(50)).all()
     return {"items":[{"version":r.version,"actor_id":r.actor_id,
                        "created_at":r.created_at.isoformat() if r.created_at else None} for r in rows]}
+
+
+@app.get("/api/team-repository",dependencies=[Depends(require_actor)])
+def achievement_catalog(status_filter:str|None=None,kind:str|None=None,
+                        db:Session=Depends(get_db)):
+    items=list_outputs(db,status_filter,kind,limit=300)
+    return {"items":items,"count":len(items),
+            "source":"同济大学师资页面、期刊出版页与 OpenAlex ORCID",
+            "orcid":"0000-0002-7261-4234",
+            "review_note":"自动发现的论文仅进入待核验区；人工通过后才成为正式团队成果。"}
+
+@app.patch("/api/team-repository/{output_id}",dependencies=[Depends(require_actor)])
+def review_achievement(output_id:str,data:AchievementReviewRequest,
+                       db:Session=Depends(get_db),
+                       actor:TeamMember|None=Depends(require_admin)):
+    try:return update_output_status(db,output_id,data.status,actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(404,str(exc)) from exc
+
+@app.get("/api/team-repository/refresh-runs",dependencies=[Depends(require_actor)])
+def achievement_refresh_runs(db:Session=Depends(get_db)):
+    rows=db.scalars(select(ResearchRefreshRun).order_by(
+        ResearchRefreshRun.created_at.desc()).limit(20)).all()
+    return {"items":[{"id":x.id,"source":x.source,"status":x.status,
+        "scanned":x.scanned,"inserted":x.inserted,"error":x.error,
+        "created_at":x.created_at.isoformat() if x.created_at else None}
+        for x in rows]}
+
+@app.post("/api/team-repository/refresh",status_code=202,
+          dependencies=[Depends(require_actor)])
+def manual_refresh_achievements(background:BackgroundTasks,
+             db:Session=Depends(get_db),
+             actor:TeamMember|None=Depends(require_admin)):
+    run=create_refresh(db,"manual")
+    background.add_task(refresh_public_works,get_factory(),run.id)
+    add_audit(db,"achievement.refresh",actor.id if actor else None,run.id)
+    db.commit()
+    return {"id":run.id,"status":"queued"}
+
+@app.post("/api/team-repository/refresh-scheduled",status_code=202,
+          dependencies=[Depends(authenticate)])
+def scheduled_refresh_achievements(request:Request,background:BackgroundTasks,
+                                  db:Session=Depends(get_db)):
+    # Service-only endpoint: never rely on browser sessions or public User-Agent.
+    expected=os.getenv("ATLAS_SYNC_SECRET","").strip()
+    supplied=request.headers.get("X-Atlas-Sync-Secret","")
+    if len(expected)<24 or not hmac.compare_digest(supplied,expected):
+        raise HTTPException(403,"Scheduled refresh is not authorized")
+    run=create_refresh(db,"scheduled")
+    background.add_task(refresh_public_works,get_factory(),run.id)
+    return {"id":run.id,"status":"queued"}
+
+@app.get("/api/data-assets",dependencies=[Depends(require_actor)])
+def data_assets(db:Session=Depends(get_db)):
+    rows=db.scalars(select(ResearchDataAsset).order_by(ResearchDataAsset.name)).all()
+    return {"items":[public_asset(x) for x in rows],
+            "note":"仅保存目录、格式和手工填写的数据字典，不存储原始研究数据文件。"}
+
+@app.post("/api/data-assets/import-directory",dependencies=[Depends(require_actor)])
+def import_data_directory(data:DirectoryImportRequest,
+             db:Session=Depends(get_db),
+             actor:TeamMember|None=Depends(require_admin)):
+    try:return import_directory_listing(db,data.listing,actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+@app.patch("/api/data-assets/{asset_id}",dependencies=[Depends(require_actor)])
+def update_data_asset(asset_id:str,data:DataAssetPatchRequest,
+            db:Session=Depends(get_db),
+            actor:TeamMember|None=Depends(require_admin)):
+    item=db.get(ResearchDataAsset,asset_id)
+    if not item:raise HTTPException(404,"Data asset not found")
+    values=data.model_dump(exclude_unset=True)
+    if "fields" in values:
+        fields=values.pop("fields")
+        if fields is not None:
+            item.fields_json=json.dumps([x.strip()[:160] for x in fields],ensure_ascii=False)
+    for key,value in values.items():
+        if value is not None:setattr(item,key,value)
+    add_audit(db,"data_assets.updated",actor.id if actor else None,item.id)
+    db.commit()
+    return public_asset(item)
+
+@app.get("/api/data-assets/opportunities",dependencies=[Depends(require_actor)])
+def data_asset_opportunities(db:Session=Depends(get_db)):
+    return {"items":inferred_opportunities(db),
+        "disclaimer":"仅基于目录和格式的研究假设；未查看数据内容、质量、权限和真实可用性。"}
 
 @app.get("/api/health")
 def health():
