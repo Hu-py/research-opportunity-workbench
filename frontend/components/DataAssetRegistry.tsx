@@ -3,6 +3,7 @@
 import {useCallback,useEffect,useState} from "react";
 import {ArrowRight,Database,FileArchive,FileSpreadsheet,Layers3,Lightbulb,Save,ShieldCheck} from "lucide-react";
 import {api} from "@/lib/api";
+import CuspDatasetCatalogue from "@/components/CuspDatasetCatalogue";
 
 type Asset={
   id:string;name:string;path:string;format:string;fields:string[];
@@ -63,9 +64,9 @@ export default function DataAssetRegistry({canAdmin}:{canAdmin:boolean}){
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setBusy(false);}
   }
-  return <div className="repository-root">
+  return <><CuspDatasetCatalogue canAdmin={canAdmin}/><div className="repository-root">
     <div className="page-heading"><span className="panel-kicker">TEAM DATA INVENTORY</span>
-      <h1>研究数据资产</h1>
+      <h1>其他目录补充登记</h1>
       <p>先建立目录与字段字典，再结合团队历史研究成果识别可以验证的后续研究机会。</p>
     </div>
     <div className="repository-stat-row">
@@ -128,5 +129,5 @@ export default function DataAssetRegistry({canAdmin}:{canAdmin:boolean}){
           </article>)}</div>}
       </section>
     </div>
-  </div>;
+  </div></>;
 }

@@ -22,6 +22,15 @@ from research_workbench.core import (
 from backend.tasks import ResearchTask, enqueue, as_dict
 from backend.worker import run_task
 from backend.bootstrap import bootstrap_admin_from_env
+from backend.cusp import (
+    CuspDataset, CuspDatasetRevision, CuspImportRun,
+    import_records as import_cusp_records, update_one as update_cusp_one,
+    as_dict as cusp_dict, summary as cusp_summary,
+    parse_xlsx as cusp_parse_xlsx, bootstrap_from_env as cusp_bootstrap,
+    propose_from_existing as cusp_proposals,
+)
+import base64
+import binascii
 from backend.repository import (
     TeamAchievement, ResearchDataAsset, ResearchRefreshRun,
     seed_verified, list_outputs, update_output_status, public_asset,
@@ -94,6 +103,12 @@ async def lifespan(app:FastAPI):
             logging.getLogger("uvicorn.error").info(
                 "Curated team research imported: %d records",imported
             )
+    bootstrap=cusp_bootstrap(factory)
+    if bootstrap:
+        logging.getLogger("uvicorn.error").info(
+            "CUSP metadata bootstrap: %d new, %d updated, %d unchanged",
+            bootstrap["new"],bootstrap["updated"],bootstrap["unchanged"]
+        )
     with factory() as db:
         db.execute(sql_text("SELECT 1"))
         logging.getLogger("uvicorn.error").info(
@@ -144,6 +159,24 @@ class DataAssetPatchRequest(BaseModel):
     time_range:str|None=Field(default=None,max_length=250)
     sensitivity:Literal["public","internal","restricted"]|None=None
     fields:list[str]|None=Field(default=None,max_length=80)
+
+class CuspExcelImportRequest(BaseModel):
+    filename:str=Field(default="CUSP数据登记.xlsx",max_length=120)
+    file_b64:str=Field(min_length=50,max_length=3_000_000)
+
+class CuspEditRequest(BaseModel):
+    category:str|None=None
+    format:str|None=None
+    coverage:str|None=None
+    period:str|None=None
+    source:str|None=None
+    description:str|None=None
+    prior_research:str|None=None
+    custodian:str|None=None
+    f_drive:Literal["listed","not_listed","unknown"]|None=None
+    backup:Literal["confirmed","not_confirmed","unknown"]|None=None
+    sensitivity:Literal["public","internal","restricted"]|None=None
+    note:str|None=None
 
 class LoginRequest(BaseModel):
     email:str=Field(min_length=3,max_length=255)
@@ -305,6 +338,88 @@ def update_data_asset(asset_id:str,data:DataAssetPatchRequest,
 def data_asset_opportunities(db:Session=Depends(get_db)):
     return {"items":inferred_opportunities(db),
         "disclaimer":"仅基于目录和格式的研究假设；未查看数据内容、质量、权限和真实可用性。"}
+
+@app.get("/api/cusp/summary",dependencies=[Depends(require_actor)])
+def cusp_summary_api(db:Session=Depends(get_db)):
+    return cusp_summary(db)
+
+@app.get("/api/cusp/datasets",dependencies=[Depends(require_actor)])
+def cusp_datasets_api(search:str=Query(default="",max_length=120),
+             category:str=Query(default="",max_length=80),
+             db:Session=Depends(get_db),
+             actor:TeamMember|None=Depends(require_actor)):
+    rows=db.scalars(select(CuspDataset).order_by(CuspDataset.category,
+                    CuspDataset.name)).all()
+    if category:rows=[r for r in rows if r.category==category]
+    if search:
+        q=search.casefold()
+        rows=[r for r in rows if q in (r.name+" "+r.category+" "+
+                r.description+" "+r.prior_research+" "+r.coverage).casefold()]
+    redact=bool(actor is not None and actor.role=="viewer")
+    return {"items":[cusp_dict(r,redact=redact) for r in rows[:1000]],
+            "total":len(rows),"source_note":"仅登记表元数据，未存储原始研究样本或数据文件"}
+
+@app.get("/api/cusp/import-runs",dependencies=[Depends(require_actor)])
+def cusp_import_history(db:Session=Depends(get_db)):
+    runs=db.scalars(select(CuspImportRun).order_by(
+        CuspImportRun.created_at.desc()).limit(20)).all()
+    return {"items":[{"id":x.id,"origin":x.origin,"new":x.imported,
+       "updated":x.updated,"unchanged":x.unchanged,
+       "created_at":x.created_at.isoformat() if x.created_at else None}
+       for x in runs]}
+
+@app.get("/api/cusp/datasets/{dataset_id}/history",dependencies=[Depends(require_actor)])
+def cusp_dataset_history(dataset_id:str,db:Session=Depends(get_db),
+                         actor:TeamMember|None=Depends(require_actor)):
+    rows=db.scalars(select(CuspDatasetRevision).where(
+        CuspDatasetRevision.dataset_id==dataset_id
+    ).order_by(CuspDatasetRevision.revision.desc()).limit(30)).all()
+    return {"items":[{"revision":x.revision,"origin":x.origin,
+       "created_at":x.recorded_at.isoformat() if x.recorded_at else None,
+       "snapshot":({k:v for k,v in json.loads(x.snapshot_json).items()
+                    if k not in ("description","custodian","source","note")}
+                   if actor is not None and actor.role=="viewer"
+                   and db.get(CuspDataset,dataset_id)
+                   and db.get(CuspDataset,dataset_id).sensitivity=="restricted"
+                   else json.loads(x.snapshot_json))
+       } for x in rows]}
+
+@app.post("/api/cusp/import-xlsx",dependencies=[Depends(require_actor)])
+def cusp_import_xlsx(data:CuspExcelImportRequest,db:Session=Depends(get_db),
+                     actor:TeamMember|None=Depends(require_admin)):
+    try:
+        if not data.filename.lower().endswith(".xlsx"):
+            raise ValueError("Only .xlsx files are accepted")
+        content=base64.b64decode(data.file_b64,validate=True)
+        rows=cusp_parse_xlsx(content)
+        result=import_cusp_records(db,rows,actor.id if actor else "",
+                                   "CUSP数据登记.xlsx · web_import")
+        add_audit(db,"cusp.import",actor.id if actor else None,result["import_id"],
+                  "new=%d updated=%d unchanged=%d"%
+                  (result["new"],result["updated"],result["unchanged"]))
+        db.commit()
+        return result
+    except (ValueError,binascii.Error) as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)[:250]) from exc
+
+@app.patch("/api/cusp/datasets/{dataset_id}",dependencies=[Depends(require_actor)])
+def cusp_edit_dataset(dataset_id:str,data:CuspEditRequest,db:Session=Depends(get_db),
+                      actor:TeamMember|None=Depends(require_admin)):
+    fields=data.model_dump(exclude_unset=True,exclude_none=True)
+    if any(len(str(v))>2100 for v in fields.values()):
+        raise HTTPException(422,"A field is too long")
+    try:
+        result=update_cusp_one(db,dataset_id,fields,actor.id if actor else "")
+        add_audit(db,"cusp.edited",actor.id if actor else None,dataset_id)
+        db.commit()
+        return result
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+@app.get("/api/cusp/opportunities",dependencies=[Depends(require_actor)])
+def cusp_opportunities_api(db:Session=Depends(get_db)):
+    return {"items":cusp_proposals(db),
+            "note":"规则推断的研究问题，不是 LLM 验证的创新性或数据可行性结论"}
 
 @app.get("/api/health")
 def health():
