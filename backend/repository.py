@@ -266,11 +266,29 @@ def inferred_opportunities(db):
         (["文物","heritage","保护","历史建筑"],"遗产脆弱性与空间关联","结合建筑状态、环境暴露和群体空间关系，探索可解释的文物风险分级及保护优先序。","需确认文物本体风险标签、邻近关系及保护约束。"),
         (["火灾","fire","消防","drone","无人机"],"低空消防与设施选址","结合火灾事件、风险网格、路网和飞行条件，验证多时段巡检—救援协同选址。","需有真实事件时空信息、飞行净空与建站可行性约束。"),
     ]
+    research=db.scalars(select(TeamAchievement).where(
+        TeamAchievement.status=="verified"
+    ).order_by(TeamAchievement.year.desc())).all()
     results=[]
     for terms,title,hypothesis,caveat in rules:
         matched=[a for a in assets if any(k in (a.path+" "+a.description+" "+a.format).lower() for k in terms)]
         if not matched:continue
+        # Ground the hypothesis in a small number of the team's published
+        # methods. These links are context, not evidence of data suitability.
+        title_tags={
+            "建筑功能与垂直利用":["三维城市","城市形态","功能可视性"],
+            "时变街道网络与城市韧性":["韧性城市","道路网络","时空网络"],
+            "城市流动与功能联系":["出行网络","空间分异","交通网络"],
+            "防汛调度与时空风险":["洪涝","韧性城市"],
+            "遗产脆弱性与空间关联":["城市肌理","网络渗流","复杂网络"],
+            "低空消防与设施选址":["韧性城市","城市网络"],
+        }
+        wanted=title_tags.get(title,[])
+        related=[p for p in research if any(t in json.loads(p.tags_json or "[]")
+            for t in wanted)][:3]
         results.append({"title":title,"hypothesis":hypothesis,"caveat":caveat,
                         "related_data":[{"id":x.id,"name":x.name} for x in matched[:10]],
+                        "related_research":[{"id":x.id,"title":x.title,"url":x.url}
+                            for x in related],
                         "evidence_level":"仅基于目录名称的初步推测，未经数据内容验证"})
     return results
