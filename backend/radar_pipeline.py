@@ -221,6 +221,31 @@ def sync_ai_opportunities(db, limit=180):
     return {"new_topics": added, "revised_topics": updated, "skipped_cards": skipped}
 
 
+ALLOWED_TOPIC_STATUSES = {"candidate", "watch", "shortlist", "experiment", "rejected", "archived"}
+
+
+def review_topic(db, topic_id, status, note=""):
+    """Human feedback is versioned and never erased by later AI imports."""
+    if status not in ALLOWED_TOPIC_STATUSES:
+        raise ValueError("Unsupported Radar status")
+    if not isinstance(note, str) or len(note) > 1500:
+        raise ValueError("Radar note exceeds limit")
+    topic = db.get(RadarTopic, topic_id)
+    if topic is None:
+        raise ValueError("Radar topic not found")
+    if topic.status == status and not note.strip():
+        return topic_dict(topic, db)
+    topic.status = status
+    topic.version += 1
+    topic.updated_at = now()
+    db.add(RadarTopicEvent(
+        topic_id=topic.id, version=topic.version, action="human_review",
+        detail_json=dump({"status":status,"note":note.strip()}),
+    ))
+    db.commit()
+    return topic_dict(topic, db)
+
+
 def topic_dict(topic, db):
     ids = _as_list(topic.paper_ids_json)
     papers = [db.get(Paper, x) for x in ids[:12]]
@@ -234,6 +259,14 @@ def topic_dict(topic, db):
             for p in papers if p
         ],
         "related_ai_cards": len(_as_list(topic.ai_card_ids_json)),
+        "history": [
+            {"version":e.version,"action":e.action,
+             "detail":loads(e.detail_json,{}),
+             "created_at":e.created_at.isoformat() if e.created_at else None}
+            for e in db.scalars(select(RadarTopicEvent).where(
+                RadarTopicEvent.topic_id==topic.id
+            ).order_by(RadarTopicEvent.version.desc()).limit(20))
+        ],
         "updated_at": topic.updated_at.isoformat() if topic.updated_at else None,
     }
 
