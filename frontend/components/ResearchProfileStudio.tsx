@@ -13,7 +13,7 @@ type Analysis={
  cross_line_opportunities:string[];evidence_gaps:string[];scope_cautions:string[]
 };
 type Draft={
- id:string;source:"llm"|"database_snapshot";scope:string;status:string;
+ id:string;source:"llm"|"database_snapshot"|"database_analyst";scope:string;status:string;
  base_version:number;revision:number;profile:Profile;analysis:Analysis;
  provenance:string[];note:string;model:string;applied_version:number|null;
  created_at:string
@@ -146,7 +146,7 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
        画像草稿版本
        <select value={selected} onChange={e=>setSelected(e.target.value)}>
          {data?.drafts.map(d=><option key={d.id} value={d.id}>{
-           d.source==="database_snapshot"?"数据库证据原型":"数据库 LLM 归纳"
+           d.source==="database_snapshot"?"数据库证据原型":d.source==="database_analyst"?"数据库 AI 分析草稿":"DeepSeek 数据库归纳"
          } · {d.profile.research_lines.length} 条主线 · {
            d.status==="applied"?"已发布 V"+d.applied_version:
            d.status==="discarded"?"已归档":"待审核"} · 修订 {d.revision}</option>)}
@@ -158,7 +158,7 @@ export default function ResearchProfileStudio({canAdmin,onApplied}:{
    </div>
    {draft?<>
      <div className="profile-studio-tags">
-       <span><ShieldCheck size={14}/> {draft.source==="llm"?"数据库驱动 LLM 草稿":"数据库规则初稿（非 LLM）"}</span>
+       <span><ShieldCheck size={14}/> {draft.source==="llm"?"DeepSeek 模型归纳":draft.source==="database_analyst"?"GPT 基于数据库证据分析（非自动 API）":"数据库规则初稿（非 LLM）"}</span>
        <span><Database size={14}/> {"候选团队画像，需审核"}</span>
        <span><Workflow size={14}/> 当前正式画像 V{data?.profile_version??0} · 草稿基于 V{draft.base_version}</span>
      </div>
