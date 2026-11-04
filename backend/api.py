@@ -427,7 +427,9 @@ def health():
 
 @app.get("/api/overview",dependencies=[Depends(require_actor)])
 def overview(db:Session=Depends(get_db)):
-    return {"papers":db.scalar(select(func.count()).select_from(Paper)) or 0,
+    return {"cusp_datasets":db.scalar(select(func.count()).select_from(CuspDataset)) or 0,
+            "extra_data_assets":db.scalar(select(func.count()).select_from(ResearchDataAsset)) or 0,
+            "papers":db.scalar(select(func.count()).select_from(Paper)) or 0,
             "ideas":db.scalar(select(func.count()).select_from(Idea)) or 0,
             "revisions":db.scalar(select(func.count()).select_from(Event)) or 0,
             "research_lines":len((get_profile(db) or {}).get("research_lines",[])),
