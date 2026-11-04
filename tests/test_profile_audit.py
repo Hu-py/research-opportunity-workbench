@@ -78,6 +78,7 @@ def test_log_mode_only_includes_nonrestricted_metadata(tmp_path):
         def emit(self,record):
             messages.append(record.getMessage())
     logger=logging.getLogger("test_headless_profile_audit")
+    logger.setLevel(logging.INFO)
     handler=Collector()
     logger.addHandler(handler)
     try:
