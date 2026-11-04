@@ -13,6 +13,9 @@ export type ResearchLine = {
 };
 export type Profile = {
   research_lines:ResearchLine[];excluded_terms?:string[];goals?:string;
+  team?:{name?:string;mission?:string;priorities?:string[]};
+  datasets?:{name:string;description?:string;access?:string}[];
+  methods?:string[];
 };
 export type TaskEvent = {at:string;step:string;detail:string};
 export type Task = {
@@ -22,3 +25,11 @@ export type Task = {
   error:string;created_at:string;updated_at:string;
 };
 export type Overview = {papers:number;ideas:number;revisions:number;research_lines:number;recent_ideas:Idea[]};
+
+export type TeamMember = {
+  id:string;email:string;name:string;role:"admin"|"researcher"|"viewer";
+  active:boolean;created_at?:string;
+};
+export type TeamAudit = {
+  id:number;actor_id:string|null;action:string;target:string;note:string;created_at:string;
+};
