@@ -1,5 +1,8 @@
 """Bounded OpenAlex candidate ingestion on the existing free FastAPI instance."""
 from datetime import date,timedelta
+import logging
+import os
+from backend.openalex_errors import safe_openalex_error
 from research_workbench.core import get_profile,normalize_paper,query_openalex
 from backend.discovery import (
     DiscoveryRun,PaperCandidate,candidate_id,strategies,reads,dumps,now,
@@ -83,7 +86,15 @@ def execute_discovery(factory,run_id,client=None):
                             # Do not reset manual decisions on repeated search.
                     db.commit()
             except Exception as exc:
-                errors.append((line_id+" | "+query+" | "+str(exc))[:220])
+                # httpx.HTTPStatusError's string representation contains the
+                # full request URL, potentially including OPENALEX_API_KEY.
+                # Never persist or log str(exc), the URL, or private query text.
+                message=safe_openalex_error(exc,bool(os.getenv("OPENALEX_API_KEY")))
+                errors.append((line_id+" | "+mode+" | "+message)[:260])
+                logging.getLogger("uvicorn.error").warning(
+                    "Paper discovery failed: run=%s line=%s mode=%s reason=%s",
+                    run_id,line_id,mode,message,
+                )
                 with factory() as db:
                     run=db.get(DiscoveryRun,run_id)
                     run.queries+=1;run.errors_json=dumps(errors);db.commit()
@@ -93,4 +104,8 @@ def execute_discovery(factory,run_id,client=None):
         run.status="failed" if errors and not run.scanned else (
             "partial" if errors else "completed")
         run.finished_at=now()
+        logging.getLogger("uvicorn.error").info(
+            "Paper discovery finished: run=%s status=%s queries=%d scanned=%d new=%d errors=%d",
+            run.id,run.status,run.queries,run.scanned,run.new_candidates,len(errors),
+        )
         db.commit()

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
+from backend.openalex_errors import safe_openalex_error
 from sqlalchemy import DateTime, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 from research_workbench.core import Base, normalize_doi
@@ -198,7 +199,7 @@ def refresh_public_works(factory,run_id,client=None):
     except Exception as exc:
         with factory() as db:
             run=db.get(ResearchRefreshRun,run_id)
-            run.status="failed";run.error=str(exc)[:300]
+            run.status="failed";run.error=safe_openalex_error(exc)[:300]
             run.finished_at=utcnow();db.commit()
 
 from contextlib import contextmanager

@@ -135,11 +135,25 @@ def candidates(db,line_id="",status="",limit=120):
                   PaperCandidate.first_seen.desc()).limit(max(1,min(limit,300)))).all()
     return [public_candidate(x) for x in rows]
 
+def safe_stored_error(message):
+    """Do not emit URLs, searches, or credentials from legacy error strings."""
+    import re
+    raw=str(message)
+    if "OpenAlex HTTP " in raw:
+        # New messages only contain a line identifier, mode and a safe classifier.
+        return raw[:300]
+    match=re.search(r"(?:HTTP[/ ]|Client error ['\\\"]?|Server error ['\\\"]?)([45][0-9]{2})",raw)
+    if match:
+        code=match.group(1)
+        return "历史任务：OpenAlex HTTP "+code+"。旧版错误中包含请求详情，已隐藏；请检查 Key 或重新执行获得诊断。"
+    return "历史任务失败，旧版详细错误已隐藏；请重新试抓取获得安全诊断。"
+
 def runs(db):
     rows=db.scalars(select(DiscoveryRun).order_by(DiscoveryRun.started_at.desc()).limit(25)).all()
     return [{"id":x.id,"source":x.source,"status":x.status,"queries":x.queries,
         "scanned":x.scanned,"new_candidates":x.new_candidates,
-        "updated_candidates":x.updated_candidates,"errors":reads(x.errors_json),
+        "updated_candidates":x.updated_candidates,
+        "errors":[safe_stored_error(e) for e in reads(x.errors_json)],
         "started_at":x.started_at.isoformat() if x.started_at else None}
         for x in rows]
 
