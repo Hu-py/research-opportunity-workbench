@@ -1,6 +1,10 @@
-# Cloud deployment — Next.js + FastAPI + PostgreSQL
+# Cloud deployment — Next.js + FastAPI + shared PostgreSQL
 
 The new frontend is in \`frontend/\`. The old Streamlit deployment guide has been superseded.
+
+## Shared team deployment
+
+The recommended 10-member team mode uses the same PostgreSQL instance, same papers and ideas, and one shared team profile. Configure per-member accounts and audit with [TEAM_SETUP.md](docs/TEAM_SETUP.md). Deploy API and DB and bootstrap an admin before enabling `TEAM_AUTH_ENABLED=true` on Vercel.
 
 ## Prerequisites
 
