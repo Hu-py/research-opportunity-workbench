@@ -67,3 +67,8 @@ This is a **single-user experimental system**. Server-side session login is pass
 The worker is separate from FastAPI to keep long-running jobs out of HTTP requests. Jobs are durable while queued, but automatic recovery of a worker that crashes mid-task, concurrent quotas, cancel/resume, metering and retry/backoff are **not yet implemented**. Add heartbeat/retry/dead-letter management before high-reliability scheduling.
 
 Research recommendations are hypothesis-generation aids, not validated novelty conclusions or legal/academic guarantees.
+
+
+## Team workspace V0.3
+
+Shared profile and corpus are global within one lab. Each team member has a distinct Argon2-backed identity and revocable session; read/write permissions are enforced in FastAPI. TeamProfileRevision and AuditEntry preserve changes and actor IDs. For setup, roles, limits and backups, see [TEAM_SETUP.md](TEAM_SETUP.md). The existing legacy one-password mode remains until `TEAM_AUTH_ENABLED=true` is activated on both services.
