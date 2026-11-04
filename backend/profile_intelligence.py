@@ -175,13 +175,15 @@ def list_studio(db):
     return {"profile_version":current_profile_version(db),
         "evidence":safe_overview(evidence_inventory(db)),
         "drafts":[draft_view(x) for x in db.scalars(
-            select(ResearchProfileDraft).order_by(
+            select(ResearchProfileDraft).where(
+                ResearchProfileDraft.status!="discarded",
+                ResearchProfileDraft.source!="curated_example").order_by(
                 ResearchProfileDraft.created_at.desc()).limit(25)).all()],
         "runs":[run_view(x) for x in db.scalars(select(ProfileSynthesisRun).order_by(
             ProfileSynthesisRun.created_at.desc()).limit(20)).all()],
         "model_configured":bool(db.get(ModelCredential,"deepseek") and
            db.get(ModelCredential,"deepseek").encrypted_key),
-        "note":"示例基于对话整理，个人与合作课题不能自动认定为团队核验成果。发布画像需管理员确认。"}
+        "note":"研究画像只根据 PostgreSQL 正式画像、已核验成果、人工审过的论文和 CUSP 非受限属性生成。所有草稿须人工审核，不能由题名推断实际研究结论。"}
 
 def new_draft(db,raw,source="curated_example",scope="personal_collaborative",
               provenance=None,note="",model="",base_version=None,draft_id=None):
@@ -210,11 +212,19 @@ def initialize_database_draft(factory):
     with factory() as db:
         removed=0
         old=db.scalars(select(ResearchProfileDraft).where(
-            ResearchProfileDraft.source=="curated_example",
-            ResearchProfileDraft.status=="draft")).all()
+            ResearchProfileDraft.status=="draft",
+            ResearchProfileDraft.source.in_(["curated_example","llm"]))).all()
         for row in old:
+            # Only quarantine older LLM drafts where provenance explicitly
+            # admits an earlier chat-based example; new DB-only LLM drafts
+            # must stay available across future Render restarts.
+            if row.source=="llm" and not any(
+                "先前人工整理" in str(x) or "个人/合作画像草稿" in str(x)
+                for x in (unpack(row.provenance_json,[]) or [])
+            ):
+                continue
             row.status="discarded"
-            row.note=("已作废：此前草稿从聊天记录生成，不符合仅依据现有数据库的要求。"
+            row.note=("已作废：此前草稿引用聊天来源，不符合仅依据现有数据库的要求。"
                       "禁止作为LLM画像证据；仅保留内部审计。")
             row.updated_at=now()
             removed+=1
