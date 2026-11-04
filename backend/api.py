@@ -76,7 +76,7 @@ async def lifespan(app:FastAPI):
     factory=get_factory()
     with factory() as db:
         db.execute(sql_text("SELECT 1"))
-        logging.getLogger(__name__).info(
+        logging.getLogger("uvicorn.error").info(
             "Research database connection verified: dialect=%s",
             db.get_bind().dialect.name,
         )
