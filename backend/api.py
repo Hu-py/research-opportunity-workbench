@@ -20,6 +20,10 @@ from research_workbench.core import (
     session_factory,
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
+from backend.interests import (
+    ResearchInterest, create_interest, as_dict as interest_dict,
+    recent_papers as interest_papers, ingest_interests,
+)
 from backend.worker import run_task
 from backend.bootstrap import bootstrap_admin_from_env
 from backend.discovery_links import list_links, review_link
@@ -239,6 +243,23 @@ class SearchStrategyRequest(BaseModel):
     per_query:int=Field(default=8,ge=1,le=12)
     min_score:int=Field(default=60,ge=0,le=100)
 
+class InterestCreateRequest(BaseModel):
+    title:str=Field(min_length=3,max_length=180)
+    focus:Literal["applied","cs_frontier","cross_domain"]="applied"
+    problem:str=Field(default="",max_length=1800)
+    keywords:list[str]=Field(default_factory=list,max_length=12)
+    queries:list[str]=Field(min_length=1,max_length=4)
+    venues:list[str]=Field(default_factory=list,max_length=12)
+    enabled:bool=True
+
+class InterestPatchRequest(BaseModel):
+    enabled:bool|None=None
+    title:str|None=Field(default=None,min_length=3,max_length=180)
+    problem:str|None=Field(default=None,max_length=1800)
+    keywords:list[str]|None=Field(default=None,max_length=12)
+    queries:list[str]|None=Field(default=None,min_length=1,max_length=4)
+    venues:list[str]|None=Field(default=None,max_length=12)
+
 class DiscoveryRunRequest(BaseModel):
     line_id:str|None=Field(default=None,max_length=110)
 
@@ -443,6 +464,64 @@ def update_data_asset(asset_id:str,data:DataAssetPatchRequest,
 def data_asset_opportunities(db:Session=Depends(get_db)):
     return {"items":inferred_opportunities(db),
         "disclaimer":"仅基于目录和格式的研究假设；未查看数据内容、质量、权限和真实可用性。"}
+
+@app.get("/api/research-interests",dependencies=[Depends(require_actor)])
+def research_interests(db:Session=Depends(get_db)):
+    rows=db.scalars(select(ResearchInterest)
+                    .order_by(ResearchInterest.created_at.desc()).limit(100)).all()
+    return {"items":[{**interest_dict(row),
+                      "recent_papers":interest_papers(db,row.id)} for row in rows],
+            "note":"手动兴趣与正式科研画像、核验团队成果独立；论文检索是粗筛，不代表顶会认证或原创性验证。",
+            "weekly_schedule":"GitHub Actions weekly.yml (requires ENABLE_WEEKLY=true and DATABASE_URL)"}
+
+@app.post("/api/research-interests",status_code=201,
+          dependencies=[Depends(require_actor)])
+def add_research_interest(data:InterestCreateRequest,
+                          db:Session=Depends(get_db),
+                          actor:TeamMember|None=Depends(require_editor)):
+    try:
+        row=create_interest(db,data.model_dump(),actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    add_audit(db,"interest.created",actor.id if actor else None,row["id"])
+    db.commit()
+    return row
+
+@app.patch("/api/research-interests/{interest_id}",
+           dependencies=[Depends(require_actor)])
+def change_research_interest(interest_id:str,data:InterestPatchRequest,
+                              db:Session=Depends(get_db),
+                              actor:TeamMember|None=Depends(require_editor)):
+    row=db.get(ResearchInterest,interest_id)
+    if not row:raise HTTPException(404,"研究兴趣不存在")
+    values=data.model_dump(exclude_unset=True,exclude_none=True)
+    if "queries" in values and not any(x.strip() for x in values["queries"]):
+        raise HTTPException(422,"检索词不能为空")
+    for field,value in values.items():
+        if field in ("queries","keywords","venues"):
+            setattr(row,field+"_json",json.dumps([v.strip() for v in value if v.strip()],ensure_ascii=False))
+        else:setattr(row,field,value.strip() if isinstance(value,str) else value)
+    add_audit(db,"interest.updated",actor.id if actor else None,interest_id)
+    db.commit()
+    return interest_dict(row)
+
+@app.post("/api/research-interests/{interest_id}/scan",status_code=202,
+          dependencies=[Depends(require_actor)])
+def scan_research_interest(interest_id:str,background:BackgroundTasks,
+                            db:Session=Depends(get_db),
+                            actor:TeamMember|None=Depends(require_editor)):
+    row=db.get(ResearchInterest,interest_id)
+    if not row:raise HTTPException(404,"研究兴趣不存在")
+    if not row.enabled:raise HTTPException(409,"请先开启该兴趣分支")
+    row.last_status="queued"
+    add_audit(db,"interest.scan_requested",actor.id if actor else None,interest_id)
+    db.commit()
+    def execute(factory,ident):
+        with factory() as session:
+            ingest_interests(session,days=21,per_query=6,
+                             interest_ids=[ident],max_interests=1)
+    background.add_task(execute,get_factory(),interest_id)
+    return {"id":interest_id,"status":"queued",
+            "note":"检索已排队。免费后端休眠可能使后台任务中断；结果需重新刷新验证。"}
 
 @app.get("/api/opportunity-engine",dependencies=[Depends(require_actor)])
 def opportunity_engine(db:Session=Depends(get_db)):

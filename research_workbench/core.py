@@ -70,6 +70,7 @@ def session_factory(url=None):
     if url.startswith("sqlite:///") and url != "sqlite:///:memory:":
         Path(url[10:]).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(url, pool_pre_ping=True)
+    from backend import interests as _registered_interests  # watchlist tables before create_all
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -266,5 +267,7 @@ def weekly_report(db,profile,days=7):
             p=db.get(Paper,pid)
             if p:report.append("- ["+p.title+"]("+p.url+")")
         report.append("")
+    from backend.interests import interest_brief_section
+    report.extend(interest_brief_section(db,days=days))
     report+=["## Recommended next steps","","1. Read primary source papers.","2. Search prior art and competing baselines.","3. Update idea status and record experiment outcomes."]
     return "\n".join(report)

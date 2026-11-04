@@ -9,6 +9,7 @@ from sqlalchemy import select
 from research_workbench.core import session_factory, get_profile, ingest, propose, weekly_report
 from backend.tasks import ResearchTask, claim, next_queued, event, utc_now
 from backend.agent import ResearchAgent
+from backend.interests import ingest_interests
 
 def run_task(factory, task_id: str, already_claimed=False, client=None, model_client=None):
     with factory() as db:
@@ -34,9 +35,11 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
             elif task.kind=="weekly":
                 log("search","正在收集周报相关文献")
                 collected=ingest(db,profile,days=14,limit=10,client=client)
+                interest_stats=ingest_interests(db,days=14,per_query=6,client=client)
+                log("interests","已检索手动兴趣分支，并保留独立来源标签")
                 ideas=propose(db,profile)
                 result={"mode":"weekly","answer":weekly_report(db,profile),
-                        "papers":collected,"ideas":ideas}
+                        "papers":collected,"interest_papers":interest_stats,"ideas":ideas}
             else:
                 raise ValueError("Unsupported task")
             task.result_json=json.dumps(result,ensure_ascii=False)

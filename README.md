@@ -2,6 +2,21 @@
 
 A research intelligence workbench that continuously links **urban research questions**, **computer-science methods**, **scholarly evidence** and **versioned research opportunities**.
 
+## Development studio & research interest watchlist
+
+The new **开发路线与兴趣雷达** tab displays feature goals, implementation steps,
+source-code evidence, honest implementation status, live database/run metrics,
+research opportunity workflows, CS frontier domains, and verified-on-read
+paper/AI output examples. It does not treat unfinished or model-generated
+examples as verified production results.
+
+Research interests are stored **independently** of the official team profile
+and verified achievements. Editors can add/pause topics or test an OpenAlex
+scan. The existing weekly CLI / GitHub Actions workflow now includes enabled
+interests, grouped separately in Markdown reports. To actually schedule weekly
+runs, the GitHub Action must be enabled and a persistent database configured.
+See [development studio and acceptance checklist](docs/DEVELOPMENT_STUDIO.md).
+
 ## What is implemented (v0.3 team development)
 
 - **Next.js 16 frontend** (\`frontend/\`): Chinese research dashboard, paper library, rolling ideas, profile editor, agent console, execution traces, evolution history and weekly brief.
@@ -31,8 +46,6 @@ Requires Python 3.10+ and Node.js 22.
 \`\`\`bash
 git clone https://github.com/Hu-py/research-opportunity-workbench.git
 cd research-opportunity-workbench
-# checkout feat/nextjs-fastapi-agent until PR is merged
-git switch feat/nextjs-fastapi-agent
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[test,ai]'
