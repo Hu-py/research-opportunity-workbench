@@ -13,8 +13,8 @@ type Candidate={id:string;line_id:string;title:string;abstract:string;url:string
  match_type:string;status:"pending"|"relevant"|"method"|"rejected";review_note:string};
 type Run={id:string;status:string;source:string;queries:number;scanned:number;
  new_candidates:number;updated_candidates:number;errors:string[];started_at:string};
-type Dashboard={profile_ready:boolean;strategies:Strategy[];relations:Relation[];
- candidates:Candidate[];runs:Run[];note:string};
+type Dashboard={profile_ready:boolean;openalex_key_configured:boolean;
+ strategies:Strategy[];relations:Relation[];candidates:Candidate[];runs:Run[];note:string};
 
 export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;canEdit:boolean}){
  const [data,setData]=useState<Dashboard|null>(null);
@@ -108,6 +108,20 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
    </div>
    {error&&<div className="alert alert-error">{error}</div>}
    {notice&&<div className="alert alert-success">{notice}</div>}
+   {data&&!data.openalex_key_configured&&<div className="panel discovery-key-hint">
+     <strong>OpenAlex 免费 API Key 尚未配置</strong>
+     <p className="small muted">少量匿名试用可能成功，但用完额度后会报 HTTP 409。请在 <a href="https://openalex.org/settings/api" target="_blank" rel="noopener noreferrer">OpenAlex</a> 获取免费 Key，在 Render → Environment 添加 <code>OPENALEX_API_KEY</code>。只需填写在服务器，不要发到聊天或上传 GitHub。</p>
+   </div>}
+   {latest&&<div className="panel discovery-run-status">
+     <div className="discovery-run-header"><strong>最近一次文献检索：{latest.status==="completed"?"完成":latest.status==="running"?"运行中":latest.status==="queued"?"排队中":latest.status==="partial"?"部分成功":"失败"}</strong>
+       <span>{latest.started_at?.slice(0,19).replace("T"," ")||""} UTC</span></div>
+     <p className="small muted">已执行 {latest.queries} 个检索请求 · 扫描 {latest.scanned} 条 · 新增候选 {latest.new_candidates} 篇 · 重复匹配 {latest.updated_candidates} 条</p>
+     {latest.errors.length>0&&<div className="discovery-run-errors">
+       <strong>失败原因与排查建议</strong>
+       {latest.errors.slice(0,4).map((e,i)=><p key={i}>{e}</p>)}
+     </div>}
+     {latest.status==="failed"&&latest.errors.length===0&&<p className="small muted">已记录失败，但旧版本未写入详细错误原因；可检查配置后重新试抓取以获得新诊断。</p>}
+   </div>}
    {!data?.profile_ready&&<div className="panel"><h3>请先建立团队研究画像</h3><p className="small muted">至少保存一条研究主线及其检索词。CUSP 数据登记和团队历史成果不会被自动覆盖。</p></div>}
    <section className="panel">
      <div className="discovery-toolbar">
@@ -172,11 +186,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
            </div>
          </article>)}
        </div>
-       {latest&&<div className="discovery-run">
-         <strong>最近一次检索：{latest.status==="completed"?"完成":latest.status==="running"?"正在检索":latest.status==="queued"?"排队中":latest.status==="partial"?"部分成功":"失败"}</strong>
-         <p className="small muted">调用 {latest.queries} 次 · 扫描 {latest.scanned} 条 · 新候选 {latest.new_candidates} 篇 · 复见 {latest.updated_candidates} 条</p>
-         {!!latest.errors.length&&<p className="small muted">部分请求未完成：{latest.errors.slice(0,2).join("；")}</p>}
-       </div>}
+
      </>}
      {active==="candidates"&&<>
        <div className="discovery-inbox-top"><p className="small muted">候选论文先进入待审核池；只有人工标注“相关”或“方法借鉴”后才写入正式论文情报库。</p>
