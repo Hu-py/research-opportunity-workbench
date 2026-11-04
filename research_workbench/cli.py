@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from .core import session_factory, set_profile, get_profile, ingest, propose, feedback, weekly_report
 from backend.interests import ingest_interests  # register interests before Base.create_all
+from backend.radar_pipeline import sync_ai_opportunities, generate_weekly
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog="research-wb")
@@ -15,11 +16,13 @@ def main(argv=None):
     p.add_argument("--days",type=int,default=14)
     p.add_argument("--per-query",type=int,default=15)
     sub.add_parser("ideate")
+    sub.add_parser("daily")
     p=sub.add_parser("feedback")
     p.add_argument("idea_id");p.add_argument("status");p.add_argument("--note",default="")
     p=sub.add_parser("weekly")
     p.add_argument("--days",type=int,default=14)
     p.add_argument("--email",action="store_true")
+    p.add_argument("--ai",action="store_true",help="Opt-in paid DeepSeek analysis; needs reviewed papers + vault config")
     args=parser.parse_args(argv)
     if os.getenv("GITHUB_ACTIONS")=="true" and not os.getenv("DATABASE_URL"):
         parser.error("GitHub Actions requires a persistent DATABASE_URL")
@@ -34,6 +37,11 @@ def main(argv=None):
         if args.cmd=="ingest":print(json.dumps(ingest(db,profile,days=args.days,limit=args.per_query)))
         elif args.cmd=="ideate":print(json.dumps(propose(db,profile)))
         elif args.cmd=="feedback":feedback(db,args.idea_id,args.status,args.note);print("Feedback saved")
+        elif args.cmd=="daily":
+            print("Ingest:",json.dumps(ingest(db,profile,days=14,limit=10)))
+            print("Interests:",json.dumps(ingest_interests(db,days=14,per_query=6)))
+            print("Ideas:",json.dumps(propose(db,profile)))
+            print("Radar:",json.dumps(sync_ai_opportunities(db)))
         elif args.cmd=="weekly":
             stats=ingest(db,profile,days=args.days)
             print("Ingest:",json.dumps(stats))
@@ -41,7 +49,20 @@ def main(argv=None):
             print("Interest watchlist:",json.dumps(interest_stats))
             if stats["failed_queries"]:print("WARNING: incomplete retrieval; queries failed")
             print("Ideas:",json.dumps(propose(db,profile)))
-            text=weekly_report(db,profile)
+            if args.ai:
+                from backend.ai_lab import create_run, execute
+                run=None
+                for line in profile["research_lines"]:
+                    try:
+                        run=create_run(db,line["id"],source="scheduled")
+                        break
+                    except ValueError as exc:
+                        print("AI not started for line",line["id"],":",str(exc)[:160])
+                if run:
+                    print("AI run:",run.id,"success:",execute(Factory,run.id))
+            print("Radar:",json.dumps(sync_ai_opportunities(db)))
+            radar_markdown=generate_weekly(db)
+            text=weekly_report(db,profile)+"\n\n"+radar_markdown
             out=Path("reports")/("weekly-"+__import__("datetime").date.today().isoformat()+".md")
             out.parent.mkdir(exist_ok=True,parents=True);out.write_text(text,encoding="utf-8")
             print("Report:",out)
