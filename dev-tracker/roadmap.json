@@ -1,0 +1,139 @@
+{
+  "project": "Research Atlas",
+  "title": "研发进度控制台",
+  "subtitle": "科研选题自动化平台 · Engineering Delivery Board",
+  "repo": "Hu-py/research-opportunity-workbench",
+  "timezone": "Asia/Shanghai",
+  "mission": "团队真实研究能力与数据基础 → 前沿文献雷达 → AI 方法迁移与选题 → 可追溯的每周交付。",
+  "principles": [
+    "进度以 GitHub Issues、PR 和 CI 为准",
+    "代码合并 ≠ 线上部署成功 ≠ 科研质量验收",
+    "每个任务必须有目标、技术路径、验收证据"
+  ],
+  "tracks": [
+    {
+      "id": "foundation",
+      "name": "01 · 科研基础",
+      "desc": "成果、数据与研究画像可信赖",
+      "color": "lavender"
+    },
+    {
+      "id": "discovery",
+      "name": "02 · 论文与方法",
+      "desc": "新论文、计算机学科与交叉方法",
+      "color": "blue"
+    },
+    {
+      "id": "intelligence",
+      "name": "03 · 智能选题",
+      "desc": "LLM 研究理解与实验可行性",
+      "color": "mint"
+    },
+    {
+      "id": "delivery",
+      "name": "04 · 自动化运行",
+      "desc": "定时、稳定性、持续交付与备份",
+      "color": "amber"
+    }
+  ],
+  "milestones": [
+    {
+      "issue": 24,
+      "track": "foundation",
+      "priority": "P1",
+      "files": [
+        "backend/profile_intelligence.py",
+        "backend/profile_database.py"
+      ],
+      "suggestedResult": "数据库证据画像版本差异与审核日志"
+    },
+    {
+      "issue": 19,
+      "track": "discovery",
+      "priority": "P1",
+      "files": [
+        "backend/discovery_runner.py",
+        "backend/discovery.py"
+      ],
+      "suggestedResult": "学科/会议验证的真实论文清单"
+    },
+    {
+      "issue": 21,
+      "track": "discovery",
+      "priority": "P2",
+      "files": [
+        "skills/paper_reader/SKILL.md"
+      ],
+      "suggestedResult": "来源可核对的论文精读卡和方法迁移关系"
+    },
+    {
+      "issue": 18,
+      "track": "intelligence",
+      "priority": "P0",
+      "files": [
+        "backend/ai_lab.py",
+        "backend/agent.py"
+      ],
+      "suggestedResult": "一次完整四阶段 AI 选题运行与证据"
+    },
+    {
+      "issue": 22,
+      "track": "intelligence",
+      "priority": "P1",
+      "files": [
+        "backend/ai_lab.py"
+      ],
+      "suggestedResult": "创新性反证、数据可行性、实验基线审查报告"
+    },
+    {
+      "issue": 20,
+      "track": "delivery",
+      "priority": "P0",
+      "files": [
+        ".github/workflows/weekly.yml",
+        "research_workbench/cli.py"
+      ],
+      "suggestedResult": "连续两次成功执行的周报"
+    },
+    {
+      "issue": 23,
+      "track": "delivery",
+      "priority": "P0",
+      "files": [
+        "backend/worker.py",
+        "DEPLOYMENT.md"
+      ],
+      "suggestedResult": "数据库恢复演练和任务失败重试记录"
+    }
+  ],
+  "shipped": [
+    {
+      "title": "数据库驱动团队画像（初版）",
+      "pr": 13,
+      "track": "foundation",
+      "note": "来源约束和人工复核机制已有代码；自动更新待继续验收"
+    },
+    {
+      "title": "数据库画像审计与草稿",
+      "pr": 16,
+      "track": "foundation",
+      "note": "数据库证据草稿导入及审计测试；不代表科研结论已认证"
+    },
+    {
+      "title": "论文发现与方法迁移检索底座",
+      "pr": 10,
+      "track": "discovery",
+      "note": "OpenAlex 候选检索、相关度排序与人工审核初版"
+    },
+    {
+      "title": "科研兴趣独立存储与开发进度初版",
+      "pr": 17,
+      "track": "delivery",
+      "note": "兴趣表、周报接入、前端初版；现已调整为独立看板"
+    }
+  ],
+  "stageLabels": {
+    "open": "待开发 / 开发中",
+    "closed": "已关闭（需核验）"
+  }
+}

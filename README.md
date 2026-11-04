@@ -4,11 +4,18 @@ A research intelligence workbench that continuously links **urban research quest
 
 ## Development studio & research interest watchlist
 
-The new **开发路线与兴趣雷达** tab displays feature goals, implementation steps,
-source-code evidence, honest implementation status, live database/run metrics,
-research opportunity workflows, CS frontier domains, and verified-on-read
-paper/AI output examples. It does not treat unfinished or model-generated
-examples as verified production results.
+Development progress tracking now lives in the **standalone development console**
+(`dev-tracker/`), deployed as a **separate Vercel project**. It tracks GitHub
+Issues, Pull Requests, commits, and CI directly, refreshing every ten minutes
+while visible. It does not require backend credentials or the research workspace
+login. Each milestone's goals, implementation notes, acceptance conditions,
+evidence and status are connected to a GitHub Issue. To update status, close a
+tracked Issue or merge a PR with `Closes #NN`; CI and commit activity reflect
+automatically. See [tracker guide](dev-tracker/README.md).
+
+The business-facing **研究兴趣监测** tab remains inside the research workbench,
+where it belongs. The engineering status board is no longer embedded in the
+workbench UI.
 
 Research interests are stored **independently** of the official team profile
 and verified achievements. Editors can add/pause topics or test an OpenAlex
