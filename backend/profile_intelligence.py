@@ -119,6 +119,7 @@ def _analysis(value,profile):
     insights=value.get("line_insights",[])
     if not isinstance(insights,list) or len(insights)>10:
         raise ValueError("line_insights 结构无效")
+    if not insights:raise ValueError("需要为每条研究主线提供瓶颈与验证方案")
     ids={x["id"] for x in profile["research_lines"]}
     findings=[]
     for x in insights:
@@ -130,6 +131,8 @@ def _analysis(value,profile):
             "data_requirements":_texts(x.get("data_requirements",[]),"data_requirements",8),
             "evidence_status":x.get("evidence_status","inferred")
               if x.get("evidence_status") in ("verified","described","inferred","planned") else "inferred"})
+    if {x["line_id"] for x in findings}!={x["id"] for x in profile["research_lines"]}:
+        raise ValueError("画像分析没有覆盖全部研究主线")
     return {"positioning":str(value.get("positioning",""))[:1300],
         "method_capabilities":_texts(value.get("method_capabilities",[]),"method_capabilities",25),
         "line_insights":findings,
@@ -222,7 +225,10 @@ def _snapshot(db,note):
         TeamAchievement.status=="verified").order_by(
         TeamAchievement.year.desc()).limit(18)).all()
     # No authors, team emails, custodians, F-drive paths or original sample data.
-    return {"existing_official_profile":base,
+    # Official profile may contain free-form asset notes; strip them
+    # before sending context to an external model.
+    safe_base=_profile(base) if base else None
+    return {"existing_official_profile":safe_base,
             "curated_example":({"profile":unpack(base_draft.profile_json),
                 "analysis":unpack(base_draft.analysis_json)}
                 if base_draft else None),
