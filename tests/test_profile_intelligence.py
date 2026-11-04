@@ -12,7 +12,7 @@ import backend.profile_intelligence as studio
 from backend.cusp import import_records
 from backend.profile_intelligence import (
     ResearchProfileDraft,ResearchProfileDraftRevision,ProfileSynthesisRun,
-    bootstrap_from_env,apply_draft,list_studio,
+    bootstrap_from_env,apply_draft,list_studio,initialize_database_draft,
 )
 from backend.team import create_member,current_profile_version
 from research_workbench.core import get_profile,set_profile,session_factory
@@ -86,48 +86,62 @@ def test_research_profile_skill_is_loadable():
     from backend.skill_loader import load_skills
     raw=load_skills(("research_profile",))
     assert "Research Profile" in raw
-    assert "Human gate" in raw
+    assert "database" in raw.lower()
     assert "datasets" in raw
     with pytest.raises(ValueError):load_skills(("nonexistent_skill",))
 
-def test_private_seed_creates_reviewable_draft_not_team_change(env):
+def test_chat_draft_is_discarded_and_database_only_draft_is_not_auto_published(env):
     factory,client,admin,reader,monkeypatch=env
     blob=base64.b64encode(json.dumps(outline(),ensure_ascii=False).encode()).decode()
     monkeypatch.setenv("RESEARCH_PROFILE_BOOTSTRAP_B64",blob)
-    with factory() as db:
-        before=get_profile(db)
-    first=bootstrap_from_env(factory)
-    assert first["imported"]
-    second=bootstrap_from_env(factory)
-    assert not second["imported"] and second["id"]==first["id"]
+    with factory() as db: before=get_profile(db)
+    old=bootstrap_from_env(factory)
+    assert old["imported"]
     monkeypatch.delenv("RESEARCH_PROFILE_BOOTSTRAP_B64")
-    studio_data=client.get("/api/profile-intelligence",headers=reader)
-    assert studio_data.status_code==200
-    entries=studio_data.json()["drafts"]
-    assert len(entries)==1
-    assert entries[0]["status"]=="draft"
-    assert entries[0]["source"]=="curated_example"
-    assert entries[0]["scope"]=="personal_collaborative"
-    assert entries[0]["profile"]["datasets"]==[]
+    update=initialize_database_draft(factory)
+    assert update["discarded_chat_drafts"]==1
+    assert update["new"]
+    again=initialize_database_draft(factory)
+    assert not again["new"] and again["discarded_chat_drafts"]==0
+    response=client.get("/api/profile-intelligence",headers=reader)
+    assert response.status_code==200
+    payload=response.json()
+    assert len(payload["drafts"])==1
+    data=payload["drafts"][0]
+    assert data["source"]=="database_snapshot"
+    assert data["scope"]=="team"
+    assert data["profile"]["datasets"]==[]
+    assert payload["evidence"]["counts"]["data_assets_total"]==2
+    assert payload["evidence"]["counts"]["data_assets_eligible"]==1
+    assert payload["evidence"]["source"]=="postgresql_only"
+    assert not any("个人隐私轨迹" in x.get("name","")
+                   for x in payload["evidence"]["dataset_examples"])
+    assert "PRIVATE_should_not_duplicate" not in json.dumps(data)
     with factory() as db:
+        old_draft=db.get(ResearchProfileDraft,old["id"])
+        assert old_draft.status=="discarded"
         assert get_profile(db)==before
         assert current_profile_version(db)==0
-    assert client.post("/api/profile-intelligence/drafts/"+first["id"]+"/apply",
+    # Old drafts cannot be promoted even by an admin knowing the ID.
+    assert client.post("/api/profile-intelligence/drafts/"+old["id"]+"/apply",
+        headers=admin,json={"expected_version":0}).status_code in (409,422)
+    assert client.post("/api/profile-intelligence/drafts/"+data["id"]+"/apply",
         headers=reader,json={"expected_version":0}).status_code==403
-    applied=client.post("/api/profile-intelligence/drafts/"+first["id"]+"/apply",
+    applied=client.post("/api/profile-intelligence/drafts/"+data["id"]+"/apply",
         headers=admin,json={"expected_version":0})
     assert applied.status_code==200,applied.text
-    assert applied.json()["profile_version"]==1
     with factory() as db:
         assert current_profile_version(db)==1
-        assert len(db.scalars(select(ResearchProfileDraftRevision)).all())==1
-        assert get_profile(db)["team"]["name"].startswith("个人/合作")
+        assert len(db.scalars(select(ResearchProfileDraftRevision)).all())==2
+
 
 def test_draft_editor_tracks_version_and_requires_admin(env):
     factory,client,admin,reader,monkeypatch=env
     monkeypatch.setenv("RESEARCH_PROFILE_BOOTSTRAP_B64",
         base64.b64encode(json.dumps(outline(),ensure_ascii=False).encode()).decode())
-    ident=bootstrap_from_env(factory)["id"]
+    bootstrap_from_env(factory)
+    monkeypatch.delenv("RESEARCH_PROFILE_BOOTSTRAP_B64")
+    ident=initialize_database_draft(factory)["id"]
     p=outline()["profile"]
     p["research_lines"][0]["name"]="精细化建筑楼层语义识别"
     assert client.put("/api/profile-intelligence/drafts/"+ident,headers=reader,
@@ -150,6 +164,7 @@ def test_llm_generates_separate_draft_and_redacts_sensitive_context(env):
         base64.b64encode(json.dumps(outline(),ensure_ascii=False).encode()).decode())
     bootstrap_from_env(factory)
     monkeypatch.delenv("RESEARCH_PROFILE_BOOTSTRAP_B64")
+    initialize_database_draft(factory)  # invalidates chat example
     with factory() as db:
         save(db,"admin","ds-TEST-PROFILE-secret-key",reason_model="deepseek-flash")
     def stub_model(key,model,system,payload,client=None,max_tokens=4200):
@@ -160,7 +175,10 @@ def test_llm_generates_separate_draft_and_redacts_sensitive_context(env):
         assert "Sensitive Holder" not in json.dumps(payload)
         assert "个人隐私轨迹" not in json.dumps(payload,ensure_ascii=False)
         assert "PRIVATE_should_not_duplicate" not in json.dumps(payload)
-        assert payload["curated_example"]["profile"]["datasets"]==[]
+        assert "curated_example" not in payload
+        assert payload["source_policy"]=="strict_postgresql_only"
+        assert payload["non_restricted_data_metadata"][0]["ref"].startswith("cusp_datasets:")
+        assert "PRIVATE_should_not_duplicate" not in json.dumps(payload)
         return outline("LLM 归纳的建筑垂直功能研究"),{
             "input_tokens":180,"output_tokens":300}
     monkeypatch.setattr(studio,"request_json",stub_model)
@@ -194,7 +212,9 @@ def test_llm_invalid_line_rejected_and_old_official_version_cannot_be_overwritte
         assert run.status=="failed" and "不存在" in run.error
     monkeypatch.setenv("RESEARCH_PROFILE_BOOTSTRAP_B64",
         base64.b64encode(json.dumps(outline(),ensure_ascii=False).encode()).decode())
-    seeded=bootstrap_from_env(factory)
+    bootstrap_from_env(factory)
+    monkeypatch.delenv("RESEARCH_PROFILE_BOOTSTRAP_B64")
+    seeded=initialize_database_draft(factory)
     with factory() as db:
         before=get_profile(db)
         before["goals"]="其他管理员新近更新了正式科研画像"
