@@ -1,0 +1,163 @@
+"""P1: bounded research-line searches and a review-only candidate queue."""
+import hashlib
+import json
+import uuid
+from datetime import datetime,timezone
+from sqlalchemy import String,Text,Integer,Boolean,DateTime,select
+from sqlalchemy.orm import Mapped,mapped_column
+from research_workbench.core import Base,Paper
+from backend.team import add_audit
+
+def now():return datetime.now(timezone.utc)
+def dumps(value):return json.dumps(value,ensure_ascii=False)
+def reads(raw):
+    try:return json.loads(raw or "[]")
+    except (ValueError,TypeError):return []
+def candidate_id(line,pid):
+    return "cand_"+hashlib.sha256((line+"|"+pid).encode()).hexdigest()[:32]
+
+class SearchStrategy(Base):
+    __tablename__="paper_search_strategies"
+    line_id:Mapped[str]=mapped_column(String(110),primary_key=True)
+    direct_json:Mapped[str]=mapped_column(Text,default="[]")
+    method_json:Mapped[str]=mapped_column(Text,default="[]")
+    enabled:Mapped[bool]=mapped_column(Boolean,default=False)
+    lookback_days:Mapped[int]=mapped_column(Integer,default=30)
+    per_query:Mapped[int]=mapped_column(Integer,default=8)
+    min_score:Mapped[int]=mapped_column(Integer,default=60)
+    updated_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+
+class DiscoveryRun(Base):
+    __tablename__="paper_discovery_runs"
+    id:Mapped[str]=mapped_column(String(50),primary_key=True)
+    source:Mapped[str]=mapped_column(String(24),default="manual")
+    line_ids_json:Mapped[str]=mapped_column(Text,default="[]")
+    status:Mapped[str]=mapped_column(String(24),default="queued")
+    queries:Mapped[int]=mapped_column(Integer,default=0)
+    scanned:Mapped[int]=mapped_column(Integer,default=0)
+    new_candidates:Mapped[int]=mapped_column(Integer,default=0)
+    updated_candidates:Mapped[int]=mapped_column(Integer,default=0)
+    errors_json:Mapped[str]=mapped_column(Text,default="[]")
+    started_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+    finished_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
+
+class PaperCandidate(Base):
+    __tablename__="paper_discovery_candidates"
+    id:Mapped[str]=mapped_column(String(50),primary_key=True)
+    line_id:Mapped[str]=mapped_column(String(110),index=True)
+    paper_id:Mapped[str]=mapped_column(String(255),index=True)
+    title:Mapped[str]=mapped_column(Text)
+    abstract:Mapped[str]=mapped_column(Text,default="")
+    doi:Mapped[str]=mapped_column(String(255),default="")
+    url:Mapped[str]=mapped_column(Text,default="")
+    published:Mapped[str]=mapped_column(String(32),default="")
+    venue:Mapped[str]=mapped_column(String(300),default="")
+    score:Mapped[int]=mapped_column(Integer,default=0)
+    score_reason:Mapped[str]=mapped_column(Text,default="")
+    matched_queries_json:Mapped[str]=mapped_column(Text,default="[]")
+    match_type:Mapped[str]=mapped_column(String(24),default="direct")
+    status:Mapped[str]=mapped_column(String(24),default="pending")
+    review_note:Mapped[str]=mapped_column(Text,default="")
+    reviewer_id:Mapped[str]=mapped_column(String(64),default="")
+    first_seen:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+    last_seen:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+
+def valid_queries(values):
+    if not isinstance(values,list) or len(values)>3:
+        raise ValueError("At most 3 queries per channel")
+    if any(not isinstance(x,str) or not 3<=len(x.strip())<=140 for x in values):
+        raise ValueError("Search queries must contain 3-140 characters")
+    return list(dict.fromkeys(x.strip() for x in values))
+
+def strategies(db,profile):
+    if not profile:return []
+    stored={x.line_id:x for x in db.scalars(select(SearchStrategy)).all()}
+    result=[]
+    for line in profile.get("research_lines",[]):
+        record=stored.get(line["id"])
+        result.append({
+            "line_id":line["id"],"line_name":line["name"],
+            "direct_queries":reads(record.direct_json) if record else valid_queries(line.get("search_queries",[])[:3]),
+            "method_queries":reads(record.method_json) if record else valid_queries(line.get("method_queries",[])[:3]),
+            "enabled":record.enabled if record else False,
+            "lookback_days":record.lookback_days if record else 30,
+            "per_query":record.per_query if record else 8,
+            "min_score":record.min_score if record else 60,
+            "configured":bool(record)})
+    return result
+
+def save_strategy(db,profile,line_id,settings,actor):
+    if not any(x["id"]==line_id for x in (profile or {}).get("research_lines",[])):
+        raise ValueError("Research line not found")
+    direct=valid_queries(settings["direct_queries"])
+    method=valid_queries(settings["method_queries"])
+    if not direct and not method:raise ValueError("At least 1 query is required")
+    days,per,threshold=(settings[k] for k in ("lookback_days","per_query","min_score"))
+    if not 7<=days<=180 or not 1<=per<=12 or not 0<=threshold<=100:
+        raise ValueError("Search limits out of range")
+    row=db.get(SearchStrategy,line_id)
+    if not row:
+        row=SearchStrategy(line_id=line_id);db.add(row)
+    row.direct_json=dumps(direct);row.method_json=dumps(method)
+    row.enabled=bool(settings["enabled"]);row.lookback_days=days
+    row.per_query=per;row.min_score=threshold;row.updated_at=now()
+    add_audit(db,"search_strategy.updated",actor,line_id,"enabled="+str(row.enabled))
+    db.commit()
+    return next(x for x in strategies(db,profile) if x["line_id"]==line_id)
+
+def create_run(db,profile,source="manual",line_id=None):
+    items=strategies(db,profile)
+    if line_id:
+        items=[x for x in items if x["line_id"]==line_id]
+        if not items:raise ValueError("Unknown research line")
+    elif source=="scheduled":
+        items=[x for x in items if x["enabled"]][:3]
+        if not items:return None
+    else:items=items[:3]
+    item=DiscoveryRun(id=str(uuid.uuid4()),source=source,
+                      line_ids_json=dumps([x["line_id"] for x in items]))
+    db.add(item);db.commit()
+    return item
+
+def public_candidate(x):
+    return {"id":x.id,"line_id":x.line_id,"title":x.title,
+        "abstract":x.abstract[:1300],"doi":x.doi,"url":x.url,
+        "published":x.published,"venue":x.venue,
+        "score":x.score,"score_reason":x.score_reason,
+        "matched_queries":reads(x.matched_queries_json),
+        "match_type":x.match_type,"status":x.status,"review_note":x.review_note}
+
+def candidates(db,line_id="",status="",limit=120):
+    q=select(PaperCandidate)
+    if line_id:q=q.where(PaperCandidate.line_id==line_id)
+    if status:q=q.where(PaperCandidate.status==status)
+    rows=db.scalars(q.order_by(PaperCandidate.score.desc(),
+                  PaperCandidate.first_seen.desc()).limit(max(1,min(limit,300)))).all()
+    return [public_candidate(x) for x in rows]
+
+def runs(db):
+    rows=db.scalars(select(DiscoveryRun).order_by(DiscoveryRun.started_at.desc()).limit(25)).all()
+    return [{"id":x.id,"source":x.source,"status":x.status,"queries":x.queries,
+        "scanned":x.scanned,"new_candidates":x.new_candidates,
+        "updated_candidates":x.updated_candidates,"errors":reads(x.errors_json),
+        "started_at":x.started_at.isoformat() if x.started_at else None}
+        for x in rows]
+
+def review_candidate(db,ident,status,note,actor):
+    if status not in ("relevant","method","rejected","pending"):
+        raise ValueError("Invalid candidate status")
+    x=db.get(PaperCandidate,ident)
+    if not x:raise ValueError("Candidate not found")
+    x.status=status;x.review_note=note[:500];x.reviewer_id=actor or ""
+    if status in ("relevant","method"):
+        p=db.get(Paper,x.paper_id)
+        if not p:
+            db.add(Paper(id=x.paper_id,title=x.title,abstract=x.abstract,
+                doi=x.doi,url=x.url,published=x.published,venue=x.venue,
+                line_ids=dumps([x.line_id])))
+        else:
+            lines=reads(p.line_ids)
+            if x.line_id not in lines:lines.append(x.line_id);p.line_ids=dumps(lines)
+    add_audit(db,"paper_candidate.review",actor,ident,status)
+    db.commit()
+    return public_candidate(x)
