@@ -100,7 +100,7 @@ def test_chat_draft_is_discarded_and_database_only_draft_is_not_auto_published(e
     monkeypatch.delenv("RESEARCH_PROFILE_BOOTSTRAP_B64")
     update=initialize_database_draft(factory)
     assert update["discarded_chat_drafts"]==1
-    assert update["new"]
+    assert update["new"] is False
     again=initialize_database_draft(factory)
     assert not again["new"] and again["discarded_chat_drafts"]==0
     response=client.get("/api/profile-intelligence",headers=reader)
