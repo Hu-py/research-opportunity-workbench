@@ -25,6 +25,10 @@ from backend.interests import (
     recent_papers as interest_papers, ingest_interests,
 )
 from backend.worker import run_task
+from backend.radar_pipeline import (
+    RadarReport, list_topics as list_radar_topics, recent_reports as list_radar_reports,
+    sync_ai_opportunities, generate_weekly as generate_radar_weekly,
+)
 from backend.bootstrap import bootstrap_admin_from_env
 from backend.discovery_links import list_links, review_link
 from backend.discovery import (
@@ -887,8 +891,32 @@ def task_detail(task_id:str,db:Session=Depends(get_db)):
     if not task:raise HTTPException(404,"Task not found")
     return as_dict(task)
 
+
+@app.get("/api/radar",dependencies=[Depends(require_actor)])
+def radar_overview(db:Session=Depends(get_db)):
+    """Return the persisted, provenance-linked Radar pool; never generate facts on read."""
+    reports=list_radar_reports(db)
+    latest=db.get(RadarReport,reports[0]["period"]) if reports else None
+    return {"topics":list_radar_topics(db),"reports":reports,
+            "latest_markdown":latest.markdown if latest else "",
+            "note":"AI 选题属于研究假设。数据已登记不代表已合法获取；自动评审不授予 A 级。"}
+
+@app.post("/api/radar/refresh",dependencies=[Depends(require_actor)])
+def radar_refresh(db:Session=Depends(get_db),
+                  actor:TeamMember|None=Depends(require_editor)):
+    """Rebuild hypotheses from saved AI cards without making paid LLM calls."""
+    result=sync_ai_opportunities(db)
+    report=generate_radar_weekly(db)
+    if actor is not None:
+        add_audit(db,"radar.refreshed",actor.id,"weekly-radar",
+                  "new="+str(result["new_topics"])+" updated="+str(result["revised_topics"]))
+        db.commit()
+    return {"sync":result,"report_chars":len(report),"reports":list_radar_reports(db)}
+
 @app.get("/api/brief",dependencies=[Depends(require_actor)])
 def brief(db:Session=Depends(get_db)):
     prof=get_profile(db)
     if not prof:return {"markdown":"","profile_ready":False}
-    return {"markdown":weekly_report(db,prof),"profile_ready":True}
+    stored=db.scalar(select(RadarReport).order_by(RadarReport.period.desc()).limit(1))
+    extra=("\n\n"+stored.markdown) if stored else ""
+    return {"markdown":weekly_report(db,prof)+extra,"profile_ready":True}
