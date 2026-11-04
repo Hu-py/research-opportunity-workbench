@@ -13,10 +13,12 @@ import DataAssetRegistry from "@/components/DataAssetRegistry";
 import ResearchDiscovery from "@/components/ResearchDiscovery";
 import AIResearchLab from "@/components/AIResearchLab";
 import ResearchProfileStudio from "@/components/ResearchProfileStudio";
+import DevelopmentStudio from "@/components/DevelopmentStudio";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
+type Section = "development"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
 const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
+  {key:"development",label:"开发路线与兴趣雷达",caption:"Product roadmap",icon:Workflow},
   {key:"overview",label:"科研总览",caption:"Overview",icon:Layers3},
   {key:"papers",label:"论文情报库",caption:"Literature",icon:BookOpen},
   {key:"repository",label:"团队既有成果",caption:"Research archive",icon:FileText},
@@ -342,12 +344,16 @@ export default function Workbench(){
         {error&&<div className="alert alert-error"><span>{error}</span><button onClick={()=>setError("")}><X size={15}/></button></div>}
         {notice&&<div className="alert alert-success"><CheckCircle2 size={16}/><span>{notice}</span><button onClick={()=>setNotice("")}><X size={15}/></button></div>}
 
+        {section==="development"&&<DevelopmentStudio canEdit={canEdit} onNavigate={changeSection}/>}
         {section==="overview"&&<>
           <div className="hero-card">
             <div><span className="overline">RESEARCH INTELLIGENCE · WORKSPACE</span>
               <h1>探索下一个<span>研究机会。</span></h1>
               <p>让文献发现、方法迁移与研究选题成为一个持续演化的知识闭环。</p>
-              <button className="btn btn-white" onClick={()=>changeSection("agent")}>
+              <button className="btn btn-white" onClick={()=>changeSection("development")}>
+                <Workflow size={17}/> 查看开发路线与兴趣分支 <ArrowRight size={16}/>
+              </button>
+              <button className="btn btn-white" style={{marginLeft:9}} onClick={()=>changeSection("agent")}>
                 <Sparkles size={17}/> 开始科研探索 <ArrowRight size={16}/>
               </button>
             </div><div className="hero-art"><div className="orbit one"/><div className="orbit two"/>

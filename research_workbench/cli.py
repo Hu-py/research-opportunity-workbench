@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from .core import session_factory, set_profile, get_profile, ingest, propose, feedback, weekly_report
+from backend.interests import ingest_interests  # register interests before Base.create_all
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog="research-wb")
@@ -36,6 +37,8 @@ def main(argv=None):
         elif args.cmd=="weekly":
             stats=ingest(db,profile,days=args.days)
             print("Ingest:",json.dumps(stats))
+            interest_stats=ingest_interests(db,days=min(365,args.days),per_query=6)
+            print("Interest watchlist:",json.dumps(interest_stats))
             if stats["failed_queries"]:print("WARNING: incomplete retrieval; queries failed")
             print("Ideas:",json.dumps(propose(db,profile)))
             text=weekly_report(db,profile)
