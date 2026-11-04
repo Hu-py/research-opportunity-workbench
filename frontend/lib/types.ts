@@ -24,7 +24,7 @@ export type Task = {
   result:{mode?:string;answer?:string;sources?:Paper[];usage?:Record<string,number>;papers?:unknown;ideas?:unknown};
   error:string;created_at:string;updated_at:string;
 };
-export type Overview = {papers:number;ideas:number;revisions:number;research_lines:number;recent_ideas:Idea[]};
+export type Overview = {papers:number;ideas:number;revisions:number;research_lines:number;cusp_datasets:number;extra_data_assets:number;recent_ideas:Idea[]};
 
 export type TeamMember = {
   id:string;email:string;name:string;role:"admin"|"researcher"|"viewer";
