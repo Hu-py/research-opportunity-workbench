@@ -15,6 +15,7 @@ type Topic = {
   id:string;line_id:string;title:string;question:string;method:string;
   grade:"A"|"B"|"C"|"D";status:string;version:number;
   review:Review;papers:Paper[];related_ai_cards:number;updated_at:string|null;
+  history:{version:number;action:string;detail:Record<string,unknown>;created_at:string|null}[];
 };
 type Report = {period:string;topic_count:number;updated_at:string|null};
 type RadarResponse = {topics:Topic[];reports:Report[];latest_markdown:string;note:string};
@@ -40,6 +41,8 @@ export default function ResearchRadar({canEdit}:{canEdit:boolean}){
   const [message,setMessage]=useState("");
   const [grade,setGrade]=useState("全部");
   const [expanded,setExpanded]=useState<string|null>(null);
+  const [decisions,setDecisions]=useState<Record<string,string>>({});
+  const [notes,setNotes]=useState<Record<string,string>>({});
   const load=useCallback(async()=>{
     try{
       const result=await api<RadarResponse>("radar");
@@ -57,6 +60,21 @@ export default function ResearchRadar({canEdit}:{canEdit:boolean}){
       setMessage("更新完成：新增 "+r.sync.new_topics+" 个选题，更新 "+r.sync.revised_topics+" 个历史选题。");
       await load();
     }catch(e){setError(e instanceof Error?e.message:"更新失败");}
+    finally{setBusy(false);}
+  }
+  async function submitReview(topic:Topic){
+    const status=decisions[topic.id]||topic.status;
+    const note=notes[topic.id]||"";
+    setBusy(true);setError("");setMessage("");
+    try {
+      await api("radar/topics/"+encodeURIComponent(topic.id),{
+        method:"PATCH",
+        body:JSON.stringify({status,note}),
+      });
+      setMessage("已保存研究者反馈，选题版本将持续保留。");
+      setNotes(current=>({...current,[topic.id]:""}));
+      await load();
+    }catch(e){setError(e instanceof Error?e.message:"反馈保存失败");}
     finally{setBusy(false);}
   }
   function download(){
@@ -134,6 +152,27 @@ export default function ResearchRadar({canEdit}:{canEdit:boolean}){
             {p.venue?" · "+p.venue:""}
           </p>)}
           <p className="small muted"><GitMerge size={15} style={{display:"inline"}}/> 相似选题采用保守文本合并策略；复杂同义关系仍需人工审核。</p>
+          <h4>选题演化记录</h4>
+          {(t.history||[]).map(e=><p key={e.version} className="small muted">
+            V{e.version} · {e.action} · {e.created_at?.slice(0,16)||""}
+            {typeof e.detail.note==="string"&&e.detail.note?" · "+e.detail.note:""}
+          </p>)}
+          {canEdit&&<div style={{display:"grid",gap:8,borderTop:"1px solid #e8ebf1",paddingTop:14}}>
+            <strong>研究者人工审核</strong>
+            <select value={decisions[t.id]||t.status} onChange={e=>setDecisions(v=>({...v,[t.id]:e.target.value}))}
+              aria-label="更新选题状态" style={{padding:10,borderRadius:10,border:"1px solid #dce2eb"}}>
+              {[
+                ["candidate","待评估"],["watch","持续关注"],["shortlist","重点选题"],
+                ["experiment","准备实验"],["rejected","暂不考虑"],["archived","归档"],
+              ].map(([value,label])=><option key={value} value={value}>{label}</option>)}
+            </select>
+            <textarea aria-label="研究者审核备注" placeholder="判断依据、需要补充的数据或决定停止的条件"
+              rows={2} value={notes[t.id]||""} maxLength={1500}
+              onChange={e=>setNotes(v=>({...v,[t.id]:e.target.value}))}
+              style={{padding:10,borderRadius:10,border:"1px solid #dce2eb",resize:"vertical"}}/>
+            <button type="button" className="btn" disabled={busy}
+              onClick={()=>void submitReview(t)}>{busy?"保存中…":"保存审核与新版本"}</button>
+          </div>}
         </div>}
       </article>)}
     {!!data?.reports.length&&<section className="idea-card">
