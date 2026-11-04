@@ -1,6 +1,6 @@
 # Shared Team Workspace · 10-member laboratory setup
 
-**Status:** GitHub implementation with CI tests. No Render/PostgreSQL service has been provisioned yet.
+**Status:** Render free PostgreSQL and free FastAPI test service exist, and Vercel can read/write the database in legacy shared-password mode. Team sign-in remains disabled pending first-admin initialization.
 
 This system stores exactly **one shared research profile** and one shared paper/idea corpus for the lab. Each human has a distinct account and role for permissions and an audit trail. This is not ten isolated personal knowledge stores.
 
@@ -23,6 +23,42 @@ This system stores exactly **one shared research profile** and one shared paper/
 | viewer | Read | No | Read only | No |
 
 All roles see the same underlying paper/idea records. The Agent reads the shared team profile, and paper ingestion updates the same literature corpus.
+
+## First admin on Render Free (no Shell or SSH)
+
+Render Free Web Services do **not** support Dashboard Shell, SSH, or one-off jobs.
+For this environment, use the one-time startup bootstrap instead of the local CLI.
+It requires **no new paid resource and no database IP allowlist changes**.
+
+1. Open the API service's **Environment** tab in the Render Dashboard:
+   [research-atlas-api-test](https://dashboard.render.com/web/srv-dbl9s03ncjis73d7i960).
+2. Add all of the following **service environment variables** at once:
+   - `TEAM_BOOTSTRAP_ENABLED` = `true`
+   - `TEAM_BOOTSTRAP_EMAIL` = the initial administrator's real email (you type this privately in Render)
+   - `TEAM_BOOTSTRAP_PASSWORD` = a newly generated unique strong password (12–256 characters; do not reuse `APP_PASSWORD`)
+   - `TEAM_BOOTSTRAP_NAME` = optional administrator display name
+3. Save and redeploy. The API creates **exactly one administrator** only if no team member exists.
+   Watch Render **Logs** for:
+   `First team administrator initialized successfully; remove one-time bootstrap secrets`
+   Do not paste the password, `DATABASE_URL`, or environment contents into ChatGPT.
+4. In the **same edit**, set `TEAM_BOOTSTRAP_ENABLED=false` and **delete** both
+   `TEAM_BOOTSTRAP_PASSWORD` and `TEAM_BOOTSTRAP_EMAIL`. Save and redeploy.
+   This is mandatory to avoid leaving bootstrap credentials in the hosting configuration.
+5. Only **after** verifying the administrator exists and secrets are removed:
+   set `TEAM_AUTH_ENABLED=true` on the **Render API**, then on **Vercel**.
+   Both services must use the same mode. Rebuild Vercel after setting the variable.
+   Current `APP_PASSWORD` is no longer used once team mode is enabled.
+6. Sign in at the Next.js website with the administrator email and password, then
+   open **系统状态 → 团队成员与权限** to add up to nine additional researchers.
+
+Notes:
+- `TEAM_BOOTSTRAP_ENABLED` defaults to **false** in code. There is no public setup HTTP endpoint.
+- If member accounts already exist, bootstrap skips creation and cannot overwrite them.
+- Wrong/missing bootstrap credentials cause startup to fail rather than provision an invalid admin.
+- The database stores an **Argon2 password hash**, never the plaintext credential.
+- Existing team profile, papers, ideas and tasks are preserved.
+- Free database expires 30 days after creation; do not import confidential or irreplaceable work.
+- Administrator email/password are for web login, **not** the Render workspace login.
 
 ## Local setup
 
