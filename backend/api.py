@@ -21,6 +21,7 @@ from research_workbench.core import (
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
 from backend.worker import run_task
+from backend.bootstrap import bootstrap_admin_from_env
 from backend.team import (
     TeamMember, TeamProfileRevision, AuditEntry,
     SESSION_SECONDS, login as member_login, resolve_session, revoke_session,
@@ -74,6 +75,7 @@ async def lifespan(app:FastAPI):
     if os.getenv("APP_ENV","development").lower()=="production" and not os.getenv("API_BEARER_TOKEN"):
         raise RuntimeError("Set API_BEARER_TOKEN before production deployment")
     factory=get_factory()
+    bootstrap_admin_from_env(factory)
     with factory() as db:
         db.execute(sql_text("SELECT 1"))
         logging.getLogger("uvicorn.error").info(
@@ -145,12 +147,14 @@ def auth_logout(request:Request,actor:TeamMember|None=Depends(require_actor),
 
 @app.get("/api/team/members",dependencies=[Depends(require_admin)])
 def team_members(db:Session=Depends(get_db)):
+    if not team_auth_enabled():raise HTTPException(404,"Team member management is disabled")
     rows=db.scalars(select(TeamMember).order_by(TeamMember.created_at.asc())).all()
     return {"items":[public_member(x) for x in rows]}
 
 @app.post("/api/team/members",dependencies=[Depends(require_admin)],status_code=201)
 def team_add_member(data:MemberRequest,actor:TeamMember|None=Depends(require_admin),
                     db:Session=Depends(get_db)):
+    if not team_auth_enabled():raise HTTPException(404,"Team member management is disabled")
     try:
         m=create_member(db,data.email,data.name,data.temporary_password,data.role,
                         actor_id=actor.id if actor else None)
@@ -160,6 +164,7 @@ def team_add_member(data:MemberRequest,actor:TeamMember|None=Depends(require_adm
 @app.patch("/api/team/members/{member_id}",dependencies=[Depends(require_admin)])
 def team_update_member(member_id:str,data:MemberUpdateRequest,
                        actor:TeamMember|None=Depends(require_admin),db:Session=Depends(get_db)):
+    if not team_auth_enabled():raise HTTPException(404,"Team member management is disabled")
     m=db.get(TeamMember,member_id)
     if not m:raise HTTPException(404,"Member not found")
     try:set_member_status(db,m,active=data.active,role=data.role,actor_id=actor.id if actor else "")
@@ -168,6 +173,7 @@ def team_update_member(member_id:str,data:MemberUpdateRequest,
 
 @app.get("/api/team/audit",dependencies=[Depends(require_admin)])
 def team_audit(db:Session=Depends(get_db)):
+    if not team_auth_enabled():raise HTTPException(404,"Team audit is disabled")
     rows=db.scalars(select(AuditEntry).order_by(AuditEntry.id.desc()).limit(150)).all()
     return {"items":[{"id":x.id,"actor_id":x.actor_id,"action":x.action,"target":x.target,
                        "note":x.note,"created_at":x.created_at.isoformat() if x.created_at else None}
@@ -175,6 +181,7 @@ def team_audit(db:Session=Depends(get_db)):
 
 @app.get("/api/team/profile-history",dependencies=[Depends(require_actor)])
 def team_profile_history(db:Session=Depends(get_db)):
+    if not team_auth_enabled():raise HTTPException(404,"Team profile history is disabled")
     rows=db.scalars(select(TeamProfileRevision).order_by(TeamProfileRevision.version.desc()).limit(50)).all()
     return {"items":[{"version":r.version,"actor_id":r.actor_id,
                        "created_at":r.created_at.isoformat() if r.created_at else None} for r in rows]}
