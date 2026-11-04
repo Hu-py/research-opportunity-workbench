@@ -68,6 +68,7 @@ pytest -q tests/test_radar_pipeline.py
 - Next.js sidebar: **科研雷达 · 选题评审**
 - GET `/api/radar`: Radar topics, review gates, report metadata, latest report
 - POST `/api/radar/refresh`: editor/admin only; creates or merges topics from existing AI cards and generates a persisted report. **No LLM call.**
+- PATCH `/api/radar/topics/{topic_id}`: editor/admin only; saves watch/shortlist/experiment/rejected/archived feedback, appends a versioned human-review event; AI sync does not overwrite it.
 - GET `/api/brief`: existing Markdown brief plus latest available Radar report
 - Research topics retain references to original Paper IDs, model card IDs and version events.
 
