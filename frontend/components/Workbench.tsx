@@ -8,12 +8,16 @@ import {
   Search, Settings2, ShieldCheck, Sparkles, Workflow, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import ResearchArchive from "@/components/ResearchArchive";
+import DataAssetRegistry from "@/components/DataAssetRegistry";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "overview"|"papers"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
+type Section = "overview"|"papers"|"repository"|"assets"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
 const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
   {key:"overview",label:"科研总览",caption:"Overview",icon:Layers3},
   {key:"papers",label:"论文情报库",caption:"Literature",icon:BookOpen},
+  {key:"repository",label:"团队既有成果",caption:"Research archive",icon:FileText},
+  {key:"assets",label:"研究数据资产",caption:"Data inventory",icon:Database},
   {key:"ideas",label:"研究选题池",caption:"Opportunities",icon:Lightbulb},
   {key:"agent",label:"Research Agent",caption:"Intelligent research",icon:BrainCircuit},
   {key:"history",label:"选题演化",caption:"Evolution",icon:GitBranch},
@@ -404,6 +408,9 @@ export default function Workbench(){
               <div className="paper-foot"><span>{p.venue||"期刊或会议待核验"}</span>
                 {p.url&&<a target="_blank" rel="noopener noreferrer" href={p.url}>原文 <ArrowUpRight size={15}/></a>}</div></article>)}</div>}
         </>}
+
+        {section==="repository"&&<ResearchArchive canAdmin={canAdmin}/>}
+        {section==="assets"&&<DataAssetRegistry canAdmin={canAdmin}/>}
 
         {section==="ideas"&&<>
           <PageHeading kicker="RESEARCH OPPORTUNITIES" title="滚动研究选题池" subtitle="选题不会每周重新清零。新证据、方法和人工反馈都会持续更新同一条选题记录。"/>

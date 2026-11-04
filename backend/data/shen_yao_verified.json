@@ -1,0 +1,519 @@
+{
+  "person": {
+    "name": "沈尧",
+    "name_en": "Yao Shen",
+    "institution": "同济大学建筑与城市规划学院",
+    "orcid": "0000-0002-7261-4234",
+    "official_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+    "faculty_url": "https://caup.tongji.edu.cn/caupen/e6/7e/c33465a321150/page.htm"
+  },
+  "last_curated_date": "2026-11-04",
+  "disclaimer": "学校和期刊公开页面核验的书目信息；非完整成果清单，未包含内部研究或未公开资料。新自动发现成果需人工核验。",
+  "items": [
+    {
+      "kind": "paper",
+      "year": 2026,
+      "title": "Scaling-informed natural submarkets: A bottom-up approach to segment housing markets in the Yangtze River Delta",
+      "venue": "Environment and Planning B: Urban Analytics and City Science",
+      "tags": [
+        "城市几何",
+        "住房与空间经济",
+        "复杂系统"
+      ],
+      "source_url": "https://journals.sagepub.com/doi/10.1177/23998083261460686",
+      "verified": true,
+      "doi": "10.1177/23998083261460686",
+      "url": "https://doi.org/10.1177/23998083261460686",
+      "authors": "Zihan Xu; Yunjie Feng; Qi Song; Yao Shen"
+    },
+    {
+      "kind": "paper",
+      "year": 2026,
+      "title": "Skyscraper urbanisation: Visualising vertical growth, economic cycles and 3-D urbanisation",
+      "venue": "Transactions in Urban Data, Science, and Technology",
+      "tags": [
+        "三维城市",
+        "城市增长",
+        "城市模型"
+      ],
+      "source_url": "https://journals.sagepub.com/doi/10.1177/27541231251391213",
+      "verified": true,
+      "doi": "10.1177/27541231251391213",
+      "url": "https://doi.org/10.1177/27541231251391213",
+      "authors": "Yao Shen; Pingyan Hu; Wanyin Han"
+    },
+    {
+      "kind": "paper",
+      "year": 2026,
+      "title": "基于渗流模型的上海大都市区空间范围界定研究",
+      "venue": "上海城市规划 2026(3)",
+      "tags": [
+        "网络渗流",
+        "城市区域",
+        "空间联系"
+      ],
+      "source_url": "https://www.shplanning.com.cn/archive/detail/id/1583.html",
+      "verified": true,
+      "url": "https://www.shplanning.com.cn/archive/detail/id/1583.html",
+      "authors": "黄建中; 胡刚钰; 沈尧; 陈歌; 王宇琛; 张天然"
+    },
+    {
+      "kind": "paper",
+      "year": 2025,
+      "title": "多级洪涝灾害中上海市通勤时空结构韧性测度与优化研究",
+      "venue": "上海城市规划 2025(2)",
+      "tags": [
+        "韧性城市",
+        "洪涝",
+        "时空网络"
+      ],
+      "source_url": "https://www.shplanning.com.cn/archive/detail/id/1453.html",
+      "verified": true,
+      "doi": "10.11982/j.supr.20250206",
+      "url": "https://www.shplanning.com.cn/archive/detail/id/1453.html",
+      "authors": "沈尧; 徐子寒; 冯韵洁"
+    },
+    {
+      "kind": "paper",
+      "year": 2025,
+      "title": "基于复杂网络的城市肌理自动识别方法研究——以上海中环内地区为例",
+      "venue": "上海城市规划 2025(6)",
+      "tags": [
+        "城市肌理",
+        "复杂网络",
+        "社区发现"
+      ],
+      "source_url": "https://www.shplanning.com.cn/archive/detail/id/1529.html",
+      "verified": true,
+      "url": "https://www.shplanning.com.cn/archive/detail/id/1529.html",
+      "authors": "冯韵洁; 徐怡怡; 徐子寒; 刘乐峰; 沈尧"
+    },
+    {
+      "kind": "paper",
+      "year": 2025,
+      "title": "超大城市非通勤出行网络特征解析与规划思考——以上海市为例",
+      "venue": "城市发展研究 2025(11)",
+      "tags": [
+        "出行网络",
+        "城市联系",
+        "空间结构"
+      ],
+      "source_url": "https://drcnet.istiz.org.cn/DRCNet.Mirror.Documents.Web/DocSummary.aspx?DocID=8153226&leafID=3054",
+      "verified": true,
+      "url": "https://drcnet.istiz.org.cn/DRCNet.Mirror.Documents.Web/DocSummary.aspx?DocID=8153226&leafID=3054",
+      "authors": "黄建中; 沈尧; 王宇琛; 陈歌; 胡刚钰; 张天然"
+    },
+    {
+      "kind": "paper",
+      "year": 2022,
+      "title": "Spatiotemporal patterns and mechanisms of street vending from the social sensing perspective: A comparison between law-enforcement reported and residents complain events",
+      "venue": "Cities 124, 103597",
+      "tags": [
+        "社会感知",
+        "时空行为",
+        "城市治理"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "C. Li; Y. Huang; Y. Shen; L. Xu"
+    },
+    {
+      "kind": "paper",
+      "year": 2022,
+      "title": "Functional visibility graph analysis: Quantifying visuofunctional space with social media check-in data",
+      "venue": "Environment and Planning B: Urban Analytics and City Science",
+      "tags": [
+        "空间句法",
+        "功能可视性",
+        "社交媒体数据"
+      ],
+      "source_url": "https://journals.sagepub.com/doi/10.1177/23998083211001840",
+      "verified": true,
+      "doi": "10.1177/23998083211001840",
+      "url": "https://doi.org/10.1177/23998083211001840",
+      "authors": "Yao Shen; Zhiqiang Wu"
+    },
+    {
+      "kind": "paper",
+      "year": 2022,
+      "title": "协频城市：时空数据增强设计中的频度协同",
+      "venue": "上海城市规划 2022(3)",
+      "tags": [
+        "高频城市",
+        "时空数据",
+        "城市设计"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧"
+    },
+    {
+      "kind": "paper",
+      "year": 2022,
+      "title": "英国中部城市的规划类型与联动机制——以伯明翰为例",
+      "venue": "国际城市规划",
+      "tags": [
+        "规划实践",
+        "城市研究"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "黄奇睛; 杨滔; 沈尧"
+    },
+    {
+      "kind": "paper",
+      "year": 2022,
+      "title": "面向新城市科学的数智化规划设计教学探索",
+      "venue": "当代建筑教育",
+      "tags": [
+        "城市科学",
+        "规划设计",
+        "教学"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "Crowd-Sourced City Images: Decoding Multidimensional Interaction between Imagery Elements with Volunteered Photos",
+      "venue": "ISPRS International Journal of Geo-Information 10(11), 740",
+      "tags": [
+        "城市图像",
+        "社会感知",
+        "空间分析"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "doi": "10.3390/ijgi1011074",
+      "url": "https://doi.org/10.3390/ijgi1011074",
+      "authors": "Yao Shen; Yiyi Xu; Lefeng Liu"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "Where to Revitalize, and How? A Rural Typology Zoning for China",
+      "venue": "Land 10(12), 1336",
+      "tags": [
+        "乡村类型",
+        "空间聚类",
+        "城乡规划"
+      ],
+      "source_url": "https://www.mdpi.com/2073-445X/10/12/1336",
+      "verified": true,
+      "doi": "10.3390/land10121336",
+      "url": "https://doi.org/10.3390/land10121336",
+      "authors": "Yaojin Zhou; Yao Shen; Xuexi Yang; Zhifang Wang; Liyan Xu"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "Multi-occupation segregation through London's tube network",
+      "venue": "Environment and Planning A: Economy and Space",
+      "tags": [
+        "交通网络",
+        "空间分异",
+        "城市社会"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "Yao Shen; Yiyi Xu; Z. Huang"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "英国邻里发展规划探析——以大伦敦地区为例",
+      "venue": "国际城市规划 2021(6)",
+      "tags": [
+        "社区规划",
+        "城市政策"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧; 徐怡怡; 罗伟斌; 杨滔"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "网络渗流视角下的城市肌理识别与测度研究",
+      "venue": "城市规划学刊 2021(5)",
+      "tags": [
+        "网络渗流",
+        "城市肌理",
+        "复杂网络"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧; 徐怡怡; 刘乐峰"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "精准城市设计：面向社会效应精准提升的城市形态",
+      "venue": "时代建筑 2021(1)",
+      "tags": [
+        "精准城市设计",
+        "城市形态"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧; 卓健; 吴志强"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "城市街道网络的韧性测度与空间解析——五大全球城市比较研究",
+      "venue": "国际城市规划 2021(3)",
+      "tags": [
+        "韧性城市",
+        "道路网络",
+        "网络科学"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "颜文涛; 卢江林; 李子豪; 沈尧"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "中国城市地区的识别：街区尺度的探索",
+      "venue": "城市与区域规划研究",
+      "tags": [
+        "城市边界",
+        "街区尺度",
+        "空间分析"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "龙瀛; 沈尧; 金晓兵"
+    },
+    {
+      "kind": "paper",
+      "year": 2021,
+      "title": "Inequalities in transit accessibility: Contributions from a comparative study between Global South and North metropolitan regions",
+      "venue": "Cities 109, 103016",
+      "tags": [
+        "交通可达性",
+        "社会不平等"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "M. Giannotti et al.; Yao Shen"
+    },
+    {
+      "kind": "paper",
+      "year": 2020,
+      "title": "A compact city for the wealthy? Employment accessibility inequalities between occupational classes in the London metropolitan region 2011",
+      "venue": "Journal of Transport Geography 86, 102767",
+      "tags": [
+        "就业可达性",
+        "空间分异",
+        "交通网络"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "D. A. Smith et al.; Yao Shen"
+    },
+    {
+      "kind": "paper",
+      "year": 2020,
+      "title": "Profiling rapid urban transformation through urban mobility data in Shenzhen",
+      "venue": "The Geography of Mobility, Wellbeing and Development in China",
+      "tags": [
+        "出行网络",
+        "城市变化"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "C. Zhong; Z. Luan; Y. Shen; X. Li; W. Tu"
+    },
+    {
+      "kind": "paper",
+      "year": 2019,
+      "title": "Segregation through space: A scope of the flow-based spatial interaction model",
+      "venue": "Journal of Transport Geography 76, 10–23",
+      "tags": [
+        "空间分异",
+        "人群流动",
+        "交通网络"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "Yao Shen"
+    },
+    {
+      "kind": "paper",
+      "year": 2019,
+      "title": "Physical co-presence intensity: Measuring dynamic face-to-face interaction potential in public space using social media check-in records",
+      "venue": "PLOS ONE 14(2), e0212004",
+      "tags": [
+        "人群共在",
+        "社会感知",
+        "时空网络"
+      ],
+      "source_url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0212004",
+      "verified": true,
+      "doi": "10.1371/journal.pone.0212004",
+      "url": "https://doi.org/10.1371/journal.pone.0212004",
+      "authors": "Yao Shen; Kayvan Karimi; Stephen Law; Chen Zhong"
+    },
+    {
+      "kind": "paper",
+      "year": 2019,
+      "title": "Delineating the perceived functional regions of London for commuting flows",
+      "venue": "Environment and Planning A 51(3), 547–550",
+      "tags": [
+        "通勤网络",
+        "城市功能区"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "Yao Shen; Michael Batty"
+    },
+    {
+      "kind": "paper",
+      "year": 2019,
+      "title": "Identifying street-character-weighted local area using locally weighted community detection methods: the case study of London and Amsterdam",
+      "venue": "12th International Space Syntax Symposium",
+      "tags": [
+        "社区发现",
+        "街道网络",
+        "空间句法"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "Stephen Law; Yao Shen; Alan Penn; Kayvan Karimi"
+    },
+    {
+      "kind": "paper",
+      "year": 2019,
+      "title": "Measuring visibility to urban functions with social media data",
+      "venue": "12th International Space Syntax Symposium",
+      "tags": [
+        "空间句法",
+        "社会感知"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "Yao Shen; Stephen Law; Kayvan Karimi"
+    },
+    {
+      "kind": "paper",
+      "year": 2019,
+      "title": "动态的空间句法——面向高频城市的组构分析框架",
+      "venue": "国际城市规划",
+      "tags": [
+        "空间句法",
+        "高频城市"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧"
+    },
+    {
+      "kind": "paper",
+      "year": 2015,
+      "title": "数据增强设计——新数据环境下的规划设计回应与改变",
+      "venue": "上海城市规划",
+      "tags": [
+        "城市数据",
+        "规划设计"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "龙瀛; 沈尧"
+    },
+    {
+      "kind": "paper",
+      "year": 2015,
+      "title": "数据作为设计的工具性：在新数据环境下探索城市秩序的可持续内涵",
+      "venue": "景观设计学",
+      "tags": [
+        "城市数据",
+        "城市设计"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧; 龙瀛"
+    },
+    {
+      "kind": "project",
+      "year": 2023,
+      "title": "高频城市的网络韧性提升：精细化测度、关键要素识别与自适应优化研究",
+      "venue": "国家自然科学基金面上项目 52278074（2023–2026）",
+      "tags": [
+        "韧性城市",
+        "网络优化"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧（负责人）"
+    },
+    {
+      "kind": "project",
+      "year": 2022,
+      "title": "时空智能支持下的城市韧性精准评估、瓶颈识别及系统修复研究",
+      "venue": "上海市启明星人才计划 22QB1404800（2022–2024）",
+      "tags": [
+        "时空智能",
+        "韧性城市"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧（负责人）"
+    },
+    {
+      "kind": "project",
+      "year": 2020,
+      "title": "面向高频城市的空间网络绩效评价方法研究",
+      "venue": "国家自然科学基金青年项目 51908413（2020–2023）",
+      "tags": [
+        "高频城市",
+        "网络测度"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧（负责人）"
+    },
+    {
+      "kind": "project",
+      "year": 2022,
+      "title": "智慧城市系列课程项目案例库建设——数字孪生城市案例",
+      "venue": "教育部产学研协同育人项目 202102479002（2022–2023）",
+      "tags": [
+        "数字孪生",
+        "城市模型"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧（负责人）"
+    },
+    {
+      "kind": "project",
+      "year": 2019,
+      "title": "多源数据支持下的城市空间网络测度、评价与优化",
+      "venue": "上海市浦江人才计划 2019PJC106（2019–2021）",
+      "tags": [
+        "城市网络",
+        "多源数据"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧（负责人）"
+    },
+    {
+      "kind": "project",
+      "year": 2021,
+      "title": "城市韧性测度及动态演化机理",
+      "venue": "国家重点研发计划子课题 2020YFB2103901（2021–2023）",
+      "tags": [
+        "韧性城市",
+        "城市系统"
+      ],
+      "source_url": "https://caupzs.tongji.edu.cn/e3/c0/c19001a189376/page.htm",
+      "verified": true,
+      "authors": "沈尧（子课题负责人）"
+    }
+  ]
+}

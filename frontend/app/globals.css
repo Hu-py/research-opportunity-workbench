@@ -255,3 +255,63 @@ input,textarea,select{outline:none}
   .login-page{grid-template-columns:1fr}.login-visual{min-height:38vh;padding:35px}.login-panel{padding:45px 25px}
   .footer{padding:18px;font-size:9px}.footer span:last-child{display:none}
 }
+
+
+/* Team research archive & metadata-only dataset inventory */
+.repository-root{display:flex;flex-direction:column;gap:20px}
+.repository-root .page-heading{margin-bottom:0}
+.repository-stat-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.repository-stat-row>div{border:1px solid var(--line);border-radius:14px;padding:18px 22px;background:var(--panel)}
+.repository-stat-row strong{font-size:25px;font-weight:800;display:block;color:#293c68}
+.repository-stat-row span{display:block;font-size:11px;margin-top:4px;color:var(--ink-soft)}
+.repository-topline{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.repository-topline h2{font-size:20px;margin:6px 0 11px}
+.repository-topline p{line-height:1.7;max-width:780px}
+.repository-refresh{min-width:220px;max-width:265px;display:flex;flex-direction:column;gap:10px}
+.repository-refresh small{font-size:11px;color:#77879b;line-height:1.6}
+.repository-source{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6553c7;font-weight:700;text-decoration:none}
+.repository-source:hover{text-decoration:underline}
+.repository-sync-line{border-top:1px solid var(--line);margin-top:18px;padding-top:13px;color:#64768d;font-size:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.repository-filters{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:17px}
+.repository-filters .searchbox{flex:1;min-width:195px}
+.repository-filters select{border:1px solid #e1e6ef;border-radius:9px;background:white;color:#485972;padding:10px 12px;max-width:185px}
+.repository-list{display:flex;flex-direction:column}
+.repository-item{padding:19px 1px 20px;border-bottom:1px solid var(--line)}
+.repository-item:last-child{border-bottom:0}
+.repository-item-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px}
+.repository-item h3{margin:9px 0 8px;font-size:15px;line-height:1.52;color:#283a5e}
+.repository-item p{margin:0 0 8px;line-height:1.55}
+.repository-year{font-size:11px;color:#72819a;font-weight:700}
+.repository-kind,.repository-verified,.repository-pending{font-size:10px;padding:3px 7px;border-radius:6px;background:#f0f2f8;color:#52627a}
+.repository-verified{background:#e8f6ef;color:#277955;display:inline-flex;gap:3px;align-items:center}
+.repository-pending{background:#fff2d7;color:#94682e}
+.repository-item-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.repository-tags{display:flex;gap:5px;flex-wrap:wrap}
+.repository-tags span{font-size:10px;border-radius:6px;background:#f2efff;color:#6b5bae;padding:5px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repository-item-bottom .inline-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.repository-item-bottom .btn{padding:7px 10px;font-size:10px}
+.data-asset-list,.data-proposals{display:flex;flex-direction:column;gap:13px}
+.data-asset-card,.data-proposal{border:1px solid var(--line);background:#fbfcff;border-radius:11px;padding:15px}
+.data-asset-heading{display:flex;justify-content:space-between;gap:8px}
+.data-asset-heading strong{font-size:13px;overflow-wrap:anywhere}
+.data-asset-heading span{flex:none;font-size:10px;color:#6c59c7;border-radius:6px;background:#efedff;padding:3px 6px}
+.data-asset-card>small{font-size:10px;color:#8796a9;overflow-wrap:anywhere}
+.data-asset-card p{margin:8px 0;line-height:1.65}
+.data-asset-card button{display:inline-flex;align-items:center;gap:4px}
+.data-asset-editor{border:1px solid #e5e2fa;border-radius:12px;background:#f9f8ff;padding:17px;margin-top:18px}
+.data-asset-editor h3{margin:0 0 11px;font-size:15px}
+.data-asset-editor label{font-size:11px;color:#52617b;font-weight:700;display:block;margin:10px 0}
+.data-asset-editor label input,.data-asset-editor label textarea,.data-asset-editor label select{display:block;width:100%;margin-top:5px;border:1px solid #dfe5ed;border-radius:8px;background:white;padding:9px}
+.data-asset-editor .inline-actions{display:flex;gap:10px;margin-top:15px}
+.data-proposal h3{font-size:14px;margin:0 0 8px}
+.data-proposal p{line-height:1.7;font-size:12px}
+.data-proposal small{font-size:10px;color:#8594a9}
+@media(max-width:880px){
+  .repository-stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .repository-topline{flex-direction:column}
+  .repository-refresh{max-width:none;width:100%}
+}
+@media(max-width:500px){
+  .repository-filters select{flex:1;max-width:none}
+  .repository-item-bottom{align-items:flex-start}
+}
