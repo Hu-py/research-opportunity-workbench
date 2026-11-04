@@ -152,6 +152,11 @@ async def lifespan(app:FastAPI):
             "Research database connection verified: dialect=%s",
             db.get_bind().dialect.name,
         )
+        # Explicitly opted-in one-time diagnostic; safe schema only.
+        # Never enabled by default or in recurring daily publication tasks.
+        if os.getenv("PROFILE_AUDIT_ON_STARTUP","").strip()=="1":
+            from backend.profile_audit import emit_log_report
+            emit_log_report(db,logging.getLogger("uvicorn.error"))
     logging.getLogger("uvicorn.error").info(
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
