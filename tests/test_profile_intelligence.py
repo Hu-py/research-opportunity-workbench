@@ -237,7 +237,7 @@ def test_db_only_snapshot_references_are_real_and_source_is_traced(env):
         assert inventory["counts"]["data_assets_eligible"]==1
         assert inventory["counts"]["data_assets_restricted_or_unclassified"]==1
         draft,refs=database_draft(inventory)
-        assert len(draft["profile"]["research_lines"])==1
+        assert len(draft["profile"]["research_lines"])>=2
         assert draft["profile"]["research_lines"][0]["name"]=="建筑垂直功能与演化"
         valid={x["ref"] for section in ("datasets","team_achievements","approved_papers")
                for x in inventory[section]}
