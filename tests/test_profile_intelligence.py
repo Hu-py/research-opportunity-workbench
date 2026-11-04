@@ -265,3 +265,36 @@ def test_llm_invented_database_reference_is_rejected(env):
         assert "不存在或受限" in latest.error
         assert db.scalars(select(ResearchProfileDraft).where(
             ResearchProfileDraft.source=="llm")).first() is None
+
+
+def test_database_analyst_draft_requires_actual_achievement_and_keeps_official(env):
+    from backend.profile_intelligence import bootstrap_db_review
+    from backend.repository import TeamAchievement
+    factory,client,admin,_,monkeypatch=env
+    evidence_id="ach_real_test_007"
+    with factory() as db:
+        db.add(TeamAchievement(id=evidence_id,kind="paper",title="Verified urban network study",
+                               year=2025,status="verified",tags_json='["urban network"]'))
+        db.commit()
+        before=get_profile(db)
+    draft=outline()
+    draft["analysis"]["line_insights"][0]["evidence_refs"]=[
+        "team_achievements:"+evidence_id]
+    encoded=base64.b64encode(json.dumps(draft,ensure_ascii=False).encode()).decode()
+    monkeypatch.setenv("PROFILE_DB_REVIEW_B64",encoded)
+    first=bootstrap_db_review(factory)
+    assert first["imported"]
+    second=bootstrap_db_review(factory)
+    assert not second["imported"]
+    with factory() as db:
+        item=db.get(ResearchProfileDraft,first["id"])
+        assert item.status=="draft"
+        assert item.source=="database_analyst"
+        assert get_profile(db)==before
+        assert "PRIVATE_should_not_duplicate" not in item.profile_json
+    draft["analysis"]["line_insights"][0]["evidence_refs"]=[
+        "team_achievements:invented"]
+    monkeypatch.setenv("PROFILE_DB_REVIEW_B64",
+        base64.b64encode(json.dumps(draft,ensure_ascii=False).encode()).decode())
+    with pytest.raises(ValueError,match="不存在"):
+        bootstrap_db_review(factory)

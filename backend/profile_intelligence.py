@@ -255,6 +255,31 @@ def initialize_database_draft(factory):
             "id":ident,"counts":inventory["counts"]}
 
 
+def bootstrap_db_review(factory):
+    """Import private evidence-constrained research portrait draft, never publish."""
+    token=os.getenv("PROFILE_DB_REVIEW_B64","").strip()
+    if not token:return None
+    raw=base64.b64decode(token,validate=True)
+    if len(raw)>45000:raise ValueError("Profile draft too large")
+    data=json.loads(raw.decode("utf-8"))
+    with factory() as db:
+        inventory=evidence_inventory(db)
+        allowed={x["ref"] for key in ("team_achievements","datasets","approved_papers")
+                 for x in inventory[key]}
+        profile,analysis=_validated(data,allowed_refs=allowed)
+        if any(not any(ref.startswith("team_achievements:") for ref in x["evidence_refs"])
+               for x in analysis["line_insights"]):
+            raise ValueError("每条主线必须有真实成果记录作为证据")
+        ident="prof_db_review_"+hashlib.sha256(raw).hexdigest()[:26]
+        if db.get(ResearchProfileDraft,ident):return {"imported":False,"id":ident}
+        refs=sorted({ref for x in analysis["line_insights"] for ref in x["evidence_refs"]})
+        row=new_draft(db,{"profile":profile,"analysis":analysis},
+            source="database_analyst",scope="team",draft_id=ident,
+            provenance=(["profiles:1"] if inventory["profile"] else [])+refs,
+            note="仅基于当前数据库记录的分析型画像草稿；非 DeepSeek 调用；未正式发布。",
+            model="gpt_database_evidence_review")
+        return {"imported":True,"id":row.id,"lines":len(profile["research_lines"])}
+
 def bootstrap_from_env(factory):
     text=os.getenv("RESEARCH_PROFILE_BOOTSTRAP_B64","").strip()
     if not text:return None
