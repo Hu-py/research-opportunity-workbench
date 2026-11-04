@@ -40,7 +40,9 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
  const strategies=data?.strategies||[];
  const selected=useMemo(()=>data?.candidates.filter(x=>
    (line==="all"||x.line_id===line)&&
-   (candidateFilter==="all"||x.status===candidateFilter))||[],
+   (candidateFilter==="all"||x.status===candidateFilter||
+    (candidateFilter==="priority"&&x.status==="pending"&&
+     x.score>=(data?.strategies.find(s=>s.line_id===x.line_id)?.min_score??60))))||[],
    [data,line,candidateFilter]);
  const relations=useMemo(()=>data?.relations.filter(x=>line==="all"||x.line_id===line)||[],
    [data,line]);
@@ -179,7 +181,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
      {active==="candidates"&&<>
        <div className="discovery-inbox-top"><p className="small muted">候选论文先进入待审核池；只有人工标注“相关”或“方法借鉴”后才写入正式论文情报库。</p>
          <select aria-label="候选论文状态" value={candidateFilter} onChange={e=>setCandidateFilter(e.target.value)}>
-           <option value="pending">待审核</option><option value="relevant">已确认为相关</option>
+           <option value="pending">待审核</option><option value="priority">重点候选（达到主线阈值）</option><option value="relevant">已确认为相关</option>
            <option value="method">方法借鉴</option><option value="rejected">已排除</option><option value="all">全部</option>
          </select></div>
        <div className="discovery-record-list">
@@ -187,7 +189,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
          selected.map(x=><article className="discovery-record" key={x.id}>
            <div className="discovery-labels"><span>{strategies.find(s=>s.line_id===x.line_id)?.line_name||x.line_id}</span>
              <span>{x.match_type==="method"?"方法迁移":"研究问题"}</span>
-             <span className={x.score>=60?"disc-confirmed":""}>检索相关度 {x.score}/100</span></div>
+             <span className={x.score>=(strategies.find(s=>s.line_id===x.line_id)?.min_score??60)?"disc-confirmed":""}>检索相关度 {x.score}/100</span></div>
            <h3>{x.url?<a href={x.url} target="_blank" rel="noopener noreferrer">{x.title}</a>:x.title}</h3>
            <p className="small muted">{x.venue||"期刊待核实"} · {x.published||"发表时间未知"} · DOI：{x.doi||"未提供"}</p>
            {x.abstract&&<p className="discovery-abstract">{x.abstract.slice(0,390)}{x.abstract.length>390?"…":""}</p>}
