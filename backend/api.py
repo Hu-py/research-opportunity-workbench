@@ -33,6 +33,7 @@ from backend.model_vault import ModelCredential, status as model_status, save as
 from backend.profile_intelligence import (
     ResearchProfileDraft, ResearchProfileDraftRevision, ProfileSynthesisRun,
     initialize_database_draft,
+    bootstrap_db_review,
     list_studio as list_research_portraits,
     start_generation as start_profile_synthesis,
     execute_generation as execute_profile_synthesis,
@@ -146,6 +147,12 @@ async def lifespan(app:FastAPI):
         portrait["counts"]["approved_papers"],
         portrait["counts"]["official_lines"],
     )
+    reviewed=bootstrap_db_review(factory)
+    if reviewed:
+        logging.getLogger("uvicorn.error").info(
+            "DB analyst research portrait: imported=%s draft=%s lines=%s",
+            reviewed["imported"],reviewed["id"],reviewed.get("lines","existing"),
+        )
     with factory() as db:
         db.execute(sql_text("SELECT 1"))
         logging.getLogger("uvicorn.error").info(
