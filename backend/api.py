@@ -32,7 +32,7 @@ from backend.discovery_runner import execute_discovery
 from backend.model_vault import ModelCredential, status as model_status, save as save_model_config, remove_key as remove_model_key
 from backend.profile_intelligence import (
     ResearchProfileDraft, ResearchProfileDraftRevision, ProfileSynthesisRun,
-    bootstrap_from_env as bootstrap_research_profile,
+    initialize_database_draft,
     list_studio as list_research_portraits,
     start_generation as start_profile_synthesis,
     execute_generation as execute_profile_synthesis,
@@ -128,18 +128,24 @@ async def lifespan(app:FastAPI):
             logging.getLogger("uvicorn.error").info(
                 "Curated team research imported: %d records",imported
             )
-    # One-time private curated draft. Never overwrites the active team profile.
-    research_seed=bootstrap_research_profile(factory)
-    if research_seed and research_seed["imported"]:
-        logging.getLogger("uvicorn.error").info(
-            "Research portrait draft bootstrapped privately: %s",research_seed["id"]
-        )
     bootstrap=cusp_bootstrap(factory)
     if bootstrap:
         logging.getLogger("uvicorn.error").info(
             "CUSP metadata bootstrap: %d new, %d updated, %d unchanged",
             bootstrap["new"],bootstrap["updated"],bootstrap["unchanged"]
         )
+    # Build the initial portrait from real rows after all database bootstraps.
+    # Do NOT use the old chat-based bootstrap; it is invalidated in the DB.
+    portrait=initialize_database_draft(factory)
+    logging.getLogger("uvicorn.error").info(
+        "Database-only portrait ready: created=%s discarded_chat_drafts=%d "
+        "verified_outputs=%d registered_assets=%d approved_papers=%d official_lines=%d",
+        portrait["new"],portrait["discarded_chat_drafts"],
+        portrait["counts"]["achievements_verified"],
+        portrait["counts"]["data_assets_total"],
+        portrait["counts"]["approved_papers"],
+        portrait["counts"]["official_lines"],
+    )
     with factory() as db:
         db.execute(sql_text("SELECT 1"))
         logging.getLogger("uvicorn.error").info(
