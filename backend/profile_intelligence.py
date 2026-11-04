@@ -225,9 +225,25 @@ def _snapshot(db,note):
         TeamAchievement.status=="verified").order_by(
         TeamAchievement.year.desc()).limit(18)).all()
     # No authors, team emails, custodians, F-drive paths or original sample data.
-    # Official profile may contain free-form asset notes; strip them
-    # before sending context to an external model.
-    safe_base=_profile(base) if base else None
+    # Existing official profiles may use older/more permissive IDs and
+    # longer query lists. Safely project canonical text instead of requiring
+    # the existing record to satisfy the *new draft* validation rules.
+    safe_base=None
+    if base and isinstance(base,dict):
+        safe_base={"goals":str(base.get("goals",""))[:650],
+            "team":{"name":str((base.get("team") or {}).get("name",""))[:140],
+                    "mission":str((base.get("team") or {}).get("mission",""))[:450],
+                    "priorities":[str(x)[:100] for x in
+                        (base.get("team") or {}).get("priorities",[])[:8]]},
+            "methods":[str(x)[:100] for x in base.get("methods",[])[:20]],
+            "research_lines":[{
+                "id":str(x.get("id",""))[:80],
+                "name":str(x.get("name",""))[:180],
+                "problem":str(x.get("problem",""))[:450],
+                "keywords":[str(v)[:90] for v in x.get("keywords",[])[:12]],
+                "search_queries":[str(v)[:140] for v in x.get("search_queries",[])[:4]],
+                "method_queries":[str(v)[:140] for v in x.get("method_queries",[])[:4]]
+            } for x in base.get("research_lines",[])[:8] if isinstance(x,dict)]}
     return {"existing_official_profile":safe_base,
             "curated_example":({"profile":unpack(base_draft.profile_json),
                 "analysis":unpack(base_draft.analysis_json)}
