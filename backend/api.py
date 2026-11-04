@@ -22,6 +22,13 @@ from research_workbench.core import (
 from backend.tasks import ResearchTask, enqueue, as_dict
 from backend.worker import run_task
 from backend.bootstrap import bootstrap_admin_from_env
+from backend.discovery_links import list_links, review_link
+from backend.discovery import (
+    SearchStrategy, DiscoveryRun, PaperCandidate, strategies,
+    save_strategy, create_run, candidates, runs as discovery_runs,
+    review_candidate,
+)
+from backend.discovery_runner import execute_discovery
 from backend.cusp import (
     CuspDataset, CuspDatasetRevision, CuspImportRun,
     import_records as import_cusp_records, update_one as update_cusp_one,
@@ -178,6 +185,24 @@ class CuspEditRequest(BaseModel):
     sensitivity:Literal["public","internal","restricted"]|None=None
     note:str|None=None
 
+class SearchStrategyRequest(BaseModel):
+    direct_queries:list[str]=Field(default_factory=list,max_length=3)
+    method_queries:list[str]=Field(default_factory=list,max_length=3)
+    enabled:bool=False
+    lookback_days:int=Field(default=30,ge=7,le=180)
+    per_query:int=Field(default=8,ge=1,le=12)
+    min_score:int=Field(default=60,ge=0,le=100)
+
+class DiscoveryRunRequest(BaseModel):
+    line_id:str|None=Field(default=None,max_length=110)
+
+class RelationReviewRequest(BaseModel):
+    status:Literal["confirmed","rejected","suggested"]
+
+class PaperReviewRequest(BaseModel):
+    status:Literal["relevant","method","rejected","pending"]
+    note:str=Field(default="",max_length=500)
+
 class LoginRequest(BaseModel):
     email:str=Field(min_length=3,max_length=255)
     password:str=Field(min_length=1,max_length=256)
@@ -302,7 +327,13 @@ def scheduled_refresh_achievements(request:Request,background:BackgroundTasks,
         raise HTTPException(403,"Scheduled refresh is not authorized")
     run=create_refresh(db,"scheduled")
     background.add_task(refresh_public_works,get_factory(),run.id)
-    return {"id":run.id,"status":"queued"}
+    # Share the existing free Vercel daily cron. Discovery is explicitly
+    # opt-in per research line; defaults to OFF and never auto-approves papers.
+    discovered=create_run(db,get_profile(db),source="scheduled")
+    if discovered:
+        background.add_task(execute_discovery,get_factory(),discovered.id)
+    return {"id":run.id,"status":"queued",
+            "paper_discovery_id":discovered.id if discovered else None}
 
 @app.get("/api/data-assets",dependencies=[Depends(require_actor)])
 def data_assets(db:Session=Depends(get_db)):
@@ -338,6 +369,60 @@ def update_data_asset(asset_id:str,data:DataAssetPatchRequest,
 def data_asset_opportunities(db:Session=Depends(get_db)):
     return {"items":inferred_opportunities(db),
         "disclaimer":"仅基于目录和格式的研究假设；未查看数据内容、质量、权限和真实可用性。"}
+
+@app.get("/api/opportunity-engine",dependencies=[Depends(require_actor)])
+def opportunity_engine(db:Session=Depends(get_db)):
+    profile=get_profile(db)
+    return {
+        "profile_ready":bool(profile),
+        "strategies":strategies(db,profile),
+        "relations":list_links(db,profile),
+        "candidates":candidates(db,limit=160),
+        "runs":discovery_runs(db),
+        "note":"论文相关性是规则排序，不表示学术创新性；团队数据仅使用登记元数据，未读取任何原始文件。",
+    }
+
+@app.patch("/api/opportunity-engine/relations/{relation_id}",
+           dependencies=[Depends(require_actor)])
+def review_research_relation(relation_id:str,data:RelationReviewRequest,
+        db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_admin)):
+    try:
+        return review_link(db,get_profile(db),relation_id,data.status,
+                           actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(404,str(exc)) from exc
+
+@app.put("/api/opportunity-engine/strategies/{line_id}",
+         dependencies=[Depends(require_actor)])
+def update_search_strategy(line_id:str,data:SearchStrategyRequest,
+        db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_admin)):
+    try:
+        return save_strategy(db,get_profile(db),line_id,data.model_dump(),
+                             actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+@app.post("/api/opportunity-engine/run",status_code=202,
+          dependencies=[Depends(require_actor)])
+def start_discovery(data:DiscoveryRunRequest,background:BackgroundTasks,
+         db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_editor)):
+    if not get_profile(db):raise HTTPException(409,"请先保存团队研究画像")
+    try:
+        run=create_run(db,get_profile(db),source="manual",line_id=data.line_id)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    if not run:raise HTTPException(409,"没有可用的研究主线")
+    add_audit(db,"paper_discovery.started",actor.id if actor else None,run.id)
+    db.commit()
+    background.add_task(execute_discovery,get_factory(),run.id)
+    return {"id":run.id,"status":run.status,
+            "note":"任务在 Render 免费实例上运行；休眠或重启可能使任务中断。"}
+
+@app.patch("/api/opportunity-engine/candidates/{candidate_id}",
+           dependencies=[Depends(require_actor)])
+def review_discovered_paper(candidate_id:str,data:PaperReviewRequest,
+        db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_editor)):
+    try:
+        return review_candidate(db,candidate_id,data.status,data.note,
+                                actor.id if actor else "")
+    except ValueError as exc:raise HTTPException(404,str(exc)) from exc
 
 @app.get("/api/cusp/summary",dependencies=[Depends(require_actor)])
 def cusp_summary_api(db:Session=Depends(get_db)):
