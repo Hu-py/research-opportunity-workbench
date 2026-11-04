@@ -232,6 +232,7 @@ def initialize_database_draft(factory):
         inventory=evidence_inventory(db)
         # A stable ID prevents duplicate drafts when free Render restarts.
         material=pack({
+            "portrait_engine_version":2,
             "official_profile":inventory["profile"],
             "achievement_ids":[x["ref"] for x in inventory["team_achievements"]],
             "data_ids":[x["ref"] for x in inventory["datasets"]],
