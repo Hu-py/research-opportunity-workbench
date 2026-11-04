@@ -12,11 +12,12 @@ import ResearchArchive from "@/components/ResearchArchive";
 import DataAssetRegistry from "@/components/DataAssetRegistry";
 import ResearchDiscovery from "@/components/ResearchDiscovery";
 import AIResearchLab from "@/components/AIResearchLab";
+import ResearchRadar from "@/components/ResearchRadar";
 import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "interest"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
+type Section = "interest"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
 const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
   {key:"interest",label:"研究兴趣监测",caption:"Interest watchlist",icon:GitBranch},
   {key:"overview",label:"科研总览",caption:"Overview",icon:Layers3},
@@ -25,6 +26,7 @@ const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
   {key:"assets",label:"CUSP数据台账",caption:"Data metadata",icon:Database},
   {key:"discovery",label:"科研关联与文献发现",caption:"Discovery engine",icon:Search},
   {key:"ai-lab",label:"AI 选题实验台",caption:"DeepSeek research",icon:BrainCircuit},
+  {key:"radar",label:"科研雷达 · 选题评审",caption:"Research radar",icon:ShieldCheck},
   {key:"ideas",label:"研究选题池",caption:"Opportunities",icon:Lightbulb},
   {key:"agent",label:"Research Agent",caption:"Intelligent research",icon:BrainCircuit},
   {key:"history",label:"选题演化",caption:"Evolution",icon:GitBranch},
@@ -427,6 +429,7 @@ export default function Workbench(){
         {section==="assets"&&<DataAssetRegistry canAdmin={canAdmin}/>}
         {section==="discovery"&&<ResearchDiscovery canAdmin={canAdmin} canEdit={canEdit}/>} 
         {section==="ai-lab"&&<AIResearchLab canAdmin={canAdmin} canEdit={canEdit}/>} 
+        {section==="radar"&&<ResearchRadar canEdit={canEdit}/>} 
 
         {section==="ideas"&&<>
           <PageHeading kicker="RESEARCH OPPORTUNITIES" title="滚动研究选题池" subtitle="选题不会每周重新清零。新证据、方法和人工反馈都会持续更新同一条选题记录。"/>
