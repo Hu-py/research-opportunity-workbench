@@ -399,3 +399,4 @@ export default function DevelopmentStudio({canEdit,onNavigate}:{
     </section>
     <p className="dev-final-note"><ShieldCheck size={15}/> 成功标准：可证实的来源、可复现的运行、可审阅的研究价值。页面“代码实现”标签不是自动化验收报告；生产环境要以真实检索、周报成功执行和科研成员审核为准。</p>
   </div>;
+}
