@@ -64,10 +64,14 @@ export default function DataAssetRegistry({canAdmin}:{canAdmin:boolean}){
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setBusy(false);}
   }
-  return <><CuspDatasetCatalogue canAdmin={canAdmin}/><div className="repository-root">
+  return <div className="repository-root">
+    <CuspDatasetCatalogue canAdmin={canAdmin}/>
+    <details className="cusp-extra-details">
+      <summary>其他目录补充登记（独立于 CUSP 既有数据总表）</summary>
+      <div className="repository-root">
     <div className="page-heading"><span className="panel-kicker">TEAM DATA INVENTORY</span>
       <h1>其他目录补充登记</h1>
-      <p>先建立目录与字段字典，再结合团队历史研究成果识别可以验证的后续研究机会。</p>
+      <p>此处仅用于新补充的文件目录元信息，不等同于上面的 CUSP 数据登记，也不上传原始数据文件。</p>
     </div>
     <div className="repository-stat-row">
       <div><strong>{assets.length}</strong><span>已登记数据集</span></div>
@@ -129,5 +133,7 @@ export default function DataAssetRegistry({canAdmin}:{canAdmin:boolean}){
           </article>)}</div>}
       </section>
     </div>
-  </div></>;
+      </div>
+    </details>
+  </div>;
 }
