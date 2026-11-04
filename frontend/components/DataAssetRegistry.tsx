@@ -55,7 +55,7 @@ export default function DataAssetRegistry({canAdmin}:{canAdmin:boolean}){
     setBusy(true);setError("");setNotice("");
     try{
       await api<Asset>("data-assets/"+selected,{method:"PATCH",body:JSON.stringify({
-        fields:fields.split(/[,，\\n]+/).map(x=>x.trim()).filter(Boolean),
+        fields:fields.split(/[,，\n]+/).map(x=>x.trim()).filter(Boolean),
         spatial_scale:spatial,time_range:period,description,sensitivity,
       })});
       setSelected(null);setNotice("数据字典与研究元信息已保存，未上传数据文件。");
