@@ -82,3 +82,16 @@ def test_parser_rejects_invalid_file_and_ideas_are_not_claimed_as_verified(tmp_p
         assert any("房价" in x["title"] for x in ideas)
         assert all(x["supporting_data"] and x["critical_checks"] and
                    "未读取原始数据" in x["evidence_level"] for x in ideas)
+
+
+def test_research_agent_can_read_catalogue_without_raw_data(tmp_path):
+    from backend.agent import ResearchAgent
+    factory=session_factory("sqlite:///"+str(tmp_path/"agent.db"))
+    with factory() as db:
+        import_records(db,[make_row("全国_poi数据_2020")])
+        result=ResearchAgent(db).dispatch("get_team_data_inventory",{})
+        assert len(result["datasets"])==1
+        assert result["datasets"][0]["data_access_verified"] is False
+        assert result["datasets"][0]["name"]=="全国_poi数据_2020"
+        assert "Under" in result["caveat"]
+        assert "datasets" in result
