@@ -14,6 +14,7 @@ from backend.ai_lab import _dataset_context
 from backend.model_vault import ModelCredential, load_key
 from backend.research_budget import status as budget_status
 from backend.repository import TeamAchievement
+from backend.research_sources import list_sources
 from backend.scientific_tournament import approved_learning
 from backend.team import add_audit
 
@@ -110,6 +111,10 @@ def snapshot(db,line_id):
                     "problem":text(line.get("problem"),"problem",600),
                     "keywords":line.get("keywords",[])[:12]},
             "datasets":_dataset_context(db,line_id)[:10],
+            "preferred_academic_sources":[{
+                "name":src["name"],"kind":src["kind"],"domain":src["domain"],
+                "rank_label":src["rank_label"]} for src in
+                list_sources(db,enabled_only=True)[:35]],
             "achievements":[{"title":a.title[:200],"year":a.year} for a in achievements],
             "approved_feedback":approved_learning(db,line_id,limit=5),
             "evolution_feedback":[{"decision":x.decision,"comment":x.comment[:550],
