@@ -80,3 +80,29 @@ def test_preanalysis_rejects_invalid_priority():
         assert "priority" in str(exc)
     else:
         raise AssertionError("Invalid priority must be rejected")
+
+
+def test_backfill_halts_at_shared_daily_limit(lab,monkeypatch):
+    from backend.research_budget import reserve
+    factory,client,admin,member,_=lab
+    save_key(client,admin)
+    ident=candidate_id("vertical","openalex:W111222333")
+    with factory() as db:
+        db.add(PaperCandidate(
+            id=ident,line_id="vertical",paper_id="openalex:W111222333",
+            title="Cross-city building function inference",
+            abstract="Graph learning with cross-city evaluation",
+            doi="",url="https://openalex.org/W111222333",
+            published="2026-11-01",venue="Test Journal",score=85,
+            status="pending"))
+        db.commit()
+    assert reserve(factory,papers=80)
+    def fail(*args,**kwargs):
+        raise AssertionError("Paid provider must not be called after daily limit")
+    monkeypatch.setattr("backend.preanalysis.request_json",fail)
+    result=execute_preanalysis(factory,limit=6)
+    assert result["status"]=="budget_exhausted"
+    assert result["processed"]==0
+    with factory() as db:
+        assert db.get(PaperCandidate,ident).status=="pending"
+        assert db.get(PaperPreanalysis,ident) is None
