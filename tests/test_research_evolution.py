@@ -89,6 +89,11 @@ def fake_model(low_score=False,bad_reference=False):
             return {"target_ids":["H_seed_problem_0"],
                     "objections":["Closest previous paper may already explain mechanism"],
                     "queries":["challenge urban transfer"]},used
+        if role=="Independent Counter-evidence Referee":
+            return {"paper_ids":[PAPERS[2]["id"]],
+                    "prior_art_risk":"manageable",
+                    "counterclaims":["The closest existing method lacks an out-of-city benchmark"],
+                    "reason":"A possible novelty gap remains to test"},used
         if role=="Research Recommendation Synthesizer":
             return {"selected_ids":["H_revise_0"],
                     "selection_reason":"Evidence-backed, falsifiable hypothesis",
