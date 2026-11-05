@@ -12,6 +12,7 @@ import ResearchArchive from "@/components/ResearchArchive";
 import DataAssetRegistry from "@/components/DataAssetRegistry";
 import ResearchDiscovery from "@/components/ResearchDiscovery";
 import AIResearchLab from "@/components/AIResearchLab";
+import ModelSettings from "@/components/ModelSettings";
 import ResearchRadar from "@/components/ResearchRadar";
 import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
@@ -670,9 +671,10 @@ export default function Workbench(){
 
         {section==="settings"&&<>
           <PageHeading kicker="SYSTEM STATUS" title="系统与运行状态" subtitle="查看研究数据库、模型调用和自动化任务的配置状态。"/>
+          <ModelSettings canAdmin={canAdmin}/>
           <div className="settings-grid">
             {[{icon:Database,title:"科研数据库",detail:"论文、画像、选题与任务结果持久化到后端数据库",flag:"已连接数量："+(overview?.papers||0)},
-              {icon:BrainCircuit,title:"Research Agent",detail:"配置 OPENAI_API_KEY 后启动真实模型工具调用；否则只进行文献预览",flag:"模型配置由后端管理"},
+              {icon:BrainCircuit,title:"Research Agent",detail:"文献发现与 AI 选题分析使用 DeepSeek；API Key 在上方模型配置中管理",flag:"密钥加密保存在服务端"},
               {icon:Workflow,title:"任务 Worker",detail:"生产环境需运行独立 worker 进程，以处理排队中的长任务",flag:"待执行："+tasks.filter(x=>x.status==="queued").length},
               {icon:ShieldCheck,title:"访问控制",detail:"浏览器访问与后端 API 分开认证；密钥仅存于服务端",flag:teamMode?"团队成员独立会话":"单用户兼容模式"}].map(x=>
               <div className="panel settings-card" key={x.title}><div className="tool-icon"><x.icon size={22}/></div>

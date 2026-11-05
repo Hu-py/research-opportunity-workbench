@@ -91,7 +91,8 @@ def test_links_are_suggested_but_never_confirmed_automatically(setup_db):
 def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
     factory,client,headers=setup_db
     page=client.get("/api/opportunity-engine",headers=headers).json()
-    assert all(not s["enabled"] for s in page["strategies"])
+    assert all(not item["enabled"] for item in page["strategies"] if not item["line_id"].startswith(("db_theme_","db_data_topic_")))
+    assert all(item["enabled"] for item in page["strategies"] if item["line_id"].startswith(("db_theme_","db_data_topic_")))
     s=page["strategies"][0]
     s.update({"enabled":True,"per_query":3,"min_score":70})
     response=client.put("/api/opportunity-engine/strategies/vertical",
@@ -229,3 +230,29 @@ def mock_discovery_llm(monkeypatch):
     monkeypatch.setattr(runner,"plan_queries",plan)
     monkeypatch.setattr(runner,"assess_papers",assess)
     monkeypatch.setattr(runner,"execute_preanalysis",lambda *a,**k:{"status":"skipped","processed":0})
+
+
+def test_scheduled_portrait_themes_rotate_without_six_paper_total_cap(setup_db):
+    factory,_,_=setup_db
+    from backend.discovery import reads
+    # One official line remains manually disabled. Five new DB-evidenced
+    # themes can be explored after the administrator opts into daily AI runs.
+    portrait={"research_lines":[PROFILE["research_lines"][0]]+[
+        {"id":"db_theme_"+str(i),"name":"数据库研究主题 "+str(i),
+         "problem":"由团队成果及数据目录提出的待验证研究问题",
+         "keywords":["urban systems"],"search_queries":[],"method_queries":[]}
+        for i in range(1,6)
+    ]}
+    with factory() as db:
+        # An explicit team decision to turn a derived topic off takes priority.
+        db.add(SearchStrategy(line_id="db_theme_5",enabled=False))
+        db.commit()
+        first=create_run(db,portrait,source="scheduled")
+        second=create_run(db,portrait,source="scheduled")
+        assert first is not None and second is not None
+        ids1=reads(first.line_ids_json)
+        ids2=reads(second.line_ids_json)
+        assert len(ids1)==3
+        assert "db_theme_5" not in ids1+ids2
+        assert set(ids1+ids2)=={"db_theme_1","db_theme_2","db_theme_3","db_theme_4"}
+        assert set(ids1)!=set(ids2)

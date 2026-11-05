@@ -171,6 +171,33 @@ def run_view(x):
         "input_tokens":x.input_tokens,"output_tokens":x.output_tokens,
         "created_at":x.created_at.isoformat() if x.created_at else None}
 
+def discovery_profile(db):
+    """Use the latest database-evidenced research themes for *candidate discovery*.
+
+    An applied database analyst portrait takes precedence; a current DB-only
+    snapshot can also generate exploratory retrieval themes. Neither source
+    auto-publishes a research line as a verified team achievement.
+    """
+    version=current_profile_version(db)
+    approved=db.scalars(select(ResearchProfileDraft).where(
+        ResearchProfileDraft.source=="database_analyst",
+        ResearchProfileDraft.status=="applied",
+        ResearchProfileDraft.scope=="team",
+    ).order_by(ResearchProfileDraft.updated_at.desc()).limit(5)).all()
+    snapshots=db.scalars(select(ResearchProfileDraft).where(
+        ResearchProfileDraft.source=="database_snapshot",
+        ResearchProfileDraft.status.in_(["draft","applied"]),
+        ResearchProfileDraft.scope=="team",
+        ResearchProfileDraft.base_version==version,
+    ).order_by(ResearchProfileDraft.created_at.desc()).limit(5)).all()
+    for record in approved+snapshots:
+        try:
+            return _profile(unpack(record.profile_json,{}))
+        except (ValueError,TypeError):
+            continue
+    return get_profile(db)
+
+
 def list_studio(db):
     return {"profile_version":current_profile_version(db),
         "evidence":safe_overview(evidence_inventory(db)),
