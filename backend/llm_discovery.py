@@ -135,7 +135,7 @@ def _context(db, line):
         "team":profile.get("team",{}),
         "research_line":{"id":line.get("id"),"name":line.get("name"),
             "problem":line.get("problem"),"keywords":line.get("keywords",[])[:20],
-            "methods":line.get("methods",[])[:15],\n            "user_interest_focus":line.get("focus",""),\n            "user_interest_venue_hints":line.get("venues",[])[:12]},
+            "methods":line.get("methods",[])[:15],\n            "user_interest_focus":line.get("focus",""),\n            "user_interest_venue_hints":line.get("venues",[])[:12],\n            "user_interest_query_hints":line.get("query_hints",[])[:4]},
         "team_achievements":[{"title":x.title,"year":x.year,"venue":x.venue,
             "tags":json.loads(x.tags_json or "[]")[:8]} for x in achievements],
         "registered_datasets":datasets,
@@ -185,7 +185,7 @@ def execute_llm_discovery(factory, run_id, client=None):
                 selected.append({"id":token,"name":interest.title,"problem":interest.problem,
                     "keywords":decode_interest(interest.keywords_json),
                     "methods":[],"focus":interest.focus,
-                    "venues":decode_interest(interest.venues_json)})
+                    "venues":decode_interest(interest.venues_json),\n                    "query_hints":decode_interest(interest.queries_json)})
         credential=db.get(ModelCredential,"deepseek")
         key=load_key(db) if credential and credential.encrypted_key else None
         if not selected or not key:
@@ -204,6 +204,12 @@ def execute_llm_discovery(factory, run_id, client=None):
                     "per_query":cfg.per_query if cfg else 8}
             allowed_source_ids=[x["openalex_source_id"] for x in context["enabled_academic_sources"] if x.get("openalex_source_id")]
             plan,plan_usage=_plan_queries(key,planner_model,context,config,allowed_source_ids,client=client)
+            if str(line.get("id","")).startswith("interest:"):
+                with factory() as db:
+                    interest=db.get(ResearchInterest,str(line["id"]).split(":",1)[1])
+                    if interest:
+                        interest.queries_json=dumps([x["query"] for x in plan])
+                        db.commit()
             query_results=[]
             since=(date.today()-timedelta(days=config["lookback_days"])).isoformat()
             for strategy in plan:
