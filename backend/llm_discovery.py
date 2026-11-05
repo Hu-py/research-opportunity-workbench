@@ -93,6 +93,11 @@ def assess_papers(api_key, model, line, data_assets, papers, skill_text=None, cl
             "why_relevant":_text(item.get("why_relevant"),"why_relevant",700),
             "data_fit":_text(item.get("data_fit"),"data_fit",700),
             "follow_up_query":str(item.get("follow_up_query") or "")[:220],
+            "claimed_contribution":_text(item.get("contribution_claim"),"contribution_claim",700),
+            "limitations_or_unknowns":_text(item.get("limitation_or_unknown"),"limitation_or_unknown",700),
+            "reason":_text(item.get("why_relevant"),"why_relevant",700),
+            "evidence_quality":"LLM semantic assessment; evidence confidence="+confidence,
+            "evidence_level":"abstract" if papers[[p["paper_id"] for p in papers].index(item["paper_id"])].get("abstract") else "metadata",
             "human_review_required":True,"novelty_verified":False,
         })
     # Missing assessments are rejected as an incomplete model response, not silently rule-ranked.
