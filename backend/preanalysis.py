@@ -119,6 +119,10 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None):
             cached = db.get(PaperPreanalysis, candidate.id)
             if cached and cached.abstract_hash == digest and cached.model == model and cached.status == "completed":
                 continue
+            if cached and cached.status == "running" and cached.updated_at and (
+                now() - cached.updated_at.replace(tzinfo=timezone.utc)
+            ).total_seconds() < 1800:
+                continue
             work.append({
                 "candidate_id": candidate.id, "paper_id": candidate.paper_id,
                 "title": candidate.title[:1200], "abstract": (candidate.abstract or "")[:4500],
@@ -158,6 +162,22 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None):
             },
         }
         try:
+            # Claim the candidate before the external call to avoid duplicate
+            # paid requests when a cron and a manual run overlap.
+            with factory() as db:
+                row = db.get(PaperPreanalysis, item["candidate_id"])
+                if row is None:
+                    row = PaperPreanalysis(
+                        candidate_id=item["candidate_id"], paper_id=item["paper_id"],
+                        abstract_hash=item["abstract_hash"], model=model,
+                    )
+                    db.add(row)
+                row.abstract_hash = item["abstract_hash"]
+                row.model = model
+                row.status = "running"
+                row.error = ""
+                row.updated_at = now()
+                db.commit()
             result, _usage = request_json(
                 key, model, SYSTEM, payload, client=client, max_tokens=1100
             )
