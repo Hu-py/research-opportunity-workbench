@@ -493,6 +493,7 @@ export default function Workbench(){
 
         {section==="repository"&&<ResearchArchive canAdmin={canAdmin}/>}
         {section==="assets"&&<DataAssetRegistry canAdmin={canAdmin}/>}
+        {section==="sources"&&<AcademicSourceRegistry canAdmin={canAdmin}/>}
         {section==="discovery"&&<ResearchDiscovery canAdmin={canAdmin} canEdit={canEdit}/>} 
         {section==="ai-lab"&&<AIResearchLab canAdmin={canAdmin} canEdit={canEdit}/>} 
         {section==="radar"&&<ResearchRadar canEdit={canEdit}/>} 

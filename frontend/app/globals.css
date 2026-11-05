@@ -675,3 +675,21 @@ input,textarea,select{outline:none}
   .module-tabs {width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;justify-content:flex-start;}
   .module-tab {flex:0 0 auto;padding:9px 11px;font-size:11px;}
 }
+
+/* Academic Source Registry */
+.source-table-wrap{overflow:auto}.source-table{width:100%;border-collapse:collapse;font-size:13px;min-width:850px}
+.source-table th,.source-table td{padding:13px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.source-table th{font-size:11px;color:var(--muted);font-weight:700;background:#fafbfe}
+.source-table td strong,.source-table td small{display:block}.source-table td small{font-size:11px;color:var(--muted);margin-top:4px}
+.source-table td a{font-size:11px;color:var(--violet);display:inline-block;margin-top:5px}
+.source-table .empty-cell{text-align:center;padding:36px;color:var(--muted)}
+.source-table .row-actions{display:flex;gap:5px;white-space:nowrap}
+.source-modal{max-width:760px;width:min(760px,calc(100vw - 28px));max-height:90vh;overflow:auto}
+.source-modal .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;padding:20px}
+.source-modal .field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--ink-soft)}
+.source-modal .field input,.source-modal .field select,.source-modal .field textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;background:#fff;color:var(--ink);min-width:0}
+.source-modal .field textarea{min-height:85px}.source-modal .field.full{grid-column:1/-1}
+.source-modal .field.check{flex-direction:row;align-items:center}
+.source-modal .modal-head,.source-modal .modal-foot{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid var(--line)}
+.source-modal .modal-foot{border-top:1px solid var(--line);border-bottom:0;justify-content:flex-end;gap:8px}
+@media(max-width:760px){.source-modal .form-grid{grid-template-columns:1fr}.source-modal .field.full{grid-column:auto}}
