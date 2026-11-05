@@ -67,6 +67,16 @@ from backend.ai_lab import (
     list_cards as list_ai_cards, review_card as review_ai_card,
     resume as resume_ai_run,
 )
+from backend.scientific_tournament import (
+    ScientificTournamentRun, ScientificTournamentRating,
+    start_run as create_scientific_tournament,
+    execute as execute_scientific_tournament,
+    summary as scientific_tournament_view,
+    resume as resume_scientific_tournament,
+    blind_cards as scientific_tournament_blind_cards,
+    submit_rating as scientific_tournament_submit_rating,
+    review_summary as scientific_tournament_review_summary,
+)
 from backend.scientific_tools import REGISTRY as SCIENTIFIC_TOOL_REGISTRY
 from backend.scientific_agent import (
     ScientificExplorationRun,
@@ -757,6 +767,93 @@ def reject_research_profile_draft(draft_id:str,
              actor:TeamMember|None=Depends(require_admin)):
     try:return discard_research_profile_draft(db,draft_id,actor.id if actor else "")
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+class ScientificTournamentRequest(BaseModel):
+    line_id: str = Field(min_length=1,max_length=110)
+    question: str = Field(min_length=10,max_length=600)
+
+
+class ScientificTournamentRatingRequest(BaseModel):
+    blind_id: Literal["方案一","方案二"]
+    scientific_value: int = Field(ge=1,le=5)
+    novelty: int = Field(ge=1,le=5)
+    feasibility: int = Field(ge=1,le=5)
+    testability: int = Field(ge=1,le=5)
+    recommendation: Literal["test","investigate","reject"]
+    comment: str = Field(default="",max_length=1500)
+
+
+@app.post("/api/scientific-tournaments",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_tournament_start(data:ScientificTournamentRequest,
+                                background:BackgroundTasks,
+                                actor:TeamMember|None=Depends(require_editor),
+                                db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"配对竞赛只能由团队研究人员手动启动")
+    try:run=create_scientific_tournament(db,data.line_id,data.question,actor.id)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_tournament,get_factory(),run.id)
+    return {"id":run.id,"status":"queued","max_competition_rounds":3,
+            "paired_baseline":True,
+            "note":"A 原四阶段流程与 B 竞争流程共享冻结输入，匿名人工评分另行保存"}
+
+
+@app.get("/api/scientific-tournaments",dependencies=[Depends(require_actor)])
+def scientific_tournament_list(db:Session=Depends(get_db)):
+    rows=db.scalars(select(ScientificTournamentRun).order_by(
+        ScientificTournamentRun.created_at.desc()).limit(30)).all()
+    return {"items":[scientific_tournament_view(x) for x in rows]}
+
+
+@app.get("/api/scientific-tournaments/{run_id}",dependencies=[Depends(require_actor)])
+def scientific_tournament_detail(run_id:str,db:Session=Depends(get_db)):
+    run=db.get(ScientificTournamentRun,run_id)
+    if not run:raise HTTPException(404,"科研竞赛不存在")
+    return scientific_tournament_view(run,True)
+
+
+@app.post("/api/scientific-tournaments/{run_id}/resume",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_tournament_resume(run_id:str,background:BackgroundTasks,
+                                 actor:TeamMember|None=Depends(require_editor),
+                                 db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"需要已登录的团队研究人员身份")
+    try:run=resume_scientific_tournament(db,run_id,actor.id)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_tournament,get_factory(),run.id)
+    return {"id":run.id,"status":"queued"}
+
+
+@app.get("/api/scientific-tournaments/{run_id}/blind",
+         dependencies=[Depends(require_actor)])
+def scientific_tournament_blind(run_id:str,db:Session=Depends(get_db)):
+    run=db.get(ScientificTournamentRun,run_id)
+    if not run:raise HTTPException(404,"科研竞赛不存在")
+    try:return scientific_tournament_blind_cards(run)
+    except ValueError as exc:raise HTTPException(409,str(exc)) from exc
+
+
+@app.post("/api/scientific-tournaments/{run_id}/ratings",
+          dependencies=[Depends(require_editor)])
+def scientific_tournament_rate(run_id:str,data:ScientificTournamentRatingRequest,
+                               actor:TeamMember|None=Depends(require_editor),
+                               db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"匿名评审需要团队身份")
+    try:return scientific_tournament_submit_rating(db,run_id,actor.id,
+        data.blind_id,data.scientific_value,data.novelty,
+        data.feasibility,data.testability,data.recommendation,data.comment)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+
+@app.get("/api/scientific-tournaments/{run_id}/ratings",
+         dependencies=[Depends(require_actor)])
+def scientific_tournament_ratings(run_id:str,db:Session=Depends(get_db)):
+    try:return scientific_tournament_review_summary(db,run_id)
+    except ValueError as exc:raise HTTPException(404,str(exc)) from exc
+
 
 class ScientificExploreRequest(BaseModel):
     line_id: str = Field(min_length=1,max_length=110)
