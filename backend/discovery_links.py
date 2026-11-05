@@ -12,20 +12,6 @@ from backend.team import add_audit
 
 def utcnow():return datetime.now(timezone.utc)
 
-THEMES=[
- (("building","vertical","floor","3d","morphology","function","三维","垂直","建筑","楼层","功能","城市肌理"),
-  ("建筑","楼层","高度","三维","poi","aoi","形态","功能","超高层","building","floor")),
- (("road","street","network","graph","mobility","traffic","路网","网络","出行","韧性","渗流"),
-  ("路网","交通","街道","地铁","公交","od","道路","信令","流动","轨迹","network")),
- (("green","vegetation","urban heat","ecology","绿地","生态","热","暴露"),
-  ("绿地","植被","生态","热","ndvi","遥感","环境","ugs","green")),
- (("ses","inequality","segregation","social","population","health","housing","社会","分异","儿童","住房"),
-  ("人口","社会","住房","房价","儿童","健康","ses","收入","就业")),
- (("flood","fire","hazard","disaster","resilience","risk","消防","暴雨","韧性","灾害","风险"),
-  ("雨","水位","泵","闸","火灾","消防","flood","暴雨","积水","drone","韧性")),
-]
-STOP={"urban","city","model","method","research","study","spatial","cities"}
-def tokens(s):return set(re.findall(r"[a-z][a-z0-9_-]{2,}",s.lower()))-STOP
 def link_id(line,kind,rid):
     return "rel_"+hashlib.sha256((line+"|"+kind+"|"+rid).encode()).hexdigest()[:32]
 
