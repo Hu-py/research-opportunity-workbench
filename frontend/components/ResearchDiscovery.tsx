@@ -98,6 +98,23 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
    }catch(e){setError(e instanceof Error?e.message:String(e));}
    finally{setBusy(false);}
  }
+ async function runRelationAnalysis(){
+   setBusy(true);setError("");setNotice("");
+   try{
+     await api("opportunity-engine/relations/analyze",{method:"POST"});
+     setNotice("已启动 LLM 数据资产关联分析。正在等待结果写入……");
+     for(let attempt=0;attempt<12;attempt++){
+       await new Promise(resolve=>setTimeout(resolve,5000));
+       const latest=await api<Dashboard>("opportunity-engine");
+       setData(latest);
+       if(latest.relations.length>0){
+         setNotice("LLM 关联建议已更新，所有新关联均需人工确认。");
+         break;
+       }
+     }
+   }catch(e){setError(e instanceof Error?e.message:String(e));}
+   finally{setBusy(false);}
+ }
  async function reviewRelation(row:Relation,status:Relation["status"]){
    setBusy(true);setError("");
    try{
@@ -162,9 +179,9 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </div>
      {active==="links"&&<>
-       <p className="small muted">以下根据团队研究问题与 CUSP 数据属性、已核验成果主题推断，仅是候选关联。管理员确认后会保留审核状态与操作记录，不等于实际数据可用或已经验证方法。</p>
+       <div className="discovery-inbox-top"><p className="small muted">由 LLM 结合研究构念、数据字段、时空覆盖和团队已核验成果提出关联。模型只生成建议，不证明数据可用性。</p>{canAdmin&&<button className="btn btn-primary" disabled={busy} onClick={()=>void runRelationAnalysis()}>LLM 分析数据关联</button>}</div>
        <div className="discovery-record-list">
-         {relations.length===0?<div className="empty"><Database size={26}/><p>未发现可匹配关联。请检查团队研究画像中的问题与关键词。</p></div>:
+         {relations.length===0?<div className="empty"><Database size={26}/><p>尚无 LLM 生成的关联建议。管理员可点击“LLM 分析数据关联”。</p></div>:
          relations.map(x=><article className="discovery-record" key={x.id}>
            <div className="discovery-labels"><span>{x.line_name}</span><span>{x.kind==="dataset"?"CUSP 数据":"团队已有成果"}</span>
              <span className={x.status==="confirmed"?"disc-confirmed":""}>{x.status==="confirmed"?"已确认":x.status==="rejected"?"已排除":"建议关联"}</span></div>
