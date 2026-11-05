@@ -13,6 +13,7 @@ from research_workbench.core import Base, get_profile
 from backend.discovery import PaperCandidate
 from backend.model_vault import ModelCredential, load_key
 from backend.model_gateway import request_json
+from backend.skill_loader import load_skills
 
 MAX_PREANALYSES_PER_RUN = 6
 PREANALYSIS_MODEL = "deepseek-flash"
@@ -180,8 +181,9 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None, req
                 row.error = ""
                 row.updated_at = now()
                 db.commit()
+            system = SYSTEM + "\n\n执行技能：\n" + load_skills(("paper_reader", "literature_discovery"))
             result, _usage = request_json(
-                key, model, SYSTEM, payload, client=client, max_tokens=1100
+                key, model, system, payload, client=client, max_tokens=1400
             )
             analysis = _validate(result)
             with factory() as db:
