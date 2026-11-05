@@ -196,3 +196,33 @@ def test_early_exit_when_every_counter_review_rejects(tmp_path,monkeypatch):
     outputs={"challenge_"+role:{"stance":"reject"} for role in tour.LENSES}
     assert tour._advance(outputs,"challenge_data")=="arbitrate"
     assert tour._advance({},"revision_problem")=="revision_method"
+
+
+def test_team_curated_feedback_is_replayed_to_both_arms_only_on_future_runs(tmp_path,monkeypatch):
+    factory=factory_for(tmp_path,monkeypatch)
+    with factory() as db:
+        first=tour.start_run(db,"city","Does spatial transfer generalize outside one city?","researcher-one")
+        first_id=first.id
+    model,calls=fake_model_factory()
+    assert tour.execute(factory,first_id,model_call=model)
+    with factory() as db:
+        item=tour.curate_learning(db,first_id,"admin-one","experiment_observation",
+            "Independent held-out-city errors rose for the baseline in a team-reviewed pilot",
+            "internal-experiment-log-2026-11","Pilot result needs replication and spatial scale control")
+        assert item["applies_to_future_runs"]
+        second=tour.start_run(db,"city","Are spatial interactions transferable between regions?","researcher-two")
+        snapshot=json.loads(second.snapshot_json)
+        assert len(snapshot["approved_feedback"])==1
+        assert snapshot["approved_feedback"][0]["status"]=="team_curated_not_independently_verified"
+        assert snapshot["approved_feedback"][0]["kind"]=="experiment_observation"
+        assert second.status=="queued"
+    prompt,payload=tour._stage_prompt("baseline_planner",snapshot,{})
+    assert "team_curated_research_feedback" not in payload
+    # Execution adds the same reviewed memory to both arms at model dispatch.
+    with factory() as db:
+        second=db.get(tour.ScientificTournamentRun,second.id)
+        second.status="failed"
+        db.commit()
+    with pytest.raises(ValueError,match="已经结束"):
+        tour.curate_learning(db,"missing","admin-one","human_review",
+                             "Some finding","ref","some limitation")
