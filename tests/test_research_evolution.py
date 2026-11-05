@@ -52,7 +52,7 @@ def fake_network(name,args,*,session,client=None):
         "source_url":"https://api.openalex.org/works"}}
 
 
-def fake_model(low_score=False,bad_reference=False):
+def fake_model(low_score=False,bad_reference=False,fatal_prior_art=False):
     def call(key,model,system,payload,client=None,max_tokens=0):
         role=payload["role"]
         used={"input_tokens":125,"output_tokens":90}
@@ -91,7 +91,7 @@ def fake_model(low_score=False,bad_reference=False):
                     "queries":["challenge urban transfer"]},used
         if role=="Independent Counter-evidence Referee":
             return {"paper_ids":[PAPERS[2]["id"]],
-                    "prior_art_risk":"manageable",
+                    "prior_art_risk":"fatal" if fatal_prior_art else "manageable",
                     "counterclaims":["The closest existing method lacks an out-of-city benchmark"],
                     "reason":"A possible novelty gap remains to test"},used
         if role=="Research Recommendation Synthesizer":
@@ -140,6 +140,11 @@ def test_full_autonomous_pipeline_without_manual_paper_review(tmp_path,monkeypat
                 "This is testable")
             assert out["model_weight_training"] is False
             assert sum(x["trials"] for x in policy_report(db))==1
+            # Real feedback is replayed into the next frozen research context.
+            following=create_run(db,"city","researcher-one")
+            assert following.strategy=="novelty"
+            assert any("This is testable" in x["comment"] for x in
+                       evo.load(following.snapshot_json)["evolution_feedback"])
             with pytest.raises(ValueError):
                 feedback(db,run_id,"human","adopt",{
                     "scientific_value":5,"novelty":4,"feasibility":4,"testability":5})
@@ -158,3 +163,16 @@ def test_fabricated_paper_id_is_rejected_before_recommendation(tmp_path,monkeypa
         assert "真实" in item.error
         assert view(item,True)["recommendation"] is None
         assert len(view(item,True)["paper_assessments"])==2
+
+
+def test_fatal_prior_art_blocks_a_high_scoring_candidate(tmp_path,monkeypatch):
+    factory=make_factory(tmp_path,monkeypatch)
+    monkeypatch.setattr(runner.REGISTRY,"invoke",fake_network)
+    with factory() as db:
+        rid=create_run(db,"city","researcher").id
+    assert runner.execute(factory,rid,model_call=fake_model(fatal_prior_art=True))
+    with factory() as db:
+        row=db.get(EvolutionRun,rid)
+        assert row.status=="held"
+        assert evo.load(row.outputs_json)["counter_referee"]["prior_art_risk"]=="fatal"
+        assert view(row,True)["recommendation"] is None
