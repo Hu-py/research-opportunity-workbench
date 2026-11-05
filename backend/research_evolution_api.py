@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from backend.research_evolution import (
     EvolutionRun, readiness, create_run, view, resume, feedback, policy_report)
@@ -42,7 +42,7 @@ def mount(app, *, get_db, get_factory, require_actor, require_editor,
             raise HTTPException(403,"需要已登录的团队研究人员身份")
         try:run=create_run(db,data.line_id,actor.id)
         except ValueError as exc:raise HTTPException(422,str(exc)) from exc
-        background.add_task(execute,get_factory(),run.id)
+        background.add_task(execute,sessionmaker(bind=db.get_bind(),expire_on_commit=False),run.id)
         return {"id":run.id,"status":"queued",
                 "requires_manual_paper_approval":False,
                 "human_review_stage":"final_package_only"}
@@ -67,7 +67,7 @@ def mount(app, *, get_db, get_factory, require_actor, require_editor,
             raise HTTPException(403,"需要已登录的团队研究人员身份")
         try:run=resume(db,run_id,actor.id)
         except ValueError as exc:raise HTTPException(422,str(exc)) from exc
-        background.add_task(execute,get_factory(),run.id)
+        background.add_task(execute,sessionmaker(bind=db.get_bind(),expire_on_commit=False),run.id)
         return {"id":run.id,"status":"queued"}
 
     @router.post("/{run_id}/feedback",dependencies=[Depends(require_editor)])
