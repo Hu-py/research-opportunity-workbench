@@ -188,7 +188,8 @@ def execute_llm_discovery(factory, run_id, client=None):
                 selected.append({"id":token,"name":interest.title,"problem":interest.problem,
                     "keywords":decode_interest(interest.keywords_json),
                     "methods":[],"focus":interest.focus,
-                    "venues":decode_interest(interest.venues_json),\n                    "query_hints":decode_interest(interest.queries_json)})
+                    "venues":decode_interest(interest.venues_json),
+                    "query_hints":decode_interest(interest.queries_json)})
         credential=db.get(ModelCredential,"deepseek")
         key=load_key(db) if credential and credential.encrypted_key else None
         if not selected or not key:
