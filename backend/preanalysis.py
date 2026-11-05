@@ -13,6 +13,7 @@ from research_workbench.core import Base, get_profile
 from backend.discovery import PaperCandidate
 from backend.model_vault import ModelCredential, load_key
 from backend.model_gateway import request_json
+from backend.research_budget import reserve, record_usage
 
 MAX_PREANALYSES_PER_RUN = 6
 PREANALYSIS_MODEL = "deepseek-flash"
@@ -164,6 +165,11 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None, req
             },
         }
         try:
+            if not reserve(factory,papers=1,calls=1,tokens=6500):
+                return {"status":"budget_exhausted","processed":processed,
+                        "failed":len(failures),"model":model,
+                        "reason":"今日共享的论文数量、模型请求或 Token 预算已用尽",
+                        "failures":failures[:5]}
             # Claim the candidate before the external call to avoid duplicate
             # paid requests when a cron and a manual run overlap.
             with factory() as db:
@@ -183,6 +189,7 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None, req
             result, _usage = request_json(
                 key, model, SYSTEM, payload, client=client, max_tokens=1100
             )
+            record_usage(factory,_usage)
             analysis = _validate(result)
             with factory() as db:
                 row = db.get(PaperPreanalysis, item["candidate_id"])
