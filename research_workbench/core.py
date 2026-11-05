@@ -148,8 +148,12 @@ def normalize_paper(work):
                 doi=doi,url=("https://doi.org/"+doi) if doi else work.get("id") or "",
                 published=work.get("publication_date") or "",venue=source.get("display_name") or "")
 
-def query_openalex(query,since,limit=15,client=None):
-    params={"search":query,"filter":"from_publication_date:"+since,"sort":"publication_date:desc","per-page":max(1,min(int(limit),100))}
+def query_openalex(query,since,limit=15,client=None,source_ids=None):
+    filters=["from_publication_date:"+since]
+    if source_ids:
+        safe_ids=[str(x).replace("https://openalex.org/","") for x in source_ids if str(x).startswith(("S","https://openalex.org/S"))]
+        if safe_ids: filters.append("primary_location.source.id:"+"|".join(safe_ids))
+    params={"search":query,"filter":",".join(filters),"sort":"publication_date:desc","per-page":max(1,min(int(limit),100))}
     if os.getenv("OPENALEX_API_KEY"):params["api_key"]=os.environ["OPENALEX_API_KEY"]
     if os.getenv("OPENALEX_MAILTO"):params["mailto"]=os.environ["OPENALEX_MAILTO"]
     own=client is None
