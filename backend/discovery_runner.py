@@ -3,7 +3,8 @@ from datetime import date, timedelta
 import json, logging, os
 from sqlalchemy import select
 from backend.openalex_errors import safe_openalex_error
-from research_workbench.core import get_profile, normalize_paper, query_openalex
+from research_workbench.core import normalize_paper, query_openalex
+from backend.profile_intelligence import discovery_profile
 from backend.discovery import DiscoveryRun, PaperCandidate, candidate_id, strategies, reads, dumps, now
 from backend.preanalysis import execute_preanalysis
 from backend.llm_discovery import plan_queries, assess_papers
@@ -41,9 +42,9 @@ def execute_discovery(factory, run_id, client=None):
         run=db.get(DiscoveryRun,run_id)
         if not run or run.status!="queued":return
         run_source=run.source
-        profile=get_profile(db)
+        profile=discovery_profile(db)
         lines={x["id"]:x for x in (profile or {}).get("research_lines",[])}
-        settings={x["line_id"]:x for x in strategies(db,profile)}
+        settings={x["line_id"]:x for x in strategies(db,profile,auto_generated=(run_source=="scheduled"))}
         selected=[i for i in reads(run.line_ids_json) if i in lines and i in settings]
         credential=db.get(ModelCredential,"deepseek")
         key=load_key(db) if credential and credential.encrypted_key else None

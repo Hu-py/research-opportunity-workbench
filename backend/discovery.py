@@ -69,7 +69,7 @@ def valid_queries(values):
         raise ValueError("Search queries must contain 3-140 characters")
     return list(dict.fromkeys(x.strip() for x in values))
 
-def strategies(db,profile):
+def strategies(db,profile,auto_generated=False):
     if not profile:return []
     stored={x.line_id:x for x in db.scalars(select(SearchStrategy)).all()}
     result=[]
@@ -79,7 +79,7 @@ def strategies(db,profile):
             "line_id":line["id"],"line_name":line["name"],
             "direct_queries":reads(record.direct_json) if record else valid_queries(line.get("search_queries",[])[:3]),
             "method_queries":reads(record.method_json) if record else valid_queries(line.get("method_queries",[])[:3]),
-            "enabled":record.enabled if record else False,
+            "enabled":record.enabled if record else bool(auto_generated and line["id"].startswith(("db_theme_","db_data_topic_"))),
             "lookback_days":record.lookback_days if record else 30,
             "per_query":record.per_query if record else 8,
             "min_score":record.min_score if record else 60,
@@ -106,13 +106,27 @@ def save_strategy(db,profile,line_id,settings,actor):
     return next(x for x in strategies(db,profile) if x["line_id"]==line_id)
 
 def create_run(db,profile,source="manual",line_id=None):
-    items=strategies(db,profile)
+    # Newly inferred DB topics are eligible for scheduled *candidate* discovery
+    # while individually disabled strategies always remain disabled. The global
+    # paid-analysis opt-in is enforced by the scheduler / discovery runner.
+    items=strategies(db,profile,auto_generated=(source=="scheduled"))
     if line_id:
         items=[x for x in items if x["line_id"]==line_id]
         if not items:raise ValueError("Unknown research line")
     elif source=="scheduled":
-        items=[x for x in items if x["enabled"]][:3]
+        items=[x for x in items if x["enabled"]]
         if not items:return None
+        # Rotate a bounded daily batch across all portrait-derived topics.
+        # This prevents the first three from monopolizing every daily run.
+        recent=db.scalars(select(DiscoveryRun).where(
+            DiscoveryRun.source=="scheduled"
+        ).order_by(DiscoveryRun.started_at.desc()).limit(120)).all()
+        recent_index={}
+        for index,run in enumerate(recent):
+            for ident in reads(run.line_ids_json):
+                recent_index.setdefault(ident,index)
+        items.sort(key=lambda x:recent_index.get(x["line_id"],10**6),reverse=True)
+        items=items[:3]
     else:items=items[:3]
     item=DiscoveryRun(id=str(uuid.uuid4()),source=source,
                       line_ids_json=dumps([x["line_id"] for x in items]))
