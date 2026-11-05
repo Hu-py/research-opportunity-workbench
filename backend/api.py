@@ -39,6 +39,7 @@ from backend.radar_pipeline import (
 )
 from backend.bootstrap import bootstrap_admin_from_env
 from backend.discovery_links import list_links, review_link
+from backend.llm_relations import execute_llm_relations
 from backend.discovery import (
     SearchStrategy, DiscoveryRun, PaperCandidate, strategies,
     save_strategy, create_run, candidates, runs as discovery_runs,
@@ -626,6 +627,20 @@ def start_paper_preanalysis(background:BackgroundTasks,
         db.commit()
     return {"status":"queued","limit":6,
             "note":"只预分析待审核论文；不会自动通过或写入正式已审核文献库。"}
+
+@app.post("/api/opportunity-engine/relations/analyze",status_code=202,
+          dependencies=[Depends(require_actor)])
+def analyze_research_relations(background:BackgroundTasks,
+        db:Session=Depends(get_db),
+        actor:TeamMember|None=Depends(require_admin)):
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        raise HTTPException(409,"请先在 AI 实验台配置 DeepSeek API Key")
+    background.add_task(execute_llm_relations,get_factory())
+    if actor is not None:
+        add_audit(db,"research_relation.llm_analysis_started",actor.id,"team-data-mapping")
+        db.commit()
+    return {"status":"queued","note":"LLM 正在理解研究主线与非受限数据资产；所有新关联均保持待人工确认。"}
 
 @app.patch("/api/opportunity-engine/relations/{relation_id}",
            dependencies=[Depends(require_actor)])
