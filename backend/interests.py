@@ -50,9 +50,8 @@ def as_dict(row: ResearchInterest):
     }
 
 def create_interest(db, payload: dict, actor: str = ""):
-    queries = [q.strip() for q in payload["queries"] if q.strip()]
-    if not queries:
-        raise ValueError("至少填写一条具体的文献检索表达式")
+    # Queries are optional hints; the LLM derives the actual search plan.
+    queries = [q.strip() for q in payload.get("queries", []) if q.strip()]
     row = ResearchInterest(
         id=str(uuid.uuid4()), title=payload["title"].strip(),
         focus=payload["focus"], problem=payload["problem"].strip(),
