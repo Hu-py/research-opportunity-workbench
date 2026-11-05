@@ -5,6 +5,7 @@ import {BrainCircuit,CheckCircle2,Database,ExternalLink,KeyRound,LockKeyhole,Pla
 import {api} from "@/lib/api";
 import ScientificExplorationPanel from "@/components/ScientificExplorationPanel";
 import ScientificTournamentPanel from "@/components/ScientificTournamentPanel";
+import ResearchEvolutionPanel from "@/components/ResearchEvolutionPanel";
 
 type ModelConfig={
  provider:string;configured:boolean;vault_ready:boolean;
@@ -108,7 +109,7 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
    <div className="page-heading">
      <span className="panel-kicker">RESEARCH OPPORTUNITY ENGINE · P2</span>
      <h1>AI 科研选题实验台</h1>
-     <p>从已审核论文、团队成果及数据属性出发，经 Planner → Reader → Generator → Critic 形成有来源的待审选题。</p>
+     <p>自主检索、论文Agent互审、多轮科研假设演化和反证检索，最终只推送通过证据门控的选题；人工评价只发生在成果推荐之后。</p>
    </div>
    {error&&<div className="alert alert-error">{error}</div>}
    {notice&&<div className="alert alert-success">{notice}</div>}
@@ -189,6 +190,9 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
      {data&&!data.runs.length&&<div className="small-note">还没有 AI 分析任务。配置密钥、审核至少一篇论文后即可试运行。</div>}
    </section>
 
+   <ResearchEvolutionPanel selectedLine={selected} lines={strategies}
+     canEdit={canEdit} modelConfigured={Boolean(data?.config.configured)}/>
+   <div className="small-note">以下为既有科研工具实验、配对基准和四阶段旧流程，用于实验对照及历史结果追溯。新自主科研链路不需要人工预审文献。</div>
    <ScientificExplorationPanel selectedLine={selected} lines={strategies}
      canEdit={canEdit} modelConfigured={Boolean(data?.config.configured)}/>
    <ScientificTournamentPanel selectedLine={selected} lines={strategies}
