@@ -56,24 +56,17 @@ def _score(line,source):
     return score,reason
 
 def suggestions(db,profile):
-    if not profile:return []
-    assets=db.scalars(select(CuspDataset)).all()
-    works=db.scalars(select(TeamAchievement).where(TeamAchievement.status=="verified")).all()
-    rows=[]
-    for line in profile.get("research_lines",[]):
-        for kind,entries in (("dataset",assets),("achievement",works)):
-            items=[]
-            for x in entries:
-                label=x.name if kind=="dataset" else x.title
-                context=(x.category+" "+x.format+" "+x.description[:120]+" "+x.prior_research[:120]) if kind=="dataset" else x.tags_json+" "+x.venue
-                result=_score(line,label+" "+context)
-                if not result:continue
-                value,reason=result
-                items.append({"id":link_id(line["id"],kind,x.id),"line_id":line["id"],
-                    "line_name":line["name"],"kind":kind,"reference_id":x.id,
-                    "label":label,"score":value,"reason":reason})
-            rows.extend(sorted(items,key=lambda v:-v["score"])[:8])
-    return rows
+    """Return persisted LLM-generated links only; never synthesize lexical matches."""
+    lines={x["id"]:x["name"] for x in (profile or {}).get("research_lines",[])}
+    rows=db.scalars(select(ResearchLineRelation).order_by(
+        ResearchLineRelation.updated_at.desc())).all()
+    return [{
+        "id":row.id,"line_id":row.line_id,
+        "line_name":lines.get(row.line_id,"历史主线"),
+        "kind":row.kind,"reference_id":row.reference_id,
+        "label":row.label,"score":row.score,"reason":row.reason,
+        "status":row.status,
+    } for row in rows]
 
 def list_links(db,profile):
     output=suggestions(db,profile)
