@@ -43,7 +43,7 @@ SCREEN_SYSTEM = """你是跨学科科研文献评审专家。逐篇阅读标题�
 def _safe_json(value):
     return json.dumps(value, ensure_ascii=False)
 
-def _validate_plan(data):
+def _validate_plan(data, allowed_source_ids=None):
     rows = data.get("search_plan") if isinstance(data, dict) else None
     if not isinstance(rows, list) or not rows:
         raise ValueError("LLM 未生成有效检索计划")
@@ -57,10 +57,16 @@ def _validate_plan(data):
         mode=row.get("mode", "direct")
         if mode not in ("direct", "method", "frontier", "evidence", "contradiction"):
             mode="direct"
+        selected=row.get("source_ids", [])
+        allowed=set(allowed_source_ids or [])
+        if not isinstance(selected,list):
+            selected=[]
+        selected=[value for value in selected if isinstance(value,str) and value in allowed][:20]
         result.append({
             "query": query.strip(), "mode": mode,
             "rationale": str(row.get("rationale", ""))[:500],
             "discipline": str(row.get("discipline", ""))[:100],
+            "source_ids": selected,
         })
     if not result:
         raise ValueError("LLM 检索计划没有可执行的查询")
@@ -136,18 +142,19 @@ def _context(db, line):
         "source_note":"来源等级与学科标签是团队登记元数据；未解析来源不能作为已核实收录来源。",
     }
 
-def _plan_queries(key, model, context, config, client=None):
+def _plan_queries(key, model, context, config, allowed_source_ids=None, client=None):
     payload={
         "team_research_context":context,
         "search_constraints":{"lookback_days":config.get("lookback_days",30),
-            "max_queries":MAX_QUERIES,"max_results_per_query":min(config.get("per_query",8),MAX_RESULTS_PER_QUERY)},
+            "max_queries":MAX_QUERIES,"max_results_per_query":min(config.get("per_query",8),MAX_RESULTS_PER_QUERY),
+            "allowed_openalex_source_ids":allowed_source_ids or []},
         "task":"先理解研究问题和数据边界，再设计多角度检索。至少提供3个互补策略；其中至少一个方法迁移/计算机前沿方向（若有意义）。每个 query 应能直接用于学术文献搜索。",
-        "required_json":{"search_plan":[{"query":"", "mode":"direct|method|frontier|evidence|contradiction", "rationale":"", "discipline":""}],
+        "required_json":{"search_plan":[{"query":"", "mode":"direct|method|frontier|evidence|contradiction", "rationale":"", "discipline":"","source_ids":["only IDs from allowed_openalex_source_ids"]}],
             "coverage_gaps":[""],"excluded_directions":[""]}
     }
     system=PLAN_SYSTEM+"\n\n执行规范：\n"+load_skills(("research_profile","literature_discovery"))
     result,usage=request_json(key,model,system,payload,client=client,max_tokens=2200)
-    return _validate_plan(result),usage
+    return _validate_plan(result,allowed_source_ids),usage
 
 def _screen_candidates(key, model, context, candidates, client=None):
     allowed={x["candidate_id"] for x in candidates}
@@ -185,11 +192,12 @@ def execute_llm_discovery(factory, run_id, client=None):
                 cfg=db.get(SearchStrategy,line["id"])
                 config={"lookback_days":cfg.lookback_days if cfg else 30,
                     "per_query":cfg.per_query if cfg else 8}
-            plan,plan_usage=_plan_queries(key,planner_model,context,config,client=client)
+            allowed_source_ids=[x["openalex_source_id"] for x in context["enabled_academic_sources"] if x.get("openalex_source_id")]
+            plan,plan_usage=_plan_queries(key,planner_model,context,config,allowed_source_ids,client=client)
             query_results=[]
             since=(date.today()-timedelta(days=config["lookback_days"])).isoformat()
             for strategy in plan:
-                works=query_openalex(strategy["query"],since,limit=config["per_query"],client=client)
+                works=query_openalex(strategy["query"],since,limit=config["per_query"],client=client,source_ids=strategy.get("source_ids") or None)
                 total_queries+=1
                 for work in works[:config["per_query"]]:
                     if not isinstance(work,dict): continue
