@@ -12,7 +12,7 @@ type Idea={id?:string;title:string;question:string;mechanism?:string;
  baselines:string[];limitations?:string[]};
 type Decision={outcome:string;selected_ids:string[];reason:string;
  unresolved_disagreements:string[];stopping_reason:string};
-type Run=Summary&{baseline:Idea[];round0:Idea[];revisions:Idea[];
+type Run=Summary&{review_unblinded:boolean;baseline:Idea[];round0:Idea[];revisions:Idea[];
  critiques:{target_id:string;stance:string;objections:string[];tests:string[]}[];
  decision:Decision|null;trace:{stage:string;status:string;recorded_at:string}[]};
 type Blind={cards:{blind_id:string;ideas:Idea[];outcome?:string}[]};
@@ -104,6 +104,7 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
        })
      });
      setMessage("已保存 "+label+" 的匿名人工评分；不会自动修改团队画像或选题。");
+     await refresh(current.id);
    }catch(e){setError(e instanceof Error?e.message:String(e));}
    finally{setBusy(false);}
  }
@@ -206,10 +207,12 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
              onClick={()=>void rate(card.blind_id)}><Users size={14}/> 保存匿名评价</button>
          </div>}
        </article>)}
+       {current.review_unblinded?
        <button className="btn btn-secondary" onClick={()=>setShowTrace(!showTrace)}>
          <BrainCircuit size={15}/>{showTrace?"收起":"显示"}竞争过程与分歧
-       </button>
-       {showTrace&&<div className="ai-lab-card">
+       </button>:
+       <p className="small muted">请先完成方案一和方案二的评分，才能查看 A/B 角色及竞赛详细记录。</p>}
+       {current.review_unblinded&&showTrace&&<div className="ai-lab-card">
          <h3>仲裁：{decisions[current.decision?.outcome||""]||"未知"}</h3>
          <p>{current.decision?.reason}</p>
          <p><b>保留假设：</b>{selected.join("、")||"没有可直接推进的假设"}</p>
