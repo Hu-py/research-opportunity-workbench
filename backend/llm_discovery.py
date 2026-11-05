@@ -239,7 +239,7 @@ def execute_llm_discovery(factory, run_id, client=None):
                     reason=assessment["reason"] or assessment["relevance"] or "LLM semantic assessment"
                     score=assessment["score"]
                     relation=assessment["relation_type"]
-                    mode="method" if relation=="method_transfer" else ("frontier" if relation=="frontier" else "direct")
+                    mode="method" if relation=="method_transfer" else relation
                     existing=db.get(PaperCandidate,ident)
                     if not existing:
                         db.add(PaperCandidate(id=ident,line_id=line["id"],paper_id=paper["id"],
