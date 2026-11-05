@@ -1,6 +1,7 @@
 """Offline P0/P1 integration tests: no paid services or live OpenAlex calls."""
 import httpx
 import pytest
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -13,6 +14,7 @@ from backend.discovery import (
 from backend.discovery_links import list_links,review_link
 from backend.discovery_runner import execute_discovery
 from backend.team import create_member
+from backend.model_vault import ModelCredential
 from research_workbench.core import Paper,get_profile,set_profile,session_factory
 
 PROFILE={"research_lines":[
@@ -41,6 +43,7 @@ def setup_db(tmp_path,monkeypatch):
     monkeypatch.setenv("APP_ENV","development")
     monkeypatch.setenv("TEAM_AUTH_ENABLED","true")
     monkeypatch.setenv("TEAM_BOOTSTRAP_ENABLED","false")
+    monkeypatch.setenv("MODEL_VAULT_KEY",Fernet.generate_key().decode())
     monkeypatch.delenv("CUSP_DATA_BOOTSTRAP_ZB64",raising=False)
     factory=session_factory("sqlite:///"+str(tmp_path/"research-discovery.db"))
     monkeypatch.setattr(api,"get_factory",lambda:factory)
@@ -53,7 +56,10 @@ def setup_db(tmp_path,monkeypatch):
         login=client.post("/api/auth/login",headers=HEADERS,json={
             "email":"admin@example.net","password":"local-testing-password-2026"})
         assert login.status_code==200,login.text
-        yield factory,client,{**HEADERS,"X-Research-Session":login.json()["token"]}
+        headers={**HEADERS,"X-Research-Session":login.json()["token"]}
+        saved=client.put("/api/ai-lab/config",headers=headers,json={"key":"ds-test-discovery-key"})
+        assert saved.status_code==200,saved.text
+        yield factory,client,headers
 
 def work(ident="W551"):
     return {"id":"https://openalex.org/"+ident,
@@ -97,17 +103,35 @@ def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
         assert run.line_ids_json=='["vertical"]'
     def response(_request):
         return httpx.Response(200,json={"results":[work()]})
+    def llm(_key,model,system,payload,client=None,max_tokens=2000):
+        if "search_constraints" in payload:
+            return ({"search_plan":[{"query":"building floor function graph representation transfer learning",
+                "mode":"method","rationale":"method transfer","discipline":"urban computing"}]}, {"input_tokens":20,"output_tokens":10})
+        if "candidates" in payload:
+            return ({"papers":[{"candidate_id":p["candidate_id"],"relevance_score":88,
+                "priority":"high_priority","relation_type":"method_transfer",
+                "relevance":"与建筑垂直功能推断问题高度相关",
+                "research_problem":"有限楼层标签下的功能推断",
+                "method_transfer":"图表示学习可用于跨区域迁移",
+                "increment":"可补充跨域泛化证据","limitations":"摘要未提供外部城市测试",
+                "reason":"研究对象和方法均有迁移价值","evidence_level":"abstract"}
+                for p in payload["candidates"]]}, {"input_tokens":40,"output_tokens":30})
+        raise AssertionError("Unexpected model payload")
+    monkeypatch.setattr("backend.llm_discovery.request_json",llm)
+    monkeypatch.setattr("backend.preanalysis.execute_preanalysis",lambda *args,**kwargs:{"status":"skipped","processed":0})
     with httpx.Client(transport=httpx.MockTransport(response)) as http:
         execute_discovery(factory,run.id,client=http)
     with factory() as db:
         done=db.get(DiscoveryRun,run.id)
         assert done.status=="completed",done.errors_json
         assert done.new_candidates==1
-        assert done.queries==4
+        assert done.queries==1
         found=candidates(db,line_id="vertical")
         assert len(found)==1
         assert found[0]["status"]=="pending"
         assert found[0]["matched_queries"]
+        assert found[0]["score"]==88
+        assert found[0]["score_reason"].startswith("LLM method_transfer")
         assert db.scalar(select(Paper).where(Paper.title==work()["title"])) is None
         target=found[0]["id"]
         reviewed=review_candidate(db,target,"method","method-transfer candidate","admin")
@@ -132,12 +156,18 @@ def test_run_fails_visibly_on_external_api_error(setup_db):
         assert create_run(db,get_profile(db),source="scheduled") is None
         task=create_run(db,get_profile(db),source="manual",line_id="vertical")
     def failure(_):return httpx.Response(429,json={"error":"rate limit"})
+    def llm(_key,model,system,payload,client=None,max_tokens=2000):
+        if "search_constraints" in payload:
+            return ({"search_plan":[{"query":"urban flood road network resilience","mode":"direct","rationale":"problem search","discipline":"planning"}]}, {"input_tokens":10,"output_tokens":10})
+        raise AssertionError("screening should not run after failed retrieval")
+    monkeypatch.setattr("backend.llm_discovery.request_json",llm)
+    monkeypatch.setattr("backend.preanalysis.execute_preanalysis",lambda *args,**kwargs:{"status":"skipped","processed":0})
     with httpx.Client(transport=httpx.MockTransport(failure)) as http:
         execute_discovery(factory,task.id,client=http)
     with factory() as db:
         run=db.get(DiscoveryRun,task.id)
         assert run.status=="failed"
-        assert run.queries==4
+        assert run.queries==1
         assert "429" in run.errors_json
 
 def test_no_approval_from_read_only_requests(setup_db):
