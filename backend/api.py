@@ -67,6 +67,15 @@ from backend.ai_lab import (
     list_cards as list_ai_cards, review_card as review_ai_card,
     resume as resume_ai_run,
 )
+from backend.scientific_tools import REGISTRY as SCIENTIFIC_TOOL_REGISTRY
+from backend.scientific_agent import (
+    ScientificExplorationRun,
+    create_run as create_scientific_exploration,
+    execute as execute_scientific_exploration,
+    list_runs as list_scientific_explorations,
+    as_dict as scientific_exploration_view,
+    resume as resume_scientific_exploration,
+)
 from backend.cusp import (
     CuspDataset, CuspDatasetRevision, CuspImportRun,
     import_records as import_cusp_records, update_one as update_cusp_one,
@@ -748,6 +757,62 @@ def reject_research_profile_draft(draft_id:str,
              actor:TeamMember|None=Depends(require_admin)):
     try:return discard_research_profile_draft(db,draft_id,actor.id if actor else "")
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+class ScientificExploreRequest(BaseModel):
+    line_id: str = Field(min_length=1,max_length=110)
+    question: str = Field(min_length=10,max_length=600)
+
+
+@app.get("/api/scientific-tools",dependencies=[Depends(require_actor)])
+def scientific_tool_catalog():
+    """Read-only capability catalog; no provider calls or credentials are exposed."""
+    return {"items":SCIENTIFIC_TOOL_REGISTRY.catalog({"literature:read"}),
+            "mode":"experimental","auto_execution_enabled":False}
+
+
+@app.post("/api/scientific-explorations",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_exploration_start(data:ScientificExploreRequest,
+                                background:BackgroundTasks,
+                                actor:TeamMember|None=Depends(require_editor),
+                                db:Session=Depends(get_db)):
+    # Paid, model-directed tool use is disabled in legacy unauthenticated mode.
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"科研 Agent 探索仅允许登录团队研究人员手动发起")
+    try:
+        run=create_scientific_exploration(db,data.line_id,data.question,actor.id)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_exploration,get_factory(),run.id)
+    return {"id":run.id,"status":run.status,"mode":"manual_only",
+            "max_steps":5,"max_tool_calls":3,
+            "note":"每步模型决策按现有每日模型预算扣减；探索结果须人工核验"}
+
+
+@app.get("/api/scientific-explorations",dependencies=[Depends(require_actor)])
+def scientific_exploration_history(db:Session=Depends(get_db)):
+    return {"items":list_scientific_explorations(db)}
+
+
+@app.get("/api/scientific-explorations/{run_id}",dependencies=[Depends(require_actor)])
+def scientific_exploration_detail(run_id:str,db:Session=Depends(get_db)):
+    run=db.get(ScientificExplorationRun,run_id)
+    if run is None:raise HTTPException(404,"科研探索任务不存在")
+    return scientific_exploration_view(run)
+
+
+@app.post("/api/scientific-explorations/{run_id}/resume",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_exploration_resume(run_id:str,background:BackgroundTasks,
+                                  actor:TeamMember|None=Depends(require_editor),
+                                  db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"科研探索恢复需要团队研究人员身份")
+    try:run=resume_scientific_exploration(db,run_id,actor.id)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_exploration,get_factory(),run.id)
+    return {"id":run.id,"status":"queued","note":"保留先前已持久化的工具证据和消耗记录"}
+
 
 @app.get("/api/ai-lab",dependencies=[Depends(require_actor)])
 def ai_lab_overview(db:Session=Depends(get_db)):
