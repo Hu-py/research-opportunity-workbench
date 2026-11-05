@@ -28,7 +28,7 @@ const stageNames:Record<string,string>={
  plan:"科研检索规划",retrieve:"真实学术检索",screen:"论文语义评估",
  paper_referee:"独立证据审查",seed_problem:"问题视角假设",seed_method:"方法视角假设",
  seed_data:"数据视角假设",score_initial:"初始机器评分",
- challenge:"先前研究反驳",counter_search:"反证论文检索",
+ challenge:"先前研究反驳",counter_search:"反证论文检索",counter_referee:"第二轮独立论文审查",
  revise:"科研假设修订",score_final:"独立终审",
  package:"生成论文与研究路径包",done:"结束"
 };
