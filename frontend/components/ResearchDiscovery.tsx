@@ -16,7 +16,7 @@ type Run={id:string;status:string;source:string;queries:number;scanned:number;
 type Dashboard={profile_ready:boolean;openalex_key_configured:boolean;
  strategies:Strategy[];relations:Relation[];candidates:Candidate[];runs:Run[];note:string};
 
-export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;canEdit:boolean}){
+export default function ResearchDiscovery({canAdmin,canEdit,onManageSources}:{canAdmin:boolean;canEdit:boolean;onManageSources:()=>void}){
  const [data,setData]=useState<Dashboard|null>(null);
  const [active,setActive]=useState<"links"|"search"|"candidates">("search");
  const [line,setLine]=useState("all");
@@ -99,6 +99,10 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
      <span className="panel-kicker">RESEARCH OPPORTUNITY ENGINE · P0 + P1</span>
      <h1>科研关联与文献发现</h1>
      <p>已有成果、数据目录与研究方向之间建立可核验关系，再按研究问题和方法分别检索新论文。</p>
+     <div className="inline-actions">
+       <button className="btn btn-secondary" onClick={onManageSources}><BookOpenCheck size={14}/>管理学术来源</button>
+       <span className="small muted">仅使用 Academic Source Registry 中已启用且已核验的 OpenAlex 来源，不回退到全库宽泛检索。</span>
+     </div>
    </div>
    <div className="repository-stat-row">
      <div><strong>{data?.relations.filter(x=>x.status==="confirmed").length??"…"}</strong><span>已确认知识关联</span></div>

@@ -1,0 +1,2457 @@
+{
+  "schema_version": 1,
+  "catalogue_version": "2026.11.1",
+  "curated_at": "2026-11-05",
+  "description": "规划、城市研究、GIS、城市健康、水系统、文化遗产及计算机前沿期刊与会议初始目录。来源等级用于检索优先级，不构成单篇论文质量判断。",
+  "ranking_policy": "CCF 等级仅按对应版本目录记录；会议等级适用范围和论文类型须在单篇人工审核时复核。规划及应用领域采用透明的学科遴选标签，不与 CCF A/B/C 等同。",
+  "domains": [
+    {
+      "slug": "urban_planning",
+      "name": "规划与城市研究",
+      "group_name": "规划与城市",
+      "description": "城市规划、城市研究、空间治理与规划设计方法",
+      "sort_order": 10,
+      "default_channels": [
+        "direct"
+      ]
+    },
+    {
+      "slug": "gis_spatial",
+      "name": "GIS与空间计算",
+      "group_name": "规划与城市",
+      "description": "GIScience、空间数据分析、地理计算与空间智能",
+      "sort_order": 20,
+      "default_channels": [
+        "direct",
+        "method"
+      ]
+    },
+    {
+      "slug": "transportation",
+      "name": "交通与出行",
+      "group_name": "规划与城市",
+      "description": "交通地理、可达性、出行行为与智能交通",
+      "sort_order": 30,
+      "default_channels": [
+        "direct"
+      ]
+    },
+    {
+      "slug": "urban_environment",
+      "name": "城市环境与气候",
+      "group_name": "规划与城市",
+      "description": "城市气候、环境暴露、生态与韧性",
+      "sort_order": 40,
+      "default_channels": [
+        "direct"
+      ]
+    },
+    {
+      "slug": "urban_health",
+      "name": "城市健康",
+      "group_name": "团队应用领域",
+      "description": "健康地理、健康公平、建成环境与健康",
+      "sort_order": 50,
+      "default_channels": [
+        "direct"
+      ]
+    },
+    {
+      "slug": "heritage",
+      "name": "文化遗产",
+      "group_name": "团队应用领域",
+      "description": "遗产保护、风险评估、数字遗产与文化空间",
+      "sort_order": 60,
+      "default_channels": [
+        "direct"
+      ]
+    },
+    {
+      "slug": "water_disaster",
+      "name": "水系统与灾害",
+      "group_name": "团队应用领域",
+      "description": "水文、水资源、洪涝、消防与应急风险",
+      "sort_order": 70,
+      "default_channels": [
+        "direct"
+      ]
+    },
+    {
+      "slug": "ai_ml",
+      "name": "人工智能与机器学习",
+      "group_name": "计算机前沿",
+      "description": "机器学习、深度学习、表示学习与基础模型",
+      "sort_order": 110,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "cv_multimodal",
+      "name": "计算机视觉与多模态",
+      "group_name": "计算机前沿",
+      "description": "视觉理解、视觉语言模型、三维场景与多模态",
+      "sort_order": 120,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "data_mining",
+      "name": "数据挖掘与数据库",
+      "group_name": "计算机前沿",
+      "description": "数据挖掘、数据库、信息检索与图数据",
+      "sort_order": 130,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "graphics_visualization",
+      "name": "图形学与可视化",
+      "group_name": "计算机前沿",
+      "description": "计算机图形学、可视化与视觉分析",
+      "sort_order": 140,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "nlp",
+      "name": "自然语言处理与语言模型",
+      "group_name": "计算机前沿",
+      "description": "自然语言处理、大语言模型与语言理解",
+      "sort_order": 150,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "agents_robotics",
+      "name": "智能体与机器人",
+      "group_name": "计算机前沿",
+      "description": "Agent、多智能体、机器人与具身智能",
+      "sort_order": 160,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "hci",
+      "name": "人机交互与普适计算",
+      "group_name": "计算机前沿",
+      "description": "人机交互、协同计算与普适感知",
+      "sort_order": 170,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "systems_software",
+      "name": "软件工程与系统",
+      "group_name": "计算机前沿",
+      "description": "软件工程、操作系统、分布式系统与工具",
+      "sort_order": 180,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "network_security",
+      "name": "网络与信息安全",
+      "group_name": "计算机前沿",
+      "description": "计算机网络、系统安全与隐私",
+      "sort_order": 190,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "computer_architecture",
+      "name": "计算机体系结构",
+      "group_name": "计算机前沿",
+      "description": "计算机体系结构、高性能计算与系统",
+      "sort_order": 200,
+      "default_channels": [
+        "method"
+      ]
+    },
+    {
+      "slug": "theory_algorithms",
+      "name": "理论与算法",
+      "group_name": "计算机前沿",
+      "description": "计算理论、算法设计与组合优化",
+      "sort_order": 210,
+      "default_channels": [
+        "method"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "name": "Environment and Planning B: Urban Analytics and City Science",
+      "abbreviation": "EPB",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "规划与城市计算领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://journals.sagepub.com/home/epb",
+      "aliases": [
+        "Environment and Planning B"
+      ],
+      "notes": "城市分析、GIS、城市模拟与规划设计分析方法",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Cities",
+      "abbreviation": "Cities",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "规划与城市研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/cities",
+      "aliases": [],
+      "notes": "城市发展、空间治理、城市政策与实证研究",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Urban Studies",
+      "abbreviation": "Urban Studies",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "规划与城市研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://journals.sagepub.com/home/usj",
+      "aliases": [],
+      "notes": "城市理论、社会空间与城市转型",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Landscape and Urban Planning",
+      "abbreviation": "LUP",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "规划与景观领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/landscape-and-urban-planning",
+      "aliases": [],
+      "notes": "景观生态、空间规划、城市环境",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of the American Planning Association",
+      "abbreviation": "JAPA",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "规划学科旗舰（非统一ABC分级）",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.tandfonline.com/journals/rjpa20",
+      "aliases": [],
+      "notes": "规划理论、规划方法、规划政策与实践",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Computers, Environment and Urban Systems",
+      "abbreviation": "CEUS",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "城市计算领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/computers-environment-and-urban-systems",
+      "aliases": [
+        "Computers Environment and Urban Systems"
+      ],
+      "notes": "GIS、城市计算、空间建模与城市系统",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Planning Education and Research",
+      "abbreviation": "JPER",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "规划学科重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://journals.sagepub.com/home/jpe",
+      "aliases": [],
+      "notes": "规划方法、规划理论与规划教育",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Journal of Geographical Information Science",
+      "abbreviation": "IJGIS",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 C）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://www.tandfonline.com/journals/tgis20",
+      "aliases": [
+        "International Journal of GIS"
+      ],
+      "notes": "GIScience、空间数据分析与地理信息方法",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "GeoInformatica",
+      "abbreviation": "GeoInformatica",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://link.springer.com/journal/10707",
+      "aliases": [],
+      "notes": "空间数据库、地理计算与地理信息系统",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Transactions in GIS",
+      "abbreviation": "TGIS",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "地理信息领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://onlinelibrary.wiley.com/journal/14679671",
+      "aliases": [
+        "Transactions in Geographic Information Systems"
+      ],
+      "notes": "GIS 方法、空间分析与地理信息应用",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Urban Technology",
+      "abbreviation": "JUT",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "城市技术领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.tandfonline.com/journals/cjut20",
+      "aliases": [],
+      "notes": "智慧城市、城市技术及其社会空间影响",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Transport Geography",
+      "abbreviation": "JTG",
+      "kind": "journal",
+      "domains": [
+        "transportation"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "交通地理领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/journal-of-transport-geography",
+      "aliases": [],
+      "notes": "交通可达性、交通地理与城市空间",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Transportation Research Part C: Emerging Technologies",
+      "abbreviation": "TR-C",
+      "kind": "journal",
+      "domains": [
+        "transportation"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "交通技术领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/transportation-research-part-c-emerging-technologies",
+      "aliases": [
+        "Transportation Research Part C"
+      ],
+      "notes": "智能交通、交通预测、算法与系统",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Transportation Research Part A: Policy and Practice",
+      "abbreviation": "TR-A",
+      "kind": "journal",
+      "domains": [
+        "transportation"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "交通政策领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/transportation-research-part-a-policy-and-practice",
+      "aliases": [
+        "Transportation Research Part A"
+      ],
+      "notes": "交通政策、行为与规划实践",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Sustainable Cities and Society",
+      "abbreviation": "SCS",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "可持续城市领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/sustainable-cities-and-society",
+      "aliases": [],
+      "notes": "城市可持续发展、韧性与环境",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Urban Geography",
+      "abbreviation": "UG",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "城市地理领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.tandfonline.com/journals/rurb20",
+      "aliases": [],
+      "notes": "城市空间结构、城市地理与社会空间",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Applied Geography",
+      "abbreviation": "AG",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "应用地理领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/applied-geography",
+      "aliases": [],
+      "notes": "应用地理、空间决策与地理分析",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Habitat International",
+      "abbreviation": "HI",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "住房与城市发展领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/habitat-international",
+      "aliases": [],
+      "notes": "住房、城市发展与全球南方城市议题",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Urban Climate",
+      "abbreviation": "UC",
+      "kind": "journal",
+      "domains": [
+        "urban_environment"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "城市环境领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/urban-climate",
+      "aliases": [],
+      "notes": "城市气候、热环境与气候适应",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Remote Sensing of Environment",
+      "abbreviation": "RSE",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "遥感领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/remote-sensing-of-environment",
+      "aliases": [],
+      "notes": "遥感观测、地表过程与环境监测",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ISPRS Journal of Photogrammetry and Remote Sensing",
+      "abbreviation": "ISPRS JPRS",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "摄影测量与遥感领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/isprs-journal-of-photogrammetry-and-remote-sensing",
+      "aliases": [
+        "ISPRS Journal of Photogrammetry and Remote Sensing"
+      ],
+      "notes": "摄影测量、遥感、三维重建与地理空间AI",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Journal of Applied Earth Observation and Geoinformation",
+      "abbreviation": "IJAEOG",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "地理观测领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/international-journal-of-applied-earth-observation-and-geoinformation",
+      "aliases": [
+        "International Journal of Applied Earth Observation and Geoinformation"
+      ],
+      "notes": "地球观测、遥感与地理信息应用",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Annals of the American Association of Geographers",
+      "abbreviation": "Annals AAG",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "地理学领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.tandfonline.com/journals/raag20",
+      "aliases": [
+        "Annals of the Association of American Geographers"
+      ],
+      "notes": "人文地理、自然地理与空间理论",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Environment and Planning A: Economy and Space",
+      "abbreviation": "EPA",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "城市与空间研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://journals.sagepub.com/home/epn",
+      "aliases": [
+        "Environment and Planning A"
+      ],
+      "notes": "空间经济、城市政治经济与社会空间",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Journal of Urban and Regional Research",
+      "abbreviation": "IJURR",
+      "kind": "journal",
+      "domains": [
+        "urban_planning"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "城市研究领域重点期刊遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://onlinelibrary.wiley.com/journal/14682427",
+      "aliases": [],
+      "notes": "城市与区域研究、空间不平等与城市转型",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Conference on Neural Information Processing Systems",
+      "abbreviation": "NeurIPS",
+      "kind": "conference",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://neurips.cc/",
+      "aliases": [
+        "NeurIPS",
+        "Advances in Neural Information Processing Systems",
+        "Neural Information Processing Systems"
+      ],
+      "notes": "机器学习、深度学习、基础模型与表示学习",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Machine Learning",
+      "abbreviation": "ICML",
+      "kind": "conference",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://icml.cc/",
+      "aliases": [
+        "ICML",
+        "Proceedings of the International Conference on Machine Learning"
+      ],
+      "notes": "机器学习理论、算法与应用",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "AAAI Conference on Artificial Intelligence",
+      "abbreviation": "AAAI",
+      "kind": "conference",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://aaai.org/conference/aaai/",
+      "aliases": [
+        "AAAI",
+        "Proceedings of the AAAI Conference on Artificial Intelligence"
+      ],
+      "notes": "人工智能综合研究",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Joint Conference on Artificial Intelligence",
+      "abbreviation": "IJCAI",
+      "kind": "conference",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://ijcai.org/",
+      "aliases": [
+        "IJCAI",
+        "Proceedings of the International Joint Conference on Artificial Intelligence"
+      ],
+      "notes": "人工智能、知识推理与智能决策",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Learning Representations",
+      "abbreviation": "ICLR",
+      "kind": "conference",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "补充",
+      "ranking_system": "国际前沿补充观察（CCF第七版未作此项标注）",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://iclr.cc/",
+      "aliases": [
+        "ICLR",
+        "Proceedings of the International Conference on Learning Representations"
+      ],
+      "notes": "深度学习、表征学习与基础模型；单独标记补充来源",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Machine Learning Research",
+      "abbreviation": "JMLR",
+      "kind": "journal",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.jmlr.org/",
+      "aliases": [],
+      "notes": "机器学习理论、算法与系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+      "abbreviation": "TPAMI",
+      "kind": "journal",
+      "domains": [
+        "cv_multimodal"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.computer.org/csdl/journal/tp",
+      "aliases": [
+        "IEEE TPAMI"
+      ],
+      "notes": "模式识别、计算机视觉与机器学习",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Journal of Computer Vision",
+      "abbreviation": "IJCV",
+      "kind": "journal",
+      "domains": [
+        "cv_multimodal"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://link.springer.com/journal/11263",
+      "aliases": [],
+      "notes": "计算机视觉、视觉表示与场景理解",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Artificial Intelligence",
+      "abbreviation": "AI",
+      "kind": "journal",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.sciencedirect.com/journal/artificial-intelligence",
+      "aliases": [],
+      "notes": "人工智能理论与方法",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Artificial Intelligence Research",
+      "abbreviation": "JAIR",
+      "kind": "journal",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.jair.org/",
+      "aliases": [],
+      "notes": "人工智能研究与方法",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Neural Networks and Learning Systems",
+      "abbreviation": "TNNLS",
+      "kind": "journal",
+      "domains": [
+        "ai_ml"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=5962385",
+      "aliases": [],
+      "notes": "神经网络、深度学习与学习系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM SIGKDD Conference on Knowledge Discovery and Data Mining",
+      "abbreviation": "KDD",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://kdd.org/",
+      "aliases": [
+        "KDD",
+        "Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining"
+      ],
+      "notes": "数据挖掘、知识发现与图学习",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM SIGMOD Conference",
+      "abbreviation": "SIGMOD",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://sigmod.org/",
+      "aliases": [
+        "SIGMOD",
+        "Proceedings of the ACM SIGMOD International Conference on Management of Data"
+      ],
+      "notes": "数据库、数据管理与数据系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE International Conference on Data Engineering",
+      "abbreviation": "ICDE",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://www.computer.org/conferences/icde",
+      "aliases": [
+        "ICDE",
+        "Proceedings of the IEEE International Conference on Data Engineering"
+      ],
+      "notes": "数据工程与数据管理",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International ACM SIGIR Conference on Research and Development in Information Retrieval",
+      "abbreviation": "SIGIR",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://sigir.org/",
+      "aliases": [
+        "SIGIR",
+        "Proceedings of the ACM SIGIR Conference on Research and Development in Information Retrieval"
+      ],
+      "notes": "信息检索、搜索与推荐",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Very Large Data Bases",
+      "abbreviation": "VLDB",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://vldb.org/",
+      "aliases": [
+        "VLDB",
+        "Proceedings of the VLDB Endowment"
+      ],
+      "notes": "大规模数据管理与数据库系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM International Conference on Information and Knowledge Management",
+      "abbreviation": "CIKM",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://www.cikmconference.org/",
+      "aliases": [
+        "CIKM",
+        "Proceedings of the ACM International Conference on Information and Knowledge Management"
+      ],
+      "notes": "信息管理、知识发现与检索",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM International Conference on Web Search and Data Mining",
+      "abbreviation": "WSDM",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://www.wsdm-conference.org/",
+      "aliases": [
+        "WSDM",
+        "Proceedings of the ACM International Conference on Web Search and Data Mining"
+      ],
+      "notes": "Web搜索、数据挖掘与推荐",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE International Conference on Data Mining",
+      "abbreviation": "ICDM",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://www.data-mining-forum.org/",
+      "aliases": [
+        "ICDM",
+        "Proceedings of the IEEE International Conference on Data Mining"
+      ],
+      "notes": "数据挖掘与机器学习",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "SIAM International Conference on Data Mining",
+      "abbreviation": "SDM",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://www.siam.org/conferences-events/siam-conferences/sdm/",
+      "aliases": [
+        "SDM",
+        "Proceedings of the SIAM International Conference on Data Mining"
+      ],
+      "notes": "数据挖掘、网络科学与应用数学",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Transactions on Database Systems",
+      "abbreviation": "TODS",
+      "kind": "journal",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://dl.acm.org/journal/tods",
+      "aliases": [],
+      "notes": "数据库理论与系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Transactions on Information Systems",
+      "abbreviation": "TOIS",
+      "kind": "journal",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://dl.acm.org/journal/tois",
+      "aliases": [],
+      "notes": "信息系统与信息检索",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Knowledge and Data Engineering",
+      "abbreviation": "TKDE",
+      "kind": "journal",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://www.computer.org/csdl/journal/tk",
+      "aliases": [],
+      "notes": "知识工程、数据挖掘与数据管理",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE/CVF Conference on Computer Vision and Pattern Recognition",
+      "abbreviation": "CVPR",
+      "kind": "conference",
+      "domains": [
+        "cv_multimodal"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://cvpr.thecvf.com/",
+      "aliases": [
+        "CVPR",
+        "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition"
+      ],
+      "notes": "视觉识别、视觉基础模型与多模态",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Computer Vision",
+      "abbreviation": "ICCV",
+      "kind": "conference",
+      "domains": [
+        "cv_multimodal"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.thecvf.com/",
+      "aliases": [
+        "ICCV",
+        "Proceedings of the IEEE/CVF International Conference on Computer Vision"
+      ],
+      "notes": "计算机视觉与视觉理解",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "European Conference on Computer Vision",
+      "abbreviation": "ECCV",
+      "kind": "conference",
+      "domains": [
+        "cv_multimodal"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://eccv.ecva.net/",
+      "aliases": [
+        "ECCV",
+        "Proceedings of the European Conference on Computer Vision"
+      ],
+      "notes": "计算机视觉与多模态",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM International Conference on Multimedia",
+      "abbreviation": "ACM MM",
+      "kind": "conference",
+      "domains": [
+        "graphics_visualization"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（图形学与多媒体 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/CGAndMT/",
+      "source_url": "https://www.acmmm.org/",
+      "aliases": [
+        "ACM Multimedia",
+        "Proceedings of the ACM International Conference on Multimedia"
+      ],
+      "notes": "多媒体理解、生成与检索",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Transactions on Graphics",
+      "abbreviation": "TOG",
+      "kind": "journal",
+      "domains": [
+        "graphics_visualization"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（图形学与多媒体 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/CGAndMT/",
+      "source_url": "https://dl.acm.org/journal/tog",
+      "aliases": [],
+      "notes": "计算机图形学与三维表达",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Visualization and Computer Graphics",
+      "abbreviation": "TVCG",
+      "kind": "journal",
+      "domains": [
+        "graphics_visualization"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（图形学与多媒体 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/CGAndMT/",
+      "source_url": "https://www.computer.org/csdl/journal/tg",
+      "aliases": [],
+      "notes": "可视化、视觉分析与交互",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Annual Meeting of the Association for Computational Linguistics",
+      "abbreviation": "ACL",
+      "kind": "conference",
+      "domains": [
+        "nlp"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人工智能 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.aclweb.org/portal/",
+      "aliases": [
+        "ACL",
+        "Proceedings of the Annual Meeting of the Association for Computational Linguistics"
+      ],
+      "notes": "自然语言处理、语言模型与语言理解",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Conference on Empirical Methods in Natural Language Processing",
+      "abbreviation": "EMNLP",
+      "kind": "conference",
+      "domains": [
+        "nlp"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://emnlp.org/",
+      "aliases": [
+        "EMNLP",
+        "Proceedings of the Conference on Empirical Methods in Natural Language Processing"
+      ],
+      "notes": "NLP实证方法、大语言模型与评测",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Transactions of the Association for Computational Linguistics",
+      "abbreviation": "TACL",
+      "kind": "journal",
+      "domains": [
+        "nlp"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://transacl.org/",
+      "aliases": [
+        "TACL"
+      ],
+      "notes": "自然语言处理与语言模型研究",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Autonomous Agents and Multiagent Systems",
+      "abbreviation": "AAMAS",
+      "kind": "conference",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://aamas.org/",
+      "aliases": [
+        "AAMAS",
+        "Proceedings of the International Conference on Autonomous Agents and Multiagent Systems"
+      ],
+      "notes": "多智能体、自治系统与协同决策",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Automated Planning and Scheduling",
+      "abbreviation": "ICAPS",
+      "kind": "conference",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://icaps-conference.org/",
+      "aliases": [
+        "ICAPS",
+        "Proceedings of the International Conference on Automated Planning and Scheduling"
+      ],
+      "notes": "自动规划、调度与搜索",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE International Conference on Robotics and Automation",
+      "abbreviation": "ICRA",
+      "kind": "conference",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人工智能 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.ieee-ras.org/conferences-workshops/fully-sponsored/icra",
+      "aliases": [
+        "ICRA",
+        "Proceedings of the IEEE International Conference on Robotics and Automation"
+      ],
+      "notes": "机器人、导航与自主决策",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE/RSJ International Conference on Intelligent Robots and Systems",
+      "abbreviation": "IROS",
+      "kind": "conference",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "C",
+      "ranking_system": "CCF 2026 第七版（人工智能 C）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/AI/",
+      "source_url": "https://www.iros.org/",
+      "aliases": [
+        "IROS",
+        "Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems"
+      ],
+      "notes": "智能机器人与具身系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Conference on Human Factors in Computing Systems",
+      "abbreviation": "CHI",
+      "kind": "conference",
+      "domains": [
+        "hci"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人机交互 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/HCIAndPC/",
+      "source_url": "https://chi.acm.org/",
+      "aliases": [
+        "CHI",
+        "Proceedings of the SIGCHI Conference on Human Factors in Computing Systems"
+      ],
+      "notes": "人机交互与用户体验",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Conference on Computer Supported Cooperative Work and Social Computing",
+      "abbreviation": "CSCW",
+      "kind": "conference",
+      "domains": [
+        "hci"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人机交互 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/HCIAndPC/",
+      "source_url": "https://cscw.acm.org/",
+      "aliases": [
+        "CSCW",
+        "Proceedings of the ACM Conference on Computer Supported Cooperative Work and Social Computing"
+      ],
+      "notes": "协同工作、社会计算与人机协作",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM International Joint Conference on Pervasive and Ubiquitous Computing",
+      "abbreviation": "UbiComp",
+      "kind": "conference",
+      "domains": [
+        "hci"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人机交互 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/HCIAndPC/",
+      "source_url": "https://ubicomp.org/",
+      "aliases": [
+        "UbiComp",
+        "IMWUT",
+        "Proceedings of the ACM on Interactive Mobile Wearable and Ubiquitous Technologies"
+      ],
+      "notes": "普适计算、移动感知与人机协同",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Transactions on Computer-Human Interaction",
+      "abbreviation": "TOCHI",
+      "kind": "journal",
+      "domains": [
+        "hci"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（人机交互 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/HCIAndPC/",
+      "source_url": "https://dl.acm.org/journal/tochi",
+      "aliases": [],
+      "notes": "人机交互理论与方法",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM International Conference on Intelligent User Interfaces",
+      "abbreviation": "IUI",
+      "kind": "conference",
+      "domains": [
+        "hci"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（人机交互 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/HCIAndPC/",
+      "source_url": "https://iui.acm.org/",
+      "aliases": [
+        "IUI",
+        "Proceedings of the ACM International Conference on Intelligent User Interfaces"
+      ],
+      "notes": "智能交互与人机协作",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Symposium on User Interface Software and Technology",
+      "abbreviation": "UIST",
+      "kind": "conference",
+      "domains": [
+        "hci"
+      ],
+      "rank_label": "补充",
+      "ranking_system": "人机交互前沿补充观察（未作CCF 2026等级标注）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/HCIAndPC/",
+      "source_url": "https://uist.acm.org/",
+      "aliases": [
+        "UIST",
+        "Proceedings of the ACM Symposium on User Interface Software and Technology"
+      ],
+      "notes": "用户界面、交互技术与生成式AI界面",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Software Engineering",
+      "abbreviation": "ICSE",
+      "kind": "conference",
+      "domains": [
+        "systems_software"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（软件工程 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/TCSE_SS_PDL/",
+      "source_url": "https://conf.researchr.org/series/icse",
+      "aliases": [
+        "ICSE",
+        "Proceedings of the IEEE/ACM International Conference on Software Engineering"
+      ],
+      "notes": "软件工程、开发流程与程序分析",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM International Conference on the Foundations of Software Engineering",
+      "abbreviation": "FSE",
+      "kind": "conference",
+      "domains": [
+        "systems_software"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（软件工程 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/TCSE_SS_PDL/",
+      "source_url": "https://esec-fse.com/",
+      "aliases": [
+        "FSE",
+        "ESEC/FSE",
+        "Proceedings of the ACM International Conference on the Foundations of Software Engineering"
+      ],
+      "notes": "软件工程理论、测试与工具",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Automated Software Engineering",
+      "abbreviation": "ASE",
+      "kind": "conference",
+      "domains": [
+        "systems_software"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（软件工程 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/TCSE_SS_PDL/",
+      "source_url": "https://conf.researchr.org/series/ase",
+      "aliases": [
+        "ASE",
+        "Proceedings of the IEEE/ACM International Conference on Automated Software Engineering"
+      ],
+      "notes": "自动化软件工程与智能编程",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Symposium on Operating Systems Principles",
+      "abbreviation": "SOSP",
+      "kind": "conference",
+      "domains": [
+        "systems_software"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（软件系统 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/TCSE_SS_PDL/",
+      "source_url": "https://sosp.org/",
+      "aliases": [
+        "SOSP",
+        "Proceedings of the ACM Symposium on Operating Systems Principles"
+      ],
+      "notes": "操作系统与系统研究",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "USENIX Symposium on Operating Systems Design and Implementation",
+      "abbreviation": "OSDI",
+      "kind": "conference",
+      "domains": [
+        "systems_software"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（软件系统 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/TCSE_SS_PDL/",
+      "source_url": "https://www.usenix.org/conferences",
+      "aliases": [
+        "OSDI",
+        "Proceedings of the USENIX Symposium on Operating Systems Design and Implementation"
+      ],
+      "notes": "系统设计、分布式系统与基础设施",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM SIGCOMM Conference",
+      "abbreviation": "SIGCOMM",
+      "kind": "conference",
+      "domains": [
+        "network_security"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（计算机网络 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/CN/",
+      "source_url": "https://conferences.sigcomm.org/",
+      "aliases": [
+        "SIGCOMM",
+        "Proceedings of the ACM SIGCOMM Conference"
+      ],
+      "notes": "网络体系结构与通信系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "USENIX Symposium on Networked Systems Design and Implementation",
+      "abbreviation": "NSDI",
+      "kind": "conference",
+      "domains": [
+        "network_security"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（计算机网络 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/CN/",
+      "source_url": "https://www.usenix.org/conferences",
+      "aliases": [
+        "NSDI",
+        "Proceedings of the USENIX Symposium on Networked Systems Design and Implementation"
+      ],
+      "notes": "网络系统与分布式系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Conference on Computer and Communications Security",
+      "abbreviation": "CCS",
+      "kind": "conference",
+      "domains": [
+        "network_security"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（网络与信息安全 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/NIS/",
+      "source_url": "https://www.sigsac.org/ccs.html",
+      "aliases": [
+        "CCS",
+        "Proceedings of the ACM SIGSAC Conference on Computer and Communications Security"
+      ],
+      "notes": "计算机与通信安全",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Symposium on Security and Privacy",
+      "abbreviation": "S&P",
+      "kind": "conference",
+      "domains": [
+        "network_security"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（网络与信息安全 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/NIS/",
+      "source_url": "https://www.ieee-security.org/TC/SP-Index.html",
+      "aliases": [
+        "IEEE S&P",
+        "Proceedings of the IEEE Symposium on Security and Privacy"
+      ],
+      "notes": "系统安全、隐私与可信计算",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems",
+      "abbreviation": "SIGSPATIAL",
+      "kind": "conference",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "C",
+      "ranking_system": "CCF 2026 第七版（交叉/综合/新兴 C）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/Cross_Compre_Emerging/",
+      "source_url": "https://sigspatial.org/",
+      "aliases": [
+        "SIGSPATIAL",
+        "ACM SIGSPATIAL",
+        "Proceedings of the ACM International Symposium on Advances in Geographic Information Systems"
+      ],
+      "notes": "空间数据库、地理计算与空间智能",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Spatial Information Theory",
+      "abbreviation": "COSIT",
+      "kind": "conference",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "C",
+      "ranking_system": "CCF 2026 第七版（交叉/综合/新兴 C）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/Cross_Compre_Emerging/",
+      "source_url": "https://cosit2024.org/",
+      "aliases": [
+        "COSIT",
+        "Proceedings of the International Conference on Spatial Information Theory"
+      ],
+      "notes": "空间信息理论、认知与地理表示",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Symposium on Spatial and Temporal Databases",
+      "abbreviation": "SSTD",
+      "kind": "conference",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "C",
+      "ranking_system": "CCF 2026 第七版（数据库/数据挖掘 C）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/DM_CS/",
+      "source_url": "https://sstd2025.github.io/",
+      "aliases": [
+        "SSTD",
+        "Proceedings of the International Symposium on Spatial and Temporal Databases"
+      ],
+      "notes": "时空数据库与空间查询",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International World Wide Web Conference",
+      "abbreviation": "WWW",
+      "kind": "conference",
+      "domains": [
+        "data_mining"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（交叉/综合/新兴 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/Cross_Compre_Emerging/",
+      "source_url": "https://www.thewebconf.org/",
+      "aliases": [
+        "WWW",
+        "The Web Conference",
+        "Proceedings of the ACM Web Conference"
+      ],
+      "notes": "Web、搜索、推荐、图挖掘与网络科学",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE/ACM International Symposium on Computer Architecture",
+      "abbreviation": "ISCA",
+      "kind": "conference",
+      "domains": [
+        "computer_architecture"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（体系结构 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/ARCH_DCP_SS/",
+      "source_url": "https://iscaconf.org/",
+      "aliases": [
+        "ISCA",
+        "Proceedings of the ACM/IEEE International Symposium on Computer Architecture"
+      ],
+      "notes": "计算机体系结构与高性能计算",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Conference on Architectural Support for Programming Languages and Operating Systems",
+      "abbreviation": "ASPLOS",
+      "kind": "conference",
+      "domains": [
+        "computer_architecture"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（体系结构 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/ARCH_DCP_SS/",
+      "source_url": "https://asplos-conference.org/",
+      "aliases": [
+        "ASPLOS",
+        "Proceedings of the International Conference on Architectural Support for Programming Languages and Operating Systems"
+      ],
+      "notes": "体系结构、操作系统与编程语言交叉",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE International Symposium on High Performance Computer Architecture",
+      "abbreviation": "HPCA",
+      "kind": "conference",
+      "domains": [
+        "computer_architecture"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（体系结构 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/ARCH_DCP_SS/",
+      "source_url": "https://hpca-conf.org/",
+      "aliases": [
+        "HPCA",
+        "Proceedings of the IEEE International Symposium on High Performance Computer Architecture"
+      ],
+      "notes": "高性能计算机体系结构",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE/ACM International Symposium on Microarchitecture",
+      "abbreviation": "MICRO",
+      "kind": "conference",
+      "domains": [
+        "computer_architecture"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（体系结构 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/ARCH_DCP_SS/",
+      "source_url": "https://www.microarch.org/",
+      "aliases": [
+        "MICRO",
+        "Proceedings of the IEEE/ACM International Symposium on Microarchitecture"
+      ],
+      "notes": "微体系结构与处理器设计",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM Symposium on Theory of Computing",
+      "abbreviation": "STOC",
+      "kind": "conference",
+      "domains": [
+        "theory_algorithms"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（计算机科学理论 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "",
+      "source_url": "https://acm-stoc.org/",
+      "aliases": [
+        "STOC",
+        "Proceedings of the ACM Symposium on Theory of Computing"
+      ],
+      "notes": "计算理论与算法基础",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "ACM-SIAM Symposium on Discrete Algorithms",
+      "abbreviation": "SODA",
+      "kind": "conference",
+      "domains": [
+        "theory_algorithms"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（计算机科学理论 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "",
+      "source_url": "https://www.siam.org/conferences-events/siam-conferences/soda/",
+      "aliases": [
+        "SODA",
+        "Proceedings of the ACM-SIAM Symposium on Discrete Algorithms"
+      ],
+      "notes": "离散算法与组合优化",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Symposium on Foundations of Computer Science",
+      "abbreviation": "FOCS",
+      "kind": "conference",
+      "domains": [
+        "theory_algorithms"
+      ],
+      "rank_label": "A",
+      "ranking_system": "CCF 2026 第七版（计算机科学理论 A）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "",
+      "source_url": "https://focs.computer.org/",
+      "aliases": [
+        "FOCS",
+        "Proceedings of the IEEE Symposium on Foundations of Computer Science"
+      ],
+      "notes": "计算机科学理论与算法",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Robotics: Science and Systems",
+      "abbreviation": "RSS",
+      "kind": "conference",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "补充",
+      "ranking_system": "国际机器人旗舰补充观察（非CCF 2026标注）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "",
+      "source_url": "https://roboticsconference.org/",
+      "aliases": [
+        "RSS",
+        "Robotics Science and Systems"
+      ],
+      "notes": "机器人学习、具身智能与自主系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Conference on Robot Learning",
+      "abbreviation": "CoRL",
+      "kind": "conference",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "补充",
+      "ranking_system": "机器人学习前沿补充观察（非CCF 2026标注）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "",
+      "source_url": "https://www.robot-learning.org/",
+      "aliases": [
+        "CoRL",
+        "Conference on Robot Learning"
+      ],
+      "notes": "机器人学习、世界模型与具身策略",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Conference on Language Modeling",
+      "abbreviation": "COLM",
+      "kind": "conference",
+      "domains": [
+        "nlp"
+      ],
+      "rank_label": "补充",
+      "ranking_system": "语言模型前沿补充观察（非CCF 2026标注）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "",
+      "source_url": "https://colmweb.org/",
+      "aliases": [
+        "COLM",
+        "Conference on Language Modeling"
+      ],
+      "notes": "大语言模型、语言建模与评测",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Intelligent Transportation Systems",
+      "abbreviation": "TITS",
+      "kind": "journal",
+      "domains": [
+        "transportation"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（交叉/综合/新兴 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/Cross_Compre_Emerging/",
+      "source_url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=6979",
+      "aliases": [
+        "IEEE T-ITS"
+      ],
+      "notes": "智能交通系统、交通预测与控制",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Geoscience and Remote Sensing",
+      "abbreviation": "TGRS",
+      "kind": "journal",
+      "domains": [
+        "gis_spatial"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（交叉/综合/新兴 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/Cross_Compre_Emerging/",
+      "source_url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=36",
+      "aliases": [
+        "IEEE TGARS"
+      ],
+      "notes": "遥感、地球观测与空间智能",
+      "retrieval_channels": [
+        "direct",
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Robotics",
+      "abbreviation": "T-RO",
+      "kind": "journal",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（交叉/综合/新兴 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/Cross_Compre_Emerging/",
+      "source_url": "https://www.ieee-ras.org/publications/t-ro",
+      "aliases": [
+        "IEEE T-RO"
+      ],
+      "notes": "机器人理论、运动规划与自主系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "IEEE Transactions on Automation Science and Engineering",
+      "abbreviation": "T-ASE",
+      "kind": "journal",
+      "domains": [
+        "agents_robotics"
+      ],
+      "rank_label": "B",
+      "ranking_system": "CCF 2026 第七版（交叉/综合/新兴 B）",
+      "ranking_version": "CCF 2026 第七版",
+      "ranking_source_url": "https://www.ccf.org.cn/Academic_Evaluation/Cross_Compre_Emerging/",
+      "source_url": "https://www.ieee-ras.org/publications/t-ase",
+      "aliases": [
+        "IEEE T-ASE"
+      ],
+      "notes": "自动化科学、智能调度与机器人系统",
+      "retrieval_channels": [
+        "method"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Health and Place",
+      "abbreviation": "Health & Place",
+      "kind": "journal",
+      "domains": [
+        "urban_health"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "健康地理与城市健康领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/health-and-place",
+      "aliases": [
+        "Health & Place"
+      ],
+      "notes": "健康地理、健康公平、建成环境与健康",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Social Science and Medicine",
+      "abbreviation": "SSM",
+      "kind": "journal",
+      "domains": [
+        "urban_health"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "健康社会科学领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/social-science-and-medicine",
+      "aliases": [
+        "Social Science & Medicine"
+      ],
+      "notes": "健康社会决定因素、健康不平等与社会空间",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Transport and Health",
+      "abbreviation": "JTH",
+      "kind": "journal",
+      "domains": [
+        "urban_health"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "交通健康交叉领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/journal-of-transport-and-health",
+      "aliases": [
+        "Journal of Transport & Health"
+      ],
+      "notes": "交通可达性、出行行为与健康",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Cultural Heritage",
+      "abbreviation": "JCH",
+      "kind": "journal",
+      "domains": [
+        "heritage"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "文化遗产研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/journal-of-cultural-heritage",
+      "aliases": [],
+      "notes": "文化遗产保护、风险评估与数字化",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Journal of Heritage Studies",
+      "abbreviation": "IJHS",
+      "kind": "journal",
+      "domains": [
+        "heritage"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "遗产研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.tandfonline.com/journals/rjhs20",
+      "aliases": [],
+      "notes": "遗产价值、保护治理与社会文化研究",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Heritage Science",
+      "abbreviation": "Heritage Science",
+      "kind": "journal",
+      "domains": [
+        "heritage"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "遗产科学领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://heritagesciencejournal.springeropen.com/",
+      "aliases": [],
+      "notes": "遗产科学、数字遗产与多学科保护",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "International Journal of Disaster Risk Reduction",
+      "abbreviation": "IJDRR",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "灾害风险研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/international-journal-of-disaster-risk-reduction",
+      "aliases": [],
+      "notes": "灾害风险、应急管理、韧性与风险治理",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Natural Hazards",
+      "abbreviation": "Natural Hazards",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "自然灾害研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://link.springer.com/journal/11069",
+      "aliases": [],
+      "notes": "自然灾害、风险评估与减灾",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Journal of Hydrology",
+      "abbreviation": "JH",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "核心",
+      "ranking_system": "水文水资源领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/journal-of-hydrology",
+      "aliases": [],
+      "notes": "水文模拟、洪涝过程与水系统",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Water Resources Research",
+      "abbreviation": "WRR",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "水资源研究领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://agupubs.onlinelibrary.wiley.com/journal/19447973",
+      "aliases": [],
+      "notes": "水资源系统、水文过程与模型",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Water Research",
+      "abbreviation": "Water Research",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "水环境领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/water-research",
+      "aliases": [],
+      "notes": "水环境、污染过程与水系统治理",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Fire Safety Journal",
+      "abbreviation": "FSJ",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "消防安全领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/fire-safety-journal",
+      "aliases": [],
+      "notes": "火灾科学、消防安全与风险控制",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Safety Science",
+      "abbreviation": "Safety Science",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "安全科学领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/safety-science",
+      "aliases": [],
+      "notes": "安全风险、应急管理与系统安全",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    },
+    {
+      "name": "Reliability Engineering and System Safety",
+      "abbreviation": "RESS",
+      "kind": "journal",
+      "domains": [
+        "water_disaster"
+      ],
+      "rank_label": "重点",
+      "ranking_system": "系统可靠性领域遴选",
+      "ranking_version": "领域遴选",
+      "ranking_source_url": "",
+      "source_url": "https://www.sciencedirect.com/journal/reliability-engineering-and-system-safety",
+      "aliases": [
+        "Reliability Engineering & System Safety"
+      ],
+      "notes": "复杂系统可靠性、风险与安全决策",
+      "retrieval_channels": [
+        "direct"
+      ],
+      "enabled": true
+    }
+  ]
+}
