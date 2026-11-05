@@ -195,6 +195,7 @@ def execute_llm_discovery(factory, run_id, client=None):
         run.status="running";db.commit()
     errors=[];total_queries=0;total_scanned=0;total_new=0;total_updated=0
     for line in selected:
+        line_new=0
         try:
             with factory() as db:
                 context=_context(db,line)
@@ -258,6 +259,7 @@ def execute_llm_discovery(factory, run_id, client=None):
                             score=score,score_reason=("LLM "+relation+" | "+reason)[:1500],
                             match_type=mode,matched_queries_json=dumps([paper.get("query","")]),status="pending"))
                         total_new+=1
+                        line_new+=1
                     else:
                         matched=reads(existing.matched_queries_json)
                         if paper.get("query") and paper["query"] not in matched: matched.append(paper["query"])
@@ -272,6 +274,14 @@ def execute_llm_discovery(factory, run_id, client=None):
             message=(safe_openalex_error(exc) if exc.__class__.__name__=="HTTPStatusError" else (str(exc)[:220] if exc.__class__.__name__=="ModelCallError" else "LLM discovery failed: "+type(exc).__name__))
             errors.append(line.get("id","unknown")+" | "+message)
             logging.getLogger("uvicorn.error").warning("LLM discovery failed: run=%s line=%s reason=%s",run_id,line.get("id"),message)
+        if str(line.get("id","")).startswith("interest:"):
+            with factory() as db:
+                interest=db.get(ResearchInterest,str(line["id"]).split(":",1)[1])
+                if interest:
+                    interest.last_checked_at=now()
+                    interest.last_status="partial" if any(e.startswith(line["id"]+" | ") for e in errors) else "completed"
+                    interest.last_new=line_new
+                    db.commit()
     with factory() as db:
         run=db.get(DiscoveryRun,run_id)
         run.queries=total_queries;run.scanned=total_scanned
