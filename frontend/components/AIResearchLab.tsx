@@ -4,6 +4,7 @@ import {useCallback,useEffect,useMemo,useState} from "react";
 import {BrainCircuit,CheckCircle2,Database,ExternalLink,KeyRound,LockKeyhole,Play,RefreshCw,RotateCcw,ShieldCheck,Trash2,XCircle} from "lucide-react";
 import {api} from "@/lib/api";
 import ScientificExplorationPanel from "@/components/ScientificExplorationPanel";
+import ScientificTournamentPanel from "@/components/ScientificTournamentPanel";
 
 type ModelConfig={
  provider:string;configured:boolean;vault_ready:boolean;
@@ -190,6 +191,9 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
 
    <ScientificExplorationPanel selectedLine={selected} lines={strategies}
      canEdit={canEdit} modelConfigured={Boolean(data?.config.configured)}/>
+   <ScientificTournamentPanel selectedLine={selected} lines={strategies}
+     canEdit={canEdit} canAdmin={canAdmin}
+     modelConfigured={Boolean(data?.config.configured)}/>
 
    <section className="panel">
      <div className="panel-header"><div><span className="panel-kicker">AI OPPORTUNITY DRAFTS</span><h2>候选选题与审查</h2></div><Database size={18}/></div>
