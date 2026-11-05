@@ -267,6 +267,53 @@ class ScientificTournamentRating(Base):
     comment:Mapped[str]=mapped_column(Text,default="")
     created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
 
+class ScientificTournamentLearning(Base):
+    """Human-curated research memory. Never inferred from LLM scores."""
+    __tablename__="scientific_tournament_learning"
+    id:Mapped[str]=mapped_column(String(48),primary_key=True)
+    source_run_id:Mapped[str]=mapped_column(String(48),index=True)
+    line_id:Mapped[str]=mapped_column(String(110),index=True)
+    curator_id:Mapped[str]=mapped_column(String(64))
+    feedback_kind:Mapped[str]=mapped_column(String(30))
+    finding:Mapped[str]=mapped_column(Text)
+    supporting_reference:Mapped[str]=mapped_column(Text,default="")
+    limitation:Mapped[str]=mapped_column(Text,default="")
+    created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+
+
+def approved_learning(db, line_id, limit=5):
+    rows=db.scalars(select(ScientificTournamentLearning).where(
+        ScientificTournamentLearning.line_id==line_id).order_by(
+        ScientificTournamentLearning.created_at.desc()).limit(limit)).all()
+    return [{"kind":x.feedback_kind,"finding":x.finding[:700],
+             "reference":x.supporting_reference[:300],
+             "limitation":x.limitation[:500],
+             "provenance_run_id":x.source_run_id,"status":"team_curated_not_independently_verified"}
+            for x in rows]
+
+
+def curate_learning(db, run_id, actor_id, feedback_kind, finding,
+                    supporting_reference="", limitation=""):
+    item=db.get(ScientificTournamentRun,run_id)
+    if item is None or item.status!="completed":
+        raise ValueError("只能从已经完成的竞赛记录沉淀科研经验")
+    if feedback_kind not in ("human_review","experiment_observation","data_availability"):
+        raise ValueError("不支持的科研反馈类型")
+    finding=_string(finding,"finding",900)
+    reference=str(supporting_reference or "").strip()[:500]
+    caution=_string(limitation,"limitation",650)
+    # Human curation is distinct from automatic factual verification.
+    row=ScientificTournamentLearning(id=str(uuid.uuid4()),
+        source_run_id=run_id,line_id=item.line_id,curator_id=actor_id,
+        feedback_kind=feedback_kind,finding=finding,
+        supporting_reference=reference,limitation=caution)
+    db.add(row)
+    add_audit(db,"scientific_tournament.learning_approved",actor_id,run_id,feedback_kind)
+    db.commit()
+    return {"id":row.id,"status":"team_curated_not_independently_verified",
+            "applies_to_future_runs":True}
+
+
 def start_run(db, line_id, question, actor_id):
     if not actor_id:
         raise ValueError("请使用团队研究人员身份启动对照实验")
@@ -281,6 +328,7 @@ def start_run(db, line_id, question, actor_id):
     if active:
         raise ValueError("已有科研竞赛任务尚未结束")
     snapshot=_snapshot(db,line_id)
+    snapshot["approved_feedback"]=approved_learning(db,line_id)
     snapshot["line"]["problem"]=question
     budget=budget_status(db)
     used=budget["used"]; lim=budget["limits"]
@@ -348,6 +396,8 @@ def execute(factory,run_id,model_call=None,model_client=None):
                 outputs=jload(item.outputs_json)
                 model=cfg.fast_model if stage=="baseline_reader" else cfg.reason_model
             prompt,payload=_stage_prompt(stage,snapshot,outputs)
+            if snapshot.get("approved_feedback"):
+                payload["team_curated_research_feedback"]=snapshot["approved_feedback"]
             if not reserve(factory,calls=1,tokens=TOKENS_PER_CALL):
                 raise ValueError("每日模型预算不足；对照实验已保存，可稍后恢复")
             raw,usage=model_call(key,model,prompt,payload,client=model_client,max_tokens=1900)
