@@ -7,6 +7,7 @@ from sqlalchemy import String,Text,Integer,Boolean,DateTime,select
 from sqlalchemy.orm import Mapped,mapped_column
 from research_workbench.core import Base,Paper
 from backend.team import add_audit
+from backend.interests import ResearchInterest
 
 def now():return datetime.now(timezone.utc)
 def dumps(value):return json.dumps(value,ensure_ascii=False)
@@ -106,16 +107,30 @@ def save_strategy(db,profile,line_id,settings,actor):
     return next(x for x in strategies(db,profile) if x["line_id"]==line_id)
 
 def create_run(db,profile,source="manual",line_id=None):
+    if source not in ("manual","scheduled"):
+        raise ValueError("Invalid discovery source")
     items=strategies(db,profile)
+    selected=[]
     if line_id:
-        items=[x for x in items if x["line_id"]==line_id]
-        if not items:raise ValueError("Unknown research line")
+        if line_id.startswith("interest:"):
+            interest=db.get(ResearchInterest,line_id.split(":",1)[1])
+            if not interest or not interest.enabled:
+                raise ValueError("Research interest not found or disabled")
+            selected=[line_id]
+        else:
+            selected=[x["line_id"] for x in items if x["line_id"]==line_id]
+            if not selected:raise ValueError("Unknown research line")
     elif source=="scheduled":
-        items=[x for x in items if x["enabled"]][:3]
-        if not items:return None
-    else:items=items[:3]
+        selected=[x["line_id"] for x in items if x["enabled"]][:3]
+        interests=db.scalars(select(ResearchInterest).where(
+            ResearchInterest.enabled.is_(True)).order_by(
+            ResearchInterest.created_at.desc()).limit(8)).all()
+        selected.extend("interest:"+x.id for x in interests)
+        if not selected:return None
+    else:
+        selected=[x["line_id"] for x in items[:3]]
     item=DiscoveryRun(id=str(uuid.uuid4()),source=source,
-                      line_ids_json=dumps([x["line_id"] for x in items]))
+                      line_ids_json=dumps(selected))
     db.add(item);db.commit()
     return item
 
