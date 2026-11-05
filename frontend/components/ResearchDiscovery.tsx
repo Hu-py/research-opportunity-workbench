@@ -221,7 +221,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
          {!selected.length?<div className="empty"><BookOpenCheck size={26}/><h3>当前没有候选论文</h3><p>先在“检索策略”中试抓取一条研究主线。</p></div>:
          selected.map(x=><article className="discovery-record" key={x.id}>
            <div className="discovery-labels"><span>{strategies.find(s=>s.line_id===x.line_id)?.line_name||x.line_id}</span>
-             <span>{x.match_type==="method"?"方法迁移":"研究问题"}</span>
+             <span>{x.match_type==="method"?"方法迁移":x.match_type==="frontier"?"计算机前沿":x.match_type==="contradictory"?"反证研究":x.match_type==="background"?"背景研究":"直接相关"}</span>
              <span className={x.score>=(strategies.find(s=>s.line_id===x.line_id)?.min_score??60)?"disc-confirmed":""}>LLM 语义相关度 {x.score}/100</span></div>
            <h3>{x.url?<a href={x.url} target="_blank" rel="noopener noreferrer">{x.title}</a>:x.title}</h3>
            <p className="small muted">{x.venue||"期刊待核实"} · {x.published||"发表时间未知"} · DOI：{x.doi||"未提供"}</p>
