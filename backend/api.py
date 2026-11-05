@@ -66,6 +66,7 @@ from backend.ai_lab import (
     execute as execute_ai_analysis, list_runs as list_ai_runs,
     list_cards as list_ai_cards, review_card as review_ai_card,
     resume as resume_ai_run,
+    _snapshot as ai_snapshot_for_preflight,
 )
 from backend.scientific_tournament import (
     ScientificTournamentRun, ScientificTournamentRating,
@@ -791,6 +792,42 @@ class ScientificTournamentRatingRequest(BaseModel):
     testability: int = Field(ge=1,le=5)
     recommendation: Literal["test","investigate","reject"]
     comment: str = Field(default="",max_length=1500)
+
+
+@app.get("/api/scientific-tournaments/preflight",dependencies=[Depends(require_actor)])
+def scientific_tournament_preflight(line_id:str=Query(min_length=1,max_length=110),
+                                   db:Session=Depends(get_db)):
+    """Read-only, zero-model-call readiness check; never returns secrets."""
+    model=model_status(db)
+    budget=research_budget_status(db)
+    remaining_calls=max(0,budget["limits"]["model_calls_per_day"]-
+                        budget["used"]["model_calls"])
+    remaining_tokens=max(0,budget["limits"]["token_reservation_per_day"]-
+                         budget["used"]["token_reservation"])
+    reasons=[]
+    if not model["configured"]:reasons.append("管理员尚未配置 DeepSeek API Key")
+    if not model["vault_ready"]:reasons.append("模型密钥加密服务尚未配置")
+    snapshot=None
+    try:
+        snapshot=ai_snapshot_for_preflight(db,line_id)
+    except ValueError as exc:
+        reasons.append(str(exc)[:200])
+    if remaining_calls<14:reasons.append("今日剩余模型调用不足 14 次")
+    if remaining_tokens<91000:reasons.append("今日剩余 Token 预留额度不足 91,000")
+    return {
+        "ready":not reasons,
+        "line_id":line_id,
+        "model_configured":model["configured"],
+        "vault_ready":model["vault_ready"],
+        "approved_papers":len(snapshot["papers"]) if snapshot else 0,
+        "registered_datasets":len(snapshot["datasets"]) if snapshot else 0,
+        "remaining_model_calls":remaining_calls,
+        "remaining_token_allowance":remaining_tokens,
+        "maximum_trial_calls":14,
+        "reserved_trial_tokens":91000,
+        "notes":reasons,
+        "does_not_invoke_model":True,
+    }
 
 
 @app.post("/api/scientific-tournaments",status_code=202,
