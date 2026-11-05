@@ -16,6 +16,13 @@ type Run=Summary&{review_unblinded:boolean;baseline:Idea[];round0:Idea[];revisio
  critiques:{target_id:string;stance:string;objections:string[];tests:string[]}[];
  decision:Decision|null;trace:{stage:string;status:string;recorded_at:string}[]};
 type Blind={cards:{blind_id:string;ideas:Idea[];outcome?:string}[]};
+type Preflight={
+ ready:boolean;model_configured:boolean;vault_ready:boolean;
+ approved_papers:number;registered_datasets:number;
+ remaining_model_calls:number;remaining_token_allowance:number;
+ maximum_trial_calls:number;reserved_trial_tokens:number;
+ notes:string[];does_not_invoke_model:boolean
+};
 type Scores={scientific_value:number;novelty:number;feasibility:number;testability:number};
 const scoreNames:{key:keyof Scores;label:string}[]=[
  {key:"scientific_value",label:"科学价值"},
@@ -38,6 +45,9 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
  modelConfigured:boolean}){
  const [lineId,setLineId]=useState("");
  const [question,setQuestion]=useState("");
+ const [preflight,setPreflight]=useState<Preflight|null>(null);
+ const [preflightError,setPreflightError]=useState("");
+ const [checkingPreflight,setCheckingPreflight]=useState(false);
  const [runs,setRuns]=useState<Summary[]>([]);
  const [current,setCurrent]=useState<Run|null>(null);
  const [blind,setBlind]=useState<Blind|null>(null);
@@ -52,6 +62,29 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
  const [reference,setReference]=useState("");
  const [limitation,setLimitation]=useState("");
  useEffect(()=>{if(!lineId&&selectedLine)setLineId(selectedLine);},[selectedLine,lineId]);
+ const checkReadiness=useCallback(async(id:string)=>{
+   if(!id){setPreflight(null);return null;}
+   setCheckingPreflight(true);
+   setPreflightError("");
+   try{
+     const ready=await api<Preflight>("scientific-tournaments/preflight?line_id="+encodeURIComponent(id));
+     setPreflight(ready);
+     return ready;
+   }catch(e){
+     setPreflight(null);
+     setPreflightError(e instanceof Error?e.message:String(e));
+     return null;
+   }finally{setCheckingPreflight(false);}
+ },[]);
+ useEffect(()=>{
+   if(!lineId){setPreflight(null);return;}
+   let active=true;
+   setPreflight(null);
+   void api<Preflight>("scientific-tournaments/preflight?line_id="+encodeURIComponent(lineId))
+     .then(value=>{if(active){setPreflight(value);setPreflightError("");}})
+     .catch(e=>{if(active){setPreflight(null);setPreflightError(String(e));}});
+   return()=>{active=false;};
+ },[lineId]);
  const refresh=useCallback(async(id?:string)=>{
    const data=await api<{items:Summary[]}>("scientific-tournaments");
    setRuns(data.items);
@@ -75,6 +108,11 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
    if(!lineId||question.trim().length<10)return;
    setBusy(true);setError("");setMessage("");
    try{
+     const verified=await checkReadiness(lineId);
+     if(!verified?.ready){
+       setError(verified?.notes.join("；")||"无法确认科研竞赛就绪状态，请先检查密钥、研究数据及当日预算");
+       return;
+     }
      const out=await api<{id:string}>("scientific-tournaments",{
        method:"POST",body:JSON.stringify({line_id:lineId,question:question.trim()})
      });
@@ -82,7 +120,7 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
        "，本次最多使用 14 次付费模型调用；运行结果需人工审核。");
      await refresh(out.id);
    }catch(e){setError(e instanceof Error?e.message:String(e));}
-   finally{setBusy(false);}
+   finally{setBusy(false);void checkReadiness(lineId);}
  }
  async function resume(){
    if(!current)return;
@@ -141,15 +179,30 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
        <input value={question} maxLength={600} onChange={e=>setQuestion(e.target.value)}
          placeholder="例如：城市空间关系的跨城市外推是否存在未解释的失效机制？"/>
      </label>
-     <button className="btn btn-primary" disabled={busy||active||!canEdit||
-        !modelConfigured||!lineId||question.trim().length<10} onClick={()=>void start()}>
+     <button className="btn btn-primary" disabled={busy||active||checkingPreflight||!canEdit||
+        !modelConfigured||preflight?.ready!==true||!lineId||question.trim().length<10} onClick={()=>void start()}>
        <Play size={15}/> 运行 A/B 竞赛
      </button>
      <button className="btn btn-secondary" disabled={busy} onClick={()=>void refresh(current?.id)}>
        <RefreshCw size={15}/> 刷新
      </button>
    </div>
-   <p className="small muted">需要配置 DeepSeek、已人工审核论文和充足的当日模型预算。不会定时自动运行，不会执行原始研究代码。</p>
+   <div className="small-note">
+     <ShieldCheck size={15}/> <strong>零费用试验前检查：</strong>
+     {checkingPreflight?"正在检查":
+      preflight?.ready?"已就绪，可以人工启动":
+      preflight?"尚未就绪":"请选择研究主线"}
+     {preflight&&<span>
+       {" · "}已审论文 {preflight.approved_papers}
+       {" · "}登记数据 {preflight.registered_datasets}
+       {" · "}可用模型调用 {preflight.remaining_model_calls}
+       {" · "}剩余预留 Token {preflight.remaining_token_allowance.toLocaleString()}
+     </span>}
+     {preflight?.notes?.length>0&&
+       <p className="small muted">{preflight.notes.join("；")}</p>}
+     {preflightError&&<p className="small muted">检查未完成：{preflightError}</p>}
+   </div>
+   <p className="small muted">只有环境就绪后才可人工启动，最多 14 次模型调用。试验不会定时自动运行，也不会执行原始研究代码。</p>
    {error&&<div className="alert alert-error">{error}</div>}
    {message&&<div className="alert alert-success">{message}</div>}
    {runs.length>0&&<div className="inline-actions" style={{flexWrap:"wrap"}}>
