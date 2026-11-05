@@ -16,5 +16,5 @@ def load_skills(names=ALLOWED) -> str:
             raise ValueError("Unknown research skill")
         file = ROOT / name / "SKILL.md"
         if file.exists():
-            parts.append("### " + name + "\\n" + file.read_text(encoding="utf-8")[:7000])
-    return "\\n\\n".join(parts)
+            parts.append("### " + name + "\n" + file.read_text(encoding="utf-8")[:7000])
+    return "\n\n".join(parts)
