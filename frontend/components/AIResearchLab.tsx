@@ -5,6 +5,7 @@ import {BrainCircuit,CheckCircle2,Database,ExternalLink,KeyRound,LockKeyhole,Pla
 import {api} from "@/lib/api";
 import ScientificExplorationPanel from "@/components/ScientificExplorationPanel";
 import ScientificTournamentPanel from "@/components/ScientificTournamentPanel";
+import ResearchEvolutionPanel from "@/components/ResearchEvolutionPanel";
 
 type ModelConfig={
  provider:string;configured:boolean;vault_ready:boolean;
@@ -108,7 +109,7 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
    <div className="page-heading">
      <span className="panel-kicker">RESEARCH OPPORTUNITY ENGINE · P2</span>
      <h1>AI 科研选题实验台</h1>
-     <p>从已审核论文、团队成果及数据属性出发，经 Planner → Reader → Generator → Critic 形成有来源的待审选题。</p>
+     <p>自主检索、论文Agent互审、多轮科研假设演化和反证检索，最终只推送通过证据门控的选题；人工评价只发生在成果推荐之后。</p>
    </div>
    {error&&<div className="alert alert-error">{error}</div>}
    {notice&&<div className="alert alert-success">{notice}</div>}
@@ -154,6 +155,10 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
      {!canAdmin&&<p className="small muted">请由团队管理员在这里配置模型密钥。研究成员可以查看分析结果与按权限手动运行。</p>}
    </section>
 
+   <ResearchEvolutionPanel selectedLine={selected} lines={strategies}
+     canEdit={canEdit} modelConfigured={Boolean(data?.config.configured)}/>
+   <details className="panel">
+     <summary className="small"><strong>展开历史科研流程与 A/B 对照实验</strong>（旧流程需先人工筛文献；新流程不需要）</summary>
    <section className="panel">
      <div className="panel-header"><div><span className="panel-kicker">STEPWISE WORKFLOW</span><h2>启动与监控深度选题分析</h2></div><BrainCircuit size={20}/></div>
      <p className="small muted">仅分析通过「科研关联与文献发现 → 候选论文」人工标注为相关或方法借鉴的文献，最多 5 篇／次。不读取原始数据文件；受限数据资产不会发送给模型。</p>
@@ -227,5 +232,6 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
        </article>)}</div>}
      <div className="small-note"><ShieldCheck size={15}/> AI 分析的成果仅是候选科研假设；因尚未实现系统性的先前研究检索，不得宣称创新性已验证或已发表论文的实验结论。</div>
    </section>
+   </details>
  </div>;
 }
