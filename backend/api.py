@@ -24,6 +24,10 @@ from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
     recent_papers as interest_papers, ingest_interests,
 )
+from backend.research_sources import (
+    ResearchSource, seed_default_sources, list_sources, create_source,
+    update_source, delete_source, resolve_sources, domain_counts,
+)
 from backend.worker import run_task
 from backend.radar_trial import (
     RadarTrialRun, latest_trial, create_trial, execute_trial,
@@ -291,6 +295,35 @@ class InterestPatchRequest(BaseModel):
     keywords:list[str]|None=Field(default=None,max_length=12)
     queries:list[str]|None=Field(default=None,min_length=1,max_length=4)
     venues:list[str]|None=Field(default=None,max_length=12)
+
+class SourceCreateRequest(BaseModel):
+    name:str=Field(min_length=3,max_length=260)
+    abbreviation:str=Field(default="",max_length=60)
+    kind:Literal["journal","conference"]="journal"
+    domain:str=Field(default="urban_planning",min_length=2,max_length=40)
+    rank_label:str=Field(default="自定义",max_length=24)
+    ranking_system:str=Field(default="团队自定义来源",max_length=180)
+    source_url:str=Field(default="",max_length=1200)
+    aliases:list[str]=Field(default_factory=list,max_length=12)
+    notes:str=Field(default="",max_length=1000)
+    enabled:bool=True
+
+class SourcePatchRequest(BaseModel):
+    name:str|None=Field(default=None,min_length=3,max_length=260)
+    abbreviation:str|None=Field(default=None,max_length=60)
+    kind:Literal["journal","conference"]|None=None
+    domain:str|None=Field(default=None,min_length=2,max_length=40)
+    rank_label:str|None=Field(default=None,max_length=24)
+    ranking_system:str|None=Field(default=None,max_length=180)
+    source_url:str|None=Field(default=None,max_length=1200)
+    aliases:list[str]|None=Field(default=None,max_length=12)
+    notes:str|None=Field(default=None,max_length=1000)
+    enabled:bool|None=None
+    openalex_source_id:str|None=Field(default=None,max_length=80)
+
+class SourceResolveRequest(BaseModel):
+    ids:list[str]=Field(default_factory=list,max_length=300)
+    force:bool=False
 
 class DiscoveryRunRequest(BaseModel):
     line_id:str|None=Field(default=None,max_length=110)
@@ -803,6 +836,36 @@ def cusp_edit_dataset(dataset_id:str,data:CuspEditRequest,db:Session=Depends(get
 def cusp_opportunities_api(db:Session=Depends(get_db)):
     return {"items":cusp_proposals(db),
             "note":"规则推断的研究问题，不是 LLM 验证的创新性或数据可行性结论"}
+
+
+@app.get("/api/research-sources",dependencies=[Depends(require_actor)])
+def research_sources(domain:str="",kind:str="",enabled_only:bool=False,db:Session=Depends(get_db)):
+    return {"items":list_sources(db,domain=domain,kind=kind,enabled_only=enabled_only),
+            "summary":domain_counts(db)}
+
+@app.post("/api/research-sources",dependencies=[Depends(require_admin)])
+def research_source_create(data:SourceCreateRequest,db:Session=Depends(get_db)):
+    try:return create_source(db,data.model_dump())
+    except ValueError as ex:raise HTTPException(400,str(ex))
+
+@app.patch("/api/research-sources/{source_id}",dependencies=[Depends(require_admin)])
+def research_source_update(source_id:str,data:SourcePatchRequest,db:Session=Depends(get_db)):
+    try:return update_source(db,source_id,data.model_dump(exclude_unset=True))
+    except ValueError as ex:raise HTTPException(400,str(ex))
+
+@app.delete("/api/research-sources/{source_id}",dependencies=[Depends(require_admin)])
+def research_source_delete(source_id:str,db:Session=Depends(get_db)):
+    try:delete_source(db,source_id);return {"ok":True}
+    except ValueError as ex:raise HTTPException(404,str(ex))
+
+@app.post("/api/research-sources/resolve",dependencies=[Depends(require_admin)])
+def research_source_resolve(data:SourceResolveRequest,db:Session=Depends(get_db)):
+    try:return resolve_sources(db,data.ids or None,force=data.force)
+    except ValueError as ex:raise HTTPException(400,str(ex))
+
+@app.post("/api/research-sources/seed",dependencies=[Depends(require_admin)])
+def research_source_seed(db:Session=Depends(get_db)):
+    return {"added":seed_default_sources(db),"summary":domain_counts(db)}
 
 @app.get("/api/health")
 def health():

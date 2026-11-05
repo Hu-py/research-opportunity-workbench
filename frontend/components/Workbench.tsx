@@ -15,9 +15,10 @@ import AIResearchLab from "@/components/AIResearchLab";
 import ResearchRadar from "@/components/ResearchRadar";
 import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
+import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
+type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings"|"sources";
 type NavEntry = {key:Section;label:string;icon:typeof BookOpen};
 const navigationGroups:{label:string;items:NavEntry[]}[] = [
   {label:"工作台",items:[
@@ -26,6 +27,9 @@ const navigationGroups:{label:string;items:NavEntry[]}[] = [
   {label:"研究基础",items:[
     {key:"profile",label:"团队画像",icon:ShieldCheck},
     {key:"papers",label:"科研资源库",icon:Database},
+  ]},
+  {label:"学术基础",items:[
+    {key:"sources",label:"学术来源管理",icon:BookOpen},
   ]},
   {label:"研究发现",items:[
     {key:"discovery",label:"文献发现",icon:Search},

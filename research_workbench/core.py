@@ -71,8 +71,12 @@ def session_factory(url=None):
         Path(url[10:]).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(url, pool_pre_ping=True)
     from backend import interests as _registered_interests  # watchlist tables before create_all
+    from backend import research_sources as _registered_sources  # academic source registry
     Base.metadata.create_all(engine)
-    return sessionmaker(bind=engine, expire_on_commit=False)
+    factory=sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as db:
+        _registered_sources.seed_default_sources(db)
+    return factory
 
 def validate_profile(profile):
     lines = profile.get("research_lines") if isinstance(profile,dict) else None
