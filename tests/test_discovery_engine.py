@@ -91,7 +91,8 @@ def test_links_are_suggested_but_never_confirmed_automatically(setup_db):
 def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
     factory,client,headers=setup_db
     page=client.get("/api/opportunity-engine",headers=headers).json()
-    assert all(not s["enabled"] for s in page["strategies"])
+    assert all(not item["enabled"] for item in page["strategies"] if not item["line_id"].startswith(("db_theme_","db_data_topic_")))
+    assert all(item["enabled"] for item in page["strategies"] if item["line_id"].startswith(("db_theme_","db_data_topic_")))
     s=page["strategies"][0]
     s.update({"enabled":True,"per_query":3,"min_score":70})
     response=client.put("/api/opportunity-engine/strategies/vertical",
