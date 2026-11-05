@@ -14,7 +14,7 @@ from research_workbench.core import get_profile,Paper
 from backend.cusp import CuspDataset,sensitive_level
 from backend.repository import TeamAchievement
 from backend.discovery import PaperCandidate
-from backend.discovery_links import ResearchLineRelation,_score
+from backend.discovery_links import ResearchLineRelation
 
 def safe_official(raw):
     """Project official profile text but NEVER embedded datasets or personal notes."""
@@ -100,50 +100,26 @@ def _safe_tags(raw):
     return [str(x)[:70] for x in xs[:12] if isinstance(x,str)] if isinstance(xs,list) else []
 
 def matched_evidence(inventory,line):
-    """Ground candidate associations in DB records; skip sensitive assets."""
+    """Only expose human-confirmed links and explicitly line-approved papers."""
     keys={x["ref"] for x in inventory["confirmed_relations"]
           if x["line_id"]==line["id"]}
     matches=[]
     for source,rows in (("dataset",inventory["datasets"]),
                         ("achievement",inventory["team_achievements"]),
                         ("paper",inventory["approved_papers"])):
-        if source=="dataset":
-            texts=lambda x:x["name"]+" "+x["category"]+" "+x["coverage"]
-        elif source=="achievement":
-            texts=lambda x:x["title"]+" "+" ".join(x["tags"])
-        else:
-            texts=lambda x:x["title"]+" "+x["venue"]
-        ranked=[]
         for row in rows:
-            if source=="paper" and row.get("line_id")==line["id"]:
-                score=100
-            elif source=="achievement" and any(
-                x in row["tags"] for x in line.get("keywords",[])
-            ):
-                score=95  # actual topic-tag identity in verified output
-            else:
-                hint=_score(line,texts(row))
-                score=hint[0] if hint else 0
-            if row["ref"] in keys:score=100
-            if score:ranked.append((score,row))
-        ranked.sort(key=lambda x:(-x[0],x[1]["ref"]))
-        for score,row in ranked[:5 if source!="paper" else 8]:
-            matches.append({"ref":row["ref"],"score":score,"category":source,
+            confirmed=row["ref"] in keys
+            approved_paper=source=="paper" and row.get("line_id")==line["id"]
+            if not confirmed and not approved_paper:
+                continue
+            matches.append({"ref":row["ref"],"score":100,"category":source,
                 "label":row.get("title") or row.get("name"),
-                "relation":"confirmed" if row["ref"] in keys else
-                           "approved" if source=="paper" else "inferred_topic_match"})
+                "relation":"confirmed" if confirmed else "human_approved"})
     return matches
 
 def _queries(line):
-    def allowed(xs):
-        return [x[:140] for x in xs if isinstance(x,str) and
-                3<=len(x.strip())<=140][:3]
-    direct=allowed(line.get("search_queries",[]))
-    method=allowed(line.get("method_queries",[]))
-    if not direct and not method:
-        # Literal unvalidated name is not an OpenAlex query; require manual edit.
-        direct=["urban spatial research methods"]
-    return direct,method
+    # Search expressions are generated at runtime by the LLM discovery skill.
+    return [],[]
 
 def database_draft(inventory):
     """Conservative, clearly non-LLM first profile and evidence interpretation."""

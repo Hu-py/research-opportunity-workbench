@@ -12,9 +12,12 @@ from sqlalchemy import func, select
 
 from research_workbench.core import (
     Paper, Idea, Evidence, Event, session_factory, get_profile, set_profile,
-    ingest, propose, feedback, weekly_report,
+    feedback,
 )
 from research_workbench.ui_theme import install_theme, hero, section, safe, tag
+from backend.discovery import create_run, runs as discovery_runs
+from backend.discovery_runner import execute_discovery
+from backend.llm_weekly import generate_weekly_brief
 
 st.set_page_config(
     page_title="科研机会工作台 | Research Intelligence",
@@ -113,19 +116,21 @@ with Session() as db:
         with right:
             section("执行研究任务","在当前研究画像上采集论文并更新选题证据")
             with st.container(border=True):
-                lookback=st.number_input("检索最近多少天",min_value=1,max_value=365,value=14)
-                per_query=st.slider("每个检索词的论文上限",3,50,15)
+                st.caption("检索问题由 DeepSeek 根据研究画像、团队成果、非受限数据属性、学术来源库和启用的兴趣分支动态生成；OpenAlex 只负责元数据召回。")
                 if not profile:
                     st.warning("请先创建研究者画像，才能运行检索。")
-                if st.button("🔎 更新文献与选题",type="primary",disabled=not bool(profile),use_container_width=True):
-                    with st.spinner("正在检索 OpenAlex、去重并分析研究选题…"):
+                if st.button("🔎 启动 LLM 科研发现",type="primary",disabled=not bool(profile),use_container_width=True):
+                    with st.spinner("LLM 正在理解研究基础、规划多角度检索并逐篇评估文献…"):
                         try:
-                            stats=ingest(db,profile,days=int(lookback),limit=int(per_query))
-                            result=propose(db,profile)
-                            st.success(f"新增论文 {stats['new_papers']} 篇 · 新选题 {result['new_ideas']} 个 · 更新 {result['revised_ideas']} 个")
-                            if stats["failed_queries"]:
-                                st.warning(f"{len(stats['failed_queries'])} 个检索词失败，请稍后重试。")
-                        except Exception as e:st.error("任务执行失败："+str(e))
+                            run=create_run(db,profile,source="manual")
+                            if not run:
+                                st.warning("没有可运行的研究主线或兴趣分支。")
+                            else:
+                                execute_discovery(Session,run.id)
+                                report=next((x for x in discovery_runs(db) if x["id"]==run.id),{})
+                                st.success(f"LLM 科研发现完成：检索 {report.get('queries',0)} 个策略，语义评估 {report.get('scanned',0)} 篇，新候选 {report.get('new_candidates',0)} 篇。")
+                                st.info("候选论文仍需人工审核；模型分数不是创新性证明。")
+                        except Exception as e:st.error("LLM 任务执行失败："+str(e))
             section("研究方向")
             if not all_lines:st.caption("尚未建立研究方向档案。")
             for line in all_lines:
@@ -253,12 +258,16 @@ with Session() as db:
         hero("每周科研机会简报","本周新论文、持续更新的选题及其依据，集中呈现为可导出的研究报告。","WEEKLY RESEARCH BRIEF")
         if not profile:st.info("建立研究画像后，才可生成个性化周报。")
         else:
-            md=weekly_report(db,profile,days=7)
-            a,b=st.columns([3,1])
-            a.markdown("**研究简报 · "+date.today().isoformat()+"**")
-            b.download_button("⬇ 导出 Markdown",md,file_name="research-brief-"+date.today().isoformat()+".md",mime="text/markdown",use_container_width=True)
-            with st.container(border=True):st.markdown(md)
-            st.caption("提示：周报不代表实时检索结果。请在总览先运行论文更新，再生成本周简报。")
+            report=generate_weekly_brief(Session,days=7)
+            if report.get("status")!="completed":
+                st.warning(report.get("reason","LLM 周报暂不可用；请检查 DeepSeek Key 与模型保险库配置。"))
+            else:
+                md=report["markdown"]
+                a,b=st.columns([3,1])
+                a.markdown("**LLM 科研简报 · "+date.today().isoformat()+"**")
+                b.download_button("⬇ 导出 Markdown",md,file_name="research-brief-"+date.today().isoformat()+".md",mime="text/markdown",use_container_width=True)
+                with st.container(border=True):st.markdown(md)
+                st.caption("本报告由 LLM 综合文献摘要、团队画像、已登记数据属性和选题进展生成；不代表全文核验。")
 
     else:
         hero("系统设置与数据安全","控制数据库、自动化推送与云端部署的前置配置。","WORKBENCH SETTINGS")
@@ -270,5 +279,5 @@ with Session() as db:
         st.subheader("需要注意")
         st.warning("不要在公开工作台中保存未发表论文、个人研究计划或隐私数据。云部署前必须启用密码保护并配置持久化数据库。")
         st.markdown("**自动化设置**：每周任务由 GitHub Actions 运行，需配置 DATABASE_URL，并设置 ENABLE_WEEKLY=true。")
-        st.markdown("**数据来源**：当前以 OpenAlex 为主，跨领域选题由规则识别生成；尚未包含全面的论文精读、学术创新性验证。")
+        st.markdown("**数据来源**：当前以 OpenAlex 为主，检索规划、文献筛选、数据关联与选题分析由 LLM Skills 驱动；尚未包含全面的论文精读、学术创新性验证。")
         st.markdown("[查看 GitHub 仓库](https://github.com/Hu-py/research-opportunity-workbench)")

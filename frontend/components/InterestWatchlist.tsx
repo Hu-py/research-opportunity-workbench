@@ -26,7 +26,7 @@ export default function InterestWatchlist({canEdit}:{canEdit:boolean}){
  const load=useCallback(async()=>{try{setData(await api<Data>("research-interests"));}catch(e){setError(e instanceof Error?e.message:"读取失败");}},[]);
  useEffect(()=>{void load();},[load]);
  async function create(){
-  setError("");setNotice("");if(name.trim().length<3||!split(queries,4).length){setError("请填写主题名称及至少一个检索表达式");return;}
+  setError("");setNotice("");if(name.trim().length<3||goal.trim().length<5){setError("请填写主题名称和具体研究目标");return;}
   setBusy(true);
   try{
    await api("research-interests",{method:"POST",body:JSON.stringify({
@@ -57,7 +57,7 @@ export default function InterestWatchlist({canEdit}:{canEdit:boolean}){
     <h1>研究兴趣与计算机前沿</h1>
     <p>独立兴趣分支可以手动添加、暂停、试抓取；它们不会被自动当作团队已核验科研成果。</p></div>
    <div className="dev-sectionbar">
-    <div><h2>关注主题</h2><p>数据保存在 PostgreSQL；每周抓取使用独立的 GitHub Actions 调度。</p></div>
+    <div><h2>关注主题</h2><p>数据保存在 PostgreSQL；每日/每周扫描由 LLM 根据研究目标动态生成检索策略，补充提示不是固定检索式。</p></div>
     <div className="inline-actions"><button className="btn" disabled={busy} onClick={()=>void load()}><RefreshCw size={14}/> 刷新</button>
      {canEdit&&<button className="btn btn-primary" onClick={()=>setOpen(x=>!x)}><Plus size={14}/> 添加兴趣</button>}</div>
    </div>
@@ -68,7 +68,7 @@ export default function InterestWatchlist({canEdit}:{canEdit:boolean}){
     <div className="dev-form-grid"><label>方向名称<input value={name} onChange={e=>setName(e.target.value)} placeholder="例如：图基础模型"/></label>
      <label>类型<select value={focus} onChange={e=>setFocus(e.target.value as Interest["focus"])}><option value="cs_frontier">计算机前沿</option><option value="cross_domain">跨领域方法</option><option value="applied">领域研究</option></select></label></div>
     <label>研究目标<textarea rows={2} value={goal} onChange={e=>setGoal(e.target.value)}/></label>
-    <label>英文检索词（每行一条）<textarea rows={3} value={queries} onChange={e=>setQueries(e.target.value)}/></label>
+    <label>补充检索提示（可选）<textarea rows={3} value={queries} onChange={e=>setQueries(e.target.value)}/></label>
     <label>关注会议（仅观察标签，目前不自动验证 venue）<input value={venues} onChange={e=>setVenues(e.target.value)}/></label>
     <div className="inline-actions"><button className="btn btn-primary" disabled={busy} onClick={()=>void create()}>保存分支</button>
       <button className="btn" onClick={()=>setOpen(false)}>取消</button></div>
@@ -81,7 +81,7 @@ export default function InterestWatchlist({canEdit}:{canEdit:boolean}){
           <span className={item.enabled?"dev-watch-on":"dev-watch-off"}>{item.enabled?"已开启":"已暂停"}</span></div>
         <h3>{item.title}</h3><p>{item.problem||"暂无目标描述"}</p><div className="dev-tags">{item.venues.map(v=><span key={v}>{v}</span>)}</div>
         <small>最后状态：{item.last_status} · 本轮新增 {item.last_new} 篇</small>
-        <details className="dev-watch-detail"><summary>检索策略与真实论文</summary>
+        <details className="dev-watch-detail"><summary>最近的 LLM 检索策略与真实论文</summary>
           {item.queries.map(q=><p key={q} className="dev-query">{q}</p>)}
           {item.recent_papers.length?item.recent_papers.map(p=><a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer">{p.title} ↗</a>):<p className="small muted">尚未存入论文</p>}</details>
         {canEdit&&<div className="dev-watch-actions"><button className="btn btn-secondary" disabled={busy} onClick={()=>void action(item,"toggle")}>{item.enabled?"暂停":"恢复"}</button>
@@ -94,6 +94,6 @@ export default function InterestWatchlist({canEdit}:{canEdit:boolean}){
      <p>{p.queries.split("\n")[0]}</p>
      {canEdit&&<button onClick={()=>{setName(p.name);setFocus("cs_frontier");setVenues(p.venues);setQueries(p.queries);setGoal("跟踪此计算机领域的研究进展，筛选可迁移方法。");setOpen(true);window.scrollTo({top:0,behavior:"smooth"});}}>创建兴趣分支 →</button>}</div>)}</div>
    </section>
-   <p className="dev-final-note"><BookOpen size={14}/> 检索和阅读属于科研平台业务功能。开发进度控制台已迁移到独立网站，不再出现在本工作台。</p>
+   <p className="dev-final-note"><BookOpen size={14}/> 检索策略、文献相关性和方法迁移判断由 LLM 驱动；学术 API 只负责召回元数据。开发进度控制台已迁移到独立网站，不再出现在本工作台。</p>
  </div>;
 }

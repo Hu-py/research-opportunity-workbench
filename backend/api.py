@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import logging
+from datetime import date
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Literal
@@ -16,13 +17,13 @@ from sqlalchemy.orm import Session
 
 from research_workbench.core import (
     Paper, Idea, Evidence, Event, Profile, Base,
-    get_profile, set_profile, feedback, weekly_report, validate_profile,
+    get_profile, set_profile, feedback, validate_profile,
     session_factory,
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
 from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
-    recent_papers as interest_papers, ingest_interests,
+    recent_papers as interest_papers,
 )
 from backend.research_sources import (
     ResearchSource, seed_default_sources, list_sources, create_source,
@@ -34,11 +35,13 @@ from backend.radar_trial import (
 )
 from backend.radar_pipeline import (
     RadarReport, list_topics as list_radar_topics, recent_reports as list_radar_reports,
-    sync_ai_opportunities, generate_weekly as generate_radar_weekly,
+    
     review_topic as review_radar_topic,
 )
 from backend.bootstrap import bootstrap_admin_from_env
 from backend.discovery_links import list_links, review_link
+from backend.llm_relations import execute_llm_relations
+from backend.llm_weekly import generate_weekly_brief
 from backend.discovery import (
     SearchStrategy, DiscoveryRun, PaperCandidate, strategies,
     save_strategy, create_run, candidates, runs as discovery_runs,
@@ -285,7 +288,7 @@ class InterestCreateRequest(BaseModel):
     focus:Literal["applied","cs_frontier","cross_domain"]="applied"
     problem:str=Field(default="",max_length=1800)
     keywords:list[str]=Field(default_factory=list,max_length=12)
-    queries:list[str]=Field(min_length=1,max_length=4)
+    queries:list[str]=Field(default_factory=list,max_length=4)
     venues:list[str]=Field(default_factory=list,max_length=12)
     enabled:bool=True
 
@@ -582,16 +585,19 @@ def scan_research_interest(interest_id:str,background:BackgroundTasks,
     row=db.get(ResearchInterest,interest_id)
     if not row:raise HTTPException(404,"研究兴趣不存在")
     if not row.enabled:raise HTTPException(409,"请先开启该兴趣分支")
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        raise HTTPException(409,"请先在 AI 实验台配置 DeepSeek API Key")
+    try:
+        run=create_run(db,get_profile(db),source="manual",line_id="interest:"+interest_id)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
     row.last_status="queued"
-    add_audit(db,"interest.scan_requested",actor.id if actor else None,interest_id)
+    add_audit(db,"interest.llm_scan_requested",actor.id if actor else None,interest_id)
     db.commit()
-    def execute(factory,ident):
-        with factory() as session:
-            ingest_interests(session,days=21,per_query=6,
-                             interest_ids=[ident],max_interests=1)
-    background.add_task(execute,get_factory(),interest_id)
-    return {"id":interest_id,"status":"queued",
-            "note":"检索已排队。免费后端休眠可能使后台任务中断；结果需重新刷新验证。"}
+    background.add_task(execute_discovery,get_factory(),run.id)
+    return {"id":run.id,"status":"queued",
+            "note":"该兴趣分支将由 LLM 动态生成检索策略、检索文献并进行语义评估；候选论文仍需人工审核。"}
 
 @app.get("/api/opportunity-engine",dependencies=[Depends(require_actor)])
 def opportunity_engine(db:Session=Depends(get_db)):
@@ -609,7 +615,7 @@ def opportunity_engine(db:Session=Depends(get_db)):
         "candidates":[{**item,"preanalysis":preanalysis_view(analyses.get(item["id"]))}
                       for item in items],
         "runs":discovery_runs(db),
-        "note":"论文相关性是规则排序；LLM 预分析仅辅助阅读，不代表全文核验、学术创新性或数据可行性。人工审核状态不会被自动改变。",
+        "note":"检索策略生成与论文语义相关性评估由 DeepSeek LLM 驱动；OpenAlex 负责学术元数据召回，代码仅负责去重、校验与入库。LLM 判断不代表全文核验或创新性证明，所有候选仍需人工审核。",
     }
 
 @app.post("/api/opportunity-engine/preanalyze",status_code=202,
@@ -626,6 +632,20 @@ def start_paper_preanalysis(background:BackgroundTasks,
         db.commit()
     return {"status":"queued","limit":6,
             "note":"只预分析待审核论文；不会自动通过或写入正式已审核文献库。"}
+
+@app.post("/api/opportunity-engine/relations/analyze",status_code=202,
+          dependencies=[Depends(require_actor)])
+def analyze_research_relations(background:BackgroundTasks,
+        db:Session=Depends(get_db),
+        actor:TeamMember|None=Depends(require_admin)):
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        raise HTTPException(409,"请先在 AI 实验台配置 DeepSeek API Key")
+    background.add_task(execute_llm_relations,get_factory())
+    if actor is not None:
+        add_audit(db,"research_relation.llm_analysis_started",actor.id,"team-data-mapping")
+        db.commit()
+    return {"status":"queued","note":"LLM 正在理解研究主线与非受限数据资产；所有新关联均保持待人工确认。"}
 
 @app.patch("/api/opportunity-engine/relations/{relation_id}",
            dependencies=[Depends(require_actor)])
@@ -650,6 +670,9 @@ def update_search_strategy(line_id:str,data:SearchStrategyRequest,
 def start_discovery(data:DiscoveryRunRequest,background:BackgroundTasks,
          db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_editor)):
     if not get_profile(db):raise HTTPException(409,"请先保存团队研究画像")
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        raise HTTPException(409,"LLM 驱动检索需要先在 AI 实验台配置 DeepSeek API Key")
     try:
         run=create_run(db,get_profile(db),source="manual",line_id=data.line_id)
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
@@ -1051,19 +1074,31 @@ def radar_human_review(topic_id:str,data:RadarReviewRequest,
 @app.post("/api/radar/refresh",dependencies=[Depends(require_actor)])
 def radar_refresh(db:Session=Depends(get_db),
                   actor:TeamMember|None=Depends(require_editor)):
-    """Rebuild hypotheses from saved AI cards without making paid LLM calls."""
-    result=sync_ai_opportunities(db)
-    report=generate_radar_weekly(db)
+    """Generate a persisted weekly brief through the configured LLM Skills."""
+    report=generate_weekly_brief(get_factory(),days=7)
+    if report.get("status")!="completed":
+        raise HTTPException(409,report.get("reason","LLM 周报生成失败"))
+    period=f"{date.today().isocalendar().year}-W{date.today().isocalendar().week:02d}"
+    item=db.get(RadarReport,period)
+    if item is None:
+        item=RadarReport(period=period,markdown=report["markdown"],
+                         topic_count=report.get("ideas_considered",0))
+        db.add(item)
+    else:
+        item.markdown=report["markdown"]
+        item.topic_count=report.get("ideas_considered",0)
     if actor is not None:
-        add_audit(db,"radar.refreshed",actor.id,"weekly-radar",
-                  "new="+str(result["new_topics"])+" updated="+str(result["revised_topics"]))
-        db.commit()
-    return {"sync":result,"report_chars":len(report),"reports":list_radar_reports(db)}
+        add_audit(db,"radar.llm_brief_generated",actor.id,period,
+                  "papers="+str(report.get("papers_considered",0)))
+    db.commit()
+    return {"status":"completed","report_chars":len(report["markdown"]),
+            "reports":list_radar_reports(db)}
 
 @app.get("/api/brief",dependencies=[Depends(require_actor)])
 def brief(db:Session=Depends(get_db)):
     prof=get_profile(db)
     if not prof:return {"markdown":"","profile_ready":False}
     stored=db.scalar(select(RadarReport).order_by(RadarReport.period.desc()).limit(1))
-    extra=("\n\n"+stored.markdown) if stored else ""
-    return {"markdown":weekly_report(db,prof)+extra,"profile_ready":True}
+    return {"markdown":stored.markdown if stored else "",
+            "profile_ready":True,"generated":stored is not None,
+            "note":"周报由 LLM Skills 生成；如尚无报告，请在科研简报页触发生成。"}

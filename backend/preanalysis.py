@@ -13,6 +13,8 @@ from research_workbench.core import Base, get_profile
 from backend.discovery import PaperCandidate
 from backend.model_vault import ModelCredential, load_key
 from backend.model_gateway import request_json
+from backend.skill_loader import load_skills
+from backend.interests import ResearchInterest, decode as decode_interest
 
 MAX_PREANALYSES_PER_RUN = 6
 PREANALYSIS_MODEL = "deepseek-flash"
@@ -104,6 +106,10 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None, req
         model = credential.fast_model or PREANALYSIS_MODEL
         profile = get_profile(db) or {}
         lines = {x.get("id"): x for x in profile.get("research_lines", [])}
+        for interest in db.scalars(select(ResearchInterest).where(ResearchInterest.enabled.is_(True))).all():
+            token="interest:"+interest.id
+            lines[token]={"id":token,"name":interest.title,"problem":interest.problem,
+                "keywords":decode_interest(interest.keywords_json)}
         rows = db.scalars(
             select(PaperCandidate)
             .where(PaperCandidate.status == "pending")
@@ -180,8 +186,9 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None, req
                 row.error = ""
                 row.updated_at = now()
                 db.commit()
+            system = SYSTEM + "\n\n执行技能：\n" + load_skills(("paper_reader", "literature_discovery"))
             result, _usage = request_json(
-                key, model, SYSTEM, payload, client=client, max_tokens=1100
+                key, model, system, payload, client=client, max_tokens=1400
             )
             analysis = _validate(result)
             with factory() as db:

@@ -1,84 +1,133 @@
-"""CLI for onboarding, ingestion, weekly reporting, and status updates."""
+"""CLI entrypoints for LLM-led scheduled research discovery and weekly synthesis."""
 import argparse
 import json
 import os
 from pathlib import Path
-from .core import session_factory, set_profile, get_profile, ingest, propose, feedback, weekly_report
-from backend.interests import ingest_interests  # register interests before Base.create_all
-from backend.radar_pipeline import sync_ai_opportunities, generate_weekly
+from datetime import date
+
+from .core import session_factory, set_profile, get_profile, feedback
+from backend.discovery import create_run
+from backend.discovery_runner import execute_discovery
+from backend.ai_lab import create_scheduled_run, execute as execute_ai_analysis
+from backend.llm_relations import execute_llm_relations
+from backend.llm_weekly import generate_weekly_brief
+from backend.model_vault import ModelCredential, load_key
+
+
+def _llm_ready(db):
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        return False,"DeepSeek API Key 未配置"
+    try:
+        return bool(load_key(db)),""
+    except ValueError as exc:
+        return False,str(exc)
+
+
+def _run_discovery(factory, profile):
+    with factory() as db:
+        run=create_run(db,profile,source="scheduled")
+        if not run:
+            return {"status":"skipped","reason":"没有启用的研究主线或手动兴趣分支"}
+        ident=run.id
+    execute_discovery(factory,ident)
+    with factory() as db:
+        from backend.discovery import runs
+        return next((x for x in runs(db) if x["id"]==ident),{"id":ident,"status":"unknown"})
+
+
+def _run_optional_ai(factory):
+    with factory() as db:
+        run=create_scheduled_run(db)
+        ident=run.id if run else None
+    if not ident:
+        return {"status":"skipped","reason":"未开启每日 AI 分析、没有已审核论文或已有任务"}
+    ok=execute_ai_analysis(factory,ident)
+    return {"id":ident,"status":"completed" if ok else "failed"}
+
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog="research-wb")
     sub=parser.add_subparsers(dest="cmd",required=True)
     p=sub.add_parser("profile-import")
     p.add_argument("path")
-    p=sub.add_parser("ingest")
-    p.add_argument("--days",type=int,default=14)
-    p.add_argument("--per-query",type=int,default=15)
-    sub.add_parser("ideate")
-    sub.add_parser("daily")
+    # Keep legacy command names so old scripts fail with a clear migration message.
+    sub.add_parser("ingest",help="deprecated: use daily/weekly LLM discovery")
+    sub.add_parser("ideate",help="deprecated: use the LLM AI Lab")
     p=sub.add_parser("feedback")
     p.add_argument("idea_id");p.add_argument("status");p.add_argument("--note",default="")
+    sub.add_parser("daily")
     p=sub.add_parser("weekly")
-    p.add_argument("--days",type=int,default=14)
+    p.add_argument("--days",type=int,default=7)
     p.add_argument("--email",action="store_true")
-    p.add_argument("--ai",action="store_true",help="Opt-in paid DeepSeek analysis; needs reviewed papers + vault config")
+    p.add_argument("--ai",action="store_true",help="also run the configured AI Lab scheduled analysis")
     args=parser.parse_args(argv)
     if os.getenv("GITHUB_ACTIONS")=="true" and not os.getenv("DATABASE_URL"):
         parser.error("GitHub Actions requires a persistent DATABASE_URL")
-    Factory=session_factory()
-    with Factory() as db:
+    if args.cmd in ("ingest","ideate"):
+        parser.error("该规则式命令已停用。请使用 daily/weekly 的 LLM 驱动科研发现流程。")
+    factory=session_factory()
+    with factory() as db:
         if args.cmd=="profile-import":
             set_profile(db,json.loads(Path(args.path).read_text(encoding="utf-8")))
             print("Research profile saved in database")
             return 0
         profile=get_profile(db)
-        if not profile:parser.error("No research profile: run profile-import first")
-        if args.cmd=="ingest":print(json.dumps(ingest(db,profile,days=args.days,limit=args.per_query)))
-        elif args.cmd=="ideate":print(json.dumps(propose(db,profile)))
-        elif args.cmd=="feedback":feedback(db,args.idea_id,args.status,args.note);print("Feedback saved")
-        elif args.cmd=="daily":
-            print("Ingest:",json.dumps(ingest(db,profile,days=14,limit=10)))
-            print("Interests:",json.dumps(ingest_interests(db,days=14,per_query=6)))
-            print("Ideas:",json.dumps(propose(db,profile)))
-            print("Radar:",json.dumps(sync_ai_opportunities(db)))
-        elif args.cmd=="weekly":
-            stats=ingest(db,profile,days=args.days)
-            print("Ingest:",json.dumps(stats))
-            interest_stats=ingest_interests(db,days=min(365,args.days),per_query=6)
-            print("Interest watchlist:",json.dumps(interest_stats))
-            if stats["failed_queries"]:print("WARNING: incomplete retrieval; queries failed")
-            print("Ideas:",json.dumps(propose(db,profile)))
-            if args.ai:
-                from backend.ai_lab import create_run, execute
-                run=None
-                for line in profile["research_lines"]:
-                    try:
-                        run=create_run(db,line["id"],source="scheduled")
-                        break
-                    except ValueError as exc:
-                        print("AI not started for line",line["id"],":",str(exc)[:160])
-                if run:
-                    print("AI run:",run.id,"success:",execute(Factory,run.id))
-            print("Radar:",json.dumps(sync_ai_opportunities(db)))
-            radar_markdown=generate_weekly(db)
-            text=weekly_report(db,profile)+"\n\n"+radar_markdown
-            out=Path("reports")/("weekly-"+__import__("datetime").date.today().isoformat()+".md")
-            out.parent.mkdir(exist_ok=True,parents=True);out.write_text(text,encoding="utf-8")
-            print("Report:",out)
-            if args.email:
-                from email.message import EmailMessage
-                import smtplib,ssl
-                required=["SMTP_HOST","SMTP_USER","SMTP_PASSWORD","REPORT_TO"]
-                if not all(os.getenv(k) for k in required):raise ValueError("SMTP configuration incomplete")
-                msg=EmailMessage()
-                msg["From"]=os.environ["SMTP_USER"];msg["To"]=os.environ["REPORT_TO"]
-                msg["Subject"]="Research Opportunity Brief"
-                msg.set_content(text)
-                with smtplib.SMTP_SSL(os.environ["SMTP_HOST"],int(os.getenv("SMTP_PORT","465")),context=ssl.create_default_context()) as smtp:
-                    smtp.login(os.environ["SMTP_USER"],os.environ["SMTP_PASSWORD"]);smtp.send_message(msg)
-                print("Email sent")
+        if not profile:
+            parser.error("No research profile: establish the team research portrait first")
+        ready,reason=_llm_ready(db)
+    if not ready:
+        if args.cmd=="weekly":
+            raise RuntimeError("Weekly LLM workflow requires a configured model key: "+reason)
+        print("LLM workflow skipped:",reason)
+        return 0
+
+    if args.cmd=="feedback":
+        with factory() as db:
+            feedback(db,args.idea_id,args.status,args.note)
+        print("Feedback saved")
+        return 0
+
+    if args.cmd=="daily":
+        discovery=_run_discovery(factory,profile)
+        print("LLM discovery:",json.dumps(discovery,ensure_ascii=False))
+        ai=_run_optional_ai(factory)
+        print("AI opportunity analysis:",json.dumps(ai,ensure_ascii=False))
+        return 0
+
+    if args.cmd=="weekly":
+        discovery=_run_discovery(factory,profile)
+        print("LLM discovery:",json.dumps(discovery,ensure_ascii=False))
+        relations=execute_llm_relations(factory)
+        print("LLM data relations:",json.dumps(relations,ensure_ascii=False))
+        if args.ai:
+            ai=_run_optional_ai(factory)
+            print("AI opportunity analysis:",json.dumps(ai,ensure_ascii=False))
+        report=generate_weekly_brief(factory,days=args.days)
+        if report.get("status")!="completed":
+            raise RuntimeError(report.get("reason","LLM weekly report failed"))
+        text=report["markdown"]
+        out=Path("reports")/("weekly-"+date.today().isoformat()+".md")
+        out.parent.mkdir(exist_ok=True,parents=True)
+        out.write_text(text,encoding="utf-8")
+        print("LLM weekly report:",out)
+        if args.email:
+            from email.message import EmailMessage
+            import smtplib,ssl
+            required=["SMTP_HOST","SMTP_USER","SMTP_PASSWORD","REPORT_TO"]
+            if not all(os.getenv(k) for k in required):
+                raise ValueError("SMTP configuration incomplete")
+            msg=EmailMessage()
+            msg["From"]=os.environ["SMTP_USER"];msg["To"]=os.environ["REPORT_TO"]
+            msg["Subject"]="Research Opportunity Brief"
+            msg.set_content(text)
+            with smtplib.SMTP_SSL(os.environ["SMTP_HOST"],int(os.getenv("SMTP_PORT","465")),
+                                  context=ssl.create_default_context()) as smtp:
+                smtp.login(os.environ["SMTP_USER"],os.environ["SMTP_PASSWORD"])
+                smtp.send_message(msg)
+            print("Email sent")
     return 0
+
 
 if __name__=="__main__":
     raise SystemExit(main())

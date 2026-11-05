@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install backend with PostgreSQL
-        run: pip install -e '.[postgres]'
+        run: pip install -e '.[postgres,ai]'
       - name: Generate persistent weekly intelligence
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -37,12 +37,12 @@ jobs:
             echo 'DATABASE_URL is required: GitHub runner disk is ephemeral' >&2
             exit 1
           fi
+          if [ -z "${MODEL_VAULT_KEY:-}" ]; then
+            echo 'MODEL_VAULT_KEY is required for LLM discovery and weekly synthesis' >&2
+            exit 1
+          fi
           args=(weekly)
           if [ "${ENABLE_WEEKLY_AI:-false}" = "true" ]; then
-            if [ -z "${MODEL_VAULT_KEY:-}" ]; then
-              echo 'ENABLE_WEEKLY_AI=true requires MODEL_VAULT_KEY' >&2
-              exit 1
-            fi
             args+=(--ai)
           fi
           if [ -n "${REPORT_TO:-}" ]; then args+=(--email); fi

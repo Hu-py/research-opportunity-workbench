@@ -11,8 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Boolean, DateTime, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
-from research_workbench.core import Base, Paper, normalize_paper, query_openalex
-from backend.openalex_errors import safe_openalex_error
+from research_workbench.core import Base, Paper
 
 def now():
     return datetime.now(timezone.utc)
@@ -50,9 +49,8 @@ def as_dict(row: ResearchInterest):
     }
 
 def create_interest(db, payload: dict, actor: str = ""):
-    queries = [q.strip() for q in payload["queries"] if q.strip()]
-    if not queries:
-        raise ValueError("至少填写一条具体的文献检索表达式")
+    # Queries are optional hints; the LLM derives the actual search plan.
+    queries = [q.strip() for q in payload.get("queries", []) if q.strip()]
     row = ResearchInterest(
         id=str(uuid.uuid4()), title=payload["title"].strip(),
         focus=payload["focus"], problem=payload["problem"].strip(),
@@ -78,56 +76,6 @@ def recent_papers(db, interest_id: str, limit: int = 4):
             break
     return found
 
-def ingest_interests(db, days=14, per_query=6, client=None, interest_ids=None, max_interests=8):
-    """Bounded OpenAlex collection; literature is not marked human-reviewed.
-
-    The weekly CLI processes at most eight enabled interests and two
-    search queries per interest. Each batch is idempotent by normalized ID.
-    """
-    import httpx
-    from datetime import date, timedelta
-    if not 1 <= days <= 365 or not 1 <= per_query <= 12:
-        raise ValueError("Invalid interest scan limits")
-    q = select(ResearchInterest).where(ResearchInterest.enabled.is_(True))
-    if interest_ids is not None:
-        q = q.where(ResearchInterest.id.in_(interest_ids))
-    rows = db.scalars(q.order_by(ResearchInterest.created_at.desc()).limit(max_interests)).all()
-    since = (date.today() - timedelta(days=days)).isoformat()
-    summary = {"interests":len(rows), "requests":0, "new_papers":0, "errors":0}
-    for row in rows:
-        errors = 0
-        new = 0
-        for search in decode(row.queries_json)[:2]:
-            summary["requests"] += 1
-            try:
-                works = query_openalex(search, since, limit=per_query, client=client)
-                for work in works:
-                    paper = normalize_paper(work)
-                    if not paper["title"] or not paper["url"].startswith("https://"):
-                        continue
-                    tag = "interest:" + row.id
-                    old = db.get(Paper, paper["id"])
-                    if old is None:
-                        db.add(Paper(**paper, line_ids=json.dumps([tag])))
-                        db.flush()  # prevent duplicate PK across search terms/interests
-                        new += 1
-                        summary["new_papers"] += 1
-                    else:
-                        existing = decode(old.line_ids)
-                        if tag not in existing:
-                            existing.append(tag)
-                            old.line_ids = json.dumps(existing, ensure_ascii=False)
-            except (httpx.HTTPError, ValueError) as exc:
-                # Do not persist external URLs, API keys, or private query strings.
-                _ = safe_openalex_error(exc, bool(os.getenv("OPENALEX_API_KEY")))
-                errors += 1
-                summary["errors"] += 1
-        row.last_checked_at = now()
-        row.last_status = "partial" if errors and errors < min(2,len(decode(row.queries_json))) else (
-            "failed" if errors else "completed")
-        row.last_new = new
-        db.commit()
-    return summary
 
 def interest_brief_section(db, days=7):
     from datetime import date, timedelta

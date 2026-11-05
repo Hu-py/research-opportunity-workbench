@@ -20,6 +20,7 @@ from backend.discovery_links import ResearchLineRelation
 from backend.repository import TeamAchievement
 from backend.model_vault import ModelCredential,load_key
 from backend.model_gateway import ModelCallError,request_json
+from backend.skill_loader import load_skills
 from backend.team import add_audit
 
 MAX_PAPERS=5
@@ -115,21 +116,15 @@ def _dataset_context(db,line_id):
         ResearchLineRelation.status=="confirmed")).all()]
     all_rows=db.scalars(select(CuspDataset).order_by(CuspDataset.name)).all()
     from backend.cusp import sensitive_level
-    from backend.discovery_links import suggestions
-    # Prefer confirmed links, then evidence-grounded suggestions for THIS line,
-    # instead of sending the alphabetically first unrelated dataset names.
+    # Supply the LLM a bounded, non-restricted inventory and let it judge
+    # conceptual fit. Confirmed links are context, not an automatic relevance score.
     allowed=[x for x in all_rows if x.sensitivity in ("public","internal")
              and sensitive_level(x.name)!="restricted"]
-    relevance={x["reference_id"]:x["score"] for x in
-               suggestions(db,get_profile(db))
-               if x["kind"]=="dataset" and x["line_id"]==line_id}
-    matched=[x for x in allowed if x.id in ids or x.id in relevance]
-    ordered=sorted(matched,key=lambda x:(x.id not in ids,
-                   -relevance.get(x.id,0),x.category,x.name))
+    ordered=sorted(allowed,key=lambda x:(x.id not in ids,x.category,x.name))
     return [{"id":x.id,"name":x.name[:150],"category":x.category,
              "format":x.format,"coverage":x.coverage[:140],
-             "period":x.period[:120],
-             "description":x.description[:160]} for x in ordered[:MAX_DATASETS]]
+             "period":x.period[:120],"description":x.description[:160]}
+            for x in ordered[:MAX_DATASETS]]
 
 def _snapshot(db,line_id):
     profile=get_profile(db)
@@ -407,7 +402,14 @@ def execute(factory,run_id,client=None):
                          "evidence_note":"没有实施定向的先前研究检索，只能作预审"}
             else:raise ValueError("Invalid run stage")
             if stage!="reader" or missing:
-                data,usage=request_json(key,model,PROMPTS[stage],payload,
+                skill_names={
+                    "planner":("research_profile","literature_discovery"),
+                    "reader":("paper_reader",),
+                    "generator":("method_transfer","idea_discovery"),
+                    "critic":("idea_critic",),
+                }.get(stage,())
+                system_prompt=PROMPTS[stage]+"\n\n执行技能：\n"+load_skills(skill_names)
+                data,usage=request_json(key,model,system_prompt,payload,
                                         client=client,max_tokens=2600 if stage in ("generator","reader") else 1600)
                 called=True
                 if stage=="reader" and missing:

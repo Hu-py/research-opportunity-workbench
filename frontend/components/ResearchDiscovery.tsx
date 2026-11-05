@@ -54,7 +54,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
  const latest=data?.runs[0];
  function openEditor(s:Strategy){
    setEditor(s.line_id);setDraft({...s});
-   setDirectText(s.direct_queries.join("\n"));setMethodText(s.method_queries.join("\n"));
+   setDirectText("");setMethodText("");
  }
  async function saveStrategy(){
    if(!draft||!editor)return;
@@ -92,6 +92,23 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        setData(latest);
        if(latest.candidates.some(x=>x.preanalysis?.status==="completed"||x.preanalysis?.status==="failed")){
          setNotice("预分析结果已更新。请查看候选论文卡片；所有论文仍需人工审核。");
+         break;
+       }
+     }
+   }catch(e){setError(e instanceof Error?e.message:String(e));}
+   finally{setBusy(false);}
+ }
+ async function runRelationAnalysis(){
+   setBusy(true);setError("");setNotice("");
+   try{
+     await api("opportunity-engine/relations/analyze",{method:"POST"});
+     setNotice("已启动 LLM 数据资产关联分析。正在等待结果写入……");
+     for(let attempt=0;attempt<12;attempt++){
+       await new Promise(resolve=>setTimeout(resolve,5000));
+       const latest=await api<Dashboard>("opportunity-engine");
+       setData(latest);
+       if(latest.relations.length>0){
+         setNotice("LLM 关联建议已更新，所有新关联均需人工确认。");
          break;
        }
      }
@@ -162,9 +179,9 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </div>
      {active==="links"&&<>
-       <p className="small muted">以下根据团队研究问题与 CUSP 数据属性、已核验成果主题推断，仅是候选关联。管理员确认后会保留审核状态与操作记录，不等于实际数据可用或已经验证方法。</p>
+       <div className="discovery-inbox-top"><p className="small muted">由 LLM 结合研究构念、数据字段、时空覆盖和团队已核验成果提出关联。模型只生成建议，不证明数据可用性。</p>{canAdmin&&<button className="btn btn-primary" disabled={busy} onClick={()=>void runRelationAnalysis()}>LLM 分析数据关联</button>}</div>
        <div className="discovery-record-list">
-         {relations.length===0?<div className="empty"><Database size={26}/><p>未发现可匹配关联。请检查团队研究画像中的问题与关键词。</p></div>:
+         {relations.length===0?<div className="empty"><Database size={26}/><p>尚无 LLM 生成的关联建议。管理员可点击“LLM 分析数据关联”。</p></div>:
          relations.map(x=><article className="discovery-record" key={x.id}>
            <div className="discovery-labels"><span>{x.line_name}</span><span>{x.kind==="dataset"?"CUSP 数据":"团队已有成果"}</span>
              <span className={x.status==="confirmed"?"disc-confirmed":""}>{x.status==="confirmed"?"已确认":x.status==="rejected"?"已排除":"建议关联"}</span></div>
@@ -179,14 +196,13 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </>}
      {active==="search"&&<>
-       <p className="small muted">每条研究主线有“研究问题”和“方法迁移”两个检索通道。定时抓取默认关闭，只有管理员主动开启的方向才会由现有每日任务触发；不消耗模型 API。</p>
+       <p className="small muted">每轮由 DeepSeek 根据团队画像、数据资产、已有成果和学术来源库自主规划检索策略，再调用 OpenAlex 召回并由 LLM 逐篇语义评估。定时监测默认关闭；开启后会产生模型调用费用。</p>
        <div className="discovery-record-list">
          {strategies.filter(x=>line==="all"||line===x.line_id).map(x=><article className="discovery-record" key={x.line_id}>
            <div className="discovery-labels"><span>{x.enabled?"每日监测已开启":"定时监测关闭"}</span><span>近 {x.lookback_days} 天</span><span>每词最多 {x.per_query} 篇</span></div>
            <h3>{x.line_name}</h3>
            {editor===x.line_id&&draft?<div className="discovery-editor">
-             <label>直接相关检索（每行一个，最多 3 条）<textarea rows={4} value={directText} onChange={e=>setDirectText(e.target.value)}/></label>
-             <label>方法迁移检索（每行一个，最多 3 条）<textarea rows={4} value={methodText} onChange={e=>setMethodText(e.target.value)}/></label>
+             <p className="small muted">检索式由 LLM 在每次运行时动态生成，综合研究问题、团队成果、数据资产、学术来源库及跨学科前沿，不再要求人工维护固定关键词。</p>
              <div className="discovery-options">
                <label><input type="checkbox" checked={draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})}/> 开启每天自动抓取</label>
                <label>回溯天数<input type="number" min={7} max={180} value={draft.lookback_days} onChange={e=>setDraft({...draft,lookback_days:Number(e.target.value)})}/></label>
@@ -201,7 +217,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
              <p><b>问题检索：</b>{x.direct_queries.join(" · ")||"尚未配置"}</p>
              <p><b>方法检索：</b>{x.method_queries.join(" · ")||"尚未配置"}</p>
            </div>}
-           <div className="discovery-actions"><small>推荐阈值：{x.min_score}/100 · 每轮最多 4 个检索请求</small>
+           <div className="discovery-actions"><small>重点候选参考阈值：{x.min_score}/100 · 每轮最多 5 个 LLM 生成的检索策略</small>
              <div className="inline-actions">
                {canAdmin&&<button className="btn btn-secondary" disabled={busy} onClick={()=>openEditor(x)}>编辑策略</button>}
                {canEdit&&<button className="btn btn-primary" disabled={busy} onClick={()=>void runSearch(x.line_id)}><Search size={14}/> 试抓取</button>}
@@ -222,8 +238,8 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
          {!selected.length?<div className="empty"><BookOpenCheck size={26}/><h3>当前没有候选论文</h3><p>先在“检索策略”中试抓取一条研究主线。</p></div>:
          selected.map(x=><article className="discovery-record" key={x.id}>
            <div className="discovery-labels"><span>{strategies.find(s=>s.line_id===x.line_id)?.line_name||x.line_id}</span>
-             <span>{x.match_type==="method"?"方法迁移":"研究问题"}</span>
-             <span className={x.score>=(strategies.find(s=>s.line_id===x.line_id)?.min_score??60)?"disc-confirmed":""}>检索相关度 {x.score}/100</span></div>
+             <span>{x.match_type==="method"?"方法迁移":x.match_type==="frontier"?"计算机前沿":x.match_type==="contradictory"?"反证研究":x.match_type==="background"?"背景研究":"直接相关"}</span>
+             <span className={x.score>=(strategies.find(s=>s.line_id===x.line_id)?.min_score??60)?"disc-confirmed":""}>LLM 语义相关度 {x.score}/100</span></div>
            <h3>{x.url?<a href={x.url} target="_blank" rel="noopener noreferrer">{x.title}</a>:x.title}</h3>
            <p className="small muted">{x.venue||"期刊待核实"} · {x.published||"发表时间未知"} · DOI：{x.doi||"未提供"}</p>
            {x.abstract&&<p className="discovery-abstract">{x.abstract.slice(0,390)}{x.abstract.length>390?"…":""}</p>}
@@ -253,6 +269,6 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </>}
    </section>
-   <p className="small muted"><ShieldCheck size={14} style={{verticalAlign:"middle"}}/> 关联和推荐评分是可解释的初筛，不是数据质量验证。每日任务运行在免费实例上，休眠或重启可能中断；没有启用 LLM 推理费用。</p>
+   <p className="small muted"><ShieldCheck size={14} style={{verticalAlign:"middle"}}/> 文献召回由学术 API 完成，检索规划、语义相关性和论文预分析由 LLM 完成。模型评分仅用于初筛，不是创新性证明；所有候选均需人工审核。</p>
  </div>;
 }
