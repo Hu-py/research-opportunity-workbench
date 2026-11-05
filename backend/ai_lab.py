@@ -20,6 +20,7 @@ from backend.discovery_links import ResearchLineRelation
 from backend.repository import TeamAchievement
 from backend.model_vault import ModelCredential,load_key
 from backend.model_gateway import ModelCallError,request_json
+from backend.skill_loader import load_skills
 from backend.team import add_audit
 
 MAX_PAPERS=5
@@ -407,7 +408,14 @@ def execute(factory,run_id,client=None):
                          "evidence_note":"没有实施定向的先前研究检索，只能作预审"}
             else:raise ValueError("Invalid run stage")
             if stage!="reader" or missing:
-                data,usage=request_json(key,model,PROMPTS[stage],payload,
+                skill_names={
+                    "planner":("research_profile","literature_discovery"),
+                    "reader":("paper_reader",),
+                    "generator":("method_transfer","idea_discovery"),
+                    "critic":("idea_critic",),
+                }.get(stage,())
+                system_prompt=PROMPTS[stage]+"\\n\\n执行技能：\\n"+load_skills(skill_names)
+                data,usage=request_json(key,model,system_prompt,payload,
                                         client=client,max_tokens=2600 if stage in ("generator","reader") else 1600)
                 called=True
                 if stage=="reader" and missing:
