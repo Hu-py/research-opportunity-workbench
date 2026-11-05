@@ -14,6 +14,8 @@ from backend.discovery_links import list_links,review_link
 from backend.discovery_runner import execute_discovery
 from backend.team import create_member
 from research_workbench.core import Paper,get_profile,set_profile,session_factory
+from backend.model_vault import ModelCredential
+from backend.research_sources import ResearchSource
 
 PROFILE={"research_lines":[
     {"id":"vertical","name":"建筑垂直功能与城市形态",
@@ -49,6 +51,10 @@ def setup_db(tmp_path,monkeypatch):
                       "local-testing-password-2026",role="admin",initial=True)
         set_profile(db,PROFILE)
         import_records(db,ROWS)
+        db.add(ModelCredential(provider='deepseek',encrypted_key='test-encrypted',daily_enabled=True))
+        db.add(ResearchSource(id='src-urban',name='Urban Planning Journal',domain='urban_planning',enabled=True,openalex_source_id='S123',resolution_status='resolved'))
+        db.add(ResearchSource(id='src-ai',name='AI Methods Conference',domain='ai_ml',enabled=True,openalex_source_id='S456',resolution_status='resolved'))
+        db.commit()
     with TestClient(api.app) as client:
         login=client.post("/api/auth/login",headers=HEADERS,json={
             "email":"admin@example.net","password":"local-testing-password-2026"})
@@ -95,7 +101,9 @@ def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
         run=create_run(db,get_profile(db),source="scheduled")
         assert run
         assert run.line_ids_json=='["vertical"]'
-    def response(_request):
+    request_params=[]
+    def response(request):
+        request_params.append(dict(request.url.params))
         return httpx.Response(200,json={"results":[work()]})
     with httpx.Client(transport=httpx.MockTransport(response)) as http:
         execute_discovery(factory,run.id,client=http)
@@ -104,6 +112,9 @@ def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
         assert done.status=="completed",done.errors_json
         assert done.new_candidates==1
         assert done.queries==4
+        assert all(p["per-page"]=="3" for p in request_params)
+        assert "primary_location.source.id:S123" in request_params[0]["filter"]
+        assert "primary_location.source.id:S456" in request_params[1]["filter"]
         found=candidates(db,line_id="vertical")
         assert len(found)==1
         assert found[0]["status"]=="pending"
@@ -137,7 +148,8 @@ def test_run_fails_visibly_on_external_api_error(setup_db):
     with factory() as db:
         run=db.get(DiscoveryRun,task.id)
         assert run.status=="failed"
-        assert run.queries==4
+        # Stop after the first provider failure instead of spending remaining queries.
+        assert run.queries==1
         assert "429" in run.errors_json
 
 def test_no_approval_from_read_only_requests(setup_db):
@@ -191,3 +203,29 @@ def test_discovery_logs_safe_message_for_http_409(setup_db):
         assert "HTTP 409" in report["errors"][0]
         assert "api.openalex.org" not in report["errors"][0]
         assert "keyless budget" not in report["errors"][0]
+
+@pytest.fixture(autouse=True)
+def mock_discovery_llm(monkeypatch):
+    import backend.discovery_runner as runner
+    monkeypatch.setattr(runner, "load_key", lambda db: "test-key")
+    def plan(key, model, line, assets, prior_queries=None, search_preferences=None, client=None):
+        return ({"concept_map":["building functions","graph learning"],
+          "queries":[{"query":"LLM planned query "+str(i),"mode":m,"intent":"test"}
+            for i,m in enumerate(["direct","method","adjacent","frontier"])],
+          "blind_spots":[]},{"input_tokens":10,"output_tokens":10})
+    def assess(key, model, line, assets, papers, skill_text=None, client=None):
+        rows=[]
+        for p in papers:
+            rows.append({"paper_id":p["paper_id"],"relevance_type":"method_transfer",
+              "relevance_score":88,"method_transfer_score":91,"evidence_confidence":"medium",
+              "priority":"high_priority","research_problem":"building floor functions",
+              "method":"graph learning","contribution_claim":"method contribution",
+              "limitation_or_unknown":"transfer validation unknown","why_relevant":"semantic match",
+              "data_fit":"registered building data may support validation","follow_up_query":"",
+              "claimed_contribution":"method contribution","limitations_or_unknowns":"transfer validation unknown",
+              "reason":"semantic match","evidence_quality":"abstract evidence","evidence_level":"abstract",
+              "human_review_required":True,"novelty_verified":False})
+        return rows,{"input_tokens":20,"output_tokens":20}
+    monkeypatch.setattr(runner,"plan_queries",plan)
+    monkeypatch.setattr(runner,"assess_papers",assess)
+    monkeypatch.setattr(runner,"execute_preanalysis",lambda *a,**k:{"status":"skipped","processed":0})
