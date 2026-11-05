@@ -92,13 +92,15 @@ def preanalysis_view(row):
     }
 
 
-def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None):
+def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None, require_daily_opt_in=False):
     """Analyze a bounded batch of pending candidates. A result never changes review status."""
     with factory() as db:
         credential = db.get(ModelCredential, "deepseek")
         key = load_key(db) if credential and credential.encrypted_key else None
         if not key:
             return {"status": "skipped", "reason": "DeepSeek API Key 未配置", "processed": 0}
+        if require_daily_opt_in and not credential.daily_enabled:
+            return {"status": "skipped", "reason": "管理员尚未开启每日 AI 分析", "processed": 0}
         model = credential.fast_model or PREANALYSIS_MODEL
         profile = get_profile(db) or {}
         lines = {x.get("id"): x for x in profile.get("research_lines", [])}
