@@ -140,7 +140,8 @@ def test_run_fails_visibly_on_external_api_error(setup_db):
     with factory() as db:
         run=db.get(DiscoveryRun,task.id)
         assert run.status=="failed"
-        assert run.queries==4
+        # Stop after the first provider failure instead of spending remaining queries.
+        assert run.queries==1
         assert "429" in run.errors_json
 
 def test_no_approval_from_read_only_requests(setup_db):
