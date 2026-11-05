@@ -416,8 +416,8 @@ export default function AcademicSourceRegistry({canEdit,canAdmin}:{
         {!history.length?<p className="small muted">暂无变更记录，或正在读取。</p>:history.map(x=><article className="academic-history-item" key={x.id}>
           <strong>{x.action==="created"?"创建":x.action==="resolved"?"来源核验":"信息更新"}</strong>
           <span>{x.created_at?new Date(x.created_at).toLocaleString("zh-CN"):"时间未记录"} · {x.actor_id||"系统"}</span>
-          {x.before.name&&<small>修改前：{String(x.before.name)} · {String(x.before.rank_label||"")}</small>}
-          {x.after.name&&<small>修改后：{String(x.after.name)} · {String(x.after.rank_label||"")} · {String(x.after.resolution_status||"")}</small>}
+          {typeof x.before.name==="string"&&<small>修改前：{x.before.name} · {String(x.before.rank_label||"")}</small>}
+          {typeof x.after.name==="string"&&<small>修改后：{x.after.name} · {String(x.after.rank_label||"")} · {String(x.after.resolution_status||"")}</small>}
         </article>)}
       </section>
     </div>}

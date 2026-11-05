@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 import backend.api as api
 from backend.cusp import import_records
+from backend.academic_sources import seed_registry,create_source
 from backend.discovery import (
     PaperCandidate,DiscoveryRun,SearchStrategy,
     create_run,save_strategy,review_candidate,candidates,strategies,
@@ -47,6 +48,13 @@ def setup_db(tmp_path,monkeypatch):
     with factory() as db:
         create_member(db,"admin@example.net","Test Admin",
                       "local-testing-password-2026",role="admin",initial=True)
+        seed_registry(db)
+        create_source(db,{
+            "name":"Verified example venue","abbreviation":"VEV","kind":"journal",
+            "domains":["urban_planning"],"rank_label":"核心",
+            "ranking_system":"Offline test fixture","retrieval_channels":["direct","method"],
+            "enabled":True,"openalex_source_id":"S998",
+        },"test-admin")
         set_profile(db,PROFILE)
         import_records(db,ROWS)
     with TestClient(api.app) as client:
@@ -61,7 +69,8 @@ def work(ident="W551"):
             "doi":"https://doi.org/10.7777/graph."+ident.lower(),
             "publication_date":"2026-09-30",
             "abstract_inverted_index":{"urban":[0],"building":[1],"vertical":[2],"function":[3],"graph":[4]},
-            "primary_location":{"source":{"display_name":"Verified example venue"}}}
+            "primary_location":{"source":{"display_name":"Verified example venue",
+                                           "id":"https://openalex.org/S998"}}}
 
 def test_links_are_suggested_but_never_confirmed_automatically(setup_db):
     factory,client,headers=setup_db
