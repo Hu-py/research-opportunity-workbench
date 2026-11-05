@@ -175,3 +175,23 @@ def test_trial_preflight_is_read_only_and_requires_valid_line(client_factory,mon
         from backend.scientific_tournament import ScientificTournamentRun
         from sqlalchemy import select
         assert db.scalar(select(ScientificTournamentRun.id).limit(1)) is None
+
+
+def test_pilot_guard_blocks_ephemeral_storage_for_paid_runs(client_factory,monkeypatch):
+    """A read-only status check must report missing persistent storage."""
+    client,factory=client_factory
+    admin=login(client,"admin@research.test","research-admin-secret-2026")
+    monkeypatch.setenv("SCIENTIFIC_PILOT_REQUIRE_POSTGRES","true")
+    check=client.get("/api/scientific-tournaments/preflight?line_id=city",
+                     headers=headers(admin))
+    assert check.status_code==200
+    status=check.json()
+    assert status["ready"] is False
+    assert status["persistent_database"] is False
+    assert any("PostgreSQL" in note for note in status["notes"])
+    started=client.post("/api/scientific-tournaments",
+                       headers=headers(admin),
+                       json={"line_id":"city",
+                             "question":"Can spatial graphs transfer to new cities?"})
+    assert started.status_code==422
+    assert "PostgreSQL" in started.text
