@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import logging
+from datetime import date
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Literal
@@ -16,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from research_workbench.core import (
     Paper, Idea, Evidence, Event, Profile, Base,
-    get_profile, set_profile, feedback, weekly_report, validate_profile,
+    get_profile, set_profile, feedback, validate_profile,
     session_factory,
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
@@ -34,12 +35,13 @@ from backend.radar_trial import (
 )
 from backend.radar_pipeline import (
     RadarReport, list_topics as list_radar_topics, recent_reports as list_radar_reports,
-    sync_ai_opportunities, generate_weekly as generate_radar_weekly,
+    
     review_topic as review_radar_topic,
 )
 from backend.bootstrap import bootstrap_admin_from_env
 from backend.discovery_links import list_links, review_link
 from backend.llm_relations import execute_llm_relations
+from backend.llm_weekly import generate_weekly_brief
 from backend.discovery import (
     SearchStrategy, DiscoveryRun, PaperCandidate, strategies,
     save_strategy, create_run, candidates, runs as discovery_runs,
@@ -1072,19 +1074,31 @@ def radar_human_review(topic_id:str,data:RadarReviewRequest,
 @app.post("/api/radar/refresh",dependencies=[Depends(require_actor)])
 def radar_refresh(db:Session=Depends(get_db),
                   actor:TeamMember|None=Depends(require_editor)):
-    """Rebuild hypotheses from saved AI cards without making paid LLM calls."""
-    result=sync_ai_opportunities(db)
-    report=generate_radar_weekly(db)
+    """Generate a persisted weekly brief through the configured LLM Skills."""
+    report=generate_weekly_brief(get_factory(),days=7)
+    if report.get("status")!="completed":
+        raise HTTPException(409,report.get("reason","LLM 周报生成失败"))
+    period=f"{date.today().isocalendar().year}-W{date.today().isocalendar().week:02d}"
+    item=db.get(RadarReport,period)
+    if item is None:
+        item=RadarReport(period=period,markdown=report["markdown"],
+                         topic_count=report.get("ideas_considered",0))
+        db.add(item)
+    else:
+        item.markdown=report["markdown"]
+        item.topic_count=report.get("ideas_considered",0)
     if actor is not None:
-        add_audit(db,"radar.refreshed",actor.id,"weekly-radar",
-                  "new="+str(result["new_topics"])+" updated="+str(result["revised_topics"]))
-        db.commit()
-    return {"sync":result,"report_chars":len(report),"reports":list_radar_reports(db)}
+        add_audit(db,"radar.llm_brief_generated",actor.id,period,
+                  "papers="+str(report.get("papers_considered",0)))
+    db.commit()
+    return {"status":"completed","report_chars":len(report["markdown"]),
+            "reports":list_radar_reports(db)}
 
 @app.get("/api/brief",dependencies=[Depends(require_actor)])
 def brief(db:Session=Depends(get_db)):
     prof=get_profile(db)
     if not prof:return {"markdown":"","profile_ready":False}
     stored=db.scalar(select(RadarReport).order_by(RadarReport.period.desc()).limit(1))
-    extra=("\n\n"+stored.markdown) if stored else ""
-    return {"markdown":weekly_report(db,prof)+extra,"profile_ready":True}
+    return {"markdown":stored.markdown if stored else "",
+            "profile_ready":True,"generated":stored is not None,
+            "note":"周报由 LLM Skills 生成；如尚无报告，请在科研简报页触发生成。"}
