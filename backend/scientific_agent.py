@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from sqlalchemy import DateTime, Integer, String, Text, select, update
@@ -302,7 +302,7 @@ def execute(factory, run_id: str, *, model_call=None,
                 cited=set(hypothesis["supporting_evidence_ids"]+hypothesis["counter_evidence_ids"])
                 if not cited <= known:
                     raise ValueError("模型引用了不存在的科研证据编号")
-                status="completed" if cited else "insufficient_evidence"
+                status="completed" if hypothesis["supporting_evidence_ids"] else "insufficient_evidence"
                 with factory() as db:
                     run=db.get(ScientificExplorationRun,run_id)
                     run.steps+=1
@@ -363,8 +363,14 @@ def resume(db, run_id: str, actor_id: str):
     run=db.get(ScientificExplorationRun,run_id)
     if not run:
         raise ValueError("科研探索任务不存在")
-    if run.status!="failed" or run.steps>=MAX_STEPS:
-        raise ValueError("只有尚有剩余步骤的失败任务能够恢复")
+    if run.steps>=MAX_STEPS or run.status not in ("failed","running","queued"):
+        raise ValueError("此任务已结束或没有剩余探索步骤，无法恢复")
+    if run.status in ("running","queued"):
+        updated=run.updated_at or now()
+        if updated.tzinfo is None:
+            updated=updated.replace(tzinfo=timezone.utc)
+        if now()-updated<timedelta(minutes=8):
+            raise ValueError("任务仍可能执行中；超过 8 分钟无更新后才允许恢复")
     run.status="queued";run.error=""
     run.updated_at=now()
     add_audit(db,"scientific_agent.resumed",actor_id,run.id)
