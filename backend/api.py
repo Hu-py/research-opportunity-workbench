@@ -76,6 +76,8 @@ from backend.scientific_tournament import (
     blind_cards as scientific_tournament_blind_cards,
     submit_rating as scientific_tournament_submit_rating,
     review_summary as scientific_tournament_review_summary,
+    curate_learning as scientific_tournament_curate_learning,
+    approved_learning as scientific_tournament_approved_learning,
 )
 from backend.scientific_tools import REGISTRY as SCIENTIFIC_TOOL_REGISTRY
 from backend.scientific_agent import (
@@ -773,6 +775,13 @@ class ScientificTournamentRequest(BaseModel):
     question: str = Field(min_length=10,max_length=600)
 
 
+class ScientificTournamentLearningRequest(BaseModel):
+    feedback_kind: Literal["human_review","experiment_observation","data_availability"]
+    finding: str = Field(min_length=12,max_length=900)
+    supporting_reference: str = Field(default="",max_length=500)
+    limitation: str = Field(min_length=8,max_length=650)
+
+
 class ScientificTournamentRatingRequest(BaseModel):
     blind_id: Literal["方案一","方案二"]
     scientific_value: int = Field(ge=1,le=5)
@@ -846,6 +855,25 @@ def scientific_tournament_rate(run_id:str,data:ScientificTournamentRatingRequest
         data.blind_id,data.scientific_value,data.novelty,
         data.feasibility,data.testability,data.recommendation,data.comment)
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/scientific-tournaments/{run_id}/learning",
+          dependencies=[Depends(require_admin)])
+def scientific_tournament_learning_save(run_id:str,data:ScientificTournamentLearningRequest,
+                                        actor:TeamMember|None=Depends(require_admin),
+                                        db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"科研经验回流需要已登录的团队管理员")
+    try:return scientific_tournament_curate_learning(
+        db,run_id,actor.id,data.feedback_kind,data.finding,
+        data.supporting_reference,data.limitation)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+
+@app.get("/api/scientific-learning/{line_id}",dependencies=[Depends(require_actor)])
+def scientific_tournament_learning_list(line_id:str,db:Session=Depends(get_db)):
+    return {"items":scientific_tournament_approved_learning(db,line_id),
+            "note":"仅人工批准的反馈可加入未来模型输入；不修改正式研究画像或成果库"}
 
 
 @app.get("/api/scientific-tournaments/{run_id}/ratings",
