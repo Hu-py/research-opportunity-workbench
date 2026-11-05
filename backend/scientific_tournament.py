@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -315,6 +316,9 @@ def curate_learning(db, run_id, actor_id, feedback_kind, finding,
 
 
 def start_run(db, line_id, question, actor_id):
+    if os.getenv("SCIENTIFIC_PILOT_REQUIRE_POSTGRES", "").lower() in ("1", "true", "yes"):
+        if db.get_bind().dialect.name != "postgresql":
+            raise ValueError("科研竞赛试验需要持久化 PostgreSQL，当前测试存储不可用于付费试验")
     if not actor_id:
         raise ValueError("请使用团队研究人员身份启动对照实验")
     question=_string(question,"research_question",600)
