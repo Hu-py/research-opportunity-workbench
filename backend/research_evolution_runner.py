@@ -72,13 +72,23 @@ def prompt(stage,snap,outputs,strategy):
             "task":"给出关键反例、已做过的近似研究和最多2个定向反证语义检索式；必须提出非空科学异议。",
             "required_json":{"target_ids":["candidate id"],"objections":["..."],
                              "queries":["precise prior art query"]}}
+    if stage=="counter_referee":
+        return {**basic,"role":"Independent Counter-evidence Referee",
+            "papers":papers,"initial_paper_review":outputs.get("screen",[]),
+            "initial_selection":outputs.get("paper_referee",{}),
+            "prior_art_challenge":outputs.get("challenge",{}),
+            "counter_search_results":outputs.get("counter_search",{}),
+            "task":"独立第二轮审阅新检索论文和先前研究。严格区分已存在同类研究(fatal)、可明确差异化(manageable)、无证据(unknown)，必须引用真实paper_id；不得因前序模型高分而从众。",
+            "required_json":{"paper_ids":["exact paper id"],"prior_art_risk":"manageable|fatal|unknown",
+                             "counterclaims":["..."],"reason":"..."}}
     if stage=="revise":
         return {**basic,"role":"Scientific Evolver",
             "papers":papers,"initial_hypotheses":seeds,
             "scores":outputs.get("score_initial"),
             "challenge":outputs.get("challenge"),
             "counter_search":outputs.get("counter_search"),
-            "task":"依据真实反证论文和质疑重新修改/融合/淘汰方案，生成1–2个后继假设。parent_ids必须回溯已有候选。",
+            "counter_referee":outputs.get("counter_referee"),
+            "task":"依据真实反证论文和独立第二轮论文复核重新修改/融合/淘汰方案，生成1–2个后继假设。parent_ids必须回溯已有候选。",
             "required_json":{"candidates":[{"title":"...","question":"...",
               "method":"...","prediction":"...","experiment":"...",
               "paper_ids":["exact paper id"],"dataset_ids":[],
@@ -90,6 +100,7 @@ def prompt(stage,snap,outputs,strategy):
             "initial_scores":outputs.get("score_initial"),
             "challenges":outputs.get("challenge"),
             "prior_art_search":outputs.get("counter_search"),
+            "independent_prior_art_referee":outputs.get("counter_referee"),
             "task":"逐个评估修订方案比初代的实际增量、证据质量与数据/实验可行性。只有确认做了先前研究检索才可以prior_art_checked=true，不能声称创新性被证明。严格评价，不得为了推送而打高分。",
             "required_json":{"ratings":[{"id":"exact revised candidate id",
                 "score":75,"evidence_ok":True,"feasible":True,
@@ -181,6 +192,8 @@ def execute(factory,run_id,model_call=None,tool_client=None,model_client=None):
                 value={"items":[],"selection_reason":"本轮无假设通过机器门控","risks":[]}
             elif stage=="package" and not outputs.get("counter_search",{}).get("search_success"):
                 value={"items":[],"selection_reason":"定向反证检索未成功，本轮不可推送","risks":[]}
+            elif stage=="package" and outputs.get("counter_referee",{}).get("prior_art_risk")!="manageable":
+                value={"items":[],"selection_reason":"独立论文复核仍存在未解决的先前研究风险","risks":[]}
             else:
                 if not reserve(factory,calls=1,tokens=TOKEN_RESERVE):
                     raise ValueError("当日DeepSeek预算不足；可从最后已完成阶段恢复")
