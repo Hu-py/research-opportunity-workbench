@@ -118,8 +118,9 @@ def readiness(db,line_id):
     used=budget["used"];lim=budget["limits"]
     if lim["model_calls_per_day"]-used["model_calls"]<len(MODEL_STAGES):
         reasons.append("今日模型调用额度不足")
-    if lim["token_reservation_per_day"]-used["token_reservation"]<
-        len(MODEL_STAGES)*TOKEN_RESERVE:reasons.append("今日Token额度不足")
+    if (lim["token_reservation_per_day"]-used["token_reservation"] <
+            len(MODEL_STAGES)*TOKEN_RESERVE):
+        reasons.append("今日Token额度不足")
     if lim["papers_per_day"]-used["papers"]<MAX_PAPERS:
         reasons.append("今日论文数量额度不足")
     return {"ready":not reasons,"line":snap["line"] if snap else None,
