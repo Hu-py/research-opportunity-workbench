@@ -1,13 +1,10 @@
 """P0: metadata-grounded, reviewable research-line associations."""
 import hashlib
 import json
-import re
 from datetime import datetime,timezone
 from sqlalchemy import String,Text,Float,DateTime,select
 from sqlalchemy.orm import Mapped,mapped_column
 from research_workbench.core import Base
-from backend.cusp import CuspDataset
-from backend.repository import TeamAchievement
 from backend.team import add_audit
 
 def utcnow():return datetime.now(timezone.utc)
@@ -27,19 +24,6 @@ class ResearchLineRelation(Base):
     status:Mapped[str]=mapped_column(String(20),default="suggested")
     reviewer_id:Mapped[str]=mapped_column(String(64),default="")
     updated_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=utcnow)
-
-def _score(line,source):
-    topic=" ".join([line.get("name",""),line.get("problem","")]+line.get("keywords",[])).lower()
-    source=source.lower()
-    hits=sum(bool(any(k in topic for k in a) and any(k in source for k in b))
-             for a,b in THEMES)
-    common=sorted(tokens(topic)&tokens(source))[:4]
-    if not hits and not common:return None
-    score=min(90,42+17*hits+5*len(common))
-    reason=(("主题关联"+str(hits)+" 类；" if hits else "")+
-            ("文本共同词："+", ".join(common) if common else "基于主题词")+
-            "。仅基于登记元数据，尚未经人工确认。")
-    return score,reason
 
 def suggestions(db,profile):
     """Return persisted LLM-generated links only; never synthesize lexical matches."""
