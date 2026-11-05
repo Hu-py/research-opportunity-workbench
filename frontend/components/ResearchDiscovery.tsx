@@ -65,7 +65,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
      await api("opportunity-engine/strategies/"+encodeURIComponent(editor),{
        method:"PUT",body:JSON.stringify({...draft,direct_queries,method_queries})});
      setEditor(null);setDraft(null);await load();
-     setNotice("检索策略已保存。定时模式只运行管理员主动开启的研究主线。");
+     setNotice("检索策略已保存。每日自动分析开启后，将轮换监测数据库画像衍生主题和已启用研究主线；明确停用的主题不会被检索。");
    }catch(e){setError(e instanceof Error?e.message:String(e));}
    finally{setBusy(false);}
  }
@@ -127,7 +127,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
      <div><strong>{data?.relations.filter(x=>x.status==="confirmed").length??"…"}</strong><span>已确认知识关联</span></div>
      <div><strong>{data?.relations.filter(x=>x.status==="suggested").length??"…"}</strong><span>待核对关联</span></div>
      <div><strong>{data?.candidates.filter(x=>x.status==="pending").length??"…"}</strong><span>待审核候选论文</span></div>
-     <div><strong>{data?.strategies.filter(x=>x.enabled).length??"…"}</strong><span>每日监测方向</span></div>
+     <div><strong>{data?.strategies.filter(x=>x.enabled).length??"…"}</strong><span>画像监测主题</span></div>
    </div>
    {error&&<div className="alert alert-error">{error}</div>}
    {notice&&<div className="alert alert-success">{notice}</div>}
@@ -179,7 +179,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </>}
      {active==="search"&&<>
-       <p className="small muted">每条研究主线有“研究问题”和“方法迁移”两个检索通道。定时抓取默认关闭，只有管理员主动开启的方向才会由现有每日任务触发；不消耗模型 API。</p>
+       <p className="small muted">文献发现基于数据库画像自动生成研究主题与 LLM 检索式。开启系统管理中的“每日自动 AI 分析”后，每天轮换处理最多 3 个主题，不需要逐个手动搜索；LLM 调用会产生 API 费用。单独关闭的主题不会参与定时发现。</p>
        <div className="discovery-record-list">
          {strategies.filter(x=>line==="all"||line===x.line_id).map(x=><article className="discovery-record" key={x.line_id}>
            <div className="discovery-labels"><span>{x.enabled?"每日监测已开启":"定时监测关闭"}</span><span>近 {x.lookback_days} 天</span><span>每词最多 {x.per_query} 篇</span></div>
@@ -188,7 +188,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
              <label>直接相关检索（每行一个，最多 3 条）<textarea rows={4} value={directText} onChange={e=>setDirectText(e.target.value)}/></label>
              <label>方法迁移检索（每行一个，最多 3 条）<textarea rows={4} value={methodText} onChange={e=>setMethodText(e.target.value)}/></label>
              <div className="discovery-options">
-               <label><input type="checkbox" checked={draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})}/> 开启每天自动抓取</label>
+               <label><input type="checkbox" checked={draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})}/> 参与画像驱动的每日检索</label>
                <label>回溯天数<input type="number" min={7} max={180} value={draft.lookback_days} onChange={e=>setDraft({...draft,lookback_days:Number(e.target.value)})}/></label>
                <label>每词最多<input type="number" min={1} max={12} value={draft.per_query} onChange={e=>setDraft({...draft,per_query:Number(e.target.value)})}/></label>
                <label>重点推荐分<input type="number" min={0} max={100} value={draft.min_score} onChange={e=>setDraft({...draft,min_score:Number(e.target.value)})}/></label>
@@ -213,7 +213,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
      </>}
      {active==="candidates"&&<>
        <div className="discovery-inbox-top"><p className="small muted">候选论文先进入待审核池；只有人工标注“相关”或“方法借鉴”后才写入正式论文情报库。</p>
-         <button className="btn btn-primary" disabled={busy||!canEdit} onClick={()=>void runPreanalysis()}>AI 自动预分析（最多 6 篇）</button>
+         <button className="btn btn-primary" disabled={busy||!canEdit} onClick={()=>void runPreanalysis()}>补充分析旧候选（每次 6 篇）</button>
          <select aria-label="候选论文状态" value={candidateFilter} onChange={e=>setCandidateFilter(e.target.value)}>
            <option value="pending">待审核</option><option value="priority">重点候选（达到主线阈值）</option><option value="relevant">已确认为相关</option>
            <option value="method">方法借鉴</option><option value="rejected">已排除</option><option value="all">全部</option>
