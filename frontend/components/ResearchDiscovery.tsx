@@ -8,9 +8,14 @@ type Relation={id:string;line_id:string;line_name:string;kind:"dataset"|"achieve
  label:string;score:number;reason:string;status:"suggested"|"confirmed"|"rejected"};
 type Strategy={line_id:string;line_name:string;direct_queries:string[];method_queries:string[];
  enabled:boolean;lookback_days:number;per_query:number;min_score:number;configured:boolean};
+type Preanalysis={status:string;model:string;fit_score:number;priority:string;
+ analysis:{relevance?:string;research_problem?:string;method?:string;claimed_contribution?:string;
+ limitations_or_unknowns?:string;evidence_quality?:string;reason?:string;topic_tags?:string[];
+ human_review_required?:boolean;novelty_verified?:boolean;evidence_level?:string};error:string};
 type Candidate={id:string;line_id:string;title:string;abstract:string;url:string;doi:string;
  published:string;venue:string;score:number;score_reason:string;matched_queries:string[];
- match_type:string;status:"pending"|"relevant"|"method"|"rejected";review_note:string};
+ match_type:string;status:"pending"|"relevant"|"method"|"rejected";review_note:string;
+ preanalysis:Preanalysis|null};
 type Run={id:string;status:string;source:string;queries:number;scanned:number;
  new_candidates:number;updated_candidates:number;errors:string[];started_at:string};
 type Dashboard={profile_ready:boolean;openalex_key_configured:boolean;
@@ -72,6 +77,24 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
      setNotice("已启动这条研究主线的文献试抓取："+response.id.slice(0,8)+
        "。候选论文不会自动进入正式文献库。");
      setActive("candidates");setCandidateFilter("pending");await load();
+   }catch(e){setError(e instanceof Error?e.message:String(e));}
+   finally{setBusy(false);}
+ }
+ async function runPreanalysis(){
+   setBusy(true);setError("");setNotice("");
+   try{
+     await api("opportunity-engine/preanalyze",{method:"POST"});
+     setNotice("已启动 DeepSeek Flash 自动预分析。正在等待结果写入候选论文列表……");
+     setActive("candidates");
+     for(let attempt=0;attempt<12;attempt++){
+       await new Promise(resolve=>setTimeout(resolve,5000));
+       const latest=await api<Dashboard>("opportunity-engine");
+       setData(latest);
+       if(latest.candidates.some(x=>x.preanalysis?.status==="completed"||x.preanalysis?.status==="failed")){
+         setNotice("预分析结果已更新。请查看候选论文卡片；所有论文仍需人工审核。");
+         break;
+       }
+     }
    }catch(e){setError(e instanceof Error?e.message:String(e));}
    finally{setBusy(false);}
  }
@@ -190,6 +213,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
      </>}
      {active==="candidates"&&<>
        <div className="discovery-inbox-top"><p className="small muted">候选论文先进入待审核池；只有人工标注“相关”或“方法借鉴”后才写入正式论文情报库。</p>
+         <button className="btn btn-primary" disabled={busy||!canEdit} onClick={()=>void runPreanalysis()}>AI 自动预分析（最多 6 篇）</button>
          <select aria-label="候选论文状态" value={candidateFilter} onChange={e=>setCandidateFilter(e.target.value)}>
            <option value="pending">待审核</option><option value="priority">重点候选（达到主线阈值）</option><option value="relevant">已确认为相关</option>
            <option value="method">方法借鉴</option><option value="rejected">已排除</option><option value="all">全部</option>
@@ -205,6 +229,19 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
            {x.abstract&&<p className="discovery-abstract">{x.abstract.slice(0,390)}{x.abstract.length>390?"…":""}</p>}
            <p className="small muted">{x.score_reason}</p>
            <p className="small muted">检索：{x.matched_queries.join("；")}</p>
+           {x.preanalysis&&<div className="panel discovery-preanalysis">
+             <div className="discovery-labels"><span>DeepSeek Flash 预分析</span>
+               <span>主题匹配 {x.preanalysis.fit_score}/100</span>
+               <span>{x.preanalysis.priority==="high_priority"?"优先阅读":x.preanalysis.priority==="read"?"建议阅读":"低优先级"}</span></div>
+             {x.preanalysis.status==="completed"?<>
+               <p><b>研究问题：</b>{x.preanalysis.analysis.research_problem}</p>
+               <p><b>方法：</b>{x.preanalysis.analysis.method}</p>
+               <p><b>摘要声称的贡献：</b>{x.preanalysis.analysis.claimed_contribution}</p>
+               <p><b>局限 / 未知：</b>{x.preanalysis.analysis.limitations_or_unknowns}</p>
+               <p className="small muted">{x.preanalysis.analysis.reason} · {x.preanalysis.analysis.evidence_quality}</p>
+               <p className="small muted">证据等级：{x.preanalysis.analysis.evidence_level==="abstract"?"摘要级":"元数据级"}；创新性未核验，仍需人工审核。</p>
+             </>:<p className="small muted">预分析未完成：{x.preanalysis.error||x.preanalysis.status}</p>}
+           </div>}
            <div className="discovery-actions"><small>{x.status==="pending"?"待团队审核":x.status==="relevant"?"已纳入文献库":x.status==="method"?"已标注方法迁移":"已排除"}</small>
              {canEdit&&x.status==="pending"&&<div className="inline-actions">
                <button className="btn btn-secondary" disabled={busy} onClick={()=>void reviewPaper(x,"relevant")}><CheckCircle2 size={14}/> 相关</button>

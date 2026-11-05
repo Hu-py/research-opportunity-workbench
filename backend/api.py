@@ -45,6 +45,7 @@ from backend.discovery import (
     review_candidate,
 )
 from backend.discovery_runner import execute_discovery
+from backend.preanalysis import PaperPreanalysis, execute_preanalysis, preanalysis_view
 from backend.model_vault import ModelCredential, status as model_status, save as save_model_config, remove_key as remove_model_key
 from backend.profile_intelligence import (
     ResearchProfileDraft, ResearchProfileDraftRevision, ProfileSynthesisRun,
@@ -595,15 +596,36 @@ def scan_research_interest(interest_id:str,background:BackgroundTasks,
 @app.get("/api/opportunity-engine",dependencies=[Depends(require_actor)])
 def opportunity_engine(db:Session=Depends(get_db)):
     profile=get_profile(db)
+    items=candidates(db,limit=160)
+    ids=[x["id"] for x in items]
+    analyses={x.candidate_id:x for x in db.scalars(
+        select(PaperPreanalysis).where(PaperPreanalysis.candidate_id.in_(ids))
+    ).all()} if ids else {}
     return {
         "profile_ready":bool(profile),
         "openalex_key_configured":bool(os.getenv("OPENALEX_API_KEY","").strip()),
         "strategies":strategies(db,profile),
         "relations":list_links(db,profile),
-        "candidates":candidates(db,limit=160),
+        "candidates":[{**item,"preanalysis":preanalysis_view(analyses.get(item["id"]))}
+                      for item in items],
         "runs":discovery_runs(db),
-        "note":"论文相关性是规则排序，不表示学术创新性；团队数据仅使用登记元数据，未读取任何原始文件。",
+        "note":"论文相关性是规则排序；LLM 预分析仅辅助阅读，不代表全文核验、学术创新性或数据可行性。人工审核状态不会被自动改变。",
     }
+
+@app.post("/api/opportunity-engine/preanalyze",status_code=202,
+          dependencies=[Depends(require_actor)])
+def start_paper_preanalysis(background:BackgroundTasks,
+        db:Session=Depends(get_db),
+        actor:TeamMember|None=Depends(require_editor)):
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        raise HTTPException(409,"请先在 AI 实验台配置 DeepSeek API Key")
+    background.add_task(execute_preanalysis,get_factory(),6)
+    if actor is not None:
+        add_audit(db,"paper.preanalysis_started",actor.id,"pending-candidates")
+        db.commit()
+    return {"status":"queued","limit":6,
+            "note":"只预分析待审核论文；不会自动通过或写入正式已审核文献库。"}
 
 @app.patch("/api/opportunity-engine/relations/{relation_id}",
            dependencies=[Depends(require_actor)])
