@@ -15,6 +15,7 @@ from backend.discovery_runner import execute_discovery
 from backend.team import create_member
 from research_workbench.core import Paper,get_profile,set_profile,session_factory
 from backend.model_vault import ModelCredential
+from backend.research_sources import ResearchSource
 
 PROFILE={"research_lines":[
     {"id":"vertical","name":"建筑垂直功能与城市形态",
@@ -51,6 +52,8 @@ def setup_db(tmp_path,monkeypatch):
         set_profile(db,PROFILE)
         import_records(db,ROWS)
         db.add(ModelCredential(provider='deepseek',encrypted_key='test-encrypted',daily_enabled=True))
+        db.add(ResearchSource(id='src-urban',name='Urban Planning Journal',domain='urban_planning',enabled=True,openalex_source_id='S123',resolution_status='resolved'))
+        db.add(ResearchSource(id='src-ai',name='AI Methods Conference',domain='ai_ml',enabled=True,openalex_source_id='S456',resolution_status='resolved'))
         db.commit()
     with TestClient(api.app) as client:
         login=client.post("/api/auth/login",headers=HEADERS,json={
