@@ -154,3 +154,23 @@ def test_blind_review_does_not_leak_arm_identity_before_both_ratings(client_fact
     assert revealed["baseline"][0]["title"]=="Baseline title"
     assert revealed["round0"][0]["id"]=="H_problem"
     assert revealed["decision"]["outcome"]=="single"
+
+
+def test_trial_preflight_is_read_only_and_requires_valid_line(client_factory):
+    client,factory=client_factory
+    token=login(client,"researcher@research.test","research-team-secret-2026")
+    path="/api/scientific-tournaments/preflight?line_id=city"
+    out=client.get(path,headers=headers(token))
+    assert out.status_code==200,out.text
+    data=out.json()
+    assert data["does_not_invoke_model"] is True
+    assert data["approved_papers"]>=1
+    assert data["maximum_trial_calls"]==14
+    assert data["ready"] is True
+    assert client.get("/api/scientific-tournaments/preflight?line_id=missing",
+                      headers=headers(token)).json()["ready"] is False
+    assert client.get(path,headers=headers()).status_code==401
+    with factory() as db:
+        from backend.scientific_tournament import ScientificTournamentRun
+        from sqlalchemy import select
+        assert db.scalar(select(ScientificTournamentRun.id).limit(1)) is None
