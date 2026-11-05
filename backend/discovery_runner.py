@@ -60,12 +60,12 @@ def execute_discovery(factory, run_id, client=None):
             )
             query_results=[];seen=set()
             for item in plan["queries"]:
+                with factory() as db:
+                    run=db.get(DiscoveryRun,run_id);run.queries+=1;db.commit()
                 results=query_openalex(
                     item["query"],(date.today()-timedelta(days=config["lookback_days"])).isoformat(),
                     limit=min(12,max(config["per_query"],8)),client=client
                 )
-                with factory() as db:
-                    run=db.get(DiscoveryRun,run_id);run.queries+=1;db.commit()
                 for work in results if isinstance(results,list) else []:
                     if not isinstance(work,dict):continue
                     paper=normalize_paper(work)
@@ -128,7 +128,7 @@ def execute_discovery(factory, run_id, client=None):
                     row.error="";row.updated_at=now()
                 db.commit()
         except Exception as exc:
-            message=safe_openalex_error(exc,bool(os.getenv("OPENALEX_API_KEY"))) if "openalex" in type(exc).__name__.lower() else type(exc).__name__+": "+str(exc)[:180]
+            message=safe_openalex_error(exc,bool(os.getenv("OPENALEX_API_KEY")))
             errors.append(line_id+" | "+message)
             logging.getLogger("uvicorn.error").warning(
                 "LLM literature discovery failed: run=%s line=%s reason=%s",run_id,line_id,message
