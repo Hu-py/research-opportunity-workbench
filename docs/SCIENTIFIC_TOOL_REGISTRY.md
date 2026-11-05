@@ -122,7 +122,9 @@ Security and reliability:
 - The trace and tool evidence are persisted to the configured database.
   The web service uses an inline FastAPI background task for a manual run;
   it may be interrupted on Render free-tier sleep, and a failed run can be
-  manually resumed. This is *not* a fully durable worker queue.
+  manually resumed. A `running` or `queued` run must be stale for at least
+  8 minutes before a manual retry is accepted, preventing duplicate live work.
+  This is *not* a fully durable worker queue.
 - Tests use mocked academic APIs and model choices. A passing CI run is
   not a live DeepSeek or Semantic Scholar validation.
 
