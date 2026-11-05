@@ -1,9 +1,6 @@
-name: Weekly research intelligence
+name: Legacy manual weekly reporting (automatic report uses LLM Cron)
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 9 * * 1'
-      timezone: Asia/Shanghai
 jobs:
   brief:
     if: ${{ vars.ENABLE_WEEKLY == 'true' }}

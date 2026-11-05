@@ -145,9 +145,9 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
          <input type="checkbox" checked={Boolean(data?.config.daily_enabled)}
            disabled={busy||!data?.config.configured}
            onChange={e=>void saveConfig({daily_enabled:e.target.checked})}/>
-         每天自动执行一次 AI 深度分析（付费 API，默认关闭）
+         启用每日画像检索与预分析、每周 LLM 综合报告（付费 API）
        </label>
-       <p className="small muted">自动任务只分析团队已审核的论文；每个周期最多开启一次新分析。只有你明确勾选后才随现有 Vercel 每日任务触发。</p>
+       <p className="small muted">自动文献预分析可处理尚待人工审核的候选论文，但不会自动批准；每周报告只形成待审核科研假设。手动启动四阶段深度选题仍需人工确认，独立产生 API 成本。</p>
      </div>}
      {!canAdmin&&<p className="small muted">请由团队管理员在这里配置模型密钥。研究成员可以查看分析结果与按权限手动运行。</p>}
    </section>

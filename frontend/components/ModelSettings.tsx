@@ -4,6 +4,7 @@ import {useCallback,useEffect,useState} from "react";
 import {CheckCircle2,KeyRound,LockKeyhole,RefreshCw,ShieldCheck,Trash2} from "lucide-react";
 import {api} from "@/lib/api";
 
+type Budget={utc_day:string;limits:{themes_per_run:number;papers_per_day:number;model_calls_per_day:number;token_reservation_per_day:number;papers_per_theme:number};used:{model_calls:number;papers:number;token_reservation:number;input_tokens:number;output_tokens:number};notice:string};
 type Config={
  provider:string;configured:boolean;vault_ready:boolean;
  fast_model:string;reason_model:string;daily_enabled:boolean;key_storage:string
@@ -11,6 +12,7 @@ type Config={
 
 export default function ModelSettings({canAdmin}:{canAdmin:boolean}){
  const [config,setConfig]=useState<Config|null>(null);
+ const [budget,setBudget]=useState<Budget|null>(null);
  const [secret,setSecret]=useState("");
  const [reasonModel,setReasonModel]=useState("deepseek-v4-pro");
  const [busy,setBusy]=useState(false);
@@ -18,8 +20,9 @@ export default function ModelSettings({canAdmin}:{canAdmin:boolean}){
  const [notice,setNotice]=useState("");
 
  const load=useCallback(async()=>{
-   const result=await api<{config:Config}>("ai-lab");
+   const result=await api<{config:Config;research_budget:Budget}>("ai-lab");
    setConfig(result.config);
+   setBudget(result.research_budget);
    setReasonModel(result.config.reason_model);
  },[]);
  useEffect(()=>{void load().catch(e=>setError(e instanceof Error?e.message:String(e)));},[load]);
@@ -93,9 +96,14 @@ export default function ModelSettings({canAdmin}:{canAdmin:boolean}){
        <input type="checkbox" checked={Boolean(config?.daily_enabled)}
          disabled={busy||!config?.configured}
          onChange={e=>void save({daily_enabled:e.target.checked})}/>
-       每日自动执行一次 AI 深度分析（会产生 API 用量，默认关闭）
+       自动科研雷达：每日 5 个画像主题、最多 80 篇 LLM 语义分析，每周生成 AI 综合报告
      </label>
    </>:<p className="small muted">只有团队管理员可以新增、替换或移除 API Key，以及开启每日自动分析。</p>}
+   {budget&&<div className="small-note" style={{marginTop:12}}>
+     <strong>今日自动科研预算（UTC {budget.utc_day}）</strong>
+     <p>已分析/预留论文 {budget.used.papers}/{budget.limits.papers_per_day} 篇 · 模型请求 {budget.used.model_calls}/{budget.limits.model_calls_per_day} 次 · Token 预留 {budget.used.token_reservation.toLocaleString()}/{budget.limits.token_reservation_per_day.toLocaleString()}</p>
+     <p className="small muted">{budget.notice} 深度选题实验台的手动分析需另外注意调用成本。</p>
+   </div>}
    {!config?.vault_ready&&<p className="small muted">需要先在 Render 后端服务配置 MODEL_VAULT_KEY 并重新部署，才能安全保存密钥。</p>}
    <div className="small-note"><ShieldCheck size={15}/> 安全说明：系统只返回密钥是否已配置，不返回密钥明文或密文。建议从 DeepSeek 官方开放平台创建专用 API Key。</div>
  </section>;
