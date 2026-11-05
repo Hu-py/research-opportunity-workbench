@@ -855,7 +855,7 @@ def research_source_update(source_id:str,data:SourcePatchRequest,db:Session=Depe
 
 @app.delete("/api/research-sources/{source_id}",dependencies=[Depends(require_admin)])
 def research_source_delete(source_id:str,db:Session=Depends(get_db)):
-    try:delete_source(db,source_id);return {"ok":True}
+    try:return delete_source(db,source_id)
     except ValueError as ex:raise HTTPException(404,str(ex))
 
 @app.post("/api/research-sources/resolve",dependencies=[Depends(require_admin)])

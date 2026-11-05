@@ -9,7 +9,9 @@ type Source={id:string;name:string;abbreviation:string;kind:"journal"|"conferenc
  enabled:boolean;is_seed:boolean;openalex_source_id:string;resolution_status:string;
  resolution_note:string;openalex_type:string};
 type Summary={total:number;enabled:number;resolved:number;unresolved:number;direct_enabled:number;direct_resolved:number;method_enabled:number;method_resolved:number};
-type Draft=Partial<Source>&{name:string;kind:"journal"|"conference";domain:string};
+type Draft=Omit<Partial<Source>,"name"|"kind"|"domain"|"aliases">&{
+ name:string;kind:"journal"|"conference";domain:string;aliases:string[]|string
+};
 const domains=[
  ["urban_planning","城市规划与城市研究"],["gis_spatial","GIS 与空间计算"],
  ["urban_environment","城市环境"],["urban_health","城市健康"],["transportation","交通与出行"],
