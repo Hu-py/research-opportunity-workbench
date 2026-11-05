@@ -7,6 +7,7 @@ from research_workbench.core import get_profile,normalize_paper,query_openalex
 from backend.discovery import (
     DiscoveryRun,PaperCandidate,candidate_id,strategies,reads,dumps,now,
 )
+from backend.preanalysis import execute_preanalysis
 
 def score_paper(line,paper,mode):
     title=(paper["title"] or "").lower()
@@ -109,3 +110,16 @@ def execute_discovery(factory,run_id,client=None):
             run.id,run.status,run.queries,run.scanned,run.new_candidates,len(errors),
         )
         db.commit()
+    # Run a small, opt-in LLM pre-analysis batch after discovery has persisted.
+    # Failures here never roll back the already saved literature candidates.
+    try:
+        stats = execute_preanalysis(factory, limit=6)
+        logging.getLogger("uvicorn.error").info(
+            "Paper pre-analysis finished: status=%s processed=%s failed=%s",
+            stats.get("status"), stats.get("processed", 0), stats.get("failed", 0),
+        )
+    except Exception as exc:
+        logging.getLogger("uvicorn.error").warning(
+            "Paper pre-analysis batch failed: %s", type(exc).__name__
+        )
+
