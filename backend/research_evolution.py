@@ -18,7 +18,7 @@ from backend.team import add_audit
 
 STAGES=("plan","retrieve","screen","paper_referee",
         "seed_problem","seed_method","seed_data","score_initial",
-        "challenge","counter_search","revise","score_final","package","done")
+        "challenge","counter_search","counter_referee","revise","score_final","package","done")
 MODEL_STAGES=tuple(s for s in STAGES if s not in ("retrieve","counter_search","done"))
 TOKEN_RESERVE=6500
 MAX_PAPERS=14
@@ -165,7 +165,7 @@ def view(run,detailed=False):
                        "paper_referee":outputs.get("paper_referee",{}),
                        "versions":[{"stage":s,"value":outputs[s]} for s in
                          ("seed_problem","seed_method","seed_data","score_initial",
-                          "challenge","revise","score_final") if s in outputs],
+                          "challenge","counter_referee","revise","score_final") if s in outputs],
                        "recommendation":outputs.get("package")
                            if run.status=="review_ready" else None,
                        "trace":load(run.trace_json,[]),
