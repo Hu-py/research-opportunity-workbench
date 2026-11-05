@@ -6,7 +6,7 @@ Humans review only completed, evidence-linked recommendation packages.
 from __future__ import annotations
 import json, math, os, uuid
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import DateTime, Float, Integer, String, Text, select
+from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint, select
 from sqlalchemy.orm import Mapped, mapped_column
 from research_workbench.core import Base, get_profile
 from backend.ai_lab import _dataset_context
@@ -70,6 +70,8 @@ class EvolutionFeedback(Base):
     testability:Mapped[int]=mapped_column(Integer)
     comment:Mapped[str]=mapped_column(Text,default="")
     created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+    __table_args__=(UniqueConstraint("run_id","reviewer_id",
+                                     name="uq_evolution_feedback_one_per_reviewer"),)
 
 class EvolutionPolicy(Base):
     __tablename__="research_evolution_policy"
