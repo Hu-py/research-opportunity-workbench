@@ -54,7 +54,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
  const latest=data?.runs[0];
  function openEditor(s:Strategy){
    setEditor(s.line_id);setDraft({...s});
-   setDirectText(s.direct_queries.join("\n"));setMethodText(s.method_queries.join("\n"));
+   setDirectText("");setMethodText("");
  }
  async function saveStrategy(){
    if(!draft||!editor)return;
@@ -185,8 +185,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
            <div className="discovery-labels"><span>{x.enabled?"每日监测已开启":"定时监测关闭"}</span><span>近 {x.lookback_days} 天</span><span>每词最多 {x.per_query} 篇</span></div>
            <h3>{x.line_name}</h3>
            {editor===x.line_id&&draft?<div className="discovery-editor">
-             <label>直接相关检索（每行一个，最多 3 条）<textarea rows={4} value={directText} onChange={e=>setDirectText(e.target.value)}/></label>
-             <label>方法迁移检索（每行一个，最多 3 条）<textarea rows={4} value={methodText} onChange={e=>setMethodText(e.target.value)}/></label>
+             <p className="small muted">检索式由 LLM 在每次运行时动态生成，综合研究问题、团队成果、数据资产、学术来源库及跨学科前沿，不再要求人工维护固定关键词。</p>
              <div className="discovery-options">
                <label><input type="checkbox" checked={draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})}/> 开启每天自动抓取</label>
                <label>回溯天数<input type="number" min={7} max={180} value={draft.lookback_days} onChange={e=>setDraft({...draft,lookback_days:Number(e.target.value)})}/></label>
