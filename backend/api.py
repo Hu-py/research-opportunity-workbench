@@ -583,16 +583,19 @@ def scan_research_interest(interest_id:str,background:BackgroundTasks,
     row=db.get(ResearchInterest,interest_id)
     if not row:raise HTTPException(404,"研究兴趣不存在")
     if not row.enabled:raise HTTPException(409,"请先开启该兴趣分支")
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        raise HTTPException(409,"请先在 AI 实验台配置 DeepSeek API Key")
+    try:
+        run=create_run(db,get_profile(db),source="manual",line_id="interest:"+interest_id)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
     row.last_status="queued"
-    add_audit(db,"interest.scan_requested",actor.id if actor else None,interest_id)
+    add_audit(db,"interest.llm_scan_requested",actor.id if actor else None,interest_id)
     db.commit()
-    def execute(factory,ident):
-        with factory() as session:
-            ingest_interests(session,days=21,per_query=6,
-                             interest_ids=[ident],max_interests=1)
-    background.add_task(execute,get_factory(),interest_id)
-    return {"id":interest_id,"status":"queued",
-            "note":"检索已排队。免费后端休眠可能使后台任务中断；结果需重新刷新验证。"}
+    background.add_task(execute_discovery,get_factory(),run.id)
+    return {"id":run.id,"status":"queued",
+            "note":"该兴趣分支将由 LLM 动态生成检索策略、检索文献并进行语义评估；候选论文仍需人工审核。"}
 
 @app.get("/api/opportunity-engine",dependencies=[Depends(require_actor)])
 def opportunity_engine(db:Session=Depends(get_db)):
