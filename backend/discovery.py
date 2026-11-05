@@ -91,7 +91,7 @@ def save_strategy(db,profile,line_id,settings,actor):
         raise ValueError("Research line not found")
     direct=valid_queries(settings["direct_queries"])
     method=valid_queries(settings["method_queries"])
-    if not direct and not method:raise ValueError("At least 1 query is required")
+    # LLM plans fresh queries from the profile; hints may be empty.
     days,per,threshold=(settings[k] for k in ("lookback_days","per_query","min_score"))
     if not 7<=days<=180 or not 1<=per<=12 or not 0<=threshold<=100:
         raise ValueError("Search limits out of range")
@@ -117,7 +117,7 @@ def create_run(db,profile,source="manual",line_id=None):
         items=[x for x in items if x["enabled"]]
         if not items:return None
         # Rotate a bounded daily batch across all portrait-derived topics.
-        # This prevents the first three from monopolizing every daily run.
+        # Five portrait-derived themes rotate so no topic monopolizes daily runs.
         recent=db.scalars(select(DiscoveryRun).where(
             DiscoveryRun.source=="scheduled"
         ).order_by(DiscoveryRun.started_at.desc()).limit(120)).all()
@@ -126,8 +126,8 @@ def create_run(db,profile,source="manual",line_id=None):
             for ident in reads(run.line_ids_json):
                 recent_index.setdefault(ident,index)
         items.sort(key=lambda x:recent_index.get(x["line_id"],10**6),reverse=True)
-        items=items[:3]
-    else:items=items[:3]
+        items=items[:5]
+    else:items=items[:5]
     item=DiscoveryRun(id=str(uuid.uuid4()),source=source,
                       line_ids_json=dumps([x["line_id"] for x in items]))
     db.add(item);db.commit()
