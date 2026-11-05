@@ -19,6 +19,7 @@ from backend.skill_loader import load_skills
 from backend.research_sources import ResearchSource
 from backend.cusp import CuspDataset, sensitive_level
 from backend.repository import TeamAchievement
+from backend.interests import ResearchInterest, decode as decode_interest
 from backend.openalex_errors import safe_openalex_error
 
 MAX_QUERIES = 5
@@ -134,7 +135,7 @@ def _context(db, line):
         "team":profile.get("team",{}),
         "research_line":{"id":line.get("id"),"name":line.get("name"),
             "problem":line.get("problem"),"keywords":line.get("keywords",[])[:20],
-            "methods":line.get("methods",[])[:15]},
+            "methods":line.get("methods",[])[:15],\n            "user_interest_focus":line.get("focus",""),\n            "user_interest_venue_hints":line.get("venues",[])[:12]},
         "team_achievements":[{"title":x.title,"year":x.year,"venue":x.venue,
             "tags":json.loads(x.tags_json or "[]")[:8]} for x in achievements],
         "registered_datasets":datasets,
@@ -177,6 +178,14 @@ def execute_llm_discovery(factory, run_id, client=None):
         line_ids=reads(run.line_ids_json)
         lines={x.get("id"):x for x in profile.get("research_lines",[]) if isinstance(x,dict)}
         selected=[lines[x] for x in line_ids if x in lines]
+        interest_tokens=[x for x in line_ids if isinstance(x,str) and x.startswith("interest:")]
+        for token in interest_tokens:
+            interest=db.get(ResearchInterest,token.split(":",1)[1])
+            if interest and interest.enabled:
+                selected.append({"id":token,"name":interest.title,"problem":interest.problem,
+                    "keywords":decode_interest(interest.keywords_json),
+                    "methods":[],"focus":interest.focus,
+                    "venues":decode_interest(interest.venues_json)})
         credential=db.get(ModelCredential,"deepseek")
         key=load_key(db) if credential and credential.encrypted_key else None
         if not selected or not key:
