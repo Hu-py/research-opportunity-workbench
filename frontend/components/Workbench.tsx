@@ -5,7 +5,7 @@ import {
   Activity, ArrowRight, ArrowUpRight, BookOpen, BrainCircuit, CheckCircle2,
   ChevronDown, Clock3, Database, FileText, GitBranch, KeyRound, Layers3,
   Lightbulb, Loader2, LockKeyhole, LogOut, Menu, Play, Plus, RefreshCw,
-  Search, Settings2, ShieldCheck, Sparkles, Workflow, X,
+  Search, Settings2, ShieldCheck, Sparkles, Workflow, X, BookMarked,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import ResearchArchive from "@/components/ResearchArchive";
@@ -15,9 +15,10 @@ import AIResearchLab from "@/components/AIResearchLab";
 import ResearchRadar from "@/components/ResearchRadar";
 import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
+import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
+type Section = "sources"|"interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
 type NavEntry = {key:Section;label:string;icon:typeof BookOpen};
 const navigationGroups:{label:string;items:NavEntry[]}[] = [
   {label:"工作台",items:[
@@ -30,6 +31,9 @@ const navigationGroups:{label:string;items:NavEntry[]}[] = [
   {label:"研究发现",items:[
     {key:"discovery",label:"文献发现",icon:Search},
     {key:"ideas",label:"选题中心",icon:Lightbulb},
+  ]},
+  {label:"学术标准",items:[
+    {key:"sources",label:"学术来源管理",icon:BookMarked},
   ]},
   {label:"研究执行",items:[
     {key:"agent",label:"Research Agent",icon:BrainCircuit},
@@ -408,6 +412,7 @@ export default function Workbench(){
         {error&&<div className="alert alert-error"><span>{error}</span><button onClick={()=>setError("")}><X size={15}/></button></div>}
         {notice&&<div className="alert alert-success"><CheckCircle2 size={16}/><span>{notice}</span><button onClick={()=>setNotice("")}><X size={15}/></button></div>}
 
+        {section==="sources"&&<AcademicSourceRegistry canEdit={canEdit} canAdmin={canAdmin}/>}
         {section==="interest"&&<InterestWatchlist canEdit={canEdit}/>}
         {section==="overview"&&<>
           <div className="hero-card">
@@ -489,7 +494,7 @@ export default function Workbench(){
 
         {section==="repository"&&<ResearchArchive canAdmin={canAdmin}/>}
         {section==="assets"&&<DataAssetRegistry canAdmin={canAdmin}/>}
-        {section==="discovery"&&<ResearchDiscovery canAdmin={canAdmin} canEdit={canEdit}/>} 
+        {section==="discovery"&&<ResearchDiscovery canAdmin={canAdmin} canEdit={canEdit} onManageSources={()=>changeSection("sources")}/>} 
         {section==="ai-lab"&&<AIResearchLab canAdmin={canAdmin} canEdit={canEdit}/>} 
         {section==="radar"&&<ResearchRadar canEdit={canEdit}/>} 
 

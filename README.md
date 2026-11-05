@@ -33,6 +33,9 @@ See [development studio and acceptance checklist](docs/DEVELOPMENT_STUDIO.md).
 - **Task worker** (\`backend/worker.py\`): database-backed tasks with progress steps, separate worker for cloud deployments.
 - **Existing Python core** (\`research_workbench/\`): OpenAlex ingestion, DOI normalization, rolling ideas, versioned feedback, weekly Markdown and opt-in weekly schedule.
 - **CI**: backend unit/integration tests, Streamlit legacy smoke test, TypeScript checks and Next.js build.
+- **Academic Source Registry** (`frontend/components/AcademicSourceRegistry.tsx`): a standalone first-level module for journal/conference curation, editable research-domain taxonomy, rank provenance, exact OpenAlex Source ID resolution, CSV import/export and source revision history. The initial public catalogue contains 108 sources across 18 domains. PostgreSQL is the runtime source of truth; the versioned JSON catalogue only adds missing defaults and never overwrites manual edits. Literature discovery uses only enabled, resolved sources and separates direct research from method-transfer channels.
+
+See [Academic Source Registry guide](docs/ACADEMIC_SOURCE_REGISTRY.md).
 
 **Important:** This codebase is a tested development MVP, not an already-deployed website or verified multi-agent research service. Academic novelty must be evaluated by reading primary sources.
 

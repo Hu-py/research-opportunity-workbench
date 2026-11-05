@@ -24,6 +24,16 @@ from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
     recent_papers as interest_papers, ingest_interests,
 )
+from backend.academic_sources import (
+    AcademicSource, AcademicDomain, AcademicSourceRevision,
+    seed_registry, list_sources as list_academic_sources,
+    list_domains as list_academic_domains, registry_summary,
+    registry_state, create_source as create_academic_source,
+    update_source as update_academic_source, source_history,
+    create_domain as create_academic_domain, update_domain as update_academic_domain,
+    delete_domain as delete_academic_domain, resolve_sources as resolve_academic_sources,
+    import_sources_csv, export_sources_csv,
+)
 from backend.worker import run_task
 from backend.radar_trial import (
     RadarTrialRun, latest_trial, create_trial, execute_trial,
@@ -136,6 +146,13 @@ async def lifespan(app:FastAPI):
     factory=get_factory()
     bootstrap_admin_from_env(factory)
     with factory() as db:
+        registry_seed=seed_registry(db)
+        if registry_seed["sources_added"] or registry_seed["domains_added"]:
+            logging.getLogger("uvicorn.error").info(
+                "Academic Source Registry bootstrap: %d sources, %d domains, catalogue=%s",
+                registry_seed["sources_added"], registry_seed["domains_added"],
+                registry_seed["catalogue_version"],
+            )
         imported=seed_verified(db)
         if imported:
             logging.getLogger("uvicorn.error").info(
@@ -291,6 +308,62 @@ class InterestPatchRequest(BaseModel):
     keywords:list[str]|None=Field(default=None,max_length=12)
     queries:list[str]|None=Field(default=None,min_length=1,max_length=4)
     venues:list[str]|None=Field(default=None,max_length=12)
+
+class AcademicSourceCreateRequest(BaseModel):
+    name:str=Field(min_length=3,max_length=260)
+    abbreviation:str=Field(default="",max_length=80)
+    kind:Literal["journal","conference"]="journal"
+    domains:list[str]=Field(min_length=1,max_length=12)
+    rank_label:str=Field(default="观察",max_length=32)
+    ranking_system:str=Field(default="",max_length=180)
+    ranking_version:str=Field(default="",max_length=80)
+    ranking_source_url:str=Field(default="",max_length=1200)
+    source_url:str=Field(default="",max_length=1200)
+    aliases:list[str]=Field(default_factory=list,max_length=20)
+    notes:str=Field(default="",max_length=1500)
+    retrieval_channels:list[Literal["direct","method"]]=Field(default_factory=list,max_length=2)
+    enabled:bool=True
+    openalex_source_id:str|None=Field(default=None,max_length=100)
+
+class AcademicSourcePatchRequest(BaseModel):
+    name:str|None=Field(default=None,min_length=3,max_length=260)
+    abbreviation:str|None=Field(default=None,max_length=80)
+    kind:Literal["journal","conference"]|None=None
+    domains:list[str]|None=Field(default=None,min_length=1,max_length=12)
+    rank_label:str|None=Field(default=None,max_length=32)
+    ranking_system:str|None=Field(default=None,max_length=180)
+    ranking_version:str|None=Field(default=None,max_length=80)
+    ranking_source_url:str|None=Field(default=None,max_length=1200)
+    source_url:str|None=Field(default=None,max_length=1200)
+    aliases:list[str]|None=Field(default=None,max_length=20)
+    notes:str|None=Field(default=None,max_length=1500)
+    retrieval_channels:list[Literal["direct","method"]]|None=Field(default=None,max_length=2)
+    enabled:bool|None=None
+    openalex_source_id:str|None=Field(default=None,max_length=100)
+
+class AcademicDomainCreateRequest(BaseModel):
+    slug:str=Field(min_length=2,max_length=48)
+    name:str=Field(min_length=2,max_length=100)
+    group_name:str=Field(default="",max_length=100)
+    description:str=Field(default="",max_length=500)
+    default_channels:list[Literal["direct","method"]]=Field(default_factory=list,max_length=2)
+    sort_order:int=Field(default=500,ge=0,le=9999)
+
+class AcademicDomainPatchRequest(BaseModel):
+    name:str|None=Field(default=None,min_length=2,max_length=100)
+    group_name:str|None=Field(default=None,max_length=100)
+    description:str|None=Field(default=None,max_length=500)
+    default_channels:list[Literal["direct","method"]]|None=Field(default=None,max_length=2)
+    sort_order:int|None=Field(default=None,ge=0,le=9999)
+    enabled:bool|None=None
+
+class AcademicSourceResolveRequest(BaseModel):
+    source_ids:list[str]|None=Field(default=None,max_length=100)
+    force:bool=False
+    max_items:int=Field(default=10,ge=1,le=100)
+
+class AcademicSourceImportRequest(BaseModel):
+    csv_text:str=Field(min_length=1,max_length=300000)
 
 class DiscoveryRunRequest(BaseModel):
     line_id:str|None=Field(default=None,max_length=110)
@@ -558,6 +631,129 @@ def scan_research_interest(interest_id:str,background:BackgroundTasks,
     background.add_task(execute,get_factory(),interest_id)
     return {"id":interest_id,"status":"queued",
             "note":"检索已排队。免费后端休眠可能使后台任务中断；结果需重新刷新验证。"}
+
+@app.get("/api/academic-sources",dependencies=[Depends(require_actor)])
+def academic_sources_api(q:str=Query(default="",max_length=180),
+                         kind:Literal["journal","conference"]|None=None,
+                         domain:str=Query(default="",max_length=48),
+                         channel:Literal["direct","method"]|None=None,
+                         enabled:bool|None=None,
+                         resolution_status:str=Query(default="",max_length=24),
+                         db:Session=Depends(get_db)):
+    return {
+        "items":list_academic_sources(db,q=q,kind=kind or "",domain=domain,
+            channel=channel or "",enabled=enabled,resolution_status=resolution_status),
+        "domains":list_academic_domains(db),
+        "summary":registry_summary(db),
+        "catalogue":registry_state(db),
+        "note":"PostgreSQL 是运行时主数据；GitHub JSON 仅用于新增默认目录，不覆盖人工修改。",
+    }
+
+@app.post("/api/academic-sources",status_code=201,dependencies=[Depends(require_actor)])
+def academic_source_create(data:AcademicSourceCreateRequest,
+                           db:Session=Depends(get_db),
+                           actor:TeamMember|None=Depends(require_editor)):
+    try:
+        row=create_academic_source(db,data.model_dump(),actor.id if actor else "")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    add_audit(db,"academic_source.created",actor.id if actor else None,row["id"])
+    db.commit()
+    return row
+
+@app.patch("/api/academic-sources/{source_id}",dependencies=[Depends(require_actor)])
+def academic_source_update(source_id:str,data:AcademicSourcePatchRequest,
+                            db:Session=Depends(get_db),
+                            actor:TeamMember|None=Depends(require_editor)):
+    try:
+        row=update_academic_source(db,source_id,
+            data.model_dump(exclude_unset=True,exclude_none=True),
+            actor.id if actor else "")
+    except ValueError as exc:
+        raise HTTPException(404 if "不存在" in str(exc) else 422,str(exc)) from exc
+    add_audit(db,"academic_source.updated",actor.id if actor else None,source_id)
+    db.commit()
+    return row
+
+@app.get("/api/academic-sources/{source_id}/history",dependencies=[Depends(require_actor)])
+def academic_source_history(source_id:str,db:Session=Depends(get_db)):
+    if not db.get(AcademicSource,source_id):
+        raise HTTPException(404,"学术来源不存在")
+    return {"items":source_history(db,source_id)}
+
+@app.post("/api/academic-sources/resolve",dependencies=[Depends(require_actor)])
+def academic_source_resolve(data:AcademicSourceResolveRequest,
+                            db:Session=Depends(get_db),
+                            actor:TeamMember|None=Depends(require_editor)):
+    try:
+        result=resolve_academic_sources(db,data.source_ids,force=data.force,
+                                        max_items=data.max_items,
+                                        actor=actor.id if actor else "")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    add_audit(db,"academic_source.resolved",actor.id if actor else None,
+              "batch", "checked="+str(result["checked"]))
+    db.commit()
+    return result
+
+@app.get("/api/academic-sources/export",dependencies=[Depends(require_actor)])
+def academic_source_export(db:Session=Depends(get_db)):
+    return {"filename":"academic-sources.csv","content":export_sources_csv(db),
+            "count":registry_summary(db)["total"]}
+
+@app.post("/api/academic-sources/import",dependencies=[Depends(require_actor)])
+def academic_source_import(data:AcademicSourceImportRequest,
+                           db:Session=Depends(get_db),
+                           actor:TeamMember|None=Depends(require_admin)):
+    try:
+        result=import_sources_csv(db,data.csv_text,actor.id if actor else "")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    add_audit(db,"academic_source.imported",actor.id if actor else None,
+              "csv", "created="+str(result["created"])+"; updated="+str(result["updated"]))
+    db.commit()
+    return result
+
+@app.get("/api/academic-domains",dependencies=[Depends(require_actor)])
+def academic_domains_api(db:Session=Depends(get_db)):
+    return {"items":list_academic_domains(db)}
+
+@app.post("/api/academic-domains",status_code=201,dependencies=[Depends(require_actor)])
+def academic_domain_create(data:AcademicDomainCreateRequest,
+                           db:Session=Depends(get_db),
+                           actor:TeamMember|None=Depends(require_admin)):
+    try:
+        row=create_academic_domain(db,data.model_dump(),actor.id if actor else "")
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    add_audit(db,"academic_domain.created",actor.id if actor else None,row["slug"])
+    db.commit()
+    return row
+
+@app.patch("/api/academic-domains/{slug}",dependencies=[Depends(require_actor)])
+def academic_domain_update(slug:str,data:AcademicDomainPatchRequest,
+                           db:Session=Depends(get_db),
+                           actor:TeamMember|None=Depends(require_admin)):
+    try:
+        row=update_academic_domain(db,slug,
+            data.model_dump(exclude_unset=True,exclude_none=True))
+    except ValueError as exc:
+        raise HTTPException(404 if "不存在" in str(exc) else 422,str(exc)) from exc
+    add_audit(db,"academic_domain.updated",actor.id if actor else None,slug)
+    db.commit()
+    return row
+
+@app.delete("/api/academic-domains/{slug}",dependencies=[Depends(require_actor)])
+def academic_domain_delete(slug:str,db:Session=Depends(get_db),
+                           actor:TeamMember|None=Depends(require_admin)):
+    try:
+        result=delete_academic_domain(db,slug)
+    except ValueError as exc:
+        raise HTTPException(404 if "不存在" in str(exc) else 409,str(exc)) from exc
+    add_audit(db,"academic_domain.deleted",actor.id if actor else None,slug)
+    db.commit()
+    return result
+
 
 @app.get("/api/opportunity-engine",dependencies=[Depends(require_actor)])
 def opportunity_engine(db:Session=Depends(get_db)):

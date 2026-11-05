@@ -29,5 +29,8 @@ research-wb-worker = "backend.worker:main"
 [tool.setuptools.packages.find]
 include = ["research_workbench*", "backend*"]
 
+[tool.setuptools.package-data]
+backend = ["data/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

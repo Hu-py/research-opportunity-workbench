@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -71,6 +72,7 @@ def session_factory(url=None):
         Path(url[10:]).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(url, pool_pre_ping=True)
     from backend import interests as _registered_interests  # watchlist tables before create_all
+    from backend import academic_sources as _registered_academic_sources  # source registry tables
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -144,8 +146,19 @@ def normalize_paper(work):
                 doi=doi,url=("https://doi.org/"+doi) if doi else work.get("id") or "",
                 published=work.get("publication_date") or "",venue=source.get("display_name") or "")
 
-def query_openalex(query,since,limit=15,client=None):
-    params={"search":query,"filter":"from_publication_date:"+since,"sort":"publication_date:desc","per-page":max(1,min(int(limit),100))}
+def query_openalex(query,since,limit=15,client=None,source_ids=None):
+    filters=["from_publication_date:"+since]
+    if source_ids is not None:
+        clean=list(dict.fromkeys(
+            str(x).strip().rstrip("/").rsplit("/",1)[-1] for x in source_ids
+            if re.fullmatch(
+                r"S\d+",str(x).strip().rstrip("/").rsplit("/",1)[-1])
+        ))
+        if not clean:
+            raise ValueError("Strict venue search requires at least one verified OpenAlex Source ID")
+        filters.append("primary_location.source.id:"+"|".join(clean))
+    params={"search":query,"filter":",".join(filters),
+            "sort":"relevance_score:desc","per-page":max(1,min(int(limit),100))}
     if os.getenv("OPENALEX_API_KEY"):params["api_key"]=os.environ["OPENALEX_API_KEY"]
     if os.getenv("OPENALEX_MAILTO"):params["mailto"]=os.environ["OPENALEX_MAILTO"]
     own=client is None
