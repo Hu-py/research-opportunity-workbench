@@ -609,7 +609,7 @@ def opportunity_engine(db:Session=Depends(get_db)):
         "candidates":[{**item,"preanalysis":preanalysis_view(analyses.get(item["id"]))}
                       for item in items],
         "runs":discovery_runs(db),
-        "note":"论文相关性是规则排序；LLM 预分析仅辅助阅读，不代表全文核验、学术创新性或数据可行性。人工审核状态不会被自动改变。",
+        "note":"检索策略生成与论文语义相关性评估由 DeepSeek LLM 驱动；OpenAlex 负责学术元数据召回，代码仅负责去重、校验与入库。LLM 判断不代表全文核验或创新性证明，所有候选仍需人工审核。",
     }
 
 @app.post("/api/opportunity-engine/preanalyze",status_code=202,
