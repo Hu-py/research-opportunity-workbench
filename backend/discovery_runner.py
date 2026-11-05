@@ -79,6 +79,9 @@ def execute_discovery(factory, run_id, client=None):
                 source_ids=(registered_sources["direct"] if source_mode=="direct"
                             else registered_sources["method"] if source_mode=="method"
                             else registered_sources["all"])
+                if not source_ids:
+                    errors.append(line_id+" | Academic Source Registry 缺少已解析的启用来源，已跳过该类检索；请先解析期刊/会议来源 ID。")
+                    continue
                 results=query_openalex(
                     item["query"],(date.today()-timedelta(days=config["lookback_days"])).isoformat(),
                     limit=min(12,max(config["per_query"],8)),client=client,
