@@ -467,12 +467,12 @@ def _blind_swap(run_id):
 def blind_cards(item):
     if item.status!="completed":raise ValueError("完整 A/B 对照尚未结束")
     outputs=jload(item.outputs_json)
-    a={"ideas":(outputs.get("baseline_generator") or {}).get("ideas",[])[:3]}
+    a={"ideas":(outputs.get("baseline_generator") or {}).get("ideas",[])[:1]}
     judgement=outputs.get("arbitrate") or {}
     candidates={x["id"]:x for x in [
         outputs.get("revision_"+lens) or outputs.get("seed_"+lens)
         for lens in LENSES] if isinstance(x,dict)}
-    b={"ideas":[candidates[x] for x in judgement.get("selected_ids",[]) if x in candidates]}
+    b={"ideas":[candidates[x] for x in judgement.get("selected_ids",[]) if x in candidates][:1]}
     cards=[a,b]
     if _blind_swap(item.id):cards.reverse()
     # Uniform display schema: never reveal hypothesis IDs, original stage,
@@ -483,13 +483,22 @@ def blind_cards(item):
             "title":idea.get("title",""),
             "question":idea.get("question",""),
             "method":idea.get("method",""),
-            "falsifiable_prediction":idea.get("falsifiable_prediction",""),
             "minimal_experiment":idea.get("minimal_experiment",""),
             "baselines":idea.get("baselines",[]),
         } for idea in card["ideas"]]
     return {"run_id":item.id,"question":item.question,
             "cards":cards,"method_hidden":True,
             "warning":"请独立评估科研价值、增量、可行性和可检验性；不等于创新性已确认"}
+
+def reviewer_has_completed_blind_pair(db,run_id,reviewer_id):
+    """True only after this reviewer submitted both anonymous arm ratings."""
+    if not reviewer_id:
+        return False
+    labels=set(db.scalars(select(ScientificTournamentRating.blinded_arm).where(
+        ScientificTournamentRating.run_id==run_id,
+        ScientificTournamentRating.reviewer_id==reviewer_id)).all())
+    return {"方案一","方案二"} <= labels
+
 
 def submit_rating(db,run_id,reviewer_id,blind_id,scientific_value,novelty,
                   feasibility,testability,recommendation,comment=""):
