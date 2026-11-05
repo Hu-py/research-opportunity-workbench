@@ -18,24 +18,55 @@ import InterestWatchlist from "@/components/InterestWatchlist";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
 type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings";
-const nav:{key:Section;label:string;caption:string;icon:typeof BookOpen}[] = [
-  {key:"interest",label:"研究兴趣监测",caption:"Interest watchlist",icon:GitBranch},
-  {key:"overview",label:"科研总览",caption:"Overview",icon:Layers3},
-  {key:"papers",label:"论文情报库",caption:"Literature",icon:BookOpen},
-  {key:"repository",label:"团队既有成果",caption:"Research archive",icon:FileText},
-  {key:"assets",label:"CUSP数据台账",caption:"Data metadata",icon:Database},
-  {key:"discovery",label:"科研关联与文献发现",caption:"Discovery engine",icon:Search},
-  {key:"ai-lab",label:"AI 选题实验台",caption:"DeepSeek research",icon:BrainCircuit},
-  {key:"radar",label:"科研雷达 · 选题评审",caption:"Research radar",icon:ShieldCheck},
-  {key:"ideas",label:"研究选题池",caption:"Opportunities",icon:Lightbulb},
-  {key:"agent",label:"Research Agent",caption:"Intelligent research",icon:BrainCircuit},
-  {key:"history",label:"选题演化",caption:"Evolution",icon:GitBranch},
-  {key:"profile",label:"正式团队画像",caption:"Official profile",icon:ShieldCheck},
-  {key:"profile-draft",label:"数据库初步画像",caption:"Evidence portrait",icon:Database},
-  {key:"profile-skill",label:"画像更新 Skill",caption:"Research profile workflow",icon:Workflow},
-  {key:"brief",label:"每周科研简报",caption:"Weekly brief",icon:FileText},
-  {key:"settings",label:"系统状态",caption:"System",icon:Settings2},
+type NavEntry = {key:Section;label:string;icon:typeof BookOpen};
+const navigationGroups:{label:string;items:NavEntry[]}[] = [
+  {label:"工作台",items:[
+    {key:"overview",label:"科研总览",icon:Layers3},
+  ]},
+  {label:"研究基础",items:[
+    {key:"profile",label:"团队画像",icon:ShieldCheck},
+    {key:"papers",label:"科研资源库",icon:Database},
+  ]},
+  {label:"研究发现",items:[
+    {key:"discovery",label:"文献发现",icon:Search},
+    {key:"ideas",label:"选题中心",icon:Lightbulb},
+  ]},
+  {label:"研究执行",items:[
+    {key:"agent",label:"Research Agent",icon:BrainCircuit},
+  ]},
+  {label:"研究产出",items:[
+    {key:"brief",label:"科研简报",icon:FileText},
+  ]},
 ];
+
+// All original feature routes remain available as secondary navigation.
+const moduleTabs:Partial<Record<Section,{title:string;items:{key:Section;label:string}[]}>> = {
+  profile:{title:"团队画像与研究方向",items:[
+    {key:"profile",label:"正式画像"},
+    {key:"profile-draft",label:"数据画像"},
+    {key:"interest",label:"研究兴趣"},
+    {key:"profile-skill",label:"画像更新"},
+  ]},
+  papers:{title:"科研资源库",items:[
+    {key:"papers",label:"论文情报"},
+    {key:"repository",label:"团队成果"},
+    {key:"assets",label:"数据台账"},
+  ]},
+  ideas:{title:"选题中心",items:[
+    {key:"ideas",label:"研究选题池"},
+    {key:"ai-lab",label:"AI 选题分析"},
+    {key:"radar",label:"科研雷达与评审"},
+    {key:"history",label:"选题演化"},
+  ]},
+};
+const parentSections:Partial<Record<Section,Section>> = {
+  "profile-draft":"profile","profile-skill":"profile",interest:"profile",
+  repository:"papers",assets:"papers",
+  "ai-lab":"ideas",radar:"ideas",history:"ideas",
+};
+function primarySection(current:Section):Section {
+  return parentSections[current]||current;
+}
 const statuses:Record<string,string>={
   candidate:"待评估",watch:"持续关注",shortlist:"重点选题",
   experiment:"实验准备",rejected:"暂不考虑",archived:"已归档",
@@ -312,7 +343,11 @@ export default function Workbench(){
     </div></div>
   </div>;
 
-  const sectionLabel=nav.find(n=>n.key===section)?.label||"科研总览";
+  const primary=primarySection(section);
+  const currentModule=moduleTabs[primary];
+  const primaryLabel=navigationGroups.flatMap(group=>group.items)
+    .find(item=>item.key===primary)?.label||(primary==="settings"?"系统管理":"科研总览");
+  const sectionLabel=currentModule?.items.find(tab=>tab.key===section)?.label||primaryLabel;
   return <div className="shell">
     {mobileOpen&&<div className="mobile-scrim" onClick={()=>setMobileOpen(false)}/>}
     <aside className={"sidebar "+(mobileOpen?"sidebar-open":"")}>
@@ -320,13 +355,26 @@ export default function Workbench(){
         <div><strong>Research Atlas</strong><span>INTELLIGENCE WORKSPACE</span></div>
         <button className="close-mobile" onClick={()=>setMobileOpen(false)} aria-label="关闭导航"><X size={20}/></button>
       </div>
-      <div className="sidebar-label">WORKSPACE</div>
-      <nav>{nav.map(item=><button className={"nav-item "+(section===item.key?"nav-active":"")}
-        key={item.key} onClick={()=>changeSection(item.key)}>
-        <item.icon size={18} strokeWidth={1.8}/><span>{item.label}<small>{item.caption}</small></span>
-        {section===item.key&&<div className="nav-dot"/>}
-      </button>)}</nav>
+      <nav className="sidebar-nav" aria-label="科研工作台主导航">
+        {navigationGroups.map(group=><div className="nav-group" key={group.label}>
+          <div className="nav-group-title">{group.label}</div>
+          {group.items.map(item=><button type="button"
+            aria-current={primary===item.key?"page":undefined}
+            className={"nav-item "+(primary===item.key?"nav-active":"")}
+            key={item.key} onClick={()=>changeSection(item.key)}>
+            <item.icon size={18} strokeWidth={1.8}/><span>{item.label}</span>
+            {primary===item.key&&<div className="nav-dot"/>}
+          </button>)}
+        </div>)}
+      </nav>
       <div className="sidebar-bottom">
+        <div className="nav-group-title">管理</div>
+        <button type="button" aria-current={section==="settings"?"page":undefined}
+          className={"nav-item sidebar-settings "+(section==="settings"?"nav-active":"")}
+          onClick={()=>changeSection("settings")}>
+          <Settings2 size={18} strokeWidth={1.8}/><span>系统管理</span>
+          {section==="settings"&&<div className="nav-dot"/>}
+        </button>
         <div className="status-panel"><span className="online-dot"/> <span>Research Agent</span>
           <small>服务状态取决于后端配置</small></div>
         <button className="account" onClick={()=>void logout()}><span className="avatar">R</span>
@@ -336,7 +384,7 @@ export default function Workbench(){
     <main className="main">
       <header className="topbar">
         <button className="menu-mobile" onClick={()=>setMobileOpen(true)} aria-label="打开导航"><Menu size={20}/></button>
-        <div className="breadcrumb">WORKSPACE <span>/</span> {sectionLabel}</div>
+        <div className="breadcrumb">WORKSPACE <span>/</span> {primaryLabel}{sectionLabel!==primaryLabel&&<><span>/</span> {sectionLabel}</>}</div>
         <div className="top-actions">
           <span className="top-badge"><span className="online-dot"/> 研究数据实时关联</span>
           <IconBtn className="icon-only" onClick={()=>void load()} disabled={loading} >
@@ -345,6 +393,18 @@ export default function Workbench(){
         </div>
       </header>
       <div className="content">
+        {currentModule&&<div className="module-switcher" aria-label={currentModule.title+"子页面"}>
+          <div className="module-switcher-heading">
+            <span className="module-eyebrow">WORKSPACE MODULE</span>
+            <strong>{currentModule.title}</strong>
+          </div>
+          <nav className="module-tabs" aria-label={currentModule.title}>
+            {currentModule.items.map(tab=><button type="button" key={tab.key}
+              aria-current={section===tab.key?"page":undefined}
+              className={"module-tab "+(section===tab.key?"module-tab-active":"")}
+              onClick={()=>changeSection(tab.key)}>{tab.label}</button>)}
+          </nav>
+        </div>}
         {error&&<div className="alert alert-error"><span>{error}</span><button onClick={()=>setError("")}><X size={15}/></button></div>}
         {notice&&<div className="alert alert-success"><CheckCircle2 size={16}/><span>{notice}</span><button onClick={()=>setNotice("")}><X size={15}/></button></div>}
 
@@ -560,10 +620,6 @@ export default function Workbench(){
             </div>
             <IconBtn className="btn-primary" onClick={()=>changeSection("assets")}><Database size={16}/> 查看 CUSP 数据台账 <ArrowRight size={16}/></IconBtn>
           </section>
-          <div className="inline-actions" style={{margin:"13px 0 20px"}}>
-             <IconBtn className="btn-secondary" onClick={()=>changeSection("profile-draft")}><Database size={15}/> 查看数据库初步画像 <ArrowRight size={15}/></IconBtn>
-             <IconBtn className="btn-secondary" onClick={()=>changeSection("profile-skill")}><Workflow size={15}/> 更新画像 Skill <ArrowRight size={15}/></IconBtn>
-           </div>
           <div className="content-grid"><section className="panel">
             <div className="panel-header"><div><span className="panel-kicker">ACTIVE RESEARCH</span><h2>研究主线</h2></div></div>
             {!profile?<Empty icon={ShieldCheck} title="尚未建立团队研究画像" body="右侧已提供一份可编辑示例，管理员保存后，全体成员即可共享。"/>:
