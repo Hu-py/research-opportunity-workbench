@@ -155,6 +155,10 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
      {!canAdmin&&<p className="small muted">请由团队管理员在这里配置模型密钥。研究成员可以查看分析结果与按权限手动运行。</p>}
    </section>
 
+   <ResearchEvolutionPanel selectedLine={selected} lines={strategies}
+     canEdit={canEdit} modelConfigured={Boolean(data?.config.configured)}/>
+   <div className="small-note">以下为历史四阶段选题、科研工具与配对实验，保留作实验基准和过程回溯。新主流程不会要求人工先审核论文。</div>
+
    <section className="panel">
      <div className="panel-header"><div><span className="panel-kicker">STEPWISE WORKFLOW</span><h2>启动与监控深度选题分析</h2></div><BrainCircuit size={20}/></div>
      <p className="small muted">仅分析通过「科研关联与文献发现 → 候选论文」人工标注为相关或方法借鉴的文献，最多 5 篇／次。不读取原始数据文件；受限数据资产不会发送给模型。</p>
@@ -190,9 +194,6 @@ export default function AIResearchLab({canAdmin,canEdit}:{canAdmin:boolean;canEd
      {data&&!data.runs.length&&<div className="small-note">还没有 AI 分析任务。配置密钥、审核至少一篇论文后即可试运行。</div>}
    </section>
 
-   <ResearchEvolutionPanel selectedLine={selected} lines={strategies}
-     canEdit={canEdit} modelConfigured={Boolean(data?.config.configured)}/>
-   <div className="small-note">以下为既有科研工具实验、配对基准和四阶段旧流程，用于实验对照及历史结果追溯。新自主科研链路不需要人工预审文献。</div>
    <ScientificExplorationPanel selectedLine={selected} lines={strategies}
      canEdit={canEdit} modelConfigured={Boolean(data?.config.configured)}/>
    <ScientificTournamentPanel selectedLine={selected} lines={strategies}
