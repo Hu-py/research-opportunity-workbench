@@ -49,7 +49,7 @@ from backend.preanalysis import PaperPreanalysis, execute_preanalysis, preanalys
 from backend.model_vault import ModelCredential, status as model_status, save as save_model_config, remove_key as remove_model_key
 from backend.profile_intelligence import (
     ResearchProfileDraft, ResearchProfileDraftRevision, ProfileSynthesisRun,
-    initialize_database_draft,
+    initialize_database_draft, discovery_profile,
     bootstrap_db_review,
     list_studio as list_research_portraits,
     start_generation as start_profile_synthesis,
@@ -486,11 +486,16 @@ def scheduled_refresh_achievements(request:Request,background:BackgroundTasks,
         raise HTTPException(403,"Scheduled refresh is not authorized")
     run=create_refresh(db,"scheduled")
     background.add_task(refresh_public_works,get_factory(),run.id)
-    # Share the existing free Vercel daily cron. Discovery is explicitly
-    # opt-in per research line; defaults to OFF and never auto-approves papers.
-    discovered=create_run(db,get_profile(db),source="scheduled")
-    if discovered:
-        background.add_task(execute_discovery,get_factory(),discovered.id)
+    # A single opt-in to paid daily analysis can monitor up to three
+    # portrait-derived themes per day, rotating so all eligible themes are
+    # eventually covered. No automatic paper approval.
+    credential=db.get(ModelCredential,"deepseek")
+    discovered=None
+    if credential and credential.daily_enabled and credential.encrypted_key:
+        initialize_database_draft(get_factory())  # refresh DB-only evidence snapshot
+        discovered=create_run(db,discovery_profile(db),source="scheduled")
+        if discovered:
+            background.add_task(execute_discovery,get_factory(),discovered.id)
     # Paid analysis is exclusively opt-in. This path does nothing while
     # the admin's daily_enabled switch is false (initial default).
     ai_run=create_ai_scheduled(db)
@@ -595,7 +600,7 @@ def scan_research_interest(interest_id:str,background:BackgroundTasks,
 
 @app.get("/api/opportunity-engine",dependencies=[Depends(require_actor)])
 def opportunity_engine(db:Session=Depends(get_db)):
-    profile=get_profile(db)
+    profile=discovery_profile(db)
     items=candidates(db,limit=160)
     ids=[x["id"] for x in items]
     analyses={x.candidate_id:x for x in db.scalars(
@@ -609,7 +614,7 @@ def opportunity_engine(db:Session=Depends(get_db)):
         "candidates":[{**item,"preanalysis":preanalysis_view(analyses.get(item["id"]))}
                       for item in items],
         "runs":discovery_runs(db),
-        "note":"论文相关性是规则排序；LLM 预分析仅辅助阅读，不代表全文核验、学术创新性或数据可行性。人工审核状态不会被自动改变。",
+        "note":"文献发现使用 LLM 生成查询与语义评估；数据库画像中的新增主题可以轮换参与每日自动发现。候选论文仍需人工审核，摘要证据不等于全文或创新性验证。",
     }
 
 @app.post("/api/opportunity-engine/preanalyze",status_code=202,
@@ -641,7 +646,7 @@ def review_research_relation(relation_id:str,data:RelationReviewRequest,
 def update_search_strategy(line_id:str,data:SearchStrategyRequest,
         db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_admin)):
     try:
-        return save_strategy(db,get_profile(db),line_id,data.model_dump(),
+        return save_strategy(db,discovery_profile(db),line_id,data.model_dump(),
                              actor.id if actor else "")
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
 
@@ -649,9 +654,10 @@ def update_search_strategy(line_id:str,data:SearchStrategyRequest,
           dependencies=[Depends(require_actor)])
 def start_discovery(data:DiscoveryRunRequest,background:BackgroundTasks,
          db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_editor)):
-    if not get_profile(db):raise HTTPException(409,"请先保存团队研究画像")
+    profile=discovery_profile(db)
+    if not profile:raise HTTPException(409,"请先完善数据库科研画像")
     try:
-        run=create_run(db,get_profile(db),source="manual",line_id=data.line_id)
+        run=create_run(db,profile,source="manual",line_id=data.line_id)
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
     if not run:raise HTTPException(409,"没有可用的研究主线")
     add_audit(db,"paper_discovery.started",actor.id if actor else None,run.id)
