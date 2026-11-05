@@ -46,6 +46,8 @@ from backend.discovery import (
 )
 from backend.discovery_runner import execute_discovery
 from backend.preanalysis import PaperPreanalysis, execute_preanalysis, preanalysis_view
+from backend.research_budget import ResearchDailyBudget, status as research_budget_status
+from backend.weekly_synthesis import synthesize as synthesize_weekly_llm, weekly_period
 from backend.model_vault import ModelCredential, status as model_status, save as save_model_config, remove_key as remove_model_key
 from backend.profile_intelligence import (
     ResearchProfileDraft, ResearchProfileDraftRevision, ProfileSynthesisRun,
@@ -486,9 +488,8 @@ def scheduled_refresh_achievements(request:Request,background:BackgroundTasks,
         raise HTTPException(403,"Scheduled refresh is not authorized")
     run=create_refresh(db,"scheduled")
     background.add_task(refresh_public_works,get_factory(),run.id)
-    # A single opt-in to paid daily analysis can monitor up to three
-    # portrait-derived themes per day, rotating so all eligible themes are
-    # eventually covered. No automatic paper approval.
+    # Opted-in portrait discovery: five themes/day, at most 80 LLM paper
+    # assessments across all runs with database-backed paid-call guardrails.
     credential=db.get(ModelCredential,"deepseek")
     discovered=None
     if credential and credential.daily_enabled and credential.encrypted_key:
@@ -498,12 +499,34 @@ def scheduled_refresh_achievements(request:Request,background:BackgroundTasks,
             background.add_task(execute_discovery,get_factory(),discovered.id)
     # Paid analysis is exclusively opt-in. This path does nothing while
     # the admin's daily_enabled switch is false (initial default).
-    ai_run=create_ai_scheduled(db)
-    if ai_run:
-        background.add_task(execute_ai_analysis,get_factory(),ai_run.id)
+    # Daily pre-analysis only; full multi-stage opportunity synthesis is
+    # weekly and separately budgeted. Avoid an unbudgeted daily AI-lab run.
     return {"id":run.id,"status":"queued",
             "paper_discovery_id":discovered.id if discovered else None,
-            "ai_analysis_id":ai_run.id if ai_run else None}
+            "ai_analysis_id":None,
+            "budget":research_budget_status(db)}
+
+@app.post("/api/radar/weekly-scheduled",status_code=202,
+          dependencies=[Depends(authenticate)])
+def scheduled_weekly_llm(request:Request,background:BackgroundTasks,
+                         db:Session=Depends(get_db)):
+    expected=os.getenv("ATLAS_SYNC_SECRET","").strip()
+    supplied=request.headers.get("X-Atlas-Sync-Secret","")
+    if len(expected)<24 or not hmac.compare_digest(supplied,expected):
+        raise HTTPException(403,"Scheduled weekly synthesis is not authorized")
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key or not credential.daily_enabled:
+        return {"status":"skipped","reason":"Weekly AI synthesis is not enabled"}
+    report=db.get(RadarReport,weekly_period())
+    if report and "## LLM 综合研判（待团队审核）" in report.markdown:
+        return {"status":"already_completed","period":weekly_period()}
+    background.add_task(synthesize_weekly_llm,get_factory())
+    return {"status":"queued","period":weekly_period(),
+            "note":"LLM weekly synthesis saves a private draft and does not approve papers or opportunities"}
+
+@app.get("/api/research-budget",dependencies=[Depends(require_actor)])
+def research_budget_status_api(db:Session=Depends(get_db)):
+    return research_budget_status(db)
 
 @app.get("/api/data-assets",dependencies=[Depends(require_actor)])
 def data_assets(db:Session=Depends(get_db)):
@@ -728,7 +751,7 @@ def reject_research_profile_draft(draft_id:str,
 
 @app.get("/api/ai-lab",dependencies=[Depends(require_actor)])
 def ai_lab_overview(db:Session=Depends(get_db)):
-    return {"config":model_status(db),"runs":list_ai_runs(db),
+    return {"config":model_status(db),"research_budget":research_budget_status(db),"runs":list_ai_runs(db),
             "cards":list_ai_cards(db),
             "note":"模型仅分析已审核论文的标题与摘要以及非受限数据属性。草稿不代表已验证的创新性。"}
 
