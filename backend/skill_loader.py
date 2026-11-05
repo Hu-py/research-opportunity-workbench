@@ -2,8 +2,8 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent / "skills"
-ALLOWED = ("paper_reader","method_transfer","idea_critic")
-REGISTERED = ALLOWED + ("research_profile",)
+ALLOWED = ("literature_discovery","paper_reader","method_transfer","idea_critic")
+REGISTERED = ALLOWED + ("research_profile","idea_discovery")
 
 def load_skills(names=ALLOWED) -> str:
     parts=[]
