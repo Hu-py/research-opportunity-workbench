@@ -241,18 +241,18 @@ def test_scheduled_portrait_themes_rotate_without_six_paper_total_cap(setup_db):
         {"id":"db_theme_"+str(i),"name":"数据库研究主题 "+str(i),
          "problem":"由团队成果及数据目录提出的待验证研究问题",
          "keywords":["urban systems"],"search_queries":[],"method_queries":[]}
-        for i in range(1,6)
+        for i in range(1,12)
     ]}
     with factory() as db:
         # An explicit team decision to turn a derived topic off takes priority.
-        db.add(SearchStrategy(line_id="db_theme_5",enabled=False))
+        db.add(SearchStrategy(line_id="db_theme_11",enabled=False))
         db.commit()
         first=create_run(db,portrait,source="scheduled")
         second=create_run(db,portrait,source="scheduled")
         assert first is not None and second is not None
         ids1=reads(first.line_ids_json)
         ids2=reads(second.line_ids_json)
-        assert len(ids1)==3
-        assert "db_theme_5" not in ids1+ids2
-        assert set(ids1+ids2)=={"db_theme_1","db_theme_2","db_theme_3","db_theme_4"}
+        assert len(ids1)==5
+        assert "db_theme_11" not in ids1+ids2
+        assert set(ids1+ids2)=={"db_theme_"+str(i) for i in range(1,11)}
         assert set(ids1)!=set(ids2)

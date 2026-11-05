@@ -179,10 +179,10 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </>}
      {active==="search"&&<>
-       <p className="small muted">文献发现基于数据库画像自动生成研究主题与 LLM 检索式。开启系统管理中的“每日自动 AI 分析”后，每天轮换处理最多 3 个主题，不需要逐个手动搜索；LLM 调用会产生 API 费用。单独关闭的主题不会参与定时发现。</p>
+       <p className="small muted">文献发现基于数据库画像自动生成研究主题与 LLM 检索式。开启系统管理中的“每日自动 AI 分析”后，每天轮换处理最多 5 个主题，每天总计最多 80 篇 LLM 语义分析，每周自动归纳研究机会，不需要逐个手动搜索；LLM 调用会产生 API 费用。单独关闭的主题不会参与定时发现。</p>
        <div className="discovery-record-list">
          {strategies.filter(x=>line==="all"||line===x.line_id).map(x=><article className="discovery-record" key={x.line_id}>
-           <div className="discovery-labels"><span>{x.enabled?"每日监测已开启":"定时监测关闭"}</span><span>近 {x.lookback_days} 天</span><span>每词最多 {x.per_query} 篇</span></div>
+           <div className="discovery-labels"><span>{x.enabled?"每日监测已开启":"定时监测关闭"}</span><span>近 {x.lookback_days} 天</span><span>每条 LLM 检索式最多 {x.per_query} 篇</span></div>
            <h3>{x.line_name}</h3>
            {editor===x.line_id&&draft?<div className="discovery-editor">
              <label>直接相关检索（每行一个，最多 3 条）<textarea rows={4} value={directText} onChange={e=>setDirectText(e.target.value)}/></label>
@@ -190,7 +190,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
              <div className="discovery-options">
                <label><input type="checkbox" checked={draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})}/> 参与画像驱动的每日检索</label>
                <label>回溯天数<input type="number" min={7} max={180} value={draft.lookback_days} onChange={e=>setDraft({...draft,lookback_days:Number(e.target.value)})}/></label>
-               <label>每词最多<input type="number" min={1} max={12} value={draft.per_query} onChange={e=>setDraft({...draft,per_query:Number(e.target.value)})}/></label>
+               <label>每条检索式最多<input type="number" min={1} max={12} value={draft.per_query} onChange={e=>setDraft({...draft,per_query:Number(e.target.value)})}/></label>
                <label>重点推荐分<input type="number" min={0} max={100} value={draft.min_score} onChange={e=>setDraft({...draft,min_score:Number(e.target.value)})}/></label>
              </div>
              <div className="inline-actions">
