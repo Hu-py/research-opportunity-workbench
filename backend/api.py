@@ -286,7 +286,7 @@ class InterestCreateRequest(BaseModel):
     focus:Literal["applied","cs_frontier","cross_domain"]="applied"
     problem:str=Field(default="",max_length=1800)
     keywords:list[str]=Field(default_factory=list,max_length=12)
-    queries:list[str]=Field(min_length=1,max_length=4)
+    queries:list[str]=Field(default_factory=list,max_length=4)
     venues:list[str]=Field(default_factory=list,max_length=12)
     enabled:bool=True
 
