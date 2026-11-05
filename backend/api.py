@@ -66,6 +66,29 @@ from backend.ai_lab import (
     execute as execute_ai_analysis, list_runs as list_ai_runs,
     list_cards as list_ai_cards, review_card as review_ai_card,
     resume as resume_ai_run,
+    _snapshot as ai_snapshot_for_preflight,
+)
+from backend.scientific_tournament import (
+    ScientificTournamentRun, ScientificTournamentRating,
+    start_run as create_scientific_tournament,
+    execute as execute_scientific_tournament,
+    summary as scientific_tournament_view,
+    resume as resume_scientific_tournament,
+    blind_cards as scientific_tournament_blind_cards,
+    submit_rating as scientific_tournament_submit_rating,
+    review_summary as scientific_tournament_review_summary,
+    reviewer_has_completed_blind_pair,
+    curate_learning as scientific_tournament_curate_learning,
+    approved_learning as scientific_tournament_approved_learning,
+)
+from backend.scientific_tools import REGISTRY as SCIENTIFIC_TOOL_REGISTRY
+from backend.scientific_agent import (
+    ScientificExplorationRun,
+    create_run as create_scientific_exploration,
+    execute as execute_scientific_exploration,
+    list_runs as list_scientific_explorations,
+    as_dict as scientific_exploration_view,
+    resume as resume_scientific_exploration,
 )
 from backend.cusp import (
     CuspDataset, CuspDatasetRevision, CuspImportRun,
@@ -748,6 +771,223 @@ def reject_research_profile_draft(draft_id:str,
              actor:TeamMember|None=Depends(require_admin)):
     try:return discard_research_profile_draft(db,draft_id,actor.id if actor else "")
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+class ScientificTournamentRequest(BaseModel):
+    line_id: str = Field(min_length=1,max_length=110)
+    question: str = Field(min_length=10,max_length=600)
+
+
+class ScientificTournamentLearningRequest(BaseModel):
+    feedback_kind: Literal["human_review","experiment_observation","data_availability"]
+    finding: str = Field(min_length=12,max_length=900)
+    supporting_reference: str = Field(default="",max_length=500)
+    limitation: str = Field(min_length=8,max_length=650)
+
+
+class ScientificTournamentRatingRequest(BaseModel):
+    blind_id: Literal["方案一","方案二"]
+    scientific_value: int = Field(ge=1,le=5)
+    novelty: int = Field(ge=1,le=5)
+    feasibility: int = Field(ge=1,le=5)
+    testability: int = Field(ge=1,le=5)
+    recommendation: Literal["test","investigate","reject"]
+    comment: str = Field(default="",max_length=1500)
+
+
+@app.get("/api/scientific-tournaments/preflight",dependencies=[Depends(require_actor)])
+def scientific_tournament_preflight(line_id:str=Query(min_length=1,max_length=110),
+                                   db:Session=Depends(get_db)):
+    """Read-only, zero-model-call readiness check; never returns secrets."""
+    model=model_status(db)
+    budget=research_budget_status(db)
+    remaining_calls=max(0,budget["limits"]["model_calls_per_day"]-
+                        budget["used"]["model_calls"])
+    remaining_tokens=max(0,budget["limits"]["token_reservation_per_day"]-
+                         budget["used"]["token_reservation"])
+    reasons=[]
+    persistent_database=db.get_bind().dialect.name=="postgresql"
+    if os.getenv("SCIENTIFIC_PILOT_REQUIRE_POSTGRES","").lower() in ("1","true","yes"):
+        if not persistent_database:reasons.append("隔离试验数据库尚未连接持久化 PostgreSQL")
+    if not model["configured"]:reasons.append("管理员尚未配置 DeepSeek API Key")
+    if not model["vault_ready"]:reasons.append("模型密钥加密服务尚未配置")
+    snapshot=None
+    try:
+        snapshot=ai_snapshot_for_preflight(db,line_id)
+    except ValueError as exc:
+        reasons.append(str(exc)[:200])
+    if remaining_calls<14:reasons.append("今日剩余模型调用不足 14 次")
+    if remaining_tokens<91000:reasons.append("今日剩余 Token 预留额度不足 91,000")
+    return {
+        "ready":not reasons,
+        "line_id":line_id,
+        "model_configured":model["configured"],
+        "vault_ready":model["vault_ready"],
+        "persistent_database":persistent_database,
+        "approved_papers":len(snapshot["papers"]) if snapshot else 0,
+        "registered_datasets":len(snapshot["datasets"]) if snapshot else 0,
+        "remaining_model_calls":remaining_calls,
+        "remaining_token_allowance":remaining_tokens,
+        "maximum_trial_calls":14,
+        "reserved_trial_tokens":91000,
+        "notes":reasons,
+        "does_not_invoke_model":True,
+    }
+
+
+@app.post("/api/scientific-tournaments",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_tournament_start(data:ScientificTournamentRequest,
+                                background:BackgroundTasks,
+                                actor:TeamMember|None=Depends(require_editor),
+                                db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"配对竞赛只能由团队研究人员手动启动")
+    try:run=create_scientific_tournament(db,data.line_id,data.question,actor.id)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_tournament,get_factory(),run.id)
+    return {"id":run.id,"status":"queued","max_competition_rounds":3,
+            "paired_baseline":True,
+            "note":"A 原四阶段流程与 B 竞争流程共享冻结输入，匿名人工评分另行保存"}
+
+
+@app.get("/api/scientific-tournaments",dependencies=[Depends(require_actor)])
+def scientific_tournament_list(db:Session=Depends(get_db)):
+    rows=db.scalars(select(ScientificTournamentRun).order_by(
+        ScientificTournamentRun.created_at.desc()).limit(30)).all()
+    return {"items":[scientific_tournament_view(x) for x in rows]}
+
+
+@app.get("/api/scientific-tournaments/{run_id}",dependencies=[Depends(require_actor)])
+def scientific_tournament_detail(run_id:str,request:Request,db:Session=Depends(get_db)):
+    run=db.get(ScientificTournamentRun,run_id)
+    if not run:raise HTTPException(404,"科研竞赛不存在")
+    # No route should disclose the A/B method before this reviewer scores both.
+    actor=resolve_session(db,request.headers.get("X-Research-Session")) if team_auth_enabled() else None
+    unblinded=reviewer_has_completed_blind_pair(db,run_id,actor.id if actor else None)
+    view=scientific_tournament_view(run,detail=unblinded)
+    view["review_unblinded"]=unblinded
+    if not unblinded:
+        view.update({"baseline":[],"baseline_critique":None,"round0":[],
+                     "critiques":[],"revisions":[],"decision":None,"trace":[]})
+    return view
+
+
+@app.post("/api/scientific-tournaments/{run_id}/resume",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_tournament_resume(run_id:str,background:BackgroundTasks,
+                                 actor:TeamMember|None=Depends(require_editor),
+                                 db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"需要已登录的团队研究人员身份")
+    try:run=resume_scientific_tournament(db,run_id,actor.id)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_tournament,get_factory(),run.id)
+    return {"id":run.id,"status":"queued"}
+
+
+@app.get("/api/scientific-tournaments/{run_id}/blind",
+         dependencies=[Depends(require_actor)])
+def scientific_tournament_blind(run_id:str,db:Session=Depends(get_db)):
+    run=db.get(ScientificTournamentRun,run_id)
+    if not run:raise HTTPException(404,"科研竞赛不存在")
+    try:return scientific_tournament_blind_cards(run)
+    except ValueError as exc:raise HTTPException(409,str(exc)) from exc
+
+
+@app.post("/api/scientific-tournaments/{run_id}/ratings",
+          dependencies=[Depends(require_editor)])
+def scientific_tournament_rate(run_id:str,data:ScientificTournamentRatingRequest,
+                               actor:TeamMember|None=Depends(require_editor),
+                               db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"匿名评审需要团队身份")
+    try:return scientific_tournament_submit_rating(db,run_id,actor.id,
+        data.blind_id,data.scientific_value,data.novelty,
+        data.feasibility,data.testability,data.recommendation,data.comment)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/scientific-tournaments/{run_id}/learning",
+          dependencies=[Depends(require_admin)])
+def scientific_tournament_learning_save(run_id:str,data:ScientificTournamentLearningRequest,
+                                        actor:TeamMember|None=Depends(require_admin),
+                                        db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"科研经验回流需要已登录的团队管理员")
+    try:return scientific_tournament_curate_learning(
+        db,run_id,actor.id,data.feedback_kind,data.finding,
+        data.supporting_reference,data.limitation)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+
+@app.get("/api/scientific-learning/{line_id}",dependencies=[Depends(require_actor)])
+def scientific_tournament_learning_list(line_id:str,db:Session=Depends(get_db)):
+    return {"items":scientific_tournament_approved_learning(db,line_id),
+            "note":"仅人工批准的反馈可加入未来模型输入；不修改正式研究画像或成果库"}
+
+
+@app.get("/api/scientific-tournaments/{run_id}/ratings",
+         dependencies=[Depends(require_actor)])
+def scientific_tournament_ratings(run_id:str,db:Session=Depends(get_db)):
+    try:return scientific_tournament_review_summary(db,run_id)
+    except ValueError as exc:raise HTTPException(404,str(exc)) from exc
+
+
+class ScientificExploreRequest(BaseModel):
+    line_id: str = Field(min_length=1,max_length=110)
+    question: str = Field(min_length=10,max_length=600)
+
+
+@app.get("/api/scientific-tools",dependencies=[Depends(require_actor)])
+def scientific_tool_catalog():
+    """Read-only capability catalog; no provider calls or credentials are exposed."""
+    return {"items":SCIENTIFIC_TOOL_REGISTRY.catalog({"literature:read"}),
+            "mode":"experimental","auto_execution_enabled":False}
+
+
+@app.post("/api/scientific-explorations",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_exploration_start(data:ScientificExploreRequest,
+                                background:BackgroundTasks,
+                                actor:TeamMember|None=Depends(require_editor),
+                                db:Session=Depends(get_db)):
+    # Paid, model-directed tool use is disabled in legacy unauthenticated mode.
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"科研 Agent 探索仅允许登录团队研究人员手动发起")
+    try:
+        run=create_scientific_exploration(db,data.line_id,data.question,actor.id)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_exploration,get_factory(),run.id)
+    return {"id":run.id,"status":run.status,"mode":"manual_only",
+            "max_steps":5,"max_tool_calls":3,
+            "note":"每步模型决策按现有每日模型预算扣减；探索结果须人工核验"}
+
+
+@app.get("/api/scientific-explorations",dependencies=[Depends(require_actor)])
+def scientific_exploration_history(db:Session=Depends(get_db)):
+    return {"items":list_scientific_explorations(db)}
+
+
+@app.get("/api/scientific-explorations/{run_id}",dependencies=[Depends(require_actor)])
+def scientific_exploration_detail(run_id:str,db:Session=Depends(get_db)):
+    run=db.get(ScientificExplorationRun,run_id)
+    if run is None:raise HTTPException(404,"科研探索任务不存在")
+    return scientific_exploration_view(run)
+
+
+@app.post("/api/scientific-explorations/{run_id}/resume",status_code=202,
+          dependencies=[Depends(require_editor)])
+def scientific_exploration_resume(run_id:str,background:BackgroundTasks,
+                                  actor:TeamMember|None=Depends(require_editor),
+                                  db:Session=Depends(get_db)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(403,"科研探索恢复需要团队研究人员身份")
+    try:run=resume_scientific_exploration(db,run_id,actor.id)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+    background.add_task(execute_scientific_exploration,get_factory(),run.id)
+    return {"id":run.id,"status":"queued","note":"保留先前已持久化的工具证据和消耗记录"}
+
 
 @app.get("/api/ai-lab",dependencies=[Depends(require_actor)])
 def ai_lab_overview(db:Session=Depends(get_db)):
