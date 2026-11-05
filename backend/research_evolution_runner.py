@@ -1,7 +1,7 @@
 """Bounded agent runner: discover -> paper review -> three hypotheses -> adversarial search -> revise -> judge -> recommend."""
 from __future__ import annotations
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from sqlalchemy import update
 from backend.model_gateway import request_json, ModelCallError
 from backend.model_vault import ModelCredential, load_key
@@ -21,10 +21,18 @@ def prompt(stage,snap,outputs,strategy):
     papers=outputs.get("papers",[])
     selected=set(outputs.get("paper_referee",{}).get("selected_ids",[]))
     chosen=[p for p in papers if p["id"] in selected]
+    strategies={
+        "balanced":"同时考核研究证据、原创增量和最小可行实验，不偏好任何单一指标",
+        "novelty":"优先检验尚未解释的机制与跨领域方法迁移，但绝不能弱化外部证据门控",
+        "feasibility":"优先以团队登记的可用数据构造可复现的对照实验，不得臆造可获取的数据",
+    }
     basic={"research_line":snap["line"],"datasets":snap["datasets"],
            "team_achievements":snap["achievements"],
            "approved_human_feedback":snap["approved_feedback"],
-           "policy_strategy":strategy,"evidence_note":snap["evidence_note"]}
+           "recent_final_human_feedback":snap.get("evolution_feedback",[]),
+           "policy_strategy":strategy,
+           "strategy_instruction":strategies.get(strategy,strategies["balanced"]),
+           "evidence_note":snap["evidence_note"]}
     if stage=="plan":
         return {**basic,"role":"Literature Scout",
             "task":"不要套关键词模板。针对研究问题、理论方法迁移及相反结论，设计3条语义检索查询。",
@@ -105,9 +113,7 @@ def tools_for_stage(stage,outputs,already,client):
                         max_calls=max(1,MAX_TOOLS-already))
     queries=(outputs["plan"]["queries"] if stage=="retrieve"
              else outputs["challenge"]["queries"])
-    since=(date.today().replace(year=date.today().year-3).isoformat()
-           if stage=="retrieve" else
-           date.today().replace(year=date.today().year-8).isoformat())
+    since=(date.today()-timedelta(days=365*(3 if stage=="retrieve" else 8))).isoformat()
     papers={p["id"]:p for p in outputs.get("papers",[])}
     events=[]
     for q in queries:
