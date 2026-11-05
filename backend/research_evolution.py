@@ -7,6 +7,7 @@ from __future__ import annotations
 import json, math, os, uuid
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 from research_workbench.core import Base, get_profile
 from backend.ai_lab import _dataset_context
@@ -203,12 +204,16 @@ def feedback(db,run_id,reviewer,decision,scores,comment=""):
         decision=decision,comment=str(comment)[:1200],**{k:scores[k] for k in fields}))
     reward=0.7*{"adopt":1.,"revise":0.4,"defer":-0.2,"reject":-1.}[decision]+(
         0.3*(sum(scores[k] for k in fields)/10-1))
-    policy=db.get(EvolutionPolicy,row.strategy)
+    policy=db.scalar(select(EvolutionPolicy).where(
+        EvolutionPolicy.strategy==row.strategy).with_for_update())
     if policy is None:
         policy=EvolutionPolicy(strategy=row.strategy,trials=0,total_reward=0.0)
         db.add(policy)
     policy.trials+=1;policy.total_reward+=reward;policy.updated_at=now()
     add_audit(db,"evolution.feedback",reviewer,run_id,"decision="+decision)
-    db.commit()
+    try:db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ValueError("该研究人员已经评价过这份推荐") from exc
     return {"run_id":run_id,"policy":row.strategy,"reward":round(reward,3),
             "model_weight_training":False,"human_review_stage":"final_only"}
