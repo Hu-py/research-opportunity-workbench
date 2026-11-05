@@ -22,7 +22,7 @@ from research_workbench.core import (
 from backend.tasks import ResearchTask, enqueue, as_dict
 from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
-    recent_papers as interest_papers, ingest_interests,
+    recent_papers as interest_papers,
 )
 from backend.research_sources import (
     ResearchSource, seed_default_sources, list_sources, create_source,
