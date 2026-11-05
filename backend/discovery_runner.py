@@ -10,6 +10,8 @@ from backend.preanalysis import execute_preanalysis
 from backend.llm_discovery import plan_queries, assess_papers
 from backend.model_vault import ModelCredential, load_key
 from backend.cusp import CuspDataset
+from backend.research_budget import reserve, record_usage, limits
+from backend.model_gateway import ModelCallError
 from backend.research_sources import ResearchSource, DIRECT_SOURCE_DOMAINS, METHOD_SOURCE_DOMAINS
 
 def _assets(db):
@@ -37,6 +39,9 @@ def _registered_source_ids(db):
     return {"direct":list(dict.fromkeys(direct)),
             "method":list(dict.fromkeys(method)),
             "all":list(dict.fromkeys(direct+method))}
+class BudgetLimitReached(Exception):
+    pass
+
 def execute_discovery(factory, run_id, client=None):
     with factory() as db:
         run=db.get(DiscoveryRun,run_id)
@@ -60,6 +65,8 @@ def execute_discovery(factory, run_id, client=None):
         registered_sources=_registered_source_ids(db)
         run.status="running";db.commit()
     errors=[];all_seen=0
+    daily_config=limits()
+    max_per_theme=daily_config['papers_per_theme']
     for line_id in selected:
         line=lines[line_id];config=settings[line_id]
         try:
@@ -69,10 +76,13 @@ def execute_discovery(factory, run_id, client=None):
                     PaperCandidate.line_id==line_id
                 ).order_by(PaperCandidate.first_seen.desc()).limit(60)).all()
                 prior=[q for row in previous for q in reads(row.matched_queries_json)]
+            if not reserve(factory, tokens=12000, calls=1):
+                raise BudgetLimitReached("每日 LLM 调用或 Token 预算已达到上限")
             plan,plan_usage=plan_queries(
                 key,model,line,assets,prior_queries=list(dict.fromkeys(prior)),
                 search_preferences=config,client=client
             )
+            record_usage(factory,plan_usage)
             query_results=[];seen=set()
             for item in plan["queries"]:
                 with factory() as db:
@@ -97,15 +107,24 @@ def execute_discovery(factory, run_id, client=None):
                     seen.add(paper["id"])
                     query_results.append(_candidate_payload(paper,item["query"],item["mode"]))
             all_seen+=len(query_results)
-            # LLM semantic evaluation replaces keyword overlap, hard-coded score and exclusion rules.
-            assessments,usage=assess_papers(
-                key,fast,line,assets,query_results[:30],client=client
-            )
+            # Each of five themes receives at most sixteen LLM assessments.
+            # Shared DB budget atomically caps the combined daily total at eighty.
+            papers_to_assess=query_results[:max_per_theme]
+            assessments=[]
+            for start in range(0,len(papers_to_assess),8):
+                batch=papers_to_assess[start:start+8]
+                if not reserve(factory, tokens=21000, papers=len(batch), calls=1):
+                    raise BudgetLimitReached("每日 80 篇论文、模型调用或 Token 预算已达到上限")
+                batch_results,usage=assess_papers(
+                    key,fast,line,assets,batch,client=client
+                )
+                record_usage(factory,usage)
+                assessments.extend(batch_results)
             by_id={x["paper_id"]:x for x in assessments}
             with factory() as db:
                 run=db.get(DiscoveryRun,run_id)
                 run.scanned+=len(query_results)
-                eligible_results=[item for item in query_results[:30]
+                eligible_results=[item for item in papers_to_assess
                                   if by_id[item["paper_id"]]["relevance_score"]>=config["min_score"]]
                 for item in eligible_results:
                     assessment=by_id[item["paper_id"]]
@@ -153,7 +172,12 @@ def execute_discovery(factory, run_id, client=None):
                     row.error="";row.updated_at=now()
                 db.commit()
         except Exception as exc:
-            message=safe_openalex_error(exc,bool(os.getenv("OPENALEX_API_KEY")))
+            if isinstance(exc,BudgetLimitReached):
+                message=str(exc)
+            elif isinstance(exc,ModelCallError):
+                message=str(exc)[:140]
+            else:
+                message=safe_openalex_error(exc,bool(os.getenv("OPENALEX_API_KEY")))
             errors.append(line_id+" | "+message)
             logging.getLogger("uvicorn.error").warning(
                 "LLM literature discovery failed: run=%s line=%s reason=%s",run_id,line_id,message
@@ -166,6 +190,5 @@ def execute_discovery(factory, run_id, client=None):
         db.commit()
     # LLM pre-analysis is now already included in the semantic assessment. Keep a bounded
     # fallback for legacy pending records only; this does not use keyword relevance.
-    if all_seen==0:
-        try: execute_preanalysis(factory,limit=3,require_daily_opt_in=(run_source=="scheduled"))
-        except Exception: logging.getLogger("uvicorn.error").warning("Legacy preanalysis failed")
+    # No hidden fallback that could perform additional unbudgeted paid calls.
+    # Existing older pending records remain available for explicit review.
