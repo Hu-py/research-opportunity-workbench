@@ -106,7 +106,7 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None):
             select(PaperCandidate)
             .where(PaperCandidate.status == "pending")
             .order_by(PaperCandidate.score.desc(), PaperCandidate.first_seen.desc())
-            .limit(max(1, min(int(limit), MAX_PREANALYSES_PER_RUN)))
+            .limit(max(20, min(int(limit) * 8, 100)))
         ).all()
         work = []
         for candidate in rows:
@@ -129,6 +129,8 @@ def execute_preanalysis(factory, limit=MAX_PREANALYSES_PER_RUN, client=None):
                 "keywords": [str(x)[:80] for x in line.get("keywords", [])[:12]],
                 "abstract_hash": digest,
             })
+            if len(work) >= max(1, min(int(limit), MAX_PREANALYSES_PER_RUN)):
+                break
     processed = 0
     failures = []
     for item in work:
