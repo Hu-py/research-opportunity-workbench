@@ -77,6 +77,8 @@ def main(argv=None):
             parser.error("No research profile: establish the team research portrait first")
         ready,reason=_llm_ready(db)
     if not ready:
+        if args.cmd=="weekly":
+            raise RuntimeError("Weekly LLM workflow requires a configured model key: "+reason)
         print("LLM workflow skipped:",reason)
         return 0
 
