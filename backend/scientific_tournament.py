@@ -465,13 +465,18 @@ def blind_cards(item):
        "outcome":judgement.get("outcome")}
     cards=[a,b]
     if _blind_swap(item.id):cards.reverse()
-    # Hide method labels, original prompts and agent identities from reviewers.
+    # Uniform display schema: never reveal hypothesis IDs, original stage,
+    # version number or multi-agent labels before independent review.
     for i,card in enumerate(cards):
         card["blind_id"]="方案"+("一" if i==0 else "二")
-        for idea in card["ideas"]:
-            idea.pop("origin",None)
-            idea.pop("change_type",None)
-            idea.pop("response_to_challenge",None)
+        card["ideas"]=[{
+            "title":idea.get("title",""),
+            "question":idea.get("question",""),
+            "method":idea.get("method",""),
+            "falsifiable_prediction":idea.get("falsifiable_prediction",""),
+            "minimal_experiment":idea.get("minimal_experiment",""),
+            "baselines":idea.get("baselines",[]),
+        } for idea in card["ideas"]]
     return {"run_id":item.id,"question":item.question,
             "cards":cards,"method_hidden":True,
             "warning":"请独立评估科研价值、增量、可行性和可检验性；不等于创新性已确认"}
