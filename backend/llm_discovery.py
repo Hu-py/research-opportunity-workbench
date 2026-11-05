@@ -19,6 +19,7 @@ from backend.skill_loader import load_skills
 from backend.research_sources import ResearchSource
 from backend.cusp import CuspDataset, sensitive_level
 from backend.repository import TeamAchievement
+from backend.openalex_errors import safe_openalex_error
 
 MAX_QUERIES = 5
 MAX_RESULTS_PER_QUERY = 12
@@ -251,7 +252,7 @@ def execute_llm_discovery(factory, run_id, client=None):
                         total_updated+=1
                 db.commit()
         except Exception as exc:
-            message=str(exc)[:220] if exc.__class__.__name__=="ModelCallError" else "LLM discovery failed: "+type(exc).__name__
+            message=(safe_openalex_error(exc) if exc.__class__.__name__=="HTTPStatusError" else (str(exc)[:220] if exc.__class__.__name__=="ModelCallError" else "LLM discovery failed: "+type(exc).__name__))
             errors.append(line.get("id","unknown")+" | "+message)
             logging.getLogger("uvicorn.error").warning("LLM discovery failed: run=%s line=%s reason=%s",run_id,line.get("id"),message)
     with factory() as db:
