@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from sqlalchemy import select
 
 from research_workbench.core import get_profile, normalize_paper, query_openalex, Paper
-from backend.discovery import DiscoveryRun, PaperCandidate, candidate_id, reads, dumps, now
+from backend.discovery import DiscoveryRun, PaperCandidate, SearchStrategy, candidate_id, reads, dumps, now
 from backend.model_vault import ModelCredential, load_key
 from backend.model_gateway import request_json
 from backend.skill_loader import load_skills
@@ -181,7 +181,7 @@ def execute_llm_discovery(factory, run_id, client=None):
         try:
             with factory() as db:
                 context=_context(db,line)
-                cfg=db.get(__import__("backend.discovery",fromlist=["SearchStrategy"]).SearchStrategy,line["id"])
+                cfg=db.get(SearchStrategy,line["id"])
                 config={"lookback_days":cfg.lookback_days if cfg else 30,
                     "per_query":cfg.per_query if cfg else 8}
             plan,plan_usage=_plan_queries(key,planner_model,context,config,client=client)
@@ -244,8 +244,10 @@ def execute_llm_discovery(factory, run_id, client=None):
                         matched=reads(existing.matched_queries_json)
                         if paper.get("query") and paper["query"] not in matched: matched.append(paper["query"])
                         existing.matched_queries_json=dumps(matched[:12]);existing.last_seen=now()
-                        if existing.status=="pending" and score>existing.score:
-                            existing.score=score;existing.score_reason=("LLM "+relation+" | "+reason)[:1500];existing.match_type=mode
+                        if existing.status=="pending":
+                            existing.score=score
+                            existing.score_reason=("LLM "+relation+" | "+reason)[:1500]
+                            existing.match_type=mode
                         total_updated+=1
                 db.commit()
         except Exception as exc:
@@ -261,7 +263,10 @@ def execute_llm_discovery(factory, run_id, client=None):
         run.finished_at=now();db.commit()
     try:
         from backend.preanalysis import execute_preanalysis
-        stats=execute_preanalysis(factory,limit=6,require_daily_opt_in=(run.source=="scheduled"))
+        with factory() as db:
+            completed_run=db.get(DiscoveryRun,run_id)
+            is_scheduled=bool(completed_run and completed_run.source=="scheduled")
+        stats=execute_preanalysis(factory,limit=6,require_daily_opt_in=is_scheduled)
         logging.getLogger("uvicorn.error").info("LLM pre-analysis: %s",stats.get("status"))
     except Exception as exc:
         logging.getLogger("uvicorn.error").warning("LLM pre-analysis failed: %s",type(exc).__name__)
