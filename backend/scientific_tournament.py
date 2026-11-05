@@ -357,7 +357,15 @@ def summary(item,detail=False):
         result["revisions"]=[outputs.get("revision_"+x) for x in LENSES if outputs.get("revision_"+x)]
         result["baseline"]=(outputs.get("baseline_generator") or {}).get("ideas",[])
         result["baseline_critique"]=outputs.get("baseline_critic")
-        result["comparison_note"]="同一冻结论文/数据元信息；尚未经盲评或真实实验，不代表 B 优于 A"
+        trace=result["trace"]
+        result["arm_usage"]={
+            arm:{
+                "model_calls":sum(1 for e in trace if e.get("arm")==arm),
+                "input_tokens":sum(e.get("input_tokens",0) for e in trace if e.get("arm")==arm),
+                "output_tokens":sum(e.get("output_tokens",0) for e in trace if e.get("arm")==arm),
+            } for arm in ("A","B")
+        }
+        result["comparison_note"]="同一冻结论文/数据元信息；两组模型计算成本不匹配，未完成独立盲评与实证验证"
     return result
 
 def _advance(outputs,stage):
@@ -417,6 +425,9 @@ def execute(factory,run_id,model_call=None,model_client=None):
                 trace=jload(item.trace_json,[])
                 trace.append({"stage":stage,"status":"completed",
                               "model":model,"model_calls":item.model_calls,
+                              "input_tokens":max(0,int(usage.get("input_tokens",0))),
+                              "output_tokens":max(0,int(usage.get("output_tokens",0))),
+                              "arm":"A" if stage.startswith("baseline_") else "B",
                               "recorded_at":now().isoformat()})
                 item.outputs_json=jdump(outputs)
                 item.trace_json=jdump(trace)
@@ -461,8 +472,7 @@ def blind_cards(item):
     candidates={x["id"]:x for x in [
         outputs.get("revision_"+lens) or outputs.get("seed_"+lens)
         for lens in LENSES] if isinstance(x,dict)}
-    b={"ideas":[candidates[x] for x in judgement.get("selected_ids",[]) if x in candidates],
-       "outcome":judgement.get("outcome")}
+    b={"ideas":[candidates[x] for x in judgement.get("selected_ids",[]) if x in candidates]}
     cards=[a,b]
     if _blind_swap(item.id):cards.reverse()
     # Uniform display schema: never reveal hypothesis IDs, original stage,
