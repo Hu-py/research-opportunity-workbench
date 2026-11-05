@@ -208,3 +208,21 @@ def test_failed_run_can_resume_with_checkpoint(tmp_path,monkeypatch):
         assert run.status=="completed"
         assert run.tool_calls==1
         assert len(json.loads(run.evidence_json))==1
+
+
+def test_stale_running_task_can_be_recovered_but_fresh_one_cannot(tmp_path,monkeypatch):
+    from datetime import timedelta
+    import pytest
+    factory=setup(tmp_path,monkeypatch)
+    with factory() as db:
+        run=create_run(db,"city","Explore graph shift with real paper evidence","member-one")
+        run.status="running"
+        db.commit()
+        ident=run.id
+        with pytest.raises(ValueError,match="8 分钟"):
+            resume(db,ident,"member-one")
+        run.updated_at=agent.now()-timedelta(minutes=10)
+        db.commit()
+        restored=resume(db,ident,"member-one")
+        assert restored.status=="queued"
+        assert restored.steps==0
