@@ -1,6 +1,6 @@
 # Scientific Tool Registry / 科研工具能力库（首批集成）
 
-Status: **experimental, opt-in**. This branch does not run automated agent tool calls and does not change daily discovery or the public frontend. All adapters return bibliographic evidence, never a verified novelty claim.
+Status: **experimental, opt-in**. A manual model-guided scientific exploration workflow and experimental frontend panel are included. This branch does not change the existing daily discovery cron or auto-approve results. All academic adapters return bibliographic evidence, never a verified novelty claim.
 
 ## Design choice
 
