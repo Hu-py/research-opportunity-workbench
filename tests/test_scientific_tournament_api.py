@@ -156,7 +156,8 @@ def test_blind_review_does_not_leak_arm_identity_before_both_ratings(client_fact
     assert revealed["decision"]["outcome"]=="single"
 
 
-def test_trial_preflight_is_read_only_and_requires_valid_line(client_factory):
+def test_trial_preflight_is_read_only_and_requires_valid_line(client_factory,monkeypatch):
+    monkeypatch.setenv("MODEL_VAULT_KEY","fake-nonempty-key-for-status-test")
     client,factory=client_factory
     token=login(client,"researcher@research.test","research-team-secret-2026")
     path="/api/scientific-tournaments/preflight?line_id=city"
