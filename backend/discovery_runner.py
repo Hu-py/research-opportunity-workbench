@@ -30,6 +30,7 @@ def execute_discovery(factory,run_id,client=None):
     with factory() as db:
         run=db.get(DiscoveryRun,run_id)
         if not run or run.status!="queued":return
+        run_source=run.source
         profile=get_profile(db)
         lines={x["id"]:x for x in (profile or {}).get("research_lines",[])}
         settings={x["line_id"]:x for x in strategies(db,profile)}
@@ -113,7 +114,7 @@ def execute_discovery(factory,run_id,client=None):
     # Run a small, opt-in LLM pre-analysis batch after discovery has persisted.
     # Failures here never roll back the already saved literature candidates.
     try:
-        stats = execute_preanalysis(factory, limit=6)
+        stats = execute_preanalysis(factory, limit=6, require_daily_opt_in=(run_source == "scheduled"))
         logging.getLogger("uvicorn.error").info(
             "Paper pre-analysis finished: status=%s processed=%s failed=%s",
             stats.get("status"), stats.get("processed", 0), stats.get("failed", 0),
