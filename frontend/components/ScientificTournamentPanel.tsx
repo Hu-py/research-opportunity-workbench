@@ -199,7 +199,7 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
        {" · "}可用模型调用 {preflight.remaining_model_calls}
        {" · "}剩余预留 Token {preflight.remaining_token_allowance.toLocaleString()}
      </span>}
-     {preflight?.notes?.length>0&&
+     {preflight&&preflight.notes.length>0&&
        <p className="small muted">{preflight.notes.join("；")}</p>}
      {preflightError&&<p className="small muted">检查未完成：{preflightError}</p>}
    </div>
