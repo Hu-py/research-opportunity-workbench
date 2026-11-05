@@ -38,3 +38,18 @@ def test_llm_semantic_assessment_uses_problem_fit_not_keyword_count(monkeypatch)
     assert rows[0]["relevance_score"]==91
     assert rows[0]["human_review_required"] is True
     assert rows[0]["novelty_verified"] is False
+
+def test_search_preferences_are_context_for_llm_not_fixed_query_strings(monkeypatch):
+    seen={}
+    def fake(key,model,system,payload,client=None,max_tokens=2000):
+        seen.update(payload)
+        return ({"concept_map":["urban planning","spatial graph methods"],
+          "queries":[{"query":"improved natural language query","mode":"direct","intent":"core"}],
+          "blind_spots":[]},{"input_tokens":1,"output_tokens":1})
+    monkeypatch.setattr(discovery,"request_json",fake)
+    discovery.plan_queries("key","deepseek-v4-pro",
+      {"name":"urban function","problem":"building floor function"},
+      [{"name":"building data"}],
+      search_preferences={"direct_queries":["vertical building use"],"method_queries":["graph neural network"]})
+    assert seen["researcher_search_preferences"]["direct_query_hints"]==["vertical building use"]
+    assert seen["researcher_search_preferences"]["method_query_hints"]==["graph neural network"]

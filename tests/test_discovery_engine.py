@@ -101,7 +101,9 @@ def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
         run=create_run(db,get_profile(db),source="scheduled")
         assert run
         assert run.line_ids_json=='["vertical"]'
-    def response(_request):
+    request_params=[]
+    def response(request):
+        request_params.append(dict(request.url.params))
         return httpx.Response(200,json={"results":[work()]})
     with httpx.Client(transport=httpx.MockTransport(response)) as http:
         execute_discovery(factory,run.id,client=http)
@@ -110,6 +112,9 @@ def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
         assert done.status=="completed",done.errors_json
         assert done.new_candidates==1
         assert done.queries==4
+        assert all(p["per-page"]=="3" for p in request_params)
+        assert "primary_location.source.id:S123" in request_params[0]["filter"]
+        assert "primary_location.source.id:S456" in request_params[1]["filter"]
         found=candidates(db,line_id="vertical")
         assert len(found)==1
         assert found[0]["status"]=="pending"
@@ -203,7 +208,7 @@ def test_discovery_logs_safe_message_for_http_409(setup_db):
 def mock_discovery_llm(monkeypatch):
     import backend.discovery_runner as runner
     monkeypatch.setattr(runner, "load_key", lambda db: "test-key")
-    def plan(key, model, line, assets, prior_queries=None, client=None):
+    def plan(key, model, line, assets, prior_queries=None, search_preferences=None, client=None):
         return ({"concept_map":["building functions","graph learning"],
           "queries":[{"query":"LLM planned query "+str(i),"mode":m,"intent":"test"}
             for i,m in enumerate(["direct","method","adjacent","frontier"])],

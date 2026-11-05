@@ -69,7 +69,8 @@ def execute_discovery(factory, run_id, client=None):
                 ).order_by(PaperCandidate.first_seen.desc()).limit(60)).all()
                 prior=[q for row in previous for q in reads(row.matched_queries_json)]
             plan,plan_usage=plan_queries(
-                key,model,line,assets,prior_queries=list(dict.fromkeys(prior)),client=client
+                key,model,line,assets,prior_queries=list(dict.fromkeys(prior)),
+                search_preferences=config,client=client
             )
             query_results=[];seen=set()
             for item in plan["queries"]:
@@ -84,7 +85,7 @@ def execute_discovery(factory, run_id, client=None):
                     continue
                 results=query_openalex(
                     item["query"],(date.today()-timedelta(days=config["lookback_days"])).isoformat(),
-                    limit=min(12,max(config["per_query"],8)),client=client,
+                    limit=min(12,max(1,config["per_query"])),client=client,
                     source_ids=source_ids or None
                 )
                 for work in results if isinstance(results,list) else []:
@@ -103,7 +104,9 @@ def execute_discovery(factory, run_id, client=None):
             with factory() as db:
                 run=db.get(DiscoveryRun,run_id)
                 run.scanned+=len(query_results)
-                for item in query_results[:30]:
+                eligible_results=[item for item in query_results[:30]
+                                  if by_id[item["paper_id"]]["relevance_score"]>=config["min_score"]]
+                for item in eligible_results:
                     assessment=by_id[item["paper_id"]]
                     ident=candidate_id(line_id,item["paper_id"])
                     existing=db.get(PaperCandidate,ident)
@@ -134,7 +137,7 @@ def execute_discovery(factory, run_id, client=None):
             # Store complete model judgement alongside preanalysis payload to keep the existing UI compatible.
             from backend.preanalysis import PaperPreanalysis
             with factory() as db:
-                for item in query_results[:30]:
+                for item in eligible_results:
                     assessment=by_id[item["paper_id"]]
                     ident=candidate_id(line_id,item["paper_id"])
                     row=db.get(PaperPreanalysis,ident)
