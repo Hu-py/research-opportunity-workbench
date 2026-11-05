@@ -69,12 +69,24 @@ def work(ident="W551"):
             "abstract_inverted_index":{"urban":[0],"building":[1],"vertical":[2],"function":[3],"graph":[4]},
             "primary_location":{"source":{"display_name":"Verified example venue"}}}
 
-def test_links_are_suggested_but_never_confirmed_automatically(setup_db):
+def test_links_are_llm_suggested_but_never_confirmed_automatically(setup_db,monkeypatch):
     factory,client,headers=setup_db
     dashboard=client.get("/api/opportunity-engine",headers=headers)
     assert dashboard.status_code==200,dashboard.text
     data=dashboard.json()
     assert data["profile_ready"]
+    assert data["relations"]==[]
+    def llm(_key,model,system,payload,client=None,max_tokens=2000):
+        asset=payload["registered_nonrestricted_datasets"][0]
+        return ({"relations":[{"kind":"dataset","reference_id":asset["id"],
+            "relevance_score":91,"relation_type":"direct_empirical",
+            "reason":"字段包含建筑与楼层功能，可支撑垂直功能识别问题。",
+            "missing_checks":["核验楼层标签质量和跨区覆盖"]}]},
+            {"input_tokens":50,"output_tokens":30})
+    monkeypatch.setattr("backend.llm_relations.request_json",llm)
+    generated=client.post("/api/opportunity-engine/relations/analyze",headers=headers)
+    assert generated.status_code==202,generated.text
+    data=client.get("/api/opportunity-engine",headers=headers).json()
     matches=[x for x in data["relations"] if x["kind"]=="dataset" and x["line_id"]=="vertical"]
     assert matches
     assert all(x["status"]=="suggested" for x in matches)
@@ -88,7 +100,7 @@ def test_links_are_suggested_but_never_confirmed_automatically(setup_db):
     assert client.patch("/api/opportunity-engine/relations/missing",headers=headers,
                         json={"status":"confirmed"}).status_code==404
 
-def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
+def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db,monkeypatch):
     factory,client,headers=setup_db
     page=client.get("/api/opportunity-engine",headers=headers).json()
     assert all(not s["enabled"] for s in page["strategies"])
@@ -150,7 +162,7 @@ def test_discovery_only_schedules_enabled_lines_and_preserves_reviews(setup_db):
             "enabled":False,"lookback_days":30,"per_query":5,"min_score":60
         },"admin")
 
-def test_run_fails_visibly_on_external_api_error(setup_db):
+def test_run_fails_visibly_on_external_api_error(setup_db,monkeypatch):
     factory,_,_=setup_db
     with factory() as db:
         assert create_run(db,get_profile(db),source="scheduled") is None
@@ -206,13 +218,17 @@ def test_openalex_errors_redact_credentials_in_new_and_legacy_runs():
     assert "SUPER_SECRET_TEST" not in safe_stored_error("unexpected plugin failure?api_key=SUPER_SECRET_TEST")
 
 
-def test_discovery_logs_safe_message_for_http_409(setup_db):
+def test_discovery_logs_safe_message_for_http_409(setup_db,monkeypatch):
     from backend.discovery import runs
     factory,_,_=setup_db
     with factory() as db:
         task=create_run(db,get_profile(db),source="manual",line_id="vertical")
     def reject(request):
         return httpx.Response(409,request=request,json={"error":"keyless budget reached"})
+    def llm(_key,model,system,payload,client=None,max_tokens=2000):
+        return ({"search_plan":[{"query":"urban flood resilience","mode":"direct","rationale":"test","discipline":"planning"}]}, {"input_tokens":10,"output_tokens":10})
+    monkeypatch.setattr("backend.llm_discovery.request_json",llm)
+    monkeypatch.setattr("backend.preanalysis.execute_preanalysis",lambda *args,**kwargs:{"status":"skipped","processed":0})
     with httpx.Client(transport=httpx.MockTransport(reject)) as http:
         execute_discovery(factory,task.id,client=http)
     with factory() as db:
