@@ -15,6 +15,7 @@ from research_workbench.core import get_profile, normalize_paper, query_openalex
 from backend.discovery import DiscoveryRun, PaperCandidate, candidate_id, reads, dumps, now
 from backend.model_vault import ModelCredential, load_key
 from backend.model_gateway import request_json
+from backend.skill_loader import load_skills
 from backend.research_sources import ResearchSource
 from backend.cusp import CuspDataset, sensitive_level
 from backend.repository import TeamAchievement
@@ -143,7 +144,8 @@ def _plan_queries(key, model, context, config, client=None):
         "required_json":{"search_plan":[{"query":"", "mode":"direct|method|frontier|evidence|contradiction", "rationale":"", "discipline":""}],
             "coverage_gaps":[""],"excluded_directions":[""]}
     }
-    result,usage=request_json(key,model,PLAN_SYSTEM,payload,client=client,max_tokens=1800)
+    system=PLAN_SYSTEM+"\n\n执行规范：\n"+load_skills(("research_profile","literature_discovery"))
+    result,usage=request_json(key,model,system,payload,client=client,max_tokens=2200)
     return _validate_plan(result),usage
 
 def _screen_candidates(key, model, context, candidates, client=None):
@@ -155,7 +157,8 @@ def _screen_candidates(key, model, context, candidates, client=None):
             "relation_type":"direct|method_transfer|frontier|contradictory|background",
             "relevance":"","research_problem":"","method_transfer":"",
             "increment":"","limitations":"","reason":"","evidence_level":"abstract|metadata"}]}}
-    result,usage=request_json(key,model,SCREEN_SYSTEM,payload,client=client,max_tokens=3500)
+    system=SCREEN_SYSTEM+"\n\n执行规范：\n"+load_skills(("literature_discovery","paper_reader"))
+    result,usage=request_json(key,model,system,payload,client=client,max_tokens=3500)
     return _validate_screen(result,allowed),usage
 
 def execute_llm_discovery(factory, run_id, client=None):
