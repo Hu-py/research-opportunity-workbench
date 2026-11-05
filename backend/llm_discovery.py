@@ -197,8 +197,8 @@ def execute_llm_discovery(factory, run_id, client=None):
             query_results=[]
             since=(date.today()-timedelta(days=config["lookback_days"])).isoformat()
             for strategy in plan:
-                works=query_openalex(strategy["query"],since,limit=config["per_query"],client=client,source_ids=strategy.get("source_ids") or None)
                 total_queries+=1
+                works=query_openalex(strategy["query"],since,limit=config["per_query"],client=client,source_ids=strategy.get("source_ids") or None)
                 for work in works[:config["per_query"]]:
                     if not isinstance(work,dict): continue
                     paper=normalize_paper(work)
