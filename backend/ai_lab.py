@@ -414,7 +414,7 @@ def execute(factory,run_id,client=None):
                     "generator":("method_transfer","idea_discovery"),
                     "critic":("idea_critic",),
                 }.get(stage,())
-                system_prompt=PROMPTS[stage]+"\\n\\n执行技能：\\n"+load_skills(skill_names)
+                system_prompt=PROMPTS[stage]+"\n\n执行技能：\n"+load_skills(skill_names)
                 data,usage=request_json(key,model,system_prompt,payload,
                                         client=client,max_tokens=2600 if stage in ("generator","reader") else 1600)
                 called=True
