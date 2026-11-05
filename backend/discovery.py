@@ -129,6 +129,10 @@ def create_run(db,profile,source="manual",line_id=None):
         if not selected:return None
     else:
         selected=[x["line_id"] for x in items[:3]]
+        interests=db.scalars(select(ResearchInterest).where(
+            ResearchInterest.enabled.is_(True)).order_by(
+            ResearchInterest.created_at.desc()).limit(8)).all()
+        selected.extend("interest:"+x.id for x in interests)
     item=DiscoveryRun(id=str(uuid.uuid4()),source=source,
                       line_ids_json=dumps(selected))
     db.add(item);db.commit()
