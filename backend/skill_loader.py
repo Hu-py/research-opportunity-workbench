@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent / "skills"
 ALLOWED = (
     "paper_reader", "method_transfer", "idea_discovery", "idea_critic",
-    "research_profile", "literature_discovery",
+    "research_profile", "literature_discovery", "data_asset_mapping",
 )
 REGISTERED = ALLOWED
 
