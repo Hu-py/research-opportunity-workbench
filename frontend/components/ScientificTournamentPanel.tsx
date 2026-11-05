@@ -18,7 +18,7 @@ type Run=Summary&{review_unblinded:boolean;baseline:Idea[];round0:Idea[];revisio
 type Blind={cards:{blind_id:string;ideas:Idea[];outcome?:string}[]};
 type Preflight={
  ready:boolean;model_configured:boolean;vault_ready:boolean;
- approved_papers:number;registered_datasets:number;
+ persistent_database:boolean;approved_papers:number;registered_datasets:number;
  remaining_model_calls:number;remaining_token_allowance:number;
  maximum_trial_calls:number;reserved_trial_tokens:number;
  notes:string[];does_not_invoke_model:boolean
@@ -193,6 +193,7 @@ export default function ScientificTournamentPanel({lines,selectedLine,canEdit,ca
       preflight?.ready?"已就绪，可以人工启动":
       preflight?"尚未就绪":"请选择研究主线"}
      {preflight&&<span>
+       {" · "}持久化存储 {preflight.persistent_database?"PostgreSQL":"未接通"}
        {" · "}已审论文 {preflight.approved_papers}
        {" · "}登记数据 {preflight.registered_datasets}
        {" · "}可用模型调用 {preflight.remaining_model_calls}
