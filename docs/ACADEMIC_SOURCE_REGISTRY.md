@@ -55,9 +55,10 @@ CSV is intended for bulk maintenance. UTF-8 files should include a \`name\` head
 | \`aliases\` | Aliases separated by \`|\` |
 | \`notes\` | Research scope and editorial notes |
 | \`retrieval_channels\` | \`direct\` and/or \`method\`, separated by \`|\` |
+| \`openalex_source_id\` | Optional verified OpenAlex Source ID; exported for backup and accepted on import |
 | \`enabled\` | true/false |
 
-Import is an upsert by normalized canonical name. Existing rows are updated, not duplicated. Unknown domain slugs are reported as row errors; add the domain first. Export includes the OpenAlex ID and resolution state for backup/audit.
+Import is an upsert by normalized canonical name. Existing rows are updated, not duplicated. Unknown domain slugs are reported as row errors; add the domain first. Export includes the OpenAlex ID and resolution state for backup/audit. On import, a supplied Source ID is treated as an explicit manual mapping; the exported resolution state is informational and is recomputed from the ID.
 
 ## API
 
