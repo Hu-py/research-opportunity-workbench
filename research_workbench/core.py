@@ -92,8 +92,8 @@ def validate_profile(profile):
         for field in ("keywords","search_queries","method_queries"):
             if not isinstance(line.get(field),list) or not all(isinstance(x,str) for x in line[field]):
                 raise ValueError("Each line requires "+field+" as a string list")
-        if not line["search_queries"] and not line["method_queries"]:
-            raise ValueError("At least one search query is required")
+        # Search queries are optional: the LLM discovery skill derives them from
+        # the research problem, methods, team evidence and registered data assets.
     team=profile.get("team")
     if team is not None:
         if not isinstance(team,dict):
