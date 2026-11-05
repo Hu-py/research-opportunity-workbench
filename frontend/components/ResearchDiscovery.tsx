@@ -179,7 +179,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </>}
      {active==="search"&&<>
-       <p className="small muted">每条研究主线有“研究问题”和“方法迁移”两个检索通道。定时抓取默认关闭，只有管理员主动开启的方向才会由现有每日任务触发；不消耗模型 API。</p>
+       <p className="small muted">每轮由 DeepSeek 根据团队画像、数据资产、已有成果和学术来源库自主规划检索策略，再调用 OpenAlex 召回并由 LLM 逐篇语义评估。定时监测默认关闭；开启后会产生模型调用费用。</p>
        <div className="discovery-record-list">
          {strategies.filter(x=>line==="all"||line===x.line_id).map(x=><article className="discovery-record" key={x.line_id}>
            <div className="discovery-labels"><span>{x.enabled?"每日监测已开启":"定时监测关闭"}</span><span>近 {x.lookback_days} 天</span><span>每词最多 {x.per_query} 篇</span></div>
@@ -201,7 +201,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
              <p><b>问题检索：</b>{x.direct_queries.join(" · ")||"尚未配置"}</p>
              <p><b>方法检索：</b>{x.method_queries.join(" · ")||"尚未配置"}</p>
            </div>}
-           <div className="discovery-actions"><small>推荐阈值：{x.min_score}/100 · 每轮最多 4 个检索请求</small>
+           <div className="discovery-actions"><small>重点候选参考阈值：{x.min_score}/100 · 每轮最多 5 个 LLM 生成的检索策略</small>
              <div className="inline-actions">
                {canAdmin&&<button className="btn btn-secondary" disabled={busy} onClick={()=>openEditor(x)}>编辑策略</button>}
                {canEdit&&<button className="btn btn-primary" disabled={busy} onClick={()=>void runSearch(x.line_id)}><Search size={14}/> 试抓取</button>}
@@ -223,7 +223,7 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
          selected.map(x=><article className="discovery-record" key={x.id}>
            <div className="discovery-labels"><span>{strategies.find(s=>s.line_id===x.line_id)?.line_name||x.line_id}</span>
              <span>{x.match_type==="method"?"方法迁移":"研究问题"}</span>
-             <span className={x.score>=(strategies.find(s=>s.line_id===x.line_id)?.min_score??60)?"disc-confirmed":""}>检索相关度 {x.score}/100</span></div>
+             <span className={x.score>=(strategies.find(s=>s.line_id===x.line_id)?.min_score??60)?"disc-confirmed":""}>LLM 语义相关度 {x.score}/100</span></div>
            <h3>{x.url?<a href={x.url} target="_blank" rel="noopener noreferrer">{x.title}</a>:x.title}</h3>
            <p className="small muted">{x.venue||"期刊待核实"} · {x.published||"发表时间未知"} · DOI：{x.doi||"未提供"}</p>
            {x.abstract&&<p className="discovery-abstract">{x.abstract.slice(0,390)}{x.abstract.length>390?"…":""}</p>}
@@ -253,6 +253,6 @@ export default function ResearchDiscovery({canAdmin,canEdit}:{canAdmin:boolean;c
        </div>
      </>}
    </section>
-   <p className="small muted"><ShieldCheck size={14} style={{verticalAlign:"middle"}}/> 关联和推荐评分是可解释的初筛，不是数据质量验证。每日任务运行在免费实例上，休眠或重启可能中断；没有启用 LLM 推理费用。</p>
+   <p className="small muted"><ShieldCheck size={14} style={{verticalAlign:"middle"}}/> 文献召回由学术 API 完成，检索规划、语义相关性和论文预分析由 LLM 完成。模型评分仅用于初筛，不是创新性证明；所有候选均需人工审核。</p>
  </div>;
 }
