@@ -22,12 +22,13 @@ def _bounded_int(x, name):
         raise ValueError("Invalid LLM discovery score: " + name)
     return x
 
-def plan_queries(api_key, model, line, data_assets, prior_queries=None, client=None):
+def plan_queries(api_key, model, line, data_assets, prior_queries=None, search_preferences=None, client=None):
     payload = {
         "skill": _skill(),
         "research_line": line,
         "registered_data_assets": data_assets[:12],
         "recent_queries_to_avoid_repeating": (prior_queries or [])[:12],
+        "researcher_search_preferences": {"direct_query_hints": (search_preferences or {}).get("direct_queries", [])[:3], "method_query_hints": (search_preferences or {}).get("method_queries", [])[:3], "instruction": "Treat these as conceptual hints, not fixed queries. Interpret and improve them; do not simply repeat or concatenate them."},
         "task": "理解研究问题和数据条件，生成最多4条差异化的 OpenAlex 自然语言检索式。必须包含直接问题、跨学科/理论或方法迁移中的至少两种视角。不要把关键词列表直接拼接。每条说明检索意图。",
         "required_json": {"concept_map": ["..."], "queries": [
             {"query": "...", "mode": "direct|adjacent|method|frontier", "intent": "..."}
