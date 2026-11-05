@@ -27,6 +27,7 @@ def prompt(stage,snap,outputs,strategy):
         "feasibility":"优先以团队登记的可用数据构造可复现的对照实验，不得臆造可获取的数据",
     }
     basic={"research_line":snap["line"],"datasets":snap["datasets"],
+           "academic_source_registry":snap.get("preferred_academic_sources",[]),
            "team_achievements":snap["achievements"],
            "approved_human_feedback":snap["approved_feedback"],
            "recent_final_human_feedback":snap.get("evolution_feedback",[]),
@@ -35,7 +36,7 @@ def prompt(stage,snap,outputs,strategy):
            "evidence_note":snap["evidence_note"]}
     if stage=="plan":
         return {**basic,"role":"Literature Scout",
-            "task":"不要套关键词模板。针对研究问题、理论方法迁移及相反结论，设计3条语义检索查询。",
+            "task":"不要套关键词模板。针对研究问题、理论方法迁移及相反结论，设计3条语义检索查询。参考团队关注来源但不可只检索白名单，也必须寻找最接近的反证与已发表先例。",
             "required_json":{"queries":[{"query":"precise scholarly query"}],"rationale":"..."}}
     if stage=="screen":
         return {**basic,"role":"Paper Analyst","papers":papers,
