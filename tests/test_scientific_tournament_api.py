@@ -99,3 +99,58 @@ def test_tournament_roles_and_state(client_factory):
                        headers=headers(admin),json=feedback).status_code==422
     assert client.get("/api/scientific-learning/city",
                       headers=headers(viewer)).json()["items"]==[]
+
+
+def test_blind_review_does_not_leak_arm_identity_before_both_ratings(client_factory):
+    client,factory=client_factory
+    researcher=login(client,"researcher@research.test","research-team-secret-2026")
+    body={"line_id":"city","question":"Can model accuracy transfer between cities?"}
+    response=client.post("/api/scientific-tournaments",headers=headers(researcher),json=body)
+    assert response.status_code==202
+    run_id=response.json()["id"]
+    with factory() as db:
+        item=db.get(tour.ScientificTournamentRun,run_id)
+        item.status="completed"
+        item.stage="done"
+        item.outputs_json=json.dumps({
+            "baseline_generator":{"ideas":[{
+                "title":"Baseline title","question":"Can city models transfer?",
+                "method":"Basic transfer","baselines":["No-graph"],
+                "minimal_experiment":"Held-out city check","paper_ids":["p1"]
+            }]},
+            "seed_problem":{"id":"H_problem","title":"Agent title",
+                "question":"Can city models transfer?",
+                "method":"Spatial ablation",
+                "falsifiable_prediction":"Domain shift worsens accuracy",
+                "baselines":["No-graph"],"minimal_experiment":"Held-out city check"},
+            "arbitrate":{"outcome":"single","selected_ids":["H_problem"],
+                "reason":"Some evidence","stopping_reason":"Budget","unresolved_disagreements":[]}
+        })
+        item.trace_json=json.dumps([{"stage":"seed_problem","arm":"B","status":"completed"}])
+        db.commit()
+    detail=client.get("/api/scientific-tournaments/"+run_id,
+                      headers=headers(researcher)).json()
+    assert detail["status"]=="completed"
+    assert detail["review_unblinded"] is False
+    assert detail["baseline"]==[]
+    assert detail["round0"]==[]
+    assert detail["decision"] is None
+    assert detail["trace"]==[]
+    blind=client.get("/api/scientific-tournaments/"+run_id+"/blind",
+                     headers=headers(researcher)).json()
+    assert len(blind["cards"])==2
+    assert all(len(card["ideas"])==1 for card in blind["cards"])
+    assert all("id" not in card["ideas"][0] for card in blind["cards"])
+    assert all("falsifiable_prediction" not in card["ideas"][0] for card in blind["cards"])
+    rating={"scientific_value":3,"novelty":3,"feasibility":4,"testability":4,
+            "recommendation":"investigate"}
+    for label in ("方案一","方案二"):
+        result=client.post("/api/scientific-tournaments/"+run_id+"/ratings",
+                           headers=headers(researcher),json={**rating,"blind_id":label})
+        assert result.status_code==200,result.text
+    revealed=client.get("/api/scientific-tournaments/"+run_id,
+                        headers=headers(researcher)).json()
+    assert revealed["review_unblinded"] is True
+    assert revealed["baseline"][0]["title"]=="Baseline title"
+    assert revealed["round0"][0]["id"]=="H_problem"
+    assert revealed["decision"]["outcome"]=="single"
