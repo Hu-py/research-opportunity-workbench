@@ -223,6 +223,7 @@ def test_team_curated_feedback_is_replayed_to_both_arms_only_on_future_runs(tmp_
         second=db.get(tour.ScientificTournamentRun,second.id)
         second.status="failed"
         db.commit()
-    with pytest.raises(ValueError,match="已经结束"):
-        tour.curate_learning(db,"missing","admin-one","human_review",
-                             "Some finding","ref","some limitation")
+    with factory() as db:
+        with pytest.raises(ValueError,match="只能从已经完成"):
+            tour.curate_learning(db,"missing","admin-one","human_review",
+                                 "Some finding","ref","some limitation")
