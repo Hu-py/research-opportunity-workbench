@@ -109,6 +109,6 @@ def test_skills_and_claiming(setup):
 def test_nonexistent_idea_and_invalid_profile(setup):
     client,_=setup
     assert client.get("/api/ideas/not-found/history",headers=headers()).status_code==404
-    bad={"research_lines":[{"id":"x","name":"N","problem":"P","keywords":[],
+    bad={"research_lines":[{"id":"x","name":"N","problem":"","keywords":[],
          "search_queries":[],"method_queries":[]}]}
     assert client.put("/api/profile",headers=headers(),json=bad).status_code==422
