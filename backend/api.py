@@ -617,7 +617,8 @@ def opportunity_engine(db:Session=Depends(get_db)):
 def start_paper_preanalysis(background:BackgroundTasks,
         db:Session=Depends(get_db),
         actor:TeamMember|None=Depends(require_editor)):
-    if not db.get(ModelCredential,"deepseek"):
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
         raise HTTPException(409,"请先在 AI 实验台配置 DeepSeek API Key")
     background.add_task(execute_preanalysis,get_factory(),6)
     if actor is not None:
