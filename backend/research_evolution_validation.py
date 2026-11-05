@@ -95,6 +95,16 @@ def validate(stage,data,outputs,snapshot):
         return {"queries":[q[:220] for q in queries],"objections":objections,
                 "target_ids":[x for x in string_list(data.get("target_ids",[]),"target_ids")
                               if x in targets]}
+    if stage=="counter_referee":
+        refs=string_list(data.get("paper_ids"),"paper_ids",7)
+        if not refs or any(x not in papers for x in refs):
+            raise ValueError("第二轮文献复核必须引用真实的反证检索结果")
+        risk=data.get("prior_art_risk")
+        if risk not in ("manageable","fatal","unknown"):
+            raise ValueError("先前研究风险类别无效")
+        return {"paper_ids":refs,"prior_art_risk":risk,
+                "counterclaims":string_list(data.get("counterclaims",[]),"counterclaims",8),
+                "reason":text(data.get("reason"),"reason",950)}
     if stage=="package":
         possible={c["id"]:c for c in outputs.get("revise",[])}
         allowed={x["id"]:x["score"] for x in outputs.get("score_final",{}).get("ratings",[])
