@@ -99,12 +99,20 @@ def snapshot(db,line_id):
     achievements=db.scalars(select(TeamAchievement).where(
         TeamAchievement.status=="verified").order_by(
         TeamAchievement.year.desc()).limit(8)).all()
+    previous=db.scalars(select(EvolutionFeedback).join(
+        EvolutionRun,EvolutionFeedback.run_id==EvolutionRun.id
+    ).where(EvolutionRun.line_id==line_id).order_by(
+        EvolutionFeedback.created_at.desc()).limit(6)).all()
     return {"line":{"id":line_id,"name":text(line.get("name"),"name",180),
                     "problem":text(line.get("problem"),"problem",600),
                     "keywords":line.get("keywords",[])[:12]},
             "datasets":_dataset_context(db,line_id)[:10],
             "achievements":[{"title":a.title[:200],"year":a.year} for a in achievements],
             "approved_feedback":approved_learning(db,line_id,limit=5),
+            "evolution_feedback":[{"decision":x.decision,"comment":x.comment[:550],
+                "scores":{"scientific_value":x.scientific_value,
+                          "novelty":x.novelty,"feasibility":x.feasibility,
+                          "testability":x.testability}} for x in previous],
             "evidence_note":"仅有学术元数据与摘要；不等于全文或创新性核验"}
 
 def readiness(db,line_id):
