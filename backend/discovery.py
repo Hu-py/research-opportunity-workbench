@@ -77,8 +77,8 @@ def strategies(db,profile):
         record=stored.get(line["id"])
         result.append({
             "line_id":line["id"],"line_name":line["name"],
-            "direct_queries":reads(record.direct_json) if record else valid_queries(line.get("search_queries",[])[:3]),
-            "method_queries":reads(record.method_json) if record else valid_queries(line.get("method_queries",[])[:3]),
+            "direct_queries":[],
+            "method_queries":[],
             "enabled":record.enabled if record else False,
             "lookback_days":record.lookback_days if record else 30,
             "per_query":record.per_query if record else 8,
