@@ -79,3 +79,58 @@ python -m pytest -q tests/test_scientific_tools.py
 ## Why not install entire agent libraries yet?
 
 The current system already has the DeepSeek adapter and guarded budget module. Replacing the orchestrator before verifying tools would add dependency risk and produce no proof of better science. The initial registry is intentionally a small, isolated and reversible PR with mock-network contract tests. Additional libraries should be promoted only after evaluating maintenance, license, data protections, full-text access rights, cost and benchmark results.
+
+
+## P3 prototype: model-guided Scientific Exploration Agent
+
+The repository now includes a **manual, opt-in LLM tool-use loop** in
+`backend/scientific_agent.py`. It is not the daily discovery cron and it
+does not replace the four-stage legacy `backend/ai_lab.py` flow.
+
+### How to use the first UI
+
+1. Log in to the team workspace as `researcher` or `admin`; single-user legacy
+   mode cannot launch a paid exploration.
+2. Go to **选题中心 → AI 选题分析 → 科研工具智能体 · 实验版**.
+3. Confirm an encrypted DeepSeek key is configured by the administrator and
+   select a registered research line.
+4. Write a specific research question and click **开始证据探索**.
+5. Review the trace, paper IDs/DOIs, data assumptions, baselines and falsifiers.
+   The resulting hypothesis is *always* unverified and is not automatically
+   promoted to a team research topic.
+
+API:
+- `GET /api/scientific-tools` lists registered safe tools and JSON schemas.
+- `POST /api/scientific-explorations` body:
+  `{"line_id":"<existing-line-id>","question":"<research question>"}`
+- `GET /api/scientific-explorations` lists brief statuses.
+- `GET /api/scientific-explorations/{id}` provides provenance and hypothesis.
+- `POST /api/scientific-explorations/{id}/resume` resumes a failed run
+  using already saved evidence; it does not restart completed runs.
+
+Security and reliability:
+- Role-gated manual trigger only; never started from a cron or on page load.
+- The LLM may only select tools from the server-side allowlist; it cannot
+  choose external URLs, send arbitrary HTTP requests or run source code.
+- Each run is bounded to **5 model decisions** and **3 tool calls**.
+- Every model call reserves one call plus 9,000 tokens through the existing
+  global daily budget before contacting DeepSeek.
+- Model outputs that cite nonexistent evidence IDs are rejected. No evidence
+  leads to `insufficient_evidence` rather than `completed`.
+- Evidence is **bibliographic metadata**, not independent confirmation of
+  manuscript methods, results, novelty or dataset access.
+- The trace and tool evidence are persisted to the configured database.
+  The web service uses an inline FastAPI background task for a manual run;
+  it may be interrupted on Render free-tier sleep, and a failed run can be
+  manually resumed. This is *not* a fully durable worker queue.
+- Tests use mocked academic APIs and model choices. A passing CI run is
+  not a live DeepSeek or Semantic Scholar validation.
+
+The previous four-stage pipeline and its daily budget share the same ledger.
+This improves tool grounding, but a genuine superiority claim requires
+matched-source comparisons and independent blinded human judgments.
+
+Run tests with:
+```bash
+python -m pytest -q tests/test_scientific_tools.py tests/test_scientific_agent.py tests/test_scientific_agent_api.py
+```
