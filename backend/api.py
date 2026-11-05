@@ -650,6 +650,9 @@ def update_search_strategy(line_id:str,data:SearchStrategyRequest,
 def start_discovery(data:DiscoveryRunRequest,background:BackgroundTasks,
          db:Session=Depends(get_db),actor:TeamMember|None=Depends(require_editor)):
     if not get_profile(db):raise HTTPException(409,"请先保存团队研究画像")
+    credential=db.get(ModelCredential,"deepseek")
+    if not credential or not credential.encrypted_key:
+        raise HTTPException(409,"LLM 驱动检索需要先在 AI 实验台配置 DeepSeek API Key")
     try:
         run=create_run(db,get_profile(db),source="manual",line_id=data.line_id)
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
