@@ -136,3 +136,103 @@ Run tests with:
 ```bash
 python -m pytest -q tests/test_scientific_tools.py tests/test_scientific_agent.py tests/test_scientific_agent_api.py
 ```
+
+
+## P4 proposal trial: Multi-Agent Research Tournament
+
+**New: a bounded, manual A/B evaluation with feedback memory** in
+`backend/scientific_tournament.py` and the AI lab's
+`ScientificTournamentPanel`.
+
+The run freezes the same manually accepted paper titles/abstracts,
+registered **non-restricted** dataset metadata, team achievements, and
+research question for both arms.
+
+- **A: original single-chain control**: execute the existing
+  `ai_lab.PROMPTS` and `ai_lab._validated` for Planner → Reader →
+  Generator → Critic, without publishing into the existing AIOpportunity
+  table. These are not a new invented baseline prompt.
+- **B: competition**: R0 three independent model calls using problem,
+  computational method, and data feasibility perspectives. They cannot
+  see each other's draft in R0.
+- **R1** three cross-role challenges, potentially rejecting, defending
+  or requiring revision, with only supplied paper IDs as citations.
+- **R2** up to three explicit responses. Agents may hold, refine,
+  combine or withdraw their initial hypothesis. R2 is skipped if every
+  R1 verdict rejects its target (an early stop, not automatic truth).
+- **R3** one LLM adjudication. Outcomes are
+  `single`, `plural`, `none`, `needs_evidence`. A consensus is
+  **not required**. Selected ideas are still unverified.
+
+**Upper bound:** 14 LLM requests (4 baseline + 3 seeds + 3 challenges
++ 3 revisions + 1 adjudication); possible shorter outcome if all
+challenges reject. The number 3 is a *configurable engineering cap*,
+not a validated optimal number of debate rounds. Stored run
+checkpoints allow a failed stage to resume. A stale queued/running
+task may only be restarted after 8 minutes. Per-call model budget is
+reserved from the existing shared UTC-day ledger (14 × 6,500 tokens
+maximum reservation), so some days will lack sufficient capacity.
+The service does not make this a scheduled cron run.
+
+### Anonymous expert evaluation
+
+On completion, two anonymous `方案一` / `方案二` cards are
+returned in a deterministically shuffled order. Before ratings, the
+review UI hides which arm is single-chain versus multi-agent and
+strips agent IDs, origins and revision metadata.
+
+Reviewers independently rate **scientific value**, **research
+increment**, **data feasibility**, and **testability**, on 1–5
+scales, and select `test`, `investigate` or `reject`. Ratings
+are stored as reviewer-attributed, append-only judgments, not
+validated scientific performance.
+
+**Important confound:** This first A/B trial matches source material
+but does NOT match inference compute: A uses 4 calls and B up to 10.
+Compare reviewer ratings against call/token cost, and add a
+compute-matched single-agent-reflection control (C) before attributing
+any improvement causally to the multi-agent interaction.
+A single example cannot demonstrate superiority. The repeatable
+evaluation should use several research lines, multiple frozen
+snapshots, independent reviewers, novelty/prior-art search and
+prospective experiment outcomes.
+
+### Human-curated research memory: feedback loop
+
+The system distinguishes:
+1. **Raw debate traces** (not trustworthy ground truth, not automatically fed back).
+2. **Anonymous reviewer ratings** (evaluation dataset only).
+3. **Admin-curated findings** (human review, experiment observation or
+   dataset access verification), including limitations and optional
+   experiment/DOI reference. These are stored separately in
+   `scientific_tournament_learning`.
+4. **Future snapshot memory:** Only group 3 is selectively included in
+   the next run's frozen context, where *both* A and B can see the
+   same vetted material. Curated here means reviewed by a team admin,
+   **not** independently externally verified.
+
+The memory does NOT modify the official team profile, verified team
+achievements, approved paper registry or the original idea pool. The
+next run records the selected memory in its immutable snapshot, so
+later analysis remains reproducible and memory feedback can be
+ablated.
+
+### Routes
+
+- `POST /api/scientific-tournaments` manual researcher/admin, body
+  `{"line_id":"city","question":"..."}`.
+- `GET /api/scientific-tournaments` and
+  `GET /api/scientific-tournaments/{id}` status and stages.
+- `POST /api/scientific-tournaments/{id}/resume` allowed with safety gate.
+- `GET /api/scientific-tournaments/{id}/blind` anonymous proposal cards.
+- `POST /api/scientific-tournaments/{id}/ratings` attributed anonymous reviews.
+- `GET /api/scientific-tournaments/{id}/ratings` per-blind-arm summary.
+- `POST /api/scientific-tournaments/{id}/learning` admin-only curated feedback.
+- `GET /api/scientific-learning/{line_id}` limited approved memory summary.
+
+All require the existing service/session authentication. Run
+`python -m pytest -q tests/test_scientific_tournament*.py`
+for the local offline contract suite. Passing CI tests validates
+code/data flow but does **not** indicate that the experimental
+model, provider API or actual research quality have been validated
+in production.
