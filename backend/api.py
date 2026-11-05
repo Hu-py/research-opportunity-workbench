@@ -609,7 +609,7 @@ def opportunity_engine(db:Session=Depends(get_db)):
     return {
         "profile_ready":bool(profile),
         "openalex_key_configured":bool(os.getenv("OPENALEX_API_KEY","").strip()),
-        "strategies":strategies(db,profile),
+        "strategies":strategies(db,profile,auto_generated=True),
         "relations":list_links(db,profile),
         "candidates":[{**item,"preanalysis":preanalysis_view(analyses.get(item["id"]))}
                       for item in items],
