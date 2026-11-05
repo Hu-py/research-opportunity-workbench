@@ -28,6 +28,8 @@ export default function AcademicSourceRegistry({canAdmin}:{canAdmin:boolean}){
  const [q,setQ]=useState(""),[domain,setDomain]=useState("all"),[kind,setKind]=useState("all"),[status,setStatus]=useState("all");
  const [draft,setDraft]=useState<Draft|null>(null),[editing,setEditing]=useState<string|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ function patchDraft(patch:Partial<Draft>){setDraft(d=>d?{...d,...patch}:d);}
+ function patchDraftText(key:keyof Draft,value:string){setDraft(d=>d?{...d,[key]:value}:d);}
  const load=useCallback(async()=>{const d=await api<{items:Source[];summary:Summary}>("research-sources");setItems(d.items);setSummary(d.summary);},[]);
  useEffect(()=>{void load().catch(e=>setError(String(e)));},[load]);
  const visible=useMemo(()=>items.filter(x=>(domain==="all"||x.domain===domain)&&(kind==="all"||x.kind===kind)&&
@@ -73,7 +75,7 @@ export default function AcademicSourceRegistry({canAdmin}:{canAdmin:boolean}){
    await load();setNotice("导入完成：新增 "+added+" 条，失败/重复 "+failed+" 条。");
   }catch(e){setError(String(e));}finally{setBusy(false);}
  }
- const field=(label:string,key:keyof Draft)=><label className="field"><span>{label}</span><input value={String(draft?.[key]??"")} onChange={e=>setDraft(d=>({...d,[key]:e.target.value}))}/></label>;
+ const field=(label:string,key:keyof Draft)=><label className="field"><span>{label}</span><input value={String(draft?.[key]??"")} onChange={e=>patchDraftText(key,e.target.value)}/></label>;
  return <div className="page">
   <div className="page-header"><div><div className="eyebrow">ACADEMIC INTELLIGENCE / REGISTRY</div><h1>学术来源管理</h1><p>统一维护期刊、会议、学科标签与检索来源核验。来源等级是检索先验，不是单篇论文质量结论。</p></div>
    <div className="actions"><button className="btn" onClick={()=>void load()} disabled={busy}><RefreshCw size={15}/>刷新</button>{canAdmin&&<button className="btn primary" onClick={()=>{setEditing(null);setDraft({...empty});}}><Plus size={15}/>新增来源</button>}</div>
@@ -104,14 +106,14 @@ export default function AcademicSourceRegistry({canAdmin}:{canAdmin:boolean}){
   </div>
   {draft&&<div className="modal-backdrop"><div className="modal source-modal"><div className="modal-head"><div><div className="eyebrow">SOURCE RECORD</div><h2>{editing?"编辑学术来源":"新增学术来源"}</h2></div><button className="icon-btn" onClick={()=>{setDraft(null);setEditing(null);}}><X size={18}/></button></div>
    <div className="form-grid">{field("来源全称","name")}{field("简称","abbreviation")}
-    <label className="field"><span>来源类型</span><select value={draft.kind} onChange={e=>setDraft(d=>({...d,kind:e.target.value as any}))}><option value="journal">期刊</option><option value="conference">会议</option></select></label>
-    <label className="field"><span>研究领域</span><select value={draft.domain} onChange={e=>setDraft(d=>({...d,domain:e.target.value}))}>{domains.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+    <label className="field"><span>来源类型</span><select value={draft.kind} onChange={e=>patchDraft({kind:e.target.value as "journal"|"conference"})}><option value="journal">期刊</option><option value="conference">会议</option></select></label>
+    <label className="field"><span>研究领域</span><select value={draft.domain} onChange={e=>patchDraft({domain:e.target.value})}>{domains.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
     {field("等级标签","rank_label")}{field("等级依据 / 评价体系","ranking_system")}
     {field("官方主页 HTTPS","source_url")}
-    <label className="field"><span>别名（用 | 分隔）</span><input value={Array.isArray(draft.aliases)?draft.aliases.join(" | "):String(draft.aliases||"")} onChange={e=>setDraft(d=>({...d,aliases:e.target.value as any}))}/></label>
-    <label className="field full"><span>研究主题说明</span><textarea value={draft.notes||""} onChange={e=>setDraft(d=>({...d,notes:e.target.value}))}/></label>
-    <label className="field"><span>OpenAlex Source ID</span><input value={draft.openalex_source_id||""} onChange={e=>setDraft(d=>({...d,openalex_source_id:e.target.value}))} placeholder="可留空，之后自动核验"/></label>
-    <label className="field check"><input type="checkbox" checked={draft.enabled!==false} onChange={e=>setDraft(d=>({...d,enabled:e.target.checked}))}/>启用该来源</label>
+    <label className="field"><span>别名（用 | 分隔）</span><input value={Array.isArray(draft.aliases)?draft.aliases.join(" | "):String(draft.aliases||"")} onChange={e=>patchDraft({aliases:e.target.value})}/></label>
+    <label className="field full"><span>研究主题说明</span><textarea value={draft.notes||""} onChange={e=>patchDraft({notes:e.target.value})}/></label>
+    <label className="field"><span>OpenAlex Source ID</span><input value={draft.openalex_source_id||""} onChange={e=>patchDraft({openalex_source_id:e.target.value})} placeholder="可留空，之后自动核验"/></label>
+    <label className="field check"><input type="checkbox" checked={draft.enabled!==false} onChange={e=>patchDraft({enabled:e.target.checked})}/>启用该来源</label>
    </div>
    <div className="modal-foot"><button className="btn" onClick={()=>{setDraft(null);setEditing(null);}}>取消</button><button className="btn primary" disabled={busy||!draft.name?.trim()} onClick={()=>void save()}><Save size={15}/>保存</button></div>
   </div></div>}
