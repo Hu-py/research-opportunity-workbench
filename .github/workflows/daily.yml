@@ -1,9 +1,6 @@
-name: Daily paper intelligence
+name: Legacy manual paper intelligence (no automated rule ranking)
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '13 7 * * *'
-      timezone: Asia/Shanghai
 jobs:
   ingest:
     if: ${{ vars.ENABLE_DAILY == 'true' }}
