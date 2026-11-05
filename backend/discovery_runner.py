@@ -9,6 +9,7 @@ from backend.preanalysis import execute_preanalysis
 from backend.llm_discovery import plan_queries, assess_papers
 from backend.model_vault import ModelCredential, load_key
 from backend.cusp import CuspDataset
+from backend.research_sources import ResearchSource, DIRECT_SOURCE_DOMAINS, METHOD_SOURCE_DOMAINS
 
 def _assets(db):
     rows=db.scalars(select(CuspDataset).where(CuspDataset.sensitivity != "restricted").limit(40)).all()
@@ -24,6 +25,17 @@ def _candidate_payload(paper, query, mode):
             "published":paper["published"][:32],"doi":paper["doi"][:220],
             "url":paper["url"][:1000],"retrieval_query":query,"retrieval_mode":mode}
 
+def _registered_source_ids(db):
+    rows=db.scalars(select(ResearchSource).where(
+        ResearchSource.enabled.is_(True),
+        ResearchSource.resolution_status=="resolved",
+        ResearchSource.openalex_source_id!="",
+    )).all()
+    direct=[x.openalex_source_id for x in rows if x.domain in DIRECT_SOURCE_DOMAINS]
+    method=[x.openalex_source_id for x in rows if x.domain in METHOD_SOURCE_DOMAINS]
+    return {"direct":list(dict.fromkeys(direct)),
+            "method":list(dict.fromkeys(method)),
+            "all":list(dict.fromkeys(direct+method))}
 def execute_discovery(factory, run_id, client=None):
     with factory() as db:
         run=db.get(DiscoveryRun,run_id)
@@ -44,6 +56,7 @@ def execute_discovery(factory, run_id, client=None):
         model=(credential.reason_model or "deepseek-v4-pro")
         fast=(credential.fast_model or "deepseek-flash")
         assets=_assets(db)
+        registered_sources=_registered_source_ids(db)
         run.status="running";db.commit()
     errors=[];all_seen=0
     for line_id in selected:
@@ -62,9 +75,14 @@ def execute_discovery(factory, run_id, client=None):
             for item in plan["queries"]:
                 with factory() as db:
                     run=db.get(DiscoveryRun,run_id);run.queries+=1;db.commit()
+                source_mode=item["mode"]
+                source_ids=(registered_sources["direct"] if source_mode=="direct"
+                            else registered_sources["method"] if source_mode=="method"
+                            else registered_sources["all"])
                 results=query_openalex(
                     item["query"],(date.today()-timedelta(days=config["lookback_days"])).isoformat(),
-                    limit=min(12,max(config["per_query"],8)),client=client
+                    limit=min(12,max(config["per_query"],8)),client=client,
+                    source_ids=source_ids or None
                 )
                 for work in results if isinstance(results,list) else []:
                     if not isinstance(work,dict):continue
