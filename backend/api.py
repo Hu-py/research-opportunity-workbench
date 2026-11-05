@@ -805,6 +805,9 @@ def scientific_tournament_preflight(line_id:str=Query(min_length=1,max_length=11
     remaining_tokens=max(0,budget["limits"]["token_reservation_per_day"]-
                          budget["used"]["token_reservation"])
     reasons=[]
+    persistent_database=db.get_bind().dialect.name=="postgresql"
+    if os.getenv("SCIENTIFIC_PILOT_REQUIRE_POSTGRES","").lower() in ("1","true","yes"):
+        if not persistent_database:reasons.append("隔离试验数据库尚未连接持久化 PostgreSQL")
     if not model["configured"]:reasons.append("管理员尚未配置 DeepSeek API Key")
     if not model["vault_ready"]:reasons.append("模型密钥加密服务尚未配置")
     snapshot=None
@@ -819,6 +822,7 @@ def scientific_tournament_preflight(line_id:str=Query(min_length=1,max_length=11
         "line_id":line_id,
         "model_configured":model["configured"],
         "vault_ready":model["vault_ready"],
+        "persistent_database":persistent_database,
         "approved_papers":len(snapshot["papers"]) if snapshot else 0,
         "registered_datasets":len(snapshot["datasets"]) if snapshot else 0,
         "remaining_model_calls":remaining_calls,
