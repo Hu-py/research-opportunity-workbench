@@ -90,8 +90,10 @@ def validate_profile(profile):
             raise ValueError("Duplicate line id")
         ids.add(line["id"])
         for field in ("keywords","search_queries","method_queries"):
-            if not isinstance(line.get(field),list) or not all(isinstance(x,str) for x in line[field]):
-                raise ValueError("Each line requires "+field+" as a string list")
+            values=line.get(field,[])
+            if not isinstance(values,list) or not all(isinstance(x,str) for x in values):
+                raise ValueError("Each line requires "+field+" as a string list when supplied")
+            line.setdefault(field,[])
         # Search queries are optional: the LLM discovery skill derives them from
         # the research problem, methods, team evidence and registered data assets.
     team=profile.get("team")
