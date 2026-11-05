@@ -76,6 +76,7 @@ from backend.scientific_tournament import (
     blind_cards as scientific_tournament_blind_cards,
     submit_rating as scientific_tournament_submit_rating,
     review_summary as scientific_tournament_review_summary,
+    reviewer_has_completed_blind_pair,
     curate_learning as scientific_tournament_curate_learning,
     approved_learning as scientific_tournament_approved_learning,
 )
@@ -816,10 +817,18 @@ def scientific_tournament_list(db:Session=Depends(get_db)):
 
 
 @app.get("/api/scientific-tournaments/{run_id}",dependencies=[Depends(require_actor)])
-def scientific_tournament_detail(run_id:str,db:Session=Depends(get_db)):
+def scientific_tournament_detail(run_id:str,request:Request,db:Session=Depends(get_db)):
     run=db.get(ScientificTournamentRun,run_id)
     if not run:raise HTTPException(404,"科研竞赛不存在")
-    return scientific_tournament_view(run,True)
+    # No route should disclose the A/B method before this reviewer scores both.
+    actor=resolve_session(db,request.headers.get("X-Research-Session")) if team_auth_enabled() else None
+    unblinded=reviewer_has_completed_blind_pair(db,run_id,actor.id if actor else None)
+    view=scientific_tournament_view(run,detail=unblinded)
+    view["review_unblinded"]=unblinded
+    if not unblinded:
+        view.update({"baseline":[],"baseline_critique":None,"round0":[],
+                     "critiques":[],"revisions":[],"decision":None,"trace":[]})
+    return view
 
 
 @app.post("/api/scientific-tournaments/{run_id}/resume",status_code=202,
