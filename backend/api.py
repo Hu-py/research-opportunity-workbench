@@ -10,6 +10,7 @@ from functools import lru_cache
 from typing import Literal
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text as sql_text
 from sqlalchemy.orm import Session
@@ -421,6 +422,39 @@ def auth_logout(request:Request,actor:TeamMember|None=Depends(require_actor),
     if team_auth_enabled():
         revoke_session(db,request.headers.get("X-Research-Session",""),actor.id)
     return {"ok":True}
+
+
+@app.get("/api/integrations/research-agent-lab/evidence")
+def export_research_agent_evidence(request: Request, db: Session=Depends(get_db)):
+    """Dedicated read-only integration; no regular user session or broad API key.
+
+    To enable, set three Render SERVER environment variables:
+      RESEARCH_EXPORT_ENABLED=true
+      RESEARCH_EXPORT_LLM_SHARING_APPROVED=true
+      RESEARCH_EXPORT_TOKEN=<unique random 32+ character value>
+
+    The token is accepted ONLY by this endpoint and must be stored in GitHub
+    Actions Secrets under WORKBENCH_EXPORT_TOKEN, never in frontend code.
+    """
+    if os.getenv("RESEARCH_EXPORT_ENABLED", "").strip().lower() != "true":
+        raise HTTPException(404, "Integration disabled")
+    configured = os.getenv("RESEARCH_EXPORT_TOKEN", "").strip()
+    provided = request.headers.get("X-Research-Export-Token", "")
+    if len(configured) < 32 or not hmac.compare_digest(provided, configured):
+        raise HTTPException(401, "Research evidence integration authentication required")
+    # The data owner must explicitly authorize metadata leaving the original
+    # service for DeepSeek and the private Supabase research lab.
+    if os.getenv("RESEARCH_EXPORT_LLM_SHARING_APPROVED", "").strip().lower() != "true":
+        raise HTTPException(403, "Team evidence has not been approved for LLM sharing")
+    from backend.research_evidence_export import team_evidence_bundle
+    try:
+        evidence = team_evidence_bundle(db, sharing_approved=True)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return JSONResponse(
+        content=evidence,
+        headers={"Cache-Control": "no-store, private", "X-Content-Type-Options": "nosniff"},
+    )
 
 @app.get("/api/team/members",dependencies=[Depends(require_admin)])
 def team_members(db:Session=Depends(get_db)):
