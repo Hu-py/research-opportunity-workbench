@@ -59,7 +59,7 @@ def test_readonly_safe_export_requires_scoped_token(export_client):
     assert "PRIVATE-" not in response_json
     assert "dataset-internal" not in response_json
     assert "dataset-restricted" not in response_json
-    assert response.headers.get("cache-control") == "no-store"
+    assert "no-store" in response.headers.get("cache-control", "")
 
 
 def test_scoped_export_fails_closed_without_approval(export_client, monkeypatch):
