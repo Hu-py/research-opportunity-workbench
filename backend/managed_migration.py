@@ -233,7 +233,7 @@ def backup_to_private_checkpoint(source,target):
         with conn.cursor() as cur:
             cur.execute("""INSERT INTO migration_private.archive
                 (run_key,source_tag,archive_sha256,archive_bytes,table_counts,dump)
-                VALUES (%s,%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,CAST(%s AS jsonb),%s)
                 ON CONFLICT (run_key) DO NOTHING""",
                 (RUN_KEY,hashlib.sha256(repr(_identity(source)).encode()).hexdigest()[:24],
                  digest,size,json.dumps(before),payload))
