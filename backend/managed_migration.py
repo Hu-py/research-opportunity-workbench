@@ -360,15 +360,70 @@ def restore_from_private_checkpoint(source,target):
             "independent_offsite_backup":False}
 
 
+def verify_persisted_target(source,target):
+    """Independent read-only verification AFTER a normal service redeployment."""
+    if _identity(source)==_identity(target):
+        raise MigrationGateError("source_and_target_are_same_database")
+    if not target.host.endswith(".pooler.supabase.com"):
+        raise MigrationGateError("target_must_be_supabase_pooler")
+    with _conn(target) as conn:
+        conn.read_only=True
+        checkpoint=_read_checkpoint(conn)
+        if not checkpoint or checkpoint[4] is None:
+            raise MigrationGateError("restored_checkpoint_missing")
+        sha, size, expected, _payload, restored_at=checkpoint
+        counts=_table_counts(conn)
+        if counts!=expected:
+            raise MigrationGateError("persisted_table_counts_mismatch")
+        with conn.cursor() as cur:
+            cur.execute("""SELECT count(*) FROM pg_catalog.pg_class c
+                JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                WHERE n.nspname='public' AND c.relkind IN ('r','p')
+                AND NOT c.relrowsecurity""")
+            missing_rls=int(cur.fetchone()[0])
+            cur.execute("""SELECT count(*) FROM pg_catalog.pg_constraint co
+                JOIN pg_catalog.pg_namespace n ON n.oid=co.connamespace
+                WHERE n.nspname='public' AND co.contype='f'
+                AND NOT co.convalidated""")
+            invalid_foreign_keys=int(cur.fetchone()[0])
+            cur.execute("""SELECT rolname FROM pg_roles
+                WHERE rolname IN ('anon','authenticated','service_role')""")
+            api_roles=[x[0] for x in cur.fetchall()]
+            exposure={}
+            for role in api_roles:
+                cur.execute("SELECT has_schema_privilege(%s,'public','USAGE')",(role,))
+                exposure[role]=bool(cur.fetchone()[0])
+        if missing_rls:
+            raise MigrationGateError("persisted_rls_missing")
+        if invalid_foreign_keys:
+            raise MigrationGateError("foreign_key_constraints_not_validated")
+        if any(exposure.values()):
+            raise MigrationGateError("data_api_has_public_schema_access")
+    # This is a comparison of source NOW with the previously saved snapshot.
+    # A drift does not invalidate the backup, but blocks a naive live cutover.
+    current=_validate_source(source)
+    return {"phase":"verify","result":"verified",
+            "tables":len(counts),"row_counts_match_backup":True,
+            "source_counts_match_backup":current==expected,
+            "rls_enabled_for_all_tables":True,
+            "all_foreign_keys_validated":True,
+            "public_schema_closed_to_data_api":True,
+            "archive_bytes":int(size),"archive_sha256":sha,
+            "original_db_still_authoritative":True,
+            "production_database_switched":False,
+            "independent_offsite_backup":False}
+
+
 def execute_from_env():
     phase=os.getenv("MANAGED_MIGRATION_PHASE","").strip()
-    if phase not in ("backup","restore"):
+    if phase not in ("backup","restore","verify"):
         return None
     try:
         source=_cfg(os.getenv("DATABASE_URL",""))
         target=_cfg(os.getenv("MIGRATION_TARGET_DATABASE_URL",""))
         result = (backup_to_private_checkpoint(source,target) if phase=="backup"
-                  else restore_from_private_checkpoint(source,target))
+                  else restore_from_private_checkpoint(source,target) if phase=="restore"
+                  else verify_persisted_target(source,target))
         LOG.info("SERVER_SIDE_MIGRATION_RESULT %s",json.dumps(result,sort_keys=True))
         return result
     except MigrationGateError as exc:
