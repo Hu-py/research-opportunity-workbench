@@ -93,3 +93,19 @@ def test_admin_only_probe_and_no_credentials_leaked(api_client,monkeypatch):
         response=client.get(path,headers=privileged)
     assert response.status_code==200,response.text
     assert "secret" not in response.text
+
+
+def test_failed_auth_is_classified_without_leaking_secret():
+    from sqlalchemy.exc import OperationalError
+    original = Exception("password authentication failed for user PRIVATE-ACCOUNT with password SECRET")
+    original.sqlstate = "28P01"
+    engine = MagicMock()
+    engine.connect.side_effect = OperationalError("database connect failed",{},original)
+    source = "postgresql://u:sourcepass@source.example.com/research"
+    target = "postgresql://u:PRIVATE-SECRET@target.example.com/postgres"
+    with patch("backend.migration_preflight.create_engine",return_value=engine):
+        with pytest.raises(RuntimeError,match="migration_target_authentication_failed") as error:
+            inspect_target(source,target)
+    assert "PRIVATE" not in str(error.value)
+    assert "SECRET" not in str(error.value)
+    assert engine.dispose.called
