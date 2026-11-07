@@ -216,7 +216,7 @@ def guarded_restore(target: PgTarget, archive: Path, confirmed: bool):
         os.chmod(path,0o600)
         stream.write(filter_supabase_toc(toc))
     try:
-        run_command(["pg_restore","--format=custom","--exit-on-error",
+        run_command(["pg_restore","--dbname",target.dbname,"--format=custom","--exit-on-error",
                      "--single-transaction","--no-owner","--no-privileges",
                      "--use-list",str(path),str(archive)],target)
     finally:
@@ -248,7 +248,7 @@ def secure_target(target: PgTarget, archive: Path, confirmed: bool):
             for name in sorted(inv["table_counts"]):
                 obj=sql.SQL("{}.{}").format(sql.Identifier("public"),sql.Identifier(name))
                 cur.execute(sql.SQL("ALTER TABLE {} ENABLE ROW LEVEL SECURITY").format(obj))
-                cur.execute(sql.SQL("REVOKE ALL ON TABLE {} FROM anon, authenticated, PUBLIC").format(obj))
+                cur.execute(sql.SQL("REVOKE ALL ON TABLE {} FROM anon, authenticated, service_role, PUBLIC").format(obj))
             # Existing default API grants on future tables must also be
             # reviewed in the Supabase dashboard; see release runbook.
     after=read_inventory(target)
