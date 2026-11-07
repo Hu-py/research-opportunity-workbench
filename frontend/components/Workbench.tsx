@@ -17,9 +17,10 @@ import ResearchRadar from "@/components/ResearchRadar";
 import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
+import AgentGameReplay from "@/components/AgentGameReplay";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings"|"sources";
+type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings"|"sources"|"game-lab";
 type NavEntry = {key:Section;label:string;icon:typeof BookOpen};
 const navigationGroups:{label:string;items:NavEntry[]}[] = [
   {label:"工作台",items:[
@@ -38,6 +39,7 @@ const navigationGroups:{label:string;items:NavEntry[]}[] = [
   ]},
   {label:"研究执行",items:[
     {key:"agent",label:"Research Agent",icon:BrainCircuit},
+    {key:"game-lab",label:"多智能体博弈回放",icon:GitBranch},
   ]},
   {label:"研究产出",items:[
     {key:"brief",label:"科研简报",icon:FileText},
@@ -497,6 +499,7 @@ export default function Workbench(){
         {section==="sources"&&<AcademicSourceRegistry canAdmin={canAdmin}/>}
         {section==="discovery"&&<ResearchDiscovery canAdmin={canAdmin} canEdit={canEdit}/>} 
         {section==="ai-lab"&&<AIResearchLab canAdmin={canAdmin} canEdit={canEdit}/>} 
+        {section==="game-lab"&&<AgentGameReplay/>}
         {section==="radar"&&<ResearchRadar canEdit={canEdit}/>} 
 
         {section==="ideas"&&<>

@@ -92,3 +92,13 @@ Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAP
 ### Follow-up milestones
 
 Full-text Zotero/RAG ingestion, Semantic Scholar and venue verification, method embeddings, true novelty search against prior art, profile document upload, per-task cost logging, job recovery and secure team accounts are **not yet implemented**.
+
+
+### Multi-agent research game replay
+
+The existing Next.js workbench now includes **研究执行 → 多智能体博弈回放**:
+a protected, interactive replay of saved Research Agent Lab competitions,
+including dual-judge debates, Elo changes, scientific verification, paper
+screening and hypothesis family trees.
+
+[Configure secure server-only Supabase access and view limitations](docs/research-agent-game-replay.md).

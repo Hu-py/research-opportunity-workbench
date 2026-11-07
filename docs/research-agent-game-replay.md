@@ -1,0 +1,72 @@
+# Multi-agent Research Game Replay (V0.8 viewer)
+
+The new sidebar route **研究执行 → 多智能体博弈回放** is an interactive
+historical replay of actual persisted Research Agent Lab runs, not model chain
+of thought and not a fabricated real-time agent animation.
+
+## What the page displays
+
+- Latest 25 runs from isolated `public.lab_frontier_runs`, selected by date/ID.
+- A step-by-step **logical** event timeline: OpenAlex discovery, independent
+  paper jurors, arbitration, seed hypotheses, reversed-order Elo debates,
+  Supervisor decisions, hypothesis refinement/fusion/rollback and Scientific Gate.
+- Pairwise debate cards with *both* actual LLM judging reasons and caveats,
+  plus a position-disagreement indicator.
+- Reconstructed Elo values **up to each replay step** using persisted
+  `delta_left` updates from recorded matches (not final ratings pasted into
+  earlier steps); Elo remains LLM preference, not external validation.
+- Candidate cards with falsifiable predictions, methods, baselines, cited
+  OpenAlex IDs, registered dataset IDs and stated limitations.
+- Generation-by-generation lineage including parent candidate IDs.
+- The recorded paper juror votes and third-agent adjudication.
+- Whether data access or real experimental claims were verified.
+
+Historical runs may have no per-node timestamps. In that case the page shows
+**sequence numbers only**, not invented execution times.
+
+## Secure connection
+
+This view is served inside the existing Next.js workbench session, using
+server-side route handlers in `frontend/app/api/research-lab/runs`. Team mode
+requires both the session cookie and revalidation through the existing backend
+`/api/auth/me` endpoint before any Supabase access.
+
+Set these two **server-only** environment variables in the Vercel frontend
+project, for production/preview as appropriate:
+
+```env
+RESEARCH_LAB_SUPABASE_URL=https://YOUR-ISOLATED-LAB.supabase.co
+RESEARCH_LAB_SUPABASE_SECRET_KEY=sb_secret_...
+```
+
+Use the **isolated lab** Supabase project, not the workbench's main Postgres
+database. The key must never be included in `NEXT_PUBLIC_*`, front-end source,
+browser devtools, client fetches, or public GitHub logs. The server uses
+`apikey` headers for modern `sb_secret_*` keys (without an invalid JWT
+Bearer token). The protected API only exposes a strict allowlist of saved
+scientific outputs; it does not serve raw CUSP files or original owner
+registration documents. All responses use `no-store`.
+
+The UI will show an explicit **not configured** message until these variables
+are present; it does not silently substitute a fake demonstration.
+
+## Instant local replay without connecting cloud credentials
+
+The UI can also read an existing `lab_frontier_runs` JSON export or the
+single-row SQL output file containing `execution_chain`, `hypotheses`,
+`agent_debates`, `decisions`, `literature_review` and
+`scientific_validation`. Click **导入本地结果** and select the JSON/TXT
+file. The browser parses it locally; no upload request is sent.
+
+## Limits / planned V0.9
+
+This version can replay **completed stored runs** and refresh to see newly
+saved finished runs. It is not yet an event stream from a running LangGraph.
+The existing `lab_frontier_runs` table receives records only after each
+run finishes. Real-time partial-stage monitoring requires a separate
+persisted stage-event stream with server-side authorization, a migration and
+explicit instrumentation in Research Agent Lab. The UI never pretends a
+historical sequence number is a timestamp.
+
+This view does not change the paid model workflow, GitHub public action
+artifact policy, research data catalog permissions or the Supabase schemas.
