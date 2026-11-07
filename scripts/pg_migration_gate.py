@@ -93,7 +93,7 @@ def read_inventory(target: PgTarget) -> dict:
                              user=target.user,password=target.password,
                              sslmode=target.sslmode,connect_timeout=12) as conn:
             with conn.cursor() as cur:
-                cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+                cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
                 cur.execute("SELECT current_setting('server_version_num')::integer")
                 version=int(cur.fetchone()[0])
                 cur.execute("""SELECT c.relname, c.relrowsecurity
