@@ -7,6 +7,31 @@ Postgres migration guidance. It deliberately avoids creating public database
 endpoints or placing source/target passwords in source code, GitHub, logs,
 ChatGPT conversations or CI artifacts.
 
+## New Supabase project: first safe connection check
+
+Once the private project `research-team-memory` is created:
+
+1. Open Supabase Dashboard > your new project > **Connect**.
+2. Select **Session pooler** for the IPv4-compatible connection from Render
+   (port 5432); do **not** use the Transaction pooler (6543). Direct connection
+   is preferred by Supabase for native backups/restores if IPv6 is available.
+3. Fill the placeholder with your project's database password **privately**.
+   Percent-encode special URL characters in the password. Add
+   `?sslmode=require` if there is no query parameter.
+4. In Render > **research-atlas-api-test** > Environment, add
+   `MIGRATION_TARGET_DATABASE_URL` to the **server-side** secret store.
+   Never edit existing `DATABASE_URL` yet. Never put the new URI in GitHub,
+   Vercel public environment variables, chat, screenshots or code.
+5. After an independently reviewed deployment of the preflight endpoint,
+   an authenticated admin can call
+   `GET /api/admin/migration-target-preflight`. It checks, read-only, that
+   the target is reachable and its public schema is empty. It returns no
+   URI, password, hostname or private record.
+6. A positive preflight is **not** a source backup or migration completion.
+
+This endpoint is currently part of draft PR #49 and is **not present on the
+live main Render backend** until separately deployed.
+
 ## Source verified so far
 
 - Main API `research-atlas-api-test`: started successfully with
