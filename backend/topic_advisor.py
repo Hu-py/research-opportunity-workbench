@@ -75,7 +75,8 @@ class ExperimentModel:
             raise ValueError("Unsupported priced model")
         if not 1 <= max_tokens <= 4000:
             raise ValueError("Output budget invalid")
-        system += "\n输出简洁：每个文本字段不超过120字，每个列表最多3项。ideas最多一个，但必须包含所有要求的字段，包括why_now。"
+        # Cardinality belongs to the stage contract: the reader must cover all
+        # supplied papers, and the critic all candidates. Do not truncate either.
         request = {"system": system, "payload": payload, "model": model,
                    "max_tokens": max_tokens, "gateway_version": 1}
         digest = hashlib.sha256(encode(request).encode()).hexdigest()
@@ -131,7 +132,8 @@ def validate_topics(raw, context):
     return _validated("generator", raw, context)
 
 
-ADVISOR = PROMPTS["generator"] + "允许 ideas 为空并给出 reason。不要为了凑数推荐。"
+GENERATION_LIMITS = "输出简洁：每个文本字段不超过120字。ideas最多一个，必须包含所有要求字段，包括why_now；其他列表按科学需要完整填写。"
+ADVISOR = PROMPTS["generator"] + "允许 ideas 为空并给出 reason。不要为了凑数推荐。" + GENERATION_LIMITS
 PATHS = ("已有研究深化", "跨领域方法与数据迁移", "新兴学术前沿")
 
 
@@ -146,6 +148,7 @@ def advise(model, context, strategy="C", revision=1):
             payload = {**context, "previous": trace}
             if stage == "critic":
                 payload["ideas"] = trace["generator"]["ideas"]
+            # Preserve A's existing prompts for an honest baseline replay.
             raw = model.call(PROMPTS[stage], payload)
             trace[stage] = _validated(stage, raw, payload)
         result = trace["generator"]

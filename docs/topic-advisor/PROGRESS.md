@@ -1,5 +1,7 @@
 # Progress
 
+Latest checkpoint: reader cardinality fix and one successful five-paper live probe. Cumulative 20 requests / conservative CNY 0.828424; see NEXT_ACTIONS.md for recovery and scope. Earlier figures below describe the original pilot. The current task is publication for independent review, with no new paid experiments.
+
 Branch: feat/topic-advisor. Original tracked source clean at start; pre-existing generated frontend/AGENTS.md and editable egg-info preserved.
 
 Implemented: cumulative audit ledger and exact cache, existing-prompt A/B/C runner, strict reference checks, explicit empty output, database context adapter, confirmed decision recording, authenticated portfolio API and independent `/topic-advisor` page.

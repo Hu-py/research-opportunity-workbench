@@ -32,3 +32,11 @@ Improvement actually exercised: concise mandatory-field instructions yielded a s
 19 attempted model requests; 23,322 observed input tokens and 4,737 observed output tokens. Nine attempts lack complete usage, including interrupted calls; they retain full reservations. Conservative peak-price estimate including unknown reservations: **CNY 0.8201**, below the authorized CNY 10 / 60-request ceiling. This is not the provider invoice. Provider errors, not budget exhaustion, caused the stop.
 
 Answer to the central question: **there is currently no evidence that the new system produces more valuable topics than either baseline**. Only B completed end to end in this pilot. A full paired experiment and independent assessment must succeed before making a stronger claim.
+
+## Conservative follow-up: reader contract
+
+Removed the global "every list at most three items" instruction, which contradicted the five-paper reader contract. Kept candidate-count restrictions at generation only. A now receives the original baseline prompts without transport-added modifications.
+
+One real Flash call on the unchanged heat development bibliography returned all five expected IDs and passed the existing reader validator. The abstract-free paper remained metadata-only. This is a completeness check, not a paired scientific-quality experiment: no measured 60%-to-100% improvement is claimed, and no new topic or blind review was generated. The 3/5 figure is only the logical maximum if the old instruction were obeyed.
+
+This call used 2,110 input / 513 output tokens, estimated CNY 0.008324. Updated cumulative totals: **20 requests, 25,432 observed input / 5,250 observed output tokens; CNY 0.828424 including full reservations for nine unknown-usage attempts**. Current publication task makes no additional paid calls.
