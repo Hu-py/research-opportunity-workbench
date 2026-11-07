@@ -70,3 +70,34 @@ historical sequence number is a timestamp.
 
 This view does not change the paid model workflow, GitHub public action
 artifact policy, research data catalog permissions or the Supabase schemas.
+
+
+## V0.9 — 实时节点监控
+
+The same page now includes a **LIVE AGENT EXECUTION** panel above the
+historical replay selector. It reads the isolated lab's private
+`lab_frontier_events` table through the authenticated Next.js route
+`GET /api/research-lab/live` every 6 seconds.
+
+Required additional setup:
+1. Run [Research Agent Lab SQL 007](
+   https://github.com/Hu-py/research-agent-lab/blob/main/sql/007_frontier_live_events.sql)
+   inside the **separate research lab** Supabase SQL Editor.
+2. Configure both server-only Vercel variables
+   `RESEARCH_LAB_SUPABASE_URL` and `RESEARCH_LAB_SUPABASE_SECRET_KEY`.
+   Redeploy after saving environment settings.
+3. Run the Research Agent Lab's *free* connection verification workflow,
+   with `check_frontier_live_events=true`.
+4. In a **new** live frontier experiment, choose
+   `stream_live_events=true` (default false) and `save_supabase=true`.
+
+The browser shows genuine recorded node-completion timestamps and counters.
+It cannot display private LLM chain-of-thought and will not claim a node
+succeeded before the isolated backend writes its event. Completed runs
+remain available in the same page's historical timeline. Do not copy
+privileged Supabase API keys into repository source, public GitHub
+variables, or `NEXT_PUBLIC_*` variables.
+
+**Current limitation:** `run_started` is emitted only when LangGraph
+execution starts, *after* the preceding team-portrait synchronization.
+The live dashboard does not currently show portrait synthesis progress.

@@ -42,7 +42,10 @@ function labConfig():{base:string;key:string}|null {
 }
 export function configured():boolean{return labConfig()!==null;}
 
-export async function labRead(params:Record<string,string>):Promise<unknown> {
+export async function labRead(
+  params:Record<string,string>,
+  table:"lab_frontier_runs"|"lab_frontier_events"="lab_frontier_runs"
+):Promise<unknown> {
   const conf=labConfig();
   if(!conf)throw new Error("LAB_NOT_CONFIGURED");
   const query=new URLSearchParams(params);
@@ -51,7 +54,7 @@ export async function labRead(params:Record<string,string>):Promise<unknown> {
   if(!conf.key.startsWith("sb_secret_"))headers.Authorization="Bearer "+conf.key;
   let response:Response;
   try {
-    response=await fetch(conf.base+"/rest/v1/lab_frontier_runs?"+query.toString(),{
+    response=await fetch(conf.base+"/rest/v1/"+table+"?"+query.toString(),{
       cache:"no-store",redirect:"manual",signal:AbortSignal.timeout(18000),headers
     });
   }catch{throw new Error("LAB_CONNECTION_FAILED");}

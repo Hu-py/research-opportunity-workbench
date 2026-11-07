@@ -42,8 +42,15 @@ type Run={id:string;line_id:string;status:string;strategy?:string;created_at?:st
  model_calls?:number;provider_calls?:number;cache_hits?:number;
  winner_title?:string;generation_count?:number;match_count?:number;results?:Result};
 type RunsPayload={configured:boolean;items:Run[];detail?:string};
+type LiveEvent={run_id:string;step_index:number;stage:string;
+ recorded_at:string;details:{generation?:number;retrieved?:number;retained?:number;
+ matches?:number;decision?:string;children_count?:number;created_count?:number;
+ disagreements?:number;leader?:string;winner?:string}};
+type LivePayload={configured:boolean;enabled:boolean;items:LiveEvent[];detail?:string};
+
 
 const names:Record<string,string>={
+ run_started:"实验开始",run_completed:"已完成并保存",run_failed:"运行失败",
  knowledge_discovery:"论文检索",independent_paper_screen:"双 Agent 文献审核",
  generate:"三视角生成",elo_tournament:"双向辩论赛",supervisor:"总控调度",
  hypothesis_evolution:"批评与进化",hypothesis_expansion:"边界扩展",
@@ -129,6 +136,9 @@ export default function AgentGameReplay(){
  const [error,setError]=useState("");
  const [note,setNote]=useState("");
  const [configured,setConfigured]=useState<boolean|null>(null);
+ const [liveEvents,setLiveEvents]=useState<LiveEvent[]>([]);
+ const [liveMessage,setLiveMessage]=useState("");
+ const [liveEnabled,setLiveEnabled]=useState(false);
 
  const loadRuns=useCallback(async()=>{
   try{
@@ -146,6 +156,25 @@ export default function AgentGameReplay(){
 
  useEffect(()=>{void loadRuns();},[loadRuns]);
  useEffect(()=>{
+  let canceled=false;
+  async function pollLive(){
+   try{
+    const response=await fetch("/api/research-lab/live",{cache:"no-store"});
+    const data=await response.json() as LivePayload;
+    if(!response.ok)throw Error(data.detail||"实时事件读取失败");
+    if(canceled)return;
+    setLiveEnabled(data.enabled);setLiveMessage(data.detail||"");
+    setLiveEvents(data.items||[]);
+   }catch{
+    if(!canceled)setLiveMessage("实时事件暂不可用，历史回放仍可使用。");
+   }
+  }
+  void pollLive();
+  const timer=window.setInterval(()=>{void pollLive();},6000);
+  return()=>{canceled=true;window.clearInterval(timer);};
+ },[]);
+
+ useEffect(()=>{
   if(!chosenId||chosenId==="local-file")return;
   let cancelled=false;
   setLoading(true);setError("");
@@ -160,6 +189,20 @@ export default function AgentGameReplay(){
   return()=>{cancelled=true;};
  },[chosenId]);
 
+ const liveGroups=useMemo(()=>{
+  const map=new Map<string,LiveEvent[]>();
+  for(const event of liveEvents){
+   if(!map.has(event.run_id))map.set(event.run_id,[]);
+   map.get(event.run_id)?.push(event);
+  }
+  return [...map.entries()].map(([id,items])=>{
+    const sorted=items.sort((a,b)=>a.step_index-b.step_index);
+    const last=sorted[sorted.length-1];
+    const stopped=last.stage==="run_completed"||last.stage==="run_failed";
+    const age=Date.now()-new Date(last.recorded_at).getTime();
+    return {id,events:sorted,last,stopped,recent:Number.isFinite(age)&&age<60*60*1000};
+  }).filter(g=>g.recent).sort((a,b)=>b.last.recorded_at.localeCompare(a.last.recorded_at)).slice(0,4);
+ },[liveEvents]);
  const result=active?.results||{};
  const events=useMemo(()=>result.event_log||[],[result.event_log]);
  const candidates=useMemo(()=>[...(result.ranked_candidates||[]),...(result.archived_candidates||[])],
@@ -248,6 +291,47 @@ export default function AgentGameReplay(){
    </div>
    <div className="game-hero-orbit" aria-hidden="true"><span>H001</span><span>H002</span><span>H003</span><div>AI</div></div>
   </div>
+
+  <section className="game-panel game-live" aria-label="正在执行的多智能体实验">
+   <div className="game-live-top">
+    <div><span className="game-label">LIVE AGENT EXECUTION · 真实事件流</span>
+     <h2><Activity size={19}/> 实时运行监控</h2>
+     <p>系统每 6 秒读取最新记录；只有 Agent 完成一个 LangGraph 节点后，这里才更新。</p>
+    </div><span className={"game-live-state "+(liveGroups.some(g=>!g.stopped)?"game-live-active":"")}>
+     <span/> {liveGroups.some(g=>!g.stopped)?"有实验正在运行":liveEnabled?"实时监听已连接":"待完成连接"}
+    </span>
+   </div>
+   {liveGroups.length?liveGroups.map(group=>
+    <div className="game-live-run" key={group.id}>
+     <div className="game-live-run-head"><div>
+      <strong>{group.stopped?
+       group.last.stage==="run_completed"?"实验已完成":"实验执行失败":"运行中"} · {group.id.slice(0,8)}</strong>
+      <span>最近事件：{fmtDate(group.last.recorded_at)} · 已记录 {group.events.length} 步</span>
+     </div>
+      {group.last.stage==="run_completed"&&
+       <button type="button" onClick={()=>{setChosenId(group.id);void loadRuns();}}>
+        查看完整回放 <ArrowRight size={14}/>
+       </button>}
+     </div>
+     <div className="game-live-events">
+      {group.events.map(item=><div className="game-live-event" key={item.step_index}>
+       <span className="game-live-marker">{item.step_index}</span>
+       <div><strong>{names[item.stage]||item.stage}</strong>
+        <small>{fmtDate(item.recorded_at)} · {[
+         typeof item.details.generation==="number"?"G"+item.details.generation:"",
+         typeof item.details.matches==="number"?item.details.matches+" 场比赛":"",
+         item.details.decision?"决策 "+item.details.decision:"",
+         typeof item.details.retained==="number"?"保留 "+item.details.retained+" 篇":"",
+         item.details.leader?"领先 "+item.details.leader:""
+        ].filter(Boolean).join(" · ")||"节点已完成"}</small>
+       </div>
+      </div>)}
+     </div>
+    </div>
+   ):<p className="game-muted">
+      {liveMessage||"目前没有最近一小时的新实验事件。开启 SQL 007 和工作流 stream_live_events 后，新实验会自动显示在这里。"}
+     </p>}
+  </section>
 
   <section className="game-panel game-source">
    <div className="game-source-bar">
