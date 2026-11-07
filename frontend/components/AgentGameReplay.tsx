@@ -15,6 +15,8 @@ type Candidate={
  origin?:string; generation?:number; parent_ids?:string[]; elo?:number; status?:string
 };
 type EventRow={stage:string;generation?:number;retrieved?:number;retained?:number;
+ rejected_count?:number;no_valid_children?:boolean;
+ rejected_candidates?:{id:string;code:string}[];
  disagreements?:number;created?:string[];children?:{id:string;parent_ids:string[]}[];
  matches?:number;leader?:string;leader_rating?:number;
  decision?:string;reason?:string;winner?:string;pilot_executed?:boolean;
@@ -52,10 +54,19 @@ type RunsPayload={configured:boolean;items:Run[];detail?:string};
 type LiveEvent={run_id:string;step_index:number;stage:string;
  recorded_at:string;details:{generation?:number;retrieved?:number;retained?:number;
  matches?:number;decision?:string;children_count?:number;created_count?:number;
+ rejected_count?:number;no_valid_children?:boolean;failure_code?:string;
  disagreements?:number;leader?:string;winner?:string}};
 type LivePayload={configured:boolean;enabled:boolean;items:LiveEvent[];detail?:string};
 
 
+const failureMessages:Record<string,string>={
+ CANDIDATE_SCHEMA_INVALID:"假设字段校验失败 / Invalid hypothesis schema",
+ MODEL_BUDGET_EXHAUSTED:"模型调用预算耗尽 / Model budget exhausted",
+ MODEL_PROVIDER_ERROR:"模型接口异常 / Model provider error",
+ EVIDENCE_PIPELINE_ERROR:"文献证据环节异常 / Evidence pipeline error",
+ SCIENTIFIC_GATE_ERROR:"科学验证环节异常 / Scientific gate error",
+ OTHER_RUNTIME_ERROR:"其他运行异常 / Other runtime error"
+};
 const names:Record<string,string>={
  run_started:"实验开始",run_completed:"已完成并保存",run_failed:"运行失败",
  knowledge_discovery:"论文检索 / Literature discovery",
@@ -317,7 +328,8 @@ export default function AgentGameReplay({canLaunch=false}:{canLaunch?:boolean}){
     <div className="game-live-run" key={group.id}>
      <div className="game-live-run-head"><div>
       <strong>{group.stopped?
-       group.last.stage==="run_completed"?"实验已完成":"实验执行失败":"运行中"} · {group.id.slice(0,8)}</strong>
+       group.last.stage==="run_completed"?"实验已完成":
+         failureMessages[group.last.details.failure_code||""]||"实验执行失败 / Failed":"运行中"} · {group.id.slice(0,8)}</strong>
       <span>最近事件：{fmtDate(group.last.recorded_at)} · 已记录 {group.events.length} 步</span>
      </div>
       {group.last.stage==="run_completed"&&
@@ -334,7 +346,11 @@ export default function AgentGameReplay({canLaunch=false}:{canLaunch?:boolean}){
          typeof item.details.matches==="number"?item.details.matches+" 场比赛":"",
          item.details.decision?"决策 "+item.details.decision:"",
          typeof item.details.retained==="number"?"保留 "+item.details.retained+" 篇":"",
-         item.details.leader?"领先 "+item.details.leader:""
+         item.details.leader?"领先 "+item.details.leader:"",
+         item.details.rejected_count?
+           "排除 "+item.details.rejected_count+" 个无效候选 / invalid candidates":"",
+         item.details.failure_code?
+           failureMessages[item.details.failure_code]||"运行异常":""
         ].filter(Boolean).join(" · ")||"节点已完成"}</small>
        </div>
       </div>)}
@@ -436,6 +452,12 @@ export default function AgentGameReplay({canLaunch=false}:{canLaunch?:boolean}){
        <BookOpen size={26}/><strong>{current.retrieved||0} 篇候选论文</strong>
        <p>检索后将进入独立双评审，后续不允许未登记的论文直接作为证据。</p>
       </div>}
+     {!!current?.rejected_count&&<div className="game-notice">
+       <ShieldAlert size={15}/>
+       本阶段有 {current.rejected_count} 个假设未通过结构校验，已从竞争中排除。
+       / {current.rejected_count} invalid proposals excluded.
+       {current.no_valid_children?" 当前轮没有有效新版本，将直接验证上一轮候选。 / No valid children; checking previous champion.":""}
+     </div>}
      {current?.stage==="independent_paper_screen"&&<div className="game-review-summary">
        <div><strong>{screening.screened_count||0}</strong><span>参与筛选</span></div>
        <div><strong>{current.retained??screening.retained_count??0}</strong><span>最终保留</span></div>

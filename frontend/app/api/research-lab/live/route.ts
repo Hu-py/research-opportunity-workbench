@@ -26,15 +26,20 @@ export async function GET(){
          row.details:{}) as Record<string,unknown>;
        const details:Record<string,unknown>={};
        for(const key of ["generation","retrieved","retained","disagreements",
-                         "matches","archived_generation","created_count","children_count"]){
+                         "matches","archived_generation","created_count","children_count","rejected_count"]){
          if(Number.isInteger(d[key])&&Number(d[key])>=0)details[key]=d[key];
        }
-       for(const key of ["pilot_executed","data_feasible_assessment"]){
+       for(const key of ["pilot_executed","data_feasible_assessment","no_valid_children"]){
          if(typeof d[key]==="boolean")details[key]=d[key];
        }
        for(const key of ["leader","winner"]){
          if(typeof d[key]==="string"&&/^H[0-9]{1,6}$/.test(d[key]))details[key]=d[key];
        }
+       if(typeof d.failure_code==="string" && [
+         "CANDIDATE_SCHEMA_INVALID","MODEL_BUDGET_EXHAUSTED",
+         "MODEL_PROVIDER_ERROR","EVIDENCE_PIPELINE_ERROR",
+         "SCIENTIFIC_GATE_ERROR","OTHER_RUNTIME_ERROR"
+       ].includes(d.failure_code))details.failure_code=d.failure_code;
        for(const key of ["decision","strategy"]){
          if(typeof d[key]==="string"&&/^(verify|evolve|expand|rollback|balanced|novelty|feasibility)$/.test(d[key]))details[key]=d[key];
        }
