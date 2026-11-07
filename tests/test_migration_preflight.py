@@ -18,7 +18,7 @@ def test_target_probe_needs_two_distinct_postgres_urls():
         inspect_target("", source)
     with pytest.raises(ValueError, match="identical"):
         inspect_target(source, source)
-    with pytest.raises(ValueError, match="Only PostgreSQL"):
+    with pytest.raises(ValueError, match="Invalid PostgreSQL"):
         inspect_target(source, "sqlite:///local.db")
     url=_parse("postgres://postgres.project:pa%40ss@host.pooler.supabase.com:5432/postgres")
     assert url.get_backend_name()=="postgresql"
