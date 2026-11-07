@@ -49,6 +49,25 @@ CREATE INDEX IF NOT EXISTS ix_business_meeting_feedback_idea_id
 CREATE INDEX IF NOT EXISTS ix_business_meeting_feedback_reviewer_id
     ON business_meeting_feedback(reviewer_id);
 
+-- Lock down the three new tables before the transaction commits.
+-- These tables are used by server-side SQLAlchemy only; do not grant Data API access.
+ALTER TABLE public.business_agent_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_agent_ideas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_meeting_feedback ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON TABLE public.business_agent_runs,
+                    public.business_agent_ideas,
+                    public.business_meeting_feedback FROM PUBLIC;
+DO $
+DECLARE r TEXT;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname=r) THEN
+      EXECUTE format('REVOKE ALL ON TABLE public.business_agent_runs, public.business_agent_ideas, public.business_meeting_feedback FROM %I',r);
+    END IF;
+  END LOOP;
+END $;
+
 COMMIT;
 
 -- Verify separately, with read-only queries:
