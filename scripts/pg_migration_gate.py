@@ -135,8 +135,10 @@ def checksum(path: Path) -> str:
 def guarded_backup(source: PgTarget, archive: Path):
     if archive.exists() or archive.with_suffix(archive.suffix+".manifest.json").exists():
         raise ValueError("Backup path already exists; refusing to overwrite any archive")
-    archive.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
-    os.chmod(archive.parent,0o700)
+    if not archive.parent.exists():
+        archive.parent.mkdir(parents=True,exist_ok=False,mode=0o700)
+    elif archive.parent.stat().st_mode & 0o077:
+        raise ValueError("Backup directory is not private (mode 0700 required)")
     before=read_inventory(source)
     # PostgreSQL client must be available and suitable for the source major.
     version=subprocess.run(["pg_dump","--version"],capture_output=True,text=True,check=True).stdout
