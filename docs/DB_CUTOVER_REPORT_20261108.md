@@ -72,7 +72,7 @@ connection. Never store provider secrets in GitHub.
    repeated schema introspection; monitor slow queries and use a regional
    alignment plan if latency becomes material.
 3. Temporary Render PostgreSQL Networking allowlist
-   `23.172.200.89/32` ("Temporary Mac backup") was still present at
+   ("Temporary Mac backup") was still present at
    the last provider check. Remove it from Render's **PostgreSQL Inbound
    IP Rules** once external Mac backup is no longer needed.
 4. Only PostgreSQL `public` schema was migrated; independent object-storage
