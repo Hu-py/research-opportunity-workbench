@@ -432,7 +432,7 @@ def _data_fingerprints(url):
                 # Avoid ever loading actual row data into logs or exception text.
                 h=hashlib.sha256()
                 statement=sql.SQL("""SELECT row_to_json(t)::text
-                      FROM {}.{} AS t ORDER BY row_to_json(t)::text COLLATE "C"""").format(
+                      FROM {}.{} AS t ORDER BY row_to_json(t)::text COLLATE "C" """).format(
                     sql.Identifier("public"),sql.Identifier(name))
                 cur.execute(statement)
                 for (json_text,) in cur:
