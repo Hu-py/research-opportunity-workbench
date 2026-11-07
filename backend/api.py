@@ -231,7 +231,17 @@ async def lifespan(app:FastAPI):
                 "The target is identical to the source; no migration allowed": "same_database",
                 "Target connection failed; check private connection string, SSL and network": "connection_failed",
             }
-            category = categories.get(detail, "unknown")
+            if detail.startswith("migration_target_"):
+                candidate = detail[len("migration_target_"):]
+                permitted = {
+                    "authentication_failed", "database_not_found",
+                    "role_or_access_rejected", "dns_resolution_failed",
+                    "network_timeout", "connection_refused",
+                    "other_connection_error",
+                }
+                category = candidate if candidate in permitted else "unknown"
+            else:
+                category = categories.get(detail, "unknown")
             logging.getLogger("uvicorn.error").warning(
                 "MIGRATION_PREFLIGHT_FAILED category=%s", category
             )
