@@ -109,3 +109,19 @@ def test_no_public_restore_before_checkpoint_validated(monkeypatch):
         with pytest.raises(m.MigrationGateError,match="checkpoint_not_found"):
             m.restore_from_private_checkpoint(m._cfg(SRC),m._cfg(DST))
     runner.assert_not_called()
+
+
+def test_explicit_verify_phase_uses_read_only_validation(monkeypatch):
+    monkeypatch.setenv("MANAGED_MIGRATION_PHASE","verify")
+    monkeypatch.setenv("DATABASE_URL",SRC)
+    monkeypatch.setenv("MIGRATION_TARGET_DATABASE_URL",DST)
+    result={"phase":"verify","result":"verified","tables":43}
+    with patch("backend.managed_migration.verify_persisted_target",return_value=result) as call:
+        assert m.execute_from_env()==result
+    assert call.call_count==1
+
+
+def test_verify_prevents_source_target_collision():
+    src=m._cfg(SRC)
+    with pytest.raises(m.MigrationGateError,match="same_database"):
+        m.verify_persisted_target(src,src)
