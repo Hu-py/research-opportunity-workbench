@@ -125,3 +125,49 @@ def test_verify_prevents_source_target_collision():
     src=m._cfg(SRC)
     with pytest.raises(m.MigrationGateError,match="same_database"):
         m.verify_persisted_target(src,src)
+
+
+def test_precutover_detects_row_level_drift_even_when_counts_match():
+    snapshot={"phase":"verify","result":"verified","source_counts_match_backup":True}
+    with patch("backend.managed_migration.verify_persisted_target",return_value=snapshot), \
+         patch("backend.managed_migration._data_fingerprints",side_effect=[
+             {"papers":"a"*64},{"papers":"b"*64}
+         ]), patch("backend.managed_migration._application_target_canary") as canary:
+        with pytest.raises(m.MigrationGateError,match="row_content_mismatch"):
+            m.precutover_verify(m._cfg(SRC),m._cfg(DST))
+    canary.assert_not_called()
+
+
+def test_precutover_validates_source_and_target_hashes_and_write_canary():
+    snapshot={"phase":"verify","result":"verified","source_counts_match_backup":True}
+    expected={"papers":"a"*64,"profiles":"b"*64}
+    with patch("backend.managed_migration.verify_persisted_target",return_value=snapshot), \
+         patch("backend.managed_migration._data_fingerprints",side_effect=[expected,expected]), \
+         patch("backend.managed_migration._application_target_canary",
+               return_value={"critical_tables_readable":True,
+                             "transactional_write_rollback_passed":True}) as canary:
+        report=m.precutover_verify(m._cfg(SRC),m._cfg(DST))
+    assert report["result"]=="ready"
+    assert report["tables"]==2
+    assert report["all_table_content_hashes_match"] is True
+    assert report["main_database_switched"] is False
+    canary.assert_called_once()
+
+
+def test_target_canary_rolls_back_uncommitted_write():
+    from unittest.mock import MagicMock
+    engine=MagicMock()
+    con=engine.connect.return_value.__enter__.return_value
+    con.execute.side_effect=[
+        MagicMock(scalar_one=lambda:1),
+        MagicMock(scalar_one=lambda:1),
+        MagicMock(scalar_one=lambda:55),
+        MagicMock(scalar_one=lambda:28),
+        MagicMock(),
+        MagicMock(scalar_one=lambda:1),
+    ]
+    with patch("sqlalchemy.create_engine",return_value=engine):
+        report=m._application_target_canary(m._cfg(DST))
+    assert report["transactional_write_rollback_passed"]
+    con.begin.return_value.rollback.assert_called_once()
+    engine.dispose.assert_called_once()
