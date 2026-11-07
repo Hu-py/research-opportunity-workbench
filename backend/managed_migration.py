@@ -499,6 +499,14 @@ def precutover_verify(source,target):
     source_digests=_data_fingerprints(source)
     target_digests=_data_fingerprints(target)
     if source_digests!=target_digests:
+        mismatches=sorted(
+            name for name in (set(source_digests)|set(target_digests))
+            if source_digests.get(name)!=target_digests.get(name)
+        )
+        # Table identifiers only; NEVER log record contents, IDs, row hashes
+        # or anything that could reveal passwords or private research data.
+        LOG.warning("MIGRATION_CONTENT_MISMATCH_TABLES %s",
+                    json.dumps({"count":len(mismatches),"tables":mismatches}))
         raise MigrationGateError("source_target_row_content_mismatch")
     canary=_application_target_canary(target)
     return {"phase":"precutover","result":"ready",
