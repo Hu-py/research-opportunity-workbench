@@ -1,5 +1,8 @@
 # Progress
 
+To inspect this local public pilot: run `python -m scripts.topic_advisor_report --portfolio` with the project virtualenv. Start FastAPI with `DATABASE_URL=sqlite:///data/topic-advisor/portfolio.db`, and the frontend with BACKEND_URL pointing to that local API. This dedicated preview database is separate from existing team records and production. CLI generation remains the only paid execution path.
+Current round: actual advisor B0/S0/S1 discovery comparison completed; see DISCOVERY_COMPARISON.md and discovery-comparison.json. S1 changes the existing default advisor to source-linked problem discovery and a binding critic gate. S1 withheld its flawed candidate; independent reviews prefer tie/none, so no scientific-discovery superiority is demonstrated. 114 tests passed. Cumulative 33 attempts / conservative CNY 1.073446; this round 11 / CNY 0.206358. Stop paid work at this checkpoint; historical entries below retained.
+
 Latest round: generic B0 single Pro advisor on two ResearchBench development cases. 2/2 calls completed, 0/2 reference agreement, repeat run 0 additional calls. New task checkpoint/schema layer tested; no demonstrated scientific-quality gain. Source license review and limitations recorded in OPEN_SOURCE_REVIEW.md and B0_PROTOCOL.md. Public results in b0-v1-results.json. Cumulative 22 requests / CNY 0.867088; prior history below retained. No B1/B2, private-team training or holdout tuning performed.
 
 Latest checkpoint: reader cardinality fix and one successful five-paper live probe. Cumulative 20 requests / conservative CNY 0.828424; see NEXT_ACTIONS.md for recovery and scope. Earlier figures below describe the original pilot. The current task is publication for independent review, with no new paid experiments.
@@ -15,5 +18,3 @@ Live evaluation stopped after persistent DeepSeek 503/timeouts. 19 attempted cal
 Final local checks: full suite **102 passed** (one existing Starlette deprecation warning), frontend TypeScript and production build passed. Browser loaded the real B portfolio and opened its reasoned-feedback form successfully using Next.js webpack mode. Turbopack dev exhibited repeated navigation/rebuilds in this workspace; use webpack for this preview.
 
 Remaining: live validation of targeted nearest-prior-art retrieval; full UI launch flow and durable asynchronous production runner; held-out evaluation; meaningful portfolio version editing; human-memory integration into repeated live evaluation; completed blind reviews. The requested complete first-round acceptance criteria are NOT yet met.
-
-To inspect this local public pilot: run `python -m scripts.topic_advisor_report --portfolio` with the project virtualenv. Start FastAPI with `DATABASE_URL=sqlite:///data/topic-advisor/portfolio.db`, and the frontend with BACKEND_URL pointing to that local API. This dedicated preview database is separate from existing team records and production. CLI generation remains the only paid execution path.

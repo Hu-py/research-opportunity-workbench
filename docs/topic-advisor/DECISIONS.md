@@ -1,5 +1,8 @@
 # Decisions and audit
 
+Follow-up: cardinality is owned by each stage's validator, never a global model-transport instruction. A's original prompts must remain unchanged for faithful baseline comparison. A one-call live reader probe supports complete evidence coverage under the corrected contract; it does not establish improved topic value. No further paid experiments during branch publication/review.
+2026-11-07: retain source-linked problem discovery and binding critic decisions in existing advisor C revision 3. Preserve C revisions 1/2 and frozen S0 commit. Merge redundant three-lens generation into one problem stage provisionally. This is an integrity/simplicity decision, not a demonstrated scientific-quality improvement. Independent reviews tie/none; unsupported gap assertions remain the next bottleneck. See DISCOVERY_COMPARISON.md.
+
 2026-11-07 general-baseline round: optimize recovery/evidence completeness only. Hypothesis: task-level immutable input/config hashes and explicit started/completed/failed checkpoints prevent duplicate paid work and unscorable missing evidence. Failure criterion: repeat execution bills again or invalid output receives a score. Two live cases completed; exact replay made zero calls; malformed-output and interruption tests pass. Do not interpret two reference-label disagreements as verified low scientific value. Freeze B0 v1; no post-result prompt tuning. See B0_PROTOCOL.md for fixed rubric and licensing constraints.
 
 2026-11-07: reviewed profile_database, preanalysis, weekly_synthesis, research_evidence_export, model_gateway, research_budget, discovery, ai_lab, scientific_agent, scientific_tournament, API dependencies and Next.js integration.
@@ -11,5 +14,3 @@ Research Agent Lab read-only review at 94845f3247a02b678e147918d2b160d8cd91c126:
 Initial live failures: missing mandatory `why_now` on a second generated topic, plus truncated JSON. Improvement: common concise field constraints, one complete topic per proposal, larger bounded output ceiling. Preserve rejected raw responses in local audit storage. A/B/C share frozen evidence but differ in request counts; describe this explicitly.
 
 Reviewer independence: Pro reviews Flash outputs in new contexts with anonymized labels; two perspectives are not two independent model families or human reviewers. Synthetic team capability statements are never facts about the real team. Public bibliography is not human-approved literature; A is a prompt-level replay on that frozen evidence, not a claim that production eligibility gates were passed.
-
-Follow-up: cardinality is owned by each stage's validator, never a global model-transport instruction. A's original prompts must remain unchanged for faithful baseline comparison. A one-call live reader probe supports complete evidence coverage under the corrected contract; it does not establish improved topic value. No further paid experiments during branch publication/review.

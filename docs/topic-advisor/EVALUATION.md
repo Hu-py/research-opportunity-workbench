@@ -1,5 +1,8 @@
 # Live evaluation
 
+This call used 2,110 input / 513 output tokens, estimated CNY 0.008324. Updated cumulative totals: **20 requests, 25,432 observed input / 5,250 observed output tokens; CNY 0.828424 including full reservations for nine unknown-usage attempts**. Current publication task makes no additional paid calls.
+Latest actual system evaluation: [B0/S0/S1 discovery comparison](DISCOVERY_COMPARISON.md), with [full public audit](discovery-comparison.json). Same five-paper context, real Flash generation and two fresh Pro reviews. S1 fixed critic bypass but produced no accepted recommendation and no demonstrated quality gain. This supersedes ranking-task results as evidence about advisor discovery; it does not erase them.
+
 ## Latest: general B0 smoke baseline
 
 Protocol: B0_PROTOCOL.md; source/dependency review: OPEN_SOURCE_REVIEW.md; real outputs and costs: b0-v1-results.json. Two fixed ResearchBench development records (astronomy and biology), anonymized reference plus two negative variants; DeepSeek V4 Pro, one call per case. No private/team input. No hidden cases used. Ranking adaptation is not the official benchmark protocol.
@@ -52,5 +55,3 @@ Answer to the central question: **there is currently no evidence that the new sy
 Removed the global "every list at most three items" instruction, which contradicted the five-paper reader contract. Kept candidate-count restrictions at generation only. A now receives the original baseline prompts without transport-added modifications.
 
 One real Flash call on the unchanged heat development bibliography returned all five expected IDs and passed the existing reader validator. The abstract-free paper remained metadata-only. This is a completeness check, not a paired scientific-quality experiment: no measured 60%-to-100% improvement is claimed, and no new topic or blind review was generated. The 3/5 figure is only the logical maximum if the old instruction were obeyed.
-
-This call used 2,110 input / 513 output tokens, estimated CNY 0.008324. Updated cumulative totals: **20 requests, 25,432 observed input / 5,250 observed output tokens; CNY 0.828424 including full reservations for nine unknown-usage attempts**. Current publication task makes no additional paid calls.
