@@ -1,5 +1,7 @@
 # Paper Understanding v1 — Research Reasoning Exemplars
 
+Implementation checkpoint: optional reading capability now runs through the existing gateway/ledger, with L3 validation, L2 links, L1 page evidence and citation audits. See [RESULTS.md](RESULTS.md), [RUNNING.md](RUNNING.md), and [PU-003-REVIEW.md](PU-003-REVIEW.md). The real R0/R1/R2 cycle did **not** establish exemplar-learning success; both structured R2 attempts failed strict checks. Original demonstration status below remains unchanged.
+
 > Status: **draft / pending full-text evidence audit**. Added as versioned development examples, **not** as authoritative scientific ground truth, reviewed training labels, or an evaluation holdout.
 > First committed: 2026-11-07. Sources and interpretations come from the preceding human/assistant discussion; this commit does not claim a new line-by-line PDF audit.
 
@@ -21,7 +23,7 @@
 
 Every claim must distinguish: (a) source-reported fact or author-stated limitation; (b) analyst inference or criticism; (c) human preference about educational salience. Section references are *navigation hints* until a human verifies the text in the accessible full version. Do not fabricate page numbers, quotations, precise causal findings or missing-literature assertions. Treat unavailable full text as **not read**, never as a research gap.
 
-## Intended integration (not yet implemented)
+## Integration principles
 
 1. Retrieve a compact card only when its reasoning pattern is relevant and the target paper differs from the exemplar.
 2. Provide original paper content and a neutral eight-part protocol to a reading Agent; never supply the same paper's answer card during a blind analysis.

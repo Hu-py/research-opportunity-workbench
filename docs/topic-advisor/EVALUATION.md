@@ -1,5 +1,7 @@
 # Live evaluation
 
+Latest: PU-003 full-text reading R0/R1/R2 and one repair yielded no demonstrated exemplar-learning gain. R2 identified bias as a research object but failed quote/schema checks; repair did not meet acceptance. Independent review itself contains errors. Source-based notes, raw outputs and costs: ../paper-understanding/v1/RESULTS.md. Cumulative 38 attempts / conservative CNY 1.434131. Earlier totals below are historical.
+
 This call used 2,110 input / 513 output tokens, estimated CNY 0.008324. Updated cumulative totals: **20 requests, 25,432 observed input / 5,250 observed output tokens; CNY 0.828424 including full reservations for nine unknown-usage attempts**. Current publication task makes no additional paid calls.
 Latest actual system evaluation: [B0/S0/S1 discovery comparison](DISCOVERY_COMPARISON.md), with [full public audit](discovery-comparison.json). Same five-paper context, real Flash generation and two fresh Pro reviews. S1 fixed critic bypass but produced no accepted recommendation and no demonstrated quality gain. This supersedes ranking-task results as evidence about advisor discovery; it does not erase them.
 

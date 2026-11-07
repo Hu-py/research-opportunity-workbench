@@ -1,5 +1,7 @@
 # Progress
 
+Latest checkpoint — Paper Understanding v1: synced upstream exemplars; parsed all 11 pages of user-provided PU-003 PDF by OCR; real R0/R1/R2 plus one targeted R2 revision and independent review completed. R0/R1 pass; both R2 outputs retained as validation failures. No clear exemplar benefit; no S1 behavior change. Full suite 120 passed. This round 5 calls / CNY 0.360685; cumulative 38 calls / conservative CNY 1.434131. Exact inputs remain in original local ledger; public outputs and analysis in ../paper-understanding/v1/. Earlier notes below are historical.
+
 To inspect this local public pilot: run `python -m scripts.topic_advisor_report --portfolio` with the project virtualenv. Start FastAPI with `DATABASE_URL=sqlite:///data/topic-advisor/portfolio.db`, and the frontend with BACKEND_URL pointing to that local API. This dedicated preview database is separate from existing team records and production. CLI generation remains the only paid execution path.
 Current round: actual advisor B0/S0/S1 discovery comparison completed; see DISCOVERY_COMPARISON.md and discovery-comparison.json. S1 changes the existing default advisor to source-linked problem discovery and a binding critic gate. S1 withheld its flawed candidate; independent reviews prefer tie/none, so no scientific-discovery superiority is demonstrated. 114 tests passed. Cumulative 33 attempts / conservative CNY 1.073446; this round 11 / CNY 0.206358. Stop paid work at this checkpoint; historical entries below retained.
 

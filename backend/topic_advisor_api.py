@@ -14,6 +14,13 @@ class Decision(BaseModel):
 
 
 def mount(app, get_factory, require_actor, require_editor):
+    @app.get("/api/topic-advisor/paper-understanding/examples", dependencies=[Depends(require_actor)])
+    def reading_examples(target_doi: str = ""):
+        from backend.paper_understanding import retrieve_cases
+        return {"cases": retrieve_cases(target_doi, ["scientific_problem_reframing", "causal_boundary"]),
+                "status": "development_exemplars_pending_passage_audit",
+                "affects_recommendations": False}
+
     @app.get("/api/topic-advisor", dependencies=[Depends(require_actor)])
     def portfolio():
         factory = get_factory()

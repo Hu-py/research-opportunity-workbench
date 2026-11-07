@@ -1,5 +1,7 @@
 # Research Topic Advisor
 
+Current learning scope: Paper Understanding is an optional source-grounded reading capability, isolated from S1 recommendations. PU-001/002 remain provisional development exemplars; PU-003 is now a development case. No training-success or generalization claim. See ../paper-understanding/v1/RESULTS.md.
+
 Scope: evidence/context, confirmed decision memory, three discovery paths, scientific criticism, revision, portfolio and feedback. Excludes executing scientific studies, writing papers and research-reward reinforcement learning.
 Current priority: improve the existing Topic Advisor's autonomous scientific problem discovery, not hypothesis ranking. Use source-grounded competing explanations and independent evaluation; permit abstention. The first B0/S0/S1 cycle found an integrity improvement but no demonstrated scientific-quality gain (DISCOVERY_COMPARISON.md).
 

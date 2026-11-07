@@ -1,5 +1,7 @@
 # Decisions and audit
 
+2026-11-07 Paper Understanding: reuse gateway, ledger, source registry and authenticated Advisor API; no new agent framework or S1 recommendation change. Keep source text local, publish only hashes/necessary quotations/outputs. Do not promote failed R2 revision 2. Next work is OCR-aware stable evidence locations and claim-level entailment, followed by an unseen-paper same-contract with/without-cards comparison; do not expand to dozens of papers yet.
+
 Follow-up: cardinality is owned by each stage's validator, never a global model-transport instruction. A's original prompts must remain unchanged for faithful baseline comparison. A one-call live reader probe supports complete evidence coverage under the corrected contract; it does not establish improved topic value. No further paid experiments during branch publication/review.
 2026-11-07: retain source-linked problem discovery and binding critic decisions in existing advisor C revision 3. Preserve C revisions 1/2 and frozen S0 commit. Merge redundant three-lens generation into one problem stage provisionally. This is an integrity/simplicity decision, not a demonstrated scientific-quality improvement. Independent reviews tie/none; unsupported gap assertions remain the next bottleneck. See DISCOVERY_COMPARISON.md.
 

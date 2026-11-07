@@ -1,5 +1,7 @@
 # Recovery checkpoint — 2026-11-07
 
+CURRENT ledger checkpoint: 38 attempted requests / conservative CNY 1.434131. Preserve data/topic-advisor/experiments.db and data/paper-understanding/PU-003/evidence.json. Reconcile all 38 before any paid continuation; published latest usage is ../paper-understanding/v1/runs/PU-003/usage.json. Missing ledger means stop, never reset. No further paid work this round. Human review of ../paper-understanding/v1/PU-003-REVIEW.md first; then OCR paragraph/quote verification and a fresh-paper same-format card ablation. Both R2 failures and reviewer mistakes must remain visible. Earlier plans and smaller ledger totals below are historical.
+
 Before further calls, re-read the actual `data/topic-advisor/experiments.db` ledger and confirm it has at least the recorded 20 attempts. If the ledger is absent or cannot reconcile with committed records, make no paid calls until accounting is recovered. Never initialize a new ledger to bypass cumulative limits.
 LATEST checkpoint: actual advisor cycle complete; 33 attempted calls / conservative CNY 1.073446 in the original ledger. Do not reuse earlier 20/22 floors as current accounting. Reconcile all 33 and discovery-comparison.json before any paid continuation; absent ledger means stop. Next: inspect source support for alleged gaps and seek human assessment of critic strictness, then at most one fresh-case paired test of a prior-work/residual-uncertainty contract. No extra agents, no hidden-case tuning. See DISCOVERY_COMPARISON.md. Earlier plans below are historical.
 
