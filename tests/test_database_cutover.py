@@ -52,3 +52,41 @@ def test_source_connection_not_mutated_during_selection(monkeypatch):
         "postgresql://u:p@aws-1-us-west-2.pooler.supabase.com/postgres")
     resolve_database_url()
     assert __import__("os").environ["DATABASE_URL"]==original
+
+
+def test_supabase_factory_is_reused_and_respects_connection_change(monkeypatch):
+    import research_workbench.core as core
+    core._supabase_cached_factory.cache_clear()
+    monkeypatch.setenv("RESEARCH_DATABASE_PROVIDER","supabase")
+    first_url="postgresql://u:p@aws-1-us-west-2.pooler.supabase.com/postgres"
+    second_url="postgresql://u:p2@aws-1-us-west-2.pooler.supabase.com/postgres"
+    monkeypatch.setenv("MIGRATION_TARGET_DATABASE_URL",first_url)
+    calls=[]
+    def fake_build(url):
+        calls.append(url)
+        return object()
+    monkeypatch.setattr(core,"_build_session_factory",fake_build)
+    try:
+        first=core.session_factory()
+        assert first is core.session_factory()
+        assert len(calls)==1
+        monkeypatch.setenv("MIGRATION_TARGET_DATABASE_URL",second_url)
+        assert core.session_factory() is not first
+        assert len(calls)==2
+        assert calls[0].password=="p"
+        assert calls[1].password=="p2"
+    finally:
+        core._supabase_cached_factory.cache_clear()
+
+
+def test_explicit_session_factory_never_reuses_cached_target(monkeypatch):
+    import research_workbench.core as core
+    monkeypatch.setenv("RESEARCH_DATABASE_PROVIDER","supabase")
+    calls=[]
+    def fake_build(url):
+        calls.append(url)
+        return object()
+    monkeypatch.setattr(core,"_build_session_factory",fake_build)
+    core.session_factory("sqlite:///:memory:")
+    core.session_factory("sqlite:///:memory:")
+    assert calls==["sqlite:///:memory:","sqlite:///:memory:"]
