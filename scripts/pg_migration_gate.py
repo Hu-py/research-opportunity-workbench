@@ -146,6 +146,7 @@ def guarded_backup(source: PgTarget, archive: Path):
     flags=["pg_dump","--format=custom","--schema=public",
            "--no-owner","--no-privileges","--no-subscriptions",
            "--file",str(archive)]
+    previous_umask=os.umask(0o077)  # Archive and manifest must never be world-readable, even briefly.
     try:
         run_command(flags,source)
         os.chmod(archive,0o600)
@@ -171,6 +172,8 @@ def guarded_backup(source: PgTarget, archive: Path):
         if archive.exists():
             archive.unlink()
         raise
+    finally:
+        os.umask(previous_umask)
 
 
 def verify_archive(archive: Path):
