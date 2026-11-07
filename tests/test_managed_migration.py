@@ -1,0 +1,111 @@
+"""Safety guards for server-side migration; never touches real PostgreSQL."""
+import os
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from backend import managed_migration as m
+
+
+SRC="postgresql+psycopg://reader:pa%40ss@internal.render.com:5432/research_atlas_test_db"
+DST="postgresql://postgres.sample:secret@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+
+
+def test_credentials_are_not_put_into_process_arguments():
+    cfg=m._cfg(SRC)
+    env=m._client_env(cfg)
+    assert cfg.password=="pa@ss"
+    assert env["PGPASSWORD"]=="pa@ss"
+    assert env["PGHOST"]=="internal.render.com"
+    with patch("backend.managed_migration.subprocess.run") as run:
+        run.return_value.returncode=0
+        m._run(["pg_dump","--format=custom","--file","/tmp/test.dump"],cfg)
+    assert all("pa@ss" not in str(x) for x in run.call_args.args[0])
+    assert "PGPASSWORD" in run.call_args.kwargs["env"]
+
+
+def test_reject_non_postgres_and_missing_uri():
+    with pytest.raises(m.MigrationGateError,match="missing_database_url"):
+        m._cfg("")
+    with pytest.raises(m.MigrationGateError,match="invalid_database_url"):
+        m._cfg("sqlite:///tmp/some.db")
+
+
+def test_same_database_and_non_supabase_target_disallowed():
+    source=m._cfg(SRC)
+    with pytest.raises(m.MigrationGateError,match="same_database"):
+        m._validate_target(source,source)
+    with pytest.raises(m.MigrationGateError,match="target_must_be_supabase_pooler"):
+        m._validate_target(source,m._cfg("postgresql://u:p@random.example.net/postgres"))
+    with pytest.raises(m.MigrationGateError,match="target_database_name_unexpected"):
+        m._validate_target(source,m._cfg(
+            "postgresql://u:p@aws-1-us-west-2.pooler.supabase.com/not_postgres"))
+
+
+def test_safe_restore_list_filters_schema_only():
+    toc="""; comment
+1; 2615 2200 SCHEMA - public postgres
+2; 0 0 COMMENT - SCHEMA public postgres
+3; 1259 238 TABLE public profiles postgres
+4; 0 238 TABLE DATA public profiles postgres
+5; 1259 249 TABLE public team_achievements postgres
+6; 0 249 TABLE DATA public team_achievements postgres
+"""
+    filtered=m._skip_public_schema_toc(toc)
+    assert "SCHEMA - public " not in filtered
+    assert "COMMENT - SCHEMA public" not in filtered
+    assert "TABLE public profiles" in filtered
+    assert "TABLE DATA public team_achievements" in filtered
+
+
+def test_disabled_by_default_and_recovers_from_errors(monkeypatch):
+    monkeypatch.delenv("MANAGED_MIGRATION_PHASE",raising=False)
+    assert m.execute_from_env() is None
+    monkeypatch.setenv("MANAGED_MIGRATION_PHASE","backup")
+    monkeypatch.setenv("DATABASE_URL",SRC)
+    monkeypatch.setenv("MIGRATION_TARGET_DATABASE_URL",DST)
+    with patch("backend.managed_migration.backup_to_private_checkpoint",
+               side_effect=m.MigrationGateError("target_public_schema_is_not_empty")):
+        response=m.execute_from_env()
+    assert response=={
+        "phase":"backup", "result":"failed",
+        "category":"target_public_schema_is_not_empty"
+    }
+
+
+def test_duplicate_backup_is_noop(monkeypatch):
+    # Once saved, re-running can NEVER overwrite the immutable checkpoint.
+    monkeypatch.setattr(m,"_validate_target",lambda a,b:None)
+    monkeypatch.setattr(m,"_validate_source",lambda a:{"profiles":1})
+    from contextlib import contextmanager
+
+    class FakeConnection:
+        def __enter__(self): return self
+        def __exit__(self,*args):return False
+    conn=FakeConnection()
+
+    monkeypatch.setattr(m,"_conn",lambda a:conn)
+    monkeypatch.setattr(m,"_checkpoint_setup",lambda a:None)
+    monkeypatch.setattr(m,"_read_checkpoint",lambda a:(
+        "8"*64,1024,{"profiles":1},b"archive",None
+    ))
+    with patch("backend.managed_migration._run") as runner:
+        result=m.backup_to_private_checkpoint(m._cfg(SRC),m._cfg(DST))
+    assert result["result"]=="already_saved"
+    assert runner.call_count==0
+
+
+def test_no_public_restore_before_checkpoint_validated(monkeypatch):
+    from contextlib import contextmanager
+    class FakeConn:
+        def __enter__(self):return self
+        def __exit__(self,*args):return False
+        def cursor(self):raise AssertionError("Should not use cursor when checkpoint is missing")
+    monkeypatch.setattr(m,"_validate_target",lambda a,b:None)
+    monkeypatch.setattr(m,"_conn",lambda a:FakeConn())
+    monkeypatch.setattr(m,"_read_checkpoint",lambda a:None)
+    with patch("backend.managed_migration._run") as runner:
+        with pytest.raises(m.MigrationGateError,match="checkpoint_not_found"):
+            m.restore_from_private_checkpoint(m._cfg(SRC),m._cfg(DST))
+    runner.assert_not_called()
