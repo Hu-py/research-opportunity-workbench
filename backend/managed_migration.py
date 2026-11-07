@@ -414,16 +414,114 @@ def verify_persisted_target(source,target):
             "independent_offsite_backup":False}
 
 
+
+def _data_fingerprints(url):
+    """Hash every row of every app table in deterministic order, leaking no values."""
+    from psycopg import sql
+    with _conn(url) as conn:
+        conn.read_only = True
+        with conn.cursor() as cur:
+            cur.execute("SET TIME ZONE 'UTC'")
+            cur.execute("""SELECT c.relname FROM pg_catalog.pg_class c
+                JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                WHERE n.nspname='public' AND c.relkind IN ('r','p')
+                ORDER BY c.relname""")
+            names=[row[0] for row in cur.fetchall()]
+            digests={}
+            for name in names:
+                # Avoid ever loading actual row data into logs or exception text.
+                h=hashlib.sha256()
+                statement=sql.SQL("""SELECT row_to_json(t)::text
+                      FROM {}.{} AS t ORDER BY row_to_json(t)::text""").format(
+                    sql.Identifier("public"),sql.Identifier(name))
+                cur.execute(statement)
+                for (json_text,) in cur:
+                    payload=json_text.encode("utf-8")
+                    h.update(len(payload).to_bytes(8,"big"))
+                    h.update(payload)
+                digests[name]=h.hexdigest()
+    return digests
+
+
+def _application_target_canary(target):
+    """Read critical tables and transactionally test a write that is rolled back."""
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.pool import NullPool
+    engine=None
+    try:
+        # Plain postgresql:// incorrectly selects psycopg2 on some SQLAlchemy versions.
+        engine=create_engine(
+            target.set(drivername="postgresql+psycopg"),
+            poolclass=NullPool,
+            connect_args={"sslmode":"require","connect_timeout":12},
+        )
+        with engine.connect() as con:
+            tx=con.begin()
+            try:
+                stats={}
+                for table in ("profiles","team_members","team_achievements","cusp_datasets"):
+                    # These identifiers are constant literals, not user input.
+                    stats[table]=int(con.execute(text(
+                        'SELECT count(*) FROM public."' + table + '"'
+                    )).scalar_one())
+                if any(stats[t]<1 for t in stats):
+                    raise MigrationGateError("required_team_records_missing")
+                # Tests server-side app role can write to the target; will NEVER commit.
+                probe=hashlib.sha256(os.urandom(32)).hexdigest()
+                con.execute(text("""INSERT INTO public.team_login_throttle
+                    (key, failures, window_until, blocked_until)
+                    VALUES (:id, 0, 0, 0)"""),{"id":probe})
+                exists=int(con.execute(text(
+                    "SELECT count(*) FROM public.team_login_throttle WHERE key=:id"
+                ),{"id":probe}).scalar_one())
+                if exists!=1:
+                    raise MigrationGateError("target_transactional_write_failed")
+            finally:
+                tx.rollback()
+        return {"critical_tables_readable":True,
+                "transactional_write_rollback_passed":True,
+                "profile_present":stats["profiles"]>=1,
+                "team_member_present":stats["team_members"]>=1}
+    except MigrationGateError:
+        raise
+    except Exception:
+        raise MigrationGateError("sqlalchemy_canary_failed") from None
+    finally:
+        if engine is not None:
+            engine.dispose()
+
+
+def precutover_verify(source,target):
+    """Verify actual contents, access and rollback semantics before cutover."""
+    result=verify_persisted_target(source,target)
+    if not result["source_counts_match_backup"]:
+        raise MigrationGateError("source_changed_since_snapshot")
+    source_digests=_data_fingerprints(source)
+    target_digests=_data_fingerprints(target)
+    if source_digests!=target_digests:
+        raise MigrationGateError("source_target_row_content_mismatch")
+    canary=_application_target_canary(target)
+    return {"phase":"precutover","result":"ready",
+            "tables":len(source_digests),
+            "all_table_content_hashes_match":True,
+            "source_counts_match_backup":True,
+            "target_access":canary,
+            "main_database_switched":False,
+            "old_render_database_preserved":True,
+            "independent_offsite_backup":False}
+
+
 def execute_from_env():
     phase=os.getenv("MANAGED_MIGRATION_PHASE","").strip()
-    if phase not in ("backup","restore","verify"):
+    if phase not in ("backup","restore","verify","precutover"):
         return None
     try:
         source=_cfg(os.getenv("DATABASE_URL",""))
         target=_cfg(os.getenv("MIGRATION_TARGET_DATABASE_URL",""))
         result = (backup_to_private_checkpoint(source,target) if phase=="backup"
                   else restore_from_private_checkpoint(source,target) if phase=="restore"
-                  else verify_persisted_target(source,target))
+                  else verify_persisted_target(source,target) if phase=="verify"
+                  else precutover_verify(source,target))
         LOG.info("SERVER_SIDE_MIGRATION_RESULT %s",json.dumps(result,sort_keys=True))
         return result
     except MigrationGateError as exc:
