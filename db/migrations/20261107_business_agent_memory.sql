@@ -5,7 +5,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS business_agent_runs (
     id VARCHAR(36) PRIMARY KEY,
-    run_key VARCHAR(120) NOT NULL UNIQUE,
+    run_key VARCHAR(120) NOT NULL,
     request_hash VARCHAR(64) NOT NULL,
     context_hash VARCHAR(64) NOT NULL,
     topic VARCHAR(240) NOT NULL,
