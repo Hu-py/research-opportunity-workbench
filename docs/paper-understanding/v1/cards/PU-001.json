@@ -1,0 +1,41 @@
+{
+  "schema_version": "paper-understanding-v1",
+  "case_id": "PU-001",
+  "title": "城市意象：从要素识别到关系组织",
+  "citation": {
+    "authors": "Shen, Xu & Liu",
+    "year": 2021,
+    "doi": "10.3390/ijgi10110740",
+    "url": "https://www.mdpi.com/2220-9964/10/11/740"
+  },
+  "competency_tags": [
+    "scientific_problem_reframing",
+    "research_object_reframing",
+    "method_necessity"
+  ],
+  "reasoning_pattern": "Research Object Reframing",
+  "existing_knowledge": "基于地理标记照片的研究能够识别城市意象中的显著元素及其空间分布。",
+  "problem_origin": "当研究只能识别组成部分、却不能充分刻画它们的组织关系时，复杂研究对象的测量可能不完整。",
+  "question_before": "城市意象中有哪些显著元素？它们在哪里集聚？",
+  "question_after": "元素之间如何通过共现、层级、空间及群体差异构成城市意象的复合结构？",
+  "reasoning_turn": "从识别组成要素转向理解要素的组织关系。方法选择应由需要解释的关系反推。",
+  "substantive_increment": "将城市意象的可分析对象拓展为多维元素关系，并展示元素频率之外的补充结构信息。",
+  "method_necessity": "需要对应共现、结构层级、空间聚集和群体差异的关系分析及测度方法，而非为使用某算法拼接研究题目。",
+  "evidence_boundary": "论文报告的是众包照片中的模式；共现不直接证明心理认知机制或因果关系。完整创新性需查验先前研究。",
+  "applicability_conditions": [
+    "存在明确的要素式测度遗漏及其科学后果",
+    "关系结构有可操作化的测量和证伪方式",
+    "改变解释对象带来原方法无法回答的新问题"
+  ],
+  "failure_pattern": "仅仅在既有研究中加入GNN/关系指标，就宣称科学创新。",
+  "positive_transfer": "先检验显著元素频率是否足以解释意象结构，再决定需要什么关系建模。",
+  "counterfactual_test": "替换具体算法后科学问题是否仍重要？删除关系问题后是否只剩方法拼装？",
+  "evidence_status": "reasoned_draft_pending_passage_audit",
+  "human_feedback": {
+    "status": "priority_confirmed",
+    "priority": "scientific_problem_reframing",
+    "scope": "teaching_priority_not_truth_label"
+  },
+  "training_use": "development_exemplar_not_holdout",
+  "full_archive_path": "docs/paper-understanding/v1/cases/PU-001.md"
+}
