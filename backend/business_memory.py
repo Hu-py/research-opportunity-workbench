@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel as Schema, Field
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func, inspect, select
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func, inspect, select, text as sql_text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -161,6 +161,32 @@ def _run_view(db: Session, row: BusinessAgentRun):
             **json.loads(idea.payload_json)
         } for idea in ideas]
     }
+
+
+
+def secure_new_tables(db: Session) -> None:
+    """Enforce table-level RLS and prevent direct Supabase Data API access.
+
+    New tables are strictly server-side; no client-side SELECT policies exist.
+    The Supabase project's public schema is already closed to API roles.
+    """
+    if db.get_bind().dialect.name!="postgresql":
+        return
+    protected=("business_agent_runs","business_agent_ideas","business_meeting_feedback")
+    allowed=set(inspect(db.get_bind()).get_table_names(schema="public"))
+    if not set(protected).issubset(allowed):
+        raise RuntimeError("New Business memory tables are not present")
+    for name in protected:
+        db.execute(sql_text("ALTER TABLE public."+name+" ENABLE ROW LEVEL SECURITY"))
+        db.execute(sql_text("REVOKE ALL ON TABLE public."+name+" FROM PUBLIC"))
+    for role in ("anon","authenticated","service_role"):
+        present=db.execute(sql_text(
+            "SELECT count(*) FROM pg_roles WHERE rolname=:r"),{"r":role}).scalar_one()
+        if present:
+            for name in protected:
+                # Role and table identifiers are fixed literals from this module.
+                db.execute(sql_text("REVOKE ALL ON TABLE public."+name+" FROM "+role))
+    db.commit()
 
 
 def mount(app, *, get_db, require_actor, require_editor, require_admin):
