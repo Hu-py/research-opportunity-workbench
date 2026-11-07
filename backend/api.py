@@ -262,7 +262,7 @@ async def lifespan(app:FastAPI):
     # Explicit one-shot server-side migration, never on by default.
     # Executes only on Render with MANAGED_MIGRATION_PHASE=backup|restore.
     # Restores only to a separate isolated target and never changes DATABASE_URL.
-    if os.getenv("MANAGED_MIGRATION_PHASE","").strip() in ("backup","restore"):
+    if os.getenv("MANAGED_MIGRATION_PHASE","").strip() in ("backup","restore","verify"):
         from backend.managed_migration import execute_from_env
         execute_from_env()
     logging.getLogger("uvicorn.error").info(
