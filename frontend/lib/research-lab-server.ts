@@ -69,7 +69,7 @@ export function safeListItem(row:Record<string,unknown>) {
     row.results as Record<string,unknown>:{};
   return {
     id:String(row.id||""),line_id:String(row.line_id||""),
-    status:String(row.status||""),strategy:String(row.strategy||""),
+    status:String(result.recommendation_state||row.status||""),strategy:String(row.strategy||""),
     created_at:String(row.created_at||""),
     model_calls:Number(row.model_calls||0),
     provider_calls:Number(result.provider_calls??row.model_calls??0),
@@ -88,7 +88,7 @@ export function safeDetail(row:Record<string,unknown>) {
     "paper_ids","ranked_candidates","archived_candidates","matches",
     "supervisor_decisions","screening","knowledge","event_log","comparison_context",
     "cache_hits","provider_calls","human_review_required","bilingual_report",
-    "feasibility","minimum_viable_plan"
+    "feasibility","minimum_viable_plan","recommendation_state"
   ];
   const result:Record<string,unknown>={};
   for(const key of allow)if(Object.prototype.hasOwnProperty.call(r,key))result[key]=r[key];
