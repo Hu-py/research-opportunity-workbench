@@ -220,9 +220,20 @@ async def lifespan(app:FastAPI):
                 "MIGRATION_PREFLIGHT_RESULT %s",
                 json.dumps(probe, sort_keys=True),
             )
-        except (ValueError, RuntimeError):
+        except (ValueError, RuntimeError) as exc:
+            # inspect_target wraps all connection exceptions in fixed, non-sensitive
+            # messages, so categorize rather than emitting raw provider exceptions.
+            detail = str(exc)
+            categories = {
+                "Migration target is not configured": "target_missing",
+                "Source database is not configured": "source_missing",
+                "Invalid PostgreSQL connection configuration": "invalid_uri",
+                "The target is identical to the source; no migration allowed": "same_database",
+                "Target connection failed; check private connection string, SSL and network": "connection_failed",
+            }
+            category = categories.get(detail, "unknown")
             logging.getLogger("uvicorn.error").warning(
-                "MIGRATION_PREFLIGHT_FAILED: target configuration or connection check failed"
+                "MIGRATION_PREFLIGHT_FAILED category=%s", category
             )
     logging.getLogger("uvicorn.error").info(
         "OpenAlex API key configured: %s",
