@@ -207,6 +207,23 @@ async def lifespan(app:FastAPI):
         if os.getenv("PROFILE_AUDIT_ON_STARTUP","").strip()=="1":
             from backend.profile_audit import emit_log_report
             emit_log_report(db,logging.getLogger("uvicorn.error"))
+    # Optional, read-only, one-off Supabase migration target check.
+    # Never log DB URLs, credentials, hostnames, users, or error causes.
+    if os.getenv("MIGRATION_PREFLIGHT_ON_STARTUP", "").strip() == "1":
+        from backend.migration_preflight import inspect_target
+        try:
+            probe = inspect_target(
+                os.getenv("DATABASE_URL", ""),
+                os.getenv("MIGRATION_TARGET_DATABASE_URL", ""),
+            )
+            logging.getLogger("uvicorn.error").info(
+                "MIGRATION_PREFLIGHT_RESULT %s",
+                json.dumps(probe, sort_keys=True),
+            )
+        except (ValueError, RuntimeError):
+            logging.getLogger("uvicorn.error").warning(
+                "MIGRATION_PREFLIGHT_FAILED: target configuration or connection check failed"
+            )
     logging.getLogger("uvicorn.error").info(
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
