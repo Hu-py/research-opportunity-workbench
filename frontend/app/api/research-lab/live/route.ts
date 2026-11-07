@@ -3,7 +3,8 @@ import {configured,labRead,privateHeaders,sessionGate} from "@/lib/research-lab-
 
 export const dynamic="force-dynamic";
 const stages = new Set([
- "run_started","run_completed","run_failed","knowledge_discovery",
+ "run_started","run_completed","run_failed","feasibility_gate",
+ "feasibility_revision","no_recommendation","knowledge_discovery",
  "independent_paper_screen","generate","elo_tournament","supervisor",
  "hypothesis_evolution","hypothesis_expansion","rollback","scientific_gate"
 ]);
@@ -26,7 +27,8 @@ export async function GET(){
          row.details:{}) as Record<string,unknown>;
        const details:Record<string,unknown>={};
        for(const key of ["generation","retrieved","retained","disagreements",
-                         "matches","archived_generation","created_count","children_count","rejected_count"]){
+                         "matches","archived_generation","created_count","children_count",
+                         "eligible_count","blocked_count","revision_attempt","rejected_count"]){
          if(Number.isInteger(d[key])&&Number(d[key])>=0)details[key]=d[key];
        }
        for(const key of ["pilot_executed","data_feasible_assessment","no_valid_children"]){

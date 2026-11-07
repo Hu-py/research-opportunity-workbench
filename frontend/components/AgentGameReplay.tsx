@@ -15,6 +15,7 @@ type Candidate={
  origin?:string; generation?:number; parent_ids?:string[]; elo?:number; status?:string
 };
 type EventRow={stage:string;generation?:number;retrieved?:number;retained?:number;
+ eligible_count?:number;blocked_count?:number;revision_attempt?:number;reason_counts?:Record<string,number>;plan_mode?:string;
  rejected_count?:number;no_valid_children?:boolean;
  rejected_candidates?:{id:string;code:string}[];
  disagreements?:number;created?:string[];children?:{id:string;parent_ids:string[]}[];
@@ -30,7 +31,20 @@ type BilingualReport={
  fields?:Record<string,{zh:string;en:string}>;
  source?:string;reason_code?:string
 };
+type ResearchRecoveryPlan={
+ deliverable_type:string;research_line:string;research_question:string;
+ first_action:string;next_steps:string[];blocked_reason_codes:string[];
+ ready_for_empirical_experiment:boolean;requires_human_data_authorization:boolean;
+ mode:string;method_only_synthetic_pilot_executed?:boolean;method_pilot_warning?:string
+};
+type FeasibilitySummary={
+ mode?:string;eligible_count?:number;blocked_count?:number;reason_counts?:Record<string,number>;
+ blocked_candidates?:{id:string;reason_codes:string[]}[];
+ access_verified_dataset_count?:number;dataset_catalog_count?:number
+};
 type Result={
+ feasibility?:FeasibilitySummary;
+ minimum_viable_plan?:ResearchRecoveryPlan|null;
  bilingual_report?:BilingualReport|null;
  winner_id?:string;winner_title?:string;generation_count?:number;
  event_log?:EventRow[];lineage?:{id:string;parent_ids?:string[];generation?:number;origin?:string;status?:string}[];
@@ -69,6 +83,9 @@ const failureMessages:Record<string,string>={
 };
 const names:Record<string,string>={
  run_started:"实验开始",run_completed:"已完成并保存",run_failed:"运行失败",
+ feasibility_gate:"可行性检查 / Feasibility gate",
+ feasibility_revision:"定向修订 / Feasibility revision",
+ no_recommendation:"暂不可执行 / No executable study",
  knowledge_discovery:"论文检索 / Literature discovery",
  independent_paper_screen:"论文双审 / Independent screening",
  generate:"假设生成 / Hypothesis generation",
@@ -87,15 +104,20 @@ const summary:Record<string,string>={
  hypothesis_evolution:"独立 Critic 先提出反驳，再产生改进版本，保留父代。",
  hypothesis_expansion:"探索不同于已有候选的新方向。",
  rollback:"封存质量不足的新版本，仍保留历史记录。",
- scientific_gate:"核对基线、可证伪性、实验设计、数据可用性与证据局限。"
+ scientific_gate:"核对基线、可证伪性、实验设计、数据可用性与证据局限。",
+ feasibility_gate:"在 Elo 比赛前核验数据权限、真实字段、基线与实验协议。",
+ feasibility_revision:"根据具体阻断原因缩小研究范围，产生可追溯的子假设。",
+ no_recommendation:"没有通过硬门槛的实证研究，不产生虚假的冠军；输出最小行动方案。"
 };
 const displayStatus:Record<string,string>={
  candidate_for_human_review:"待人工评审",needs_more_evidence:"证据不足",
- running:"执行中",failed:"运行失败"
+ running:"执行中",failed:"运行失败",
+ no_executable_candidates:"没有可执行实证选题 / No executable study"
 };
 const originNames:Record<string,string>={
  problem:"问题视角",method:"方法视角",data:"数据视角",
- refine:"批评改写",fuse:"跨视角融合",boundary:"边界探索"
+ refine:"批评改写",fuse:"跨视角融合",boundary:"边界探索",
+ feasibility_repair:"可行性修订"
 };
 
 function asObject(x:unknown):Record<string,unknown>{
@@ -407,6 +429,8 @@ export default function AgentGameReplay({canLaunch=false}:{canLaunch?:boolean}){
     </div>
    </div>
 
+   <FeasibilityReview feasibility={result.feasibility}
+      plan={result.minimum_viable_plan}/>
    <BilingualResult report={result.bilingual_report||null}
       winnerTitle={result.winner_title||result.ranked_candidates?.[0]?.title||""}/>
    <section className="game-panel game-timeline">
@@ -448,6 +472,20 @@ export default function AgentGameReplay({canLaunch=false}:{canLaunch?:boolean}){
       <span className="game-round-tag">Generation {current?.generation??0}</span>
      </div>
      {!current&&<p className="game-muted">该运行没有保存可回放的事件。</p>}
+     {current?.stage==="feasibility_gate"&&
+       <div className="game-review-summary">
+         <div><strong>{current.eligible_count??0}</strong><span>进入竞争</span></div>
+         <div><strong>{current.blocked_count??0}</strong><span>被可行性阻断</span></div>
+         <div><strong>{current.revision_attempt??0}</strong><span>已尝试修订</span></div>
+       </div>}
+     {current?.stage==="feasibility_revision"&&
+       <div className="game-verdict"><strong>第 {current.revision_attempt??1} 次定向修订</strong>
+         <p>此节点尝试从阻断原因生成新版本；结果需再次通过独立可行性检查。</p>
+       </div>}
+     {current?.stage==="no_recommendation"&&
+       <div className="game-verdict"><strong>本轮未认定任何实证选题可执行</strong>
+         <p>没有制造一个 Elo 冠军。请查看上方的最小方案与缺失条件。</p>
+       </div>}
      {current?.stage==="knowledge_discovery"&&<div className="game-big-result">
        <BookOpen size={26}/><strong>{current.retrieved||0} 篇候选论文</strong>
        <p>检索后将进入独立双评审，后续不允许未登记的论文直接作为证据。</p>
@@ -661,5 +699,55 @@ function BilingualResult({report,winnerTitle}:{
       <ShieldAlert size={13}/> 双语摘要由模型生成，可能存在译意误差，应以原始记录为准。
       / AI translation may be imperfect; consult the original recorded evidence.
    </p>
+ </section>;
+}
+
+
+const gateReasons:Record<string,string>={
+ NO_DATASET_REFERENCE:"缺少登记数据 / No registered dataset",
+ DATASET_ACCESS_NOT_VERIFIED:"数据使用权限未核验 / Data access not verified",
+ DATASET_FIELDS_NOT_VERIFIED:"真实字段未核验 / Field schema not verified",
+ UNREGISTERED_DATASET:"使用了未登记数据 / Unregistered dataset",
+ UNREGISTERED_PAPER:"引用论文未登记 / Unregistered paper",
+ MISSING_EXECUTION_PLAN:"缺少结构化实验协议 / Missing executable protocol",
+ UNSUPPORTED_RESEARCH_PROTOCOL:"研究类型没有经过执行器审计 / Unsupported protocol",
+ INCOMPLETE_EXECUTION_PLAN:"实验方案不完整 / Incomplete experiment plan",
+ INSUFFICIENT_EXECUTION_STEPS:"实验执行步骤不足 / Insufficient steps",
+ FIELD_MAPPING_MISSING:"未建立数据字段映射 / Missing field mapping",
+ FIELD_MAPPING_UNKNOWN_DATASET:"字段映射数据集不匹配 / Invalid dataset mapping",
+ FIELD_MAPPING_NOT_REGISTERED:"引用了不存在的字段 / Unregistered field",
+ OUTCOME_FIELD_NOT_REGISTERED:"因变量没有真实字段 / Unregistered outcome",
+ NO_VERIFIED_EXECUTABLE_DATA:"没有通过权限及字段核验的数据 / No executable data",
+ INSUFFICIENT_VERIFIED_STUDY_PROTOCOL:"实验协议仍需核验 / Study protocol unverified"
+};
+function FeasibilityReview({feasibility,plan}:{
+ feasibility?:FeasibilitySummary;plan?:ResearchRecoveryPlan|null
+}){
+ if(!feasibility?.mode&&!plan)return null;
+ const reasons=feasibility?.reason_counts||{};
+ return <section className="game-panel game-feasibility">
+   <div className="game-panel-head"><div>
+     <span className="game-label">FEASIBILITY FIRST · EVIDENCE CONTRACT</span>
+     <h2>研究可执行性检查 / Executability review</h2>
+     <p>基于数据权限、字段和实验计划的程序预检查，不等于实证研究已经完成。</p>
+   </div></div>
+   <div className="game-feasibility-stats">
+     <div><strong>{feasibility?.eligible_count??0}</strong><small>初步通过 / Prechecked</small></div>
+     <div><strong>{feasibility?.blocked_count??0}</strong><small>阻断 / Blocked</small></div>
+     <div><strong>{feasibility?.access_verified_dataset_count??0}</strong>
+       <small>字段及权限已核验 / Verified assets</small></div>
+   </div>
+   {Object.entries(reasons).length>0&&<div className="game-feasibility-reasons">
+     <h3>阻断原因 / Blocking reasons</h3>
+     {Object.entries(reasons).map(([code,count])=>
+       <div key={code}><span>{gateReasons[code]||code}</span><b>{count}</b></div>)}
+   </div>}
+   {plan&&<div className="game-feasibility-plan">
+     <h3>最小行动方案 / Minimum actionable next steps</h3>
+     <p><strong>研究问题 / Question：</strong>{plan.research_question}</p>
+     <ol>{(plan.next_steps||[]).map((item,i)=><li key={i}>{item}</li>)}</ol>
+     <p className="game-feasibility-warning">注意：该方案尚未被认定可以执行真实数据实验。
+       / Data authorization or the research protocol must be verified independently.</p>
+   </div>}
  </section>;
 }
