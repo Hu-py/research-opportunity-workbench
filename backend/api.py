@@ -245,6 +245,20 @@ async def lifespan(app:FastAPI):
             logging.getLogger("uvicorn.error").warning(
                 "MIGRATION_PREFLIGHT_FAILED category=%s", category
             )
+    # Optional migration source inventory: only sizes and trusted table counts.
+    # Never returns research records, passwords, hostnames or connection strings.
+    if os.getenv("MIGRATION_SOURCE_AUDIT_ON_STARTUP", "").strip() == "1":
+        from backend.migration_preflight import source_inventory
+        try:
+            with factory() as source_db:
+                inventory = source_inventory(source_db)
+            logging.getLogger("uvicorn.error").info(
+                "MIGRATION_SOURCE_INVENTORY %s", json.dumps(inventory, sort_keys=True)
+            )
+        except (ValueError, Exception):
+            logging.getLogger("uvicorn.error").warning(
+                "MIGRATION_SOURCE_INVENTORY_FAILED"
+            )
     logging.getLogger("uvicorn.error").info(
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
