@@ -109,3 +109,34 @@ def test_failed_auth_is_classified_without_leaking_secret():
     assert "PRIVATE" not in str(error.value)
     assert "SECRET" not in str(error.value)
     assert engine.dispose.called
+
+
+def test_source_inventory_reports_counts_without_row_content():
+    from backend.migration_preflight import source_inventory
+    db = MagicMock()
+    db.get_bind.return_value.dialect.name = "postgresql"
+    def reply(value, list_mode=False):
+        result = MagicMock()
+        if list_mode:
+            result.scalars.return_value.all.return_value = value
+        else:
+            result.scalar_one.return_value = value
+        return result
+    db.execute.side_effect = [
+        reply(["profiles", "papers", "team_achievements"], True),
+        reply(1),
+        reply(21),
+        reply(36),
+        reply(11 * 1024 * 1024),
+        reply(True),
+    ]
+    report = source_inventory(db)
+    assert report["source_db_name_matches_expected"] is True
+    assert report["public_table_count"] == 3
+    assert report["critical_table_counts"]["team_achievements"] == 36
+    assert report["critical_table_counts"]["papers"] == 21
+    assert report["total_database_megabytes"] == 11
+    assert report["writes_performed"] is False
+    assert "password" not in str(report)
+    queries = [str(c.args[0]) for c in db.execute.call_args_list]
+    assert all(not q.startswith(("INSERT ", "UPDATE ", "DELETE ")) for q in queries)
