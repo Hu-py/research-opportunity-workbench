@@ -125,8 +125,8 @@ def test_source_inventory_reports_counts_without_row_content():
     db.execute.side_effect = [
         reply(["profiles", "papers", "team_achievements"], True),
         reply(1),
-        reply(21),
         reply(36),
+        reply(21),
         reply(11 * 1024 * 1024),
         reply(True),
     ]
