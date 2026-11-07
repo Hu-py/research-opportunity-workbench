@@ -66,7 +66,30 @@ def inspect_target(source_uri: str, target_uri: str) -> dict:
             "migration_completed": False,
         }
     except SQLAlchemyError as exc:
-        raise RuntimeError("Target connection failed; check private connection string, SSL and network") from exc
+        # Never include the original DB exception in a log or API response:
+        # many drivers include host/user and sometimes the connection URI.
+        orig = getattr(exc, "orig", None)
+        sqlstate = getattr(orig, "sqlstate", None)
+        if sqlstate == "28P01":
+            category = "authentication_failed"
+        elif sqlstate == "3D000":
+            category = "database_not_found"
+        elif sqlstate == "28000":
+            category = "role_or_access_rejected"
+        else:
+            # Interpret common transport errors but never return their text.
+            private_detail = str(orig or exc).lower()
+            if "name or service not known" in private_detail or "could not translate host name" in private_detail or "nodename nor servname provided" in private_detail:
+                category = "dns_resolution_failed"
+            elif "timed out" in private_detail or "timeout" in private_detail:
+                category = "network_timeout"
+            elif "connection refused" in private_detail:
+                category = "connection_refused"
+            elif "password authentication failed" in private_detail:
+                category = "authentication_failed"
+            else:
+                category = "other_connection_error"
+        raise RuntimeError("migration_target_" + category) from None
     finally:
         if engine is not None:
             engine.dispose()
