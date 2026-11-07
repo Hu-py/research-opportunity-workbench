@@ -182,6 +182,10 @@ async def lifespan(app:FastAPI):
                 "DATABASE_CUTOVER_INTEGRITY_FAILED; refusing new app startup")
             raise RuntimeError("Cannot switch database: integrity verification failed") from None
     factory=get_factory()
+    # New Business Agent tables remain private and RLS-protected at startup.
+    from backend.business_memory import secure_new_tables
+    with factory() as _business_security_db:
+        secure_new_tables(_business_security_db)
     bootstrap_admin_from_env(factory)
     with factory() as db:
         imported=seed_verified(db)
@@ -1468,3 +1472,9 @@ _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
 # Read-only migration target preflight; team-admin session required.
 from backend.migration_preflight import mount as _mount_migration_preflight_routes
 _mount_migration_preflight_routes(app, require_admin=require_admin)
+
+# Durable Business Research Advisor: disabled for external access until explicitly
+# approved and configured by the team owner (separate integration secret).
+from backend.business_memory import mount as _mount_business_memory_routes
+_mount_business_memory_routes(app, get_db=get_db, require_actor=require_actor,
+                              require_editor=require_editor, require_admin=require_admin)
