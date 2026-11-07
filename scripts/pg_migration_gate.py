@@ -238,11 +238,11 @@ def guarded_restore(target: PgTarget, archive: Path, confirmed: bool):
 def secure_target(target: PgTarget, archive: Path, confirmed: bool):
     if not confirmed:
         raise ValueError("Explicit --confirm-rls-lockdown is required")
-    import psycopg
-    from psycopg import sql
     manifest,_=verify_archive(archive)
     if target.fingerprint==manifest["source"]["fingerprint"]:
         raise ValueError("Refusing to modify source database; target identity matches backup source")
+    import psycopg
+    from psycopg import sql
     inv=read_inventory(target)
     if inv["table_counts"]!=manifest["source"]["table_counts"]:
         raise ValueError("Target data is incomplete or not the source snapshot; cannot lock down")
