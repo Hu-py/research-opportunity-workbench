@@ -1,0 +1,153 @@
+{
+  "attempts": [
+    {
+      "content": {
+        "key": "bee933569677bf5e44498edfaffbf9b0b18d1c3b310d7db5782a9b3cd19c8512",
+        "manifest": {
+          "doi": "10.1007/s00159-024-00151-2",
+          "license": "CC BY-NC 4.0; original publisher restrictions apply",
+          "reference_label": "P1",
+          "sample_id": "Astronomy/101007s00159024001512",
+          "source": "https://raw.githubusercontent.com/ankitala/ResearchBench/03873e075c8f33544adeac37745fdc14f0c16c50/data/tiny/ranking.jsonl",
+          "source_sha256": "e67270dfabd020e19ea358c87d56eac3ebd1a54eee8b7853aa2f8943f18d9615",
+          "source_variant": "direct",
+          "split": "development"
+        },
+        "output": {
+          "preferred_label": "P2",
+          "proposed_question": "Does the proposed two-phase dust formation model (SN-formed refractory cores followed by mantle accretion in molecular clouds) reproduce observed dust masses and isotopic ratios in galaxies at z>4?",
+          "reviews": [
+            {
+              "anti_stitching": 0,
+              "evidence_reliability": 0,
+              "importance": 1,
+              "knowledge_increment": 1,
+              "label": "P0",
+              "problem_origin": 1,
+              "reason": "Focuses on spatial offset as indicator of obscured star formation, but lacks theoretical mechanism linking offset to dust formation. No data or methods provided. Unsupported claims about simultaneous phases."
+            },
+            {
+              "anti_stitching": 1,
+              "evidence_reliability": 0,
+              "importance": 1,
+              "knowledge_increment": 0,
+              "label": "P1",
+              "problem_origin": 0,
+              "reason": "General statement about multiple dust sources. No specific processes, redshifts, or observables. Supernovae and AGB stars are known contributors but no novel synthesis or justification for early universe."
+            },
+            {
+              "anti_stitching": 1,
+              "evidence_reliability": 0,
+              "importance": 1,
+              "knowledge_increment": 1,
+              "label": "P2",
+              "problem_origin": 1,
+              "reason": "Detailed two-phase model with SN nucleation and molecular cloud accretion. Mechanism plausible but unvalidated; isotopic signatures proposed but no quantitative predictions or evidence. Refractory core composition specified but unsupported."
+            }
+          ],
+          "verification_needed": [
+            "Observational data on dust masses and chemical composition in z>4 galaxies",
+            "Nucleation and accretion rates under early universe conditions",
+            "Isotopic abundance measurements from JWST/ALMA",
+            "Comparison with existing dust evolution models"
+          ]
+        },
+        "reference_agreement": false,
+        "status": "completed"
+      },
+      "created_at": "2026-11-07T09:43:24.554962+00:00",
+      "id": "c0aeef7a-6827-41d6-a058-53db568cf16b"
+    },
+    {
+      "content": {
+        "key": "f9620cadf330e568000a97184730a60d16ce77a0b5526208e24f51abeeeb9fc7",
+        "manifest": {
+          "doi": "10.1007/s10453-022-09750-x",
+          "license": "CC BY-NC 4.0; original publisher restrictions apply",
+          "reference_label": "P2",
+          "sample_id": "Biology/101007s1045302209750x",
+          "source": "https://raw.githubusercontent.com/ankitala/ResearchBench/03873e075c8f33544adeac37745fdc14f0c16c50/data/tiny/ranking.jsonl",
+          "source_sha256": "e67270dfabd020e19ea358c87d56eac3ebd1a54eee8b7853aa2f8943f18d9615",
+          "source_variant": "direct",
+          "split": "development"
+        },
+        "output": {
+          "preferred_label": "P1",
+          "proposed_question": "Can a classification model combining fluorescence data from the WIBS-4+ sensor with ensemble clustering achieve at least 90% precision and recall for airborne pollen and fungal spores under controlled conditions?",
+          "reviews": [
+            {
+              "anti_stitching": 0,
+              "evidence_reliability": 0,
+              "importance": 2,
+              "knowledge_increment": 2,
+              "label": "P0",
+              "problem_origin": 1,
+              "reason": "The proposal claims to integrate diverse optical techniques, deep learning, sensor fusion, blockchain, and more to build a global standard. It addresses a real need but provides no citations, no validated experimental designs, and no supporting evidence. The claimed 30% healthcare cost reduction is unsupported. The combination of many advanced technologies without justification for their necessity raises concern of unmotivated method stacking."
+            },
+            {
+              "anti_stitching": 1,
+              "evidence_reliability": 0,
+              "importance": 1,
+              "knowledge_increment": 1,
+              "label": "P1",
+              "problem_origin": 1,
+              "reason": "Proposes integrating WIBS-4+ fluorescence with a novel clustering algorithm for pollen/spore classification. It identifies a relevant gap but lacks supporting evidence from prior work or data. The need for the specific algorithm combination is unclear, though not overtly unmotivated. No results are provided to support claims of enhanced real-time detection or standardization."
+            },
+            {
+              "anti_stitching": 1,
+              "evidence_reliability": 1,
+              "importance": 1,
+              "knowledge_increment": 1,
+              "label": "P2",
+              "problem_origin": 1,
+              "reason": "States that automatic monitoring using digital imaging and laser detection can overcome manual limitations. This is plausible and addresses practical needs, but it is generic and lacks specificity on how systems will be developed or standardized. No specific technologies or validation methods are elaborated, limiting knowledge increment."
+            }
+          ],
+          "verification_needed": [
+            "Reproducible dataset collection with known pollen and spore concentrations",
+            "Comparative evaluation against existing classification methods",
+            "Independent validation in varied environmental conditions",
+            "Detailed description of sensor calibration and data preprocessing"
+          ]
+        },
+        "reference_agreement": false,
+        "status": "completed"
+      },
+      "created_at": "2026-11-07T09:43:33.324687+00:00",
+      "id": "1c5b14b8-76bb-49c8-9d50-c5bec1d58b8e"
+    }
+  ],
+  "attribution": "ResearchBench Authors, arXiv:2503.21248; adapted development subset, CC BY-NC 4.0; original publisher rights reserved",
+  "cumulative_calls": 22,
+  "cumulative_cny_bound": 0.867088,
+  "usage": [
+    {
+      "charged_bound": 0.018405,
+      "digest": "d6ded5e3822a7a852e8cabef20d4e5af50a64312fd9102977bad6df1df4716b9",
+      "estimated_cny": 0.018405,
+      "input_hash": "d6ded5e3822a7a852e8cabef20d4e5af50a64312fd9102977bad6df1df4716b9",
+      "max_tokens": 2000,
+      "model": "deepseek-v4-pro",
+      "reservation": 0.108072,
+      "status": "completed",
+      "usage": {
+        "input_tokens": 773,
+        "output_tokens": 424
+      }
+    },
+    {
+      "charged_bound": 0.020259,
+      "digest": "fd0081ca536b7cbac4544648a46411191d05700699733fa7ab22712c4a3dadfd",
+      "estimated_cny": 0.020259,
+      "input_hash": "fd0081ca536b7cbac4544648a46411191d05700699733fa7ab22712c4a3dadfd",
+      "max_tokens": 2000,
+      "model": "deepseek-v4-pro",
+      "reservation": 0.10899,
+      "status": "completed",
+      "usage": {
+        "input_tokens": 739,
+        "output_tokens": 504
+      }
+    }
+  ]
+}

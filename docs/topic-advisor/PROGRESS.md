@@ -1,5 +1,7 @@
 # Progress
 
+Latest round: generic B0 single Pro advisor on two ResearchBench development cases. 2/2 calls completed, 0/2 reference agreement, repeat run 0 additional calls. New task checkpoint/schema layer tested; no demonstrated scientific-quality gain. Source license review and limitations recorded in OPEN_SOURCE_REVIEW.md and B0_PROTOCOL.md. Public results in b0-v1-results.json. Cumulative 22 requests / CNY 0.867088; prior history below retained. No B1/B2, private-team training or holdout tuning performed.
+
 Latest checkpoint: reader cardinality fix and one successful five-paper live probe. Cumulative 20 requests / conservative CNY 0.828424; see NEXT_ACTIONS.md for recovery and scope. Earlier figures below describe the original pilot. The current task is publication for independent review, with no new paid experiments.
 
 Branch: feat/topic-advisor. Original tracked source clean at start; pre-existing generated frontend/AGENTS.md and editable egg-info preserved.

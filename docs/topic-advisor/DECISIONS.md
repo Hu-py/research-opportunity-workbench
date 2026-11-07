@@ -1,5 +1,7 @@
 # Decisions and audit
 
+2026-11-07 general-baseline round: optimize recovery/evidence completeness only. Hypothesis: task-level immutable input/config hashes and explicit started/completed/failed checkpoints prevent duplicate paid work and unscorable missing evidence. Failure criterion: repeat execution bills again or invalid output receives a score. Two live cases completed; exact replay made zero calls; malformed-output and interruption tests pass. Do not interpret two reference-label disagreements as verified low scientific value. Freeze B0 v1; no post-result prompt tuning. See B0_PROTOCOL.md for fixed rubric and licensing constraints.
+
 2026-11-07: reviewed profile_database, preanalysis, weekly_synthesis, research_evidence_export, model_gateway, research_budget, discovery, ai_lab, scientific_agent, scientific_tournament, API dependencies and Next.js integration.
 
 Reuse existing SQLAlchemy Base, JSON DeepSeek adapter, four-stage prompts and strict citation validators. Existing daily guardrail is not a cumulative CNY limit; a task-scoped durable call ledger supplements it. Use peak cache-miss prices conservatively (Flash 2/8 CNY per million input/output tokens; Pro 9/27), verified against https://api-docs.deepseek.com/zh-cn/quick_start/pricing/ on 2026-11-07. Failures retain reservations, no automatic retry, concurrency one, output capped at 4000 tokens. This is a conservative estimate, not an invoice.

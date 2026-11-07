@@ -1,5 +1,19 @@
 # Live evaluation
 
+## Latest: general B0 smoke baseline
+
+Protocol: B0_PROTOCOL.md; source/dependency review: OPEN_SOURCE_REVIEW.md; real outputs and costs: b0-v1-results.json. Two fixed ResearchBench development records (astronomy and biology), anonymized reference plus two negative variants; DeepSeek V4 Pro, one call per case. No private/team input. No hidden cases used. Ranking adaptation is not the official benchmark protocol.
+
+Results: 2/2 provider requests and output schemas succeeded. Repeating the identical runner reused 2/2 completed checkpoints, adding **zero requests**. Deterministic regression checks cover provider failure, uncertain interruption and missing reviews; these simulated tests are not evidence of live service recovery under every failure.
+
+Reference-label agreement: **0/2**. Astronomy preferred the model-generated negative over the reference; biology preferred the fabricated negative over the reference. This does not establish that the references are scientifically superior, but it exposes uncertainty in unsupported-mechanism discrimination. Scores were produced by B0 itself; no independent expert or blind judge evaluated these outputs.
+
+Representative generated questions (translated): (1) Can supernova-formed refractory cores followed by molecular-cloud mantle accretion reproduce observed dust masses and isotope ratios at z>4? (2) Can WIBS-4+ fluorescence plus ensemble clustering achieve at least 90% precision and recall for airborne pollen/spores under controlled conditions? Engineering diagnosis: question 1 has testable observables but its mechanism/data sufficiency remain unsupported. Question 2 invents an unjustified 90% threshold and is framed mainly as predictive performance, not knowledge gain. Both require substantive evidence checking before recommendation.
+
+Improvement established: reproducible config/input checkpoints and no repeated payment on completed-run resume. Scientific quality improvement over a baseline: **not established**; this is the new baseline, not a B0-vs-B1/B2 comparison. Avoid preference for detailed mechanisms simply because generic reference text is less specific. The next smallest informative experiment is B1 with a bounded, cited evidence packet addressing one of these concrete uncertainties. Do not add B2 until B1 has paired evidence of benefit.
+
+This round: 2 new requests, 1,512 input / 928 output tokens, estimated CNY 0.038664 (peak, cache-miss rates). Cumulative: **22 attempted calls / CNY 0.867088** including prior unknown reservations. No retries; nine historic requests still have unknown complete usage. Codex usage cannot be read or constrained to an exact 5%; stopped at this small checkpoint.
+
 Status: stopped after persistent provider failure. No valid comparative superiority conclusion.
 
 Cases: heat/tree-canopy equity (development), transit reliability/job accessibility (test), flood resilience (held out, not called). Team facts and dataset availability are synthetic/unknown; five real OpenAlex records per executed case are frozen in local audit storage with IDs, DOI, title, abstract and evidence status.

@@ -1,5 +1,7 @@
 # Recovery checkpoint — 2026-11-07
 
+LATEST: cumulative ledger now contains **22 attempted calls**, conservative CNY **0.867088**. B0_PROTOCOL.md supersedes the previous urban-personalization experiment plan for current priorities. Two development cases complete; re-running scripts.research_b0 should make zero calls. Prior ledger floor 20 in the script prevents restoration from an empty baseline but operator must reconcile all 22 published attempts before any new paid work. Next: freeze B0, prepare one bounded B1 evidence-packet comparison targeting unsupported mechanisms/thresholds. Do not read the ten remaining tiny-split records or tune to hidden answers. No B2 until a paired B1 comparison justifies it. GitHub source dataset licensing is non-commercial with upstream restrictions; do not publish the downloaded raw JSONL.
+
 Conservative Codex policy: account quota cannot be measured here; one bottleneck and one bounded validation per round, then stop. Do not claim enforcement of a precise 5% limit.
 
 Latest bottleneck: transport injected a three-item limit into every list, conflicting with the reader's five-paper completeness requirement. Removed that global instruction and restricted generation limits to topic generation. Original A prompts are now passed unchanged. No claim that this caused previous HTTP 503/timeouts.
