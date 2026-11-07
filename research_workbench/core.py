@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import time
+from functools import lru_cache
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -94,18 +95,38 @@ def resolve_database_url(explicit_url=None):
         raise RuntimeError("Invalid private Supabase database URL") from None
 
 
-def session_factory(url=None):
-    url = resolve_database_url(url)
+def _build_session_factory(url):
     if isinstance(url,str) and url.startswith("sqlite:///") and url != "sqlite:///:memory:":
         Path(url[10:]).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(url, pool_pre_ping=True)
-    from backend import interests as _registered_interests  # watchlist tables before create_all
-    from backend import research_sources as _registered_sources  # academic source registry
+    options={"pool_pre_ping":True}
+    if not isinstance(url,str) and url.get_backend_name()=="postgresql":
+        # Keep the Supabase session-pooler footprint bounded on Free plans.
+        options.update(pool_size=3,max_overflow=2,pool_recycle=1800)
+    engine=create_engine(url,**options)
+    from backend import interests as _registered_interests
+    from backend import research_sources as _registered_sources
     Base.metadata.create_all(engine)
-    factory=sessionmaker(bind=engine, expire_on_commit=False)
+    factory=sessionmaker(bind=engine,expire_on_commit=False)
     with factory() as db:
         _registered_sources.seed_default_sources(db)
     return factory
+
+
+@lru_cache(maxsize=2)
+def _supabase_cached_factory(_private_connection_marker):
+    # The marker is a cache key only; secrets never enter logs or HTTP APIs.
+    return _build_session_factory(resolve_database_url())
+
+
+def session_factory(url=None):
+    if (url is None
+            and os.getenv("RESEARCH_DATABASE_PROVIDER","render").strip().lower()=="supabase"):
+        marker=os.getenv("MIGRATION_TARGET_DATABASE_URL","").strip()
+        if not marker:
+            raise RuntimeError("Supabase migration target is not configured")
+        return _supabase_cached_factory(marker)
+    # Retain preexisting explicit-URL/SQLite test isolation and Render rollback behavior.
+    return _build_session_factory(resolve_database_url(url))
 
 def validate_profile(profile):
     lines = profile.get("research_lines") if isinstance(profile,dict) else None
