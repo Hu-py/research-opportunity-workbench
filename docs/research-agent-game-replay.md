@@ -101,3 +101,64 @@ variables, or `NEXT_PUBLIC_*` variables.
 **Current limitation:** `run_started` is emitted only when LangGraph
 execution starts, *after* the preceding team-portrait synchronization.
 The live dashboard does not currently show portrait synthesis progress.
+
+
+## V1.0 — Launch from the Workbench / 从网页发起科研实验
+
+Team administrators can now open **研究执行 → 多智能体博弈回放** and
+use the **启动新实验 / Launch experiment** panel, without opening
+GitHub Actions directly.
+
+The panel supports the current workflow's bounded controls:
+- `evidence_source`: workbench_sync, public_demo, team_evidence, approved_secret
+- `max_generations`: 0, 1, 2
+- `max_papers`: 4, 6, 8; `max_pairs`: 1, 2, 3
+- `stream_live_events`, `save_knowledge_graph`, `synthetic_pilot`
+- `reuse_llm_cache`, `replay_namespace`, `bilingual_report`
+
+**Existing SQL 002/003/004/007** and approved secrets are still required
+for their respective operations. Team source permissions must be checked
+before the admin confirms an experiment.
+
+### One-time GitHub authorization (Vercel server only)
+
+Create a **fine-grained personal access token** on GitHub restricted to the
+single repository `Hu-py/research-agent-lab`, with **Actions: Read and write**
+(and read-only Metadata, automatically granted by GitHub).
+
+Save it as `RESEARCH_LAB_GITHUB_TOKEN` in the Vercel project's environment
+variables. Use an encrypted/sensitive server-only value in Production and
+Preview as needed; **never commit** it, send it in a screenshot or chat,
+or prefix it with `NEXT_PUBLIC_`. Redeploy the Next.js site to load it.
+
+The Next.js server API `GET/POST /api/research-lab/launch` uses this token
+strictly server-side. Every request revalidates an active team **admin**
+via the existing `/api/auth/me` endpoint. POST also enforces same-origin
+JSON requests, strict enum/boolean validation, an explicit costs/permissions
+checkbox, and checks GitHub for an existing active run before dispatch.
+GitHub's workflow concurrency group provides an additional queue-level
+guard. GitHub workflow dispatch accepted ≠ completed; the UI polls recent
+Actions runs and shows their URLs, while the live event panel continues to
+poll private `lab_frontier_events` every six seconds.
+
+Because `workflow_dispatch` accepts no more than ten top-level inputs,
+the live workflow now **always saves results to the isolated Lab Supabase**
+instead of exposing a `save_supabase` toggle. The replacement input
+`bilingual_report` adds at most **one** paid DeepSeek call to produce a
+structured Chinese/English summary. The last scientific verification
+remains unchanged if this translation fails; it must not declare claims
+verified. Separate limits still apply to the research graph and team portrait
+(up to nine calls).
+
+Bilingual fields are `title`, `research_question`, `method`,
+`competition_insight`, `scientific_assessment` and
+`evidence_limitations`, with `zh` and `en` values. Original primary
+language model output remains available beneath the bilingual report and
+is the source of truth. Historical runs without the new field show a
+transparent **not available** message rather than fabricated translations.
+
+**Cost caution:** GitHub launch availability is gated on a repo-scoped
+token. Frontend never calls DeepSeek directly. This does not implement
+per-user billing, a dollar budget nor absolute race-free prevention of
+simultaneous dispatch across geographically separate server instances.
+Use GitHub spend monitoring for financial caps and grant admin role sparingly.

@@ -499,7 +499,7 @@ export default function Workbench(){
         {section==="sources"&&<AcademicSourceRegistry canAdmin={canAdmin}/>}
         {section==="discovery"&&<ResearchDiscovery canAdmin={canAdmin} canEdit={canEdit}/>} 
         {section==="ai-lab"&&<AIResearchLab canAdmin={canAdmin} canEdit={canEdit}/>} 
-        {section==="game-lab"&&<AgentGameReplay/>}
+        {section==="game-lab"&&<AgentGameReplay canLaunch={teamMode&&member?.role==="admin"}/>}
         {section==="radar"&&<ResearchRadar canEdit={canEdit}/>} 
 
         {section==="ideas"&&<>

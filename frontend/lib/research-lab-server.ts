@@ -87,7 +87,7 @@ export function safeDetail(row:Record<string,unknown>) {
     "winner_id","winner_title","generation_count","lineage","verification","pilot",
     "paper_ids","ranked_candidates","archived_candidates","matches",
     "supervisor_decisions","screening","knowledge","event_log","comparison_context",
-    "cache_hits","provider_calls","human_review_required"
+    "cache_hits","provider_calls","human_review_required","bilingual_report"
   ];
   const result:Record<string,unknown>={};
   for(const key of allow)if(Object.prototype.hasOwnProperty.call(r,key))result[key]=r[key];

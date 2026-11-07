@@ -1,6 +1,7 @@
 "use client";
 
 import {ChangeEvent, useCallback, useEffect, useMemo, useState} from "react";
+import ExperimentLauncher from "@/components/ExperimentLauncher";
 import {
  Activity, ArrowRight, BookOpen, BrainCircuit, CheckCircle2, ChevronLeft, ChevronRight,
  Clock3, Database, FileJson, GitBranch, Layers3, Pause, Play, RefreshCw,
@@ -22,7 +23,13 @@ type Opinion={winner_id:string;reason?:string;caveat?:string};
 type Match={left_id:string;right_id:string;first:Opinion;reversed:Opinion;
  score_left?:number;delta_left?:number;position_disagreement?:boolean};
 type Juror={juror:string;votes:Record<string,boolean>;reasons?:Record<string,string>};
+type BilingualReport={
+ version?:number;available?:boolean;
+ fields?:Record<string,{zh:string;en:string}>;
+ source?:string;reason_code?:string
+};
 type Result={
+ bilingual_report?:BilingualReport|null;
  winner_id?:string;winner_title?:string;generation_count?:number;
  event_log?:EventRow[];lineage?:{id:string;parent_ids?:string[];generation?:number;origin?:string;status?:string}[];
  ranked_candidates?:Candidate[];archived_candidates?:Candidate[];matches?:Match[];
@@ -51,10 +58,14 @@ type LivePayload={configured:boolean;enabled:boolean;items:LiveEvent[];detail?:s
 
 const names:Record<string,string>={
  run_started:"实验开始",run_completed:"已完成并保存",run_failed:"运行失败",
- knowledge_discovery:"论文检索",independent_paper_screen:"双 Agent 文献审核",
- generate:"三视角生成",elo_tournament:"双向辩论赛",supervisor:"总控调度",
- hypothesis_evolution:"批评与进化",hypothesis_expansion:"边界扩展",
- rollback:"版本回退",scientific_gate:"科学质量门控"
+ knowledge_discovery:"论文检索 / Literature discovery",
+ independent_paper_screen:"论文双审 / Independent screening",
+ generate:"假设生成 / Hypothesis generation",
+ elo_tournament:"双向辩论 / Dual-order debate",
+ supervisor:"总控调度 / Supervisor",
+ hypothesis_evolution:"批评进化 / Critique & evolve",
+ hypothesis_expansion:"边界探索 / Expansion",
+ rollback:"回退 / Rollback",scientific_gate:"科学门控 / Scientific gate"
 };
 const summary:Record<string,string>={
  knowledge_discovery:"发现相关论文，形成待审核候选池。",
@@ -122,7 +133,7 @@ function fact(status:boolean|null|undefined){
  return status===true?"已确认":status===false?"尚未确认":"暂无记录";
 }
 
-export default function AgentGameReplay(){
+export default function AgentGameReplay({canLaunch=false}:{canLaunch?:boolean}){
  const [runs,setRuns]=useState<Run[]>([]);
  const [active,setActive]=useState<Run|null>(null);
  const [chosenId,setChosenId]=useState("");
@@ -292,6 +303,7 @@ export default function AgentGameReplay(){
    <div className="game-hero-orbit" aria-hidden="true"><span>H001</span><span>H002</span><span>H003</span><div>AI</div></div>
   </div>
 
+  {canLaunch&&<ExperimentLauncher/>}
   <section className="game-panel game-live" aria-label="正在执行的多智能体实验">
    <div className="game-live-top">
     <div><span className="game-label">LIVE AGENT EXECUTION · 真实事件流</span>
@@ -379,6 +391,8 @@ export default function AgentGameReplay(){
     </div>
    </div>
 
+   <BilingualResult report={result.bilingual_report||null}
+      winnerTitle={result.winner_title||result.ranked_candidates?.[0]?.title||""}/>
    <section className="game-panel game-timeline">
     <div className="game-panel-head">
      <div><span className="game-label">EXECUTION TIMELINE</span><h2>研究过程回放</h2>
@@ -578,4 +592,52 @@ function DebateDetail({match}: {match:Match}){
    <b>{match.left_id} Elo {typeof match.delta_left==="number"?(match.delta_left>=0?"+":"")+match.delta_left:"未知"}</b>
   </div>
  </div>;
+}
+
+
+function BilingualResult({report,winnerTitle}:{
+ report:BilingualReport|null;winnerTitle:string
+}){
+ const entries=[
+   ["title","选题标题","Research title"],
+   ["research_question","研究问题","Research question"],
+   ["method","研究方法","Research method"],
+   ["competition_insight","博弈分析","Competition insight"],
+   ["scientific_assessment","科学评估","Scientific assessment"],
+   ["evidence_limitations","证据局限","Evidence limitations"]
+ ] as const;
+ if(!report?.fields)return <section className="game-panel game-bilingual">
+    <div className="game-panel-head"><div>
+      <span className="game-label">CHINESE / ENGLISH RESEARCH REPORT</span>
+      <h2>中英对照研究摘要 / Bilingual research summary</h2>
+      <p>此历史实验没有生成双语报告。原始研究内容仍可在下方查看。
+      / This run has no translated scientific summary.</p>
+    </div></div>
+    {winnerTitle&&<p className="game-bilingual-original">
+      <b>原始选题 / Original title:</b> {winnerTitle}
+    </p>}
+  </section>;
+ return <section className="game-panel game-bilingual">
+   <div className="game-panel-head"><div>
+     <span className="game-label">CHINESE / ENGLISH RESEARCH REPORT</span>
+     <h2>中英对照研究摘要 / Bilingual research summary</h2>
+     <p>基于实际实验输出的双语编辑摘要；未改变原始科学证据。
+     / An editorial translation of the recorded outputs, not independent validation.</p>
+   </div></div>
+   {entries.map(([key,zh,en])=>{
+     const item=report.fields?.[key];
+     if(!item)return null;
+     return <div className="game-bilingual-row" key={key}>
+       <h3>{zh} / {en}</h3>
+       <div className="game-bilingual-languages">
+         <div lang="zh-CN"><span>中文 / Chinese</span><p>{item.zh}</p></div>
+         <div lang="en"><span>EN / English</span><p>{item.en}</p></div>
+       </div>
+     </div>;
+   })}
+   <p className="game-footnote">
+      <ShieldAlert size={13}/> 双语摘要由模型生成，可能存在译意误差，应以原始记录为准。
+      / AI translation may be imperfect; consult the original recorded evidence.
+   </p>
+ </section>;
 }
