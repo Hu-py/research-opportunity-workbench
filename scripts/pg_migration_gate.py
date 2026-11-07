@@ -54,7 +54,7 @@ def parse_postgres_url(raw: str) -> PgTarget:
         raise ValueError("Invalid PostgreSQL port")
     args = parse_qs(parsed.query)
     sslmode = args.get("sslmode", ["require"])[0]
-    if sslmode not in ("require", "verify-full", "verify-ca", "prefer"):
+    if sslmode not in ("require", "verify-full", "verify-ca"):
         raise ValueError("Unsupported SSL mode; TLS is required for migration")
     return PgTarget(
         host=parsed.hostname, port=parsed.port or 5432,
@@ -241,6 +241,8 @@ def secure_target(target: PgTarget, archive: Path, confirmed: bool):
     import psycopg
     from psycopg import sql
     manifest,_=verify_archive(archive)
+    if target.fingerprint==manifest["source"]["fingerprint"]:
+        raise ValueError("Refusing to modify source database; target identity matches backup source")
     inv=read_inventory(target)
     if inv["table_counts"]!=manifest["source"]["table_counts"]:
         raise ValueError("Target data is incomplete or not the source snapshot; cannot lock down")
