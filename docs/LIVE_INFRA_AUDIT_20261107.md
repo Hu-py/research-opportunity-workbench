@@ -96,3 +96,79 @@ Other observed configuration **names only** include `BACKEND_URL`,
 
 This document is a factual infrastructure snapshot, not an operations success
 certificate.
+
+
+## 2026-11-07 — Successful live source/target preflight (later update)
+
+New isolated Supabase `research-team-memory` was created by the owner;
+`MIGRATION_TARGET_DATABASE_URL` is stored **only** as a Render server-side
+environment secret. Its password contains `@`, which was URL-encoded as
+`%40` by the owner without sharing the credential.
+
+**Live Render read-only target preflight:** 2026-11-07 15:06:09 UTC
+
+```json
+{
+  "connected": true,
+  "postgres_version": "17.11",
+  "public_table_count": 0,
+  "target_public_schema_empty": true,
+  "source_and_target_distinct": true,
+  "writes_performed": false,
+  "backup_completed": false,
+  "migration_completed": false
+}
+```
+
+**Live Render source inventory:** 2026-11-07 15:10:27 UTC
+
+```json
+{
+  "source_db_name_matches_expected": true,
+  "postgresql": true,
+  "public_table_count": 43,
+  "total_database_bytes": 10229427,
+  "total_database_megabytes": 9.76,
+  "critical_table_counts": {
+    "cusp_datasets": 28,
+    "events": 0,
+    "evidence": 0,
+    "ideas": 0,
+    "papers": 0,
+    "profiles": 1,
+    "research_evolution_feedback": 0,
+    "research_evolution_runs": 0,
+    "research_tasks": 0,
+    "team_achievements": 55,
+    "team_members": 1,
+    "team_profile_revisions": 0
+  },
+  "writes_performed": false
+}
+```
+
+The verified-output count of **36** in earlier startup logs is a **subset
+of** the **55** total achievement rows, not a discrepancy.
+
+These two checks were executed from the running main Render backend against
+its actual source and target connections; they were not simulated CI results.
+
+**After testing:** Both one-shot environment flags
+`MIGRATION_PREFLIGHT_ON_STARTUP` and
+`MIGRATION_SOURCE_AUDIT_ON_STARTUP` were reset to `0`.
+The final flag-disable deployment completed live at 15:11:26 UTC.
+
+**Remaining hard gate:** Neither a complete source backup nor a tested
+restore has been performed. The Render Free PostgreSQL external IP allowlist
+is empty, and Render MCP's remote SQL connector cannot reach it. Do not open
+the DB to the entire internet. Render Free managed backup/export is unavailable.
+The next authorized operation must be a private `pg_dump` logical backup
+via local temporary /32 allowlist or a paid Render recovery option; verify
+the archive before any Supabase restore or application cutover.
+
+The 9.76 MB source size fits comfortably in a new free Supabase instance,
+subject to schema compatibility and security review; capacity by itself is
+not a blocker. The source database must be preserved until all migration
+and recovery gates pass.
+
+**No Business Workspace Agent was installed and no migration was executed.**
