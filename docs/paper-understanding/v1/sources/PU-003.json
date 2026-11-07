@@ -1,0 +1,107 @@
+{
+  "doi": "10.1016/j.cities.2022.103597",
+  "title": "Spatiotemporal patterns and mechanisms of street vending from the social sensing perspective: A comparison between law-enforcement reported and residents complain events",
+  "authors": [
+    "Chunjiang Li",
+    "Yongyuan Huang",
+    "Yao Shen",
+    "Liyan Xu"
+  ],
+  "reading_status": "fulltext_reviewed",
+  "acquisition": [
+    {
+      "provider": "Crossref",
+      "url": "https://api.crossref.org/works/10.1016/j.cities.2022.103597",
+      "status": 200,
+      "use": "title, DOI, authors verification"
+    },
+    {
+      "provider": "OpenAlex",
+      "url": "https://api.openalex.org/works/https://doi.org/10.1016/j.cities.2022.103597",
+      "status": 200,
+      "is_oa": false,
+      "abstract_available": false
+    },
+    {
+      "provider": "user_upload",
+      "sha256": "15a49acf34c39281e3cdce13930db056177174f078ebdb4e1345000bd4a396f2",
+      "pages": 11,
+      "ocr": "tesseract eng, 170dpi, one thread per process",
+      "visual_checks": [
+        "page 1 title/authors/DOI/abstract"
+      ],
+      "date": "2026-11-07"
+    }
+  ],
+  "fulltext_access_basis": "User supplied original PDF for this analysis; redistribution not authorized.",
+  "verification": null,
+  "passages": [
+    {
+      "id": "p1",
+      "locator": "PDF page 1, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "9aecedb3765af29828bf0ba20ff7bbe89e8f8e26dfffe7bb443b6701173c9a49"
+    },
+    {
+      "id": "p2",
+      "locator": "PDF page 2, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "d96b3a661ed85cfdf81cbff867b0722f3e86ab4c1ebab097bfe840cf83e5a488"
+    },
+    {
+      "id": "p3",
+      "locator": "PDF page 3, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "c57a15118f5aa86d32f6509dd7b40fd0cbb36419ad9f16b5f6cc5284b8abd432"
+    },
+    {
+      "id": "p4",
+      "locator": "PDF page 4, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "27595d99e918fa423365d50ed76bffc8f84bfb0f1693a857f8fb199bebc44e31"
+    },
+    {
+      "id": "p5",
+      "locator": "PDF page 5, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "c26220b421c041128f757b6c70118ec46c0afce35d0a3b0d0e390cc8a2acc0ca"
+    },
+    {
+      "id": "p6",
+      "locator": "PDF page 6, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "bb017a82c2787880dc32a6ebade972cae0111650f1a8319e8841d383759bf791"
+    },
+    {
+      "id": "p7",
+      "locator": "PDF page 7, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "3f413f7dde1d6cd030156a3ec6382db71250191920d2fb880ee293df626e386d"
+    },
+    {
+      "id": "p8",
+      "locator": "PDF page 8, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "43a88e7b6ba0628e6fba0fbc7171ec6efa994a8b04dc51d8117fd4cee4a29da4"
+    },
+    {
+      "id": "p9",
+      "locator": "PDF page 9, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "7ccccffcefbc1b678170693f1874fd74264d7464d7c061d4a360d635f87345f2"
+    },
+    {
+      "id": "p10",
+      "locator": "PDF page 10, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "e873567ef5666665461adcfa8476a6dc0089ca1df1b9976c8f4ee40bd97e60f0"
+    },
+    {
+      "id": "p11",
+      "locator": "PDF page 11, OCR; paragraph breaks retained",
+      "source_url": "https://doi.org/10.1016/j.cities.2022.103597",
+      "sha256": "127f557696da488c0507e81561b80aaab1e9c0eb870269bd4e05381d985d7a2d"
+    }
+  ],
+  "local_evidence_path": "data/paper-understanding/PU-003/evidence.json"
+}

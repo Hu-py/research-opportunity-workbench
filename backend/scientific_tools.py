@@ -145,6 +145,8 @@ def crossref_lookup(args: CrossrefDoiArgs, client: httpx.Client | None = None) -
         raise ToolExecutionError("Unexpected Crossref metadata")
     return {
         "doi": record.get("DOI") or doi, "title": (record.get("title") or [""])[0],
+        "authors": [" ".join(filter(None, [a.get("given"), a.get("family")]))
+                    for a in record.get("author", [])],
         "publisher": record.get("publisher"), "type": record.get("type"),
         "published": record.get("published"), "url": record.get("URL"),
         "update_to": record.get("update-to", []),

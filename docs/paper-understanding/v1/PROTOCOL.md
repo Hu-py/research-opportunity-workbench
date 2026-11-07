@@ -1,0 +1,13 @@
+# PU-003 reading experiment (frozen before model runs)
+
+One development paper, DOI 10.1016/j.cities.2022.103597. PU-001/002 are development exemplars, never held-out samples. No target answer card or retrospective evaluation is provided to generation. S1 recommendation behavior remains unchanged.
+
+Source: user-provided original scanned PDF, 11 pages; metadata cross-checked with Crossref and OpenAlex. OCR is an imperfect transcription. Page images permit manual spot checks; chart values are not automatically verified. Full text is not an open-access redistribution grant. PDF, OCR and exact model inputs stay in the existing local audit infrastructure under ignored data/ and the original experiment ledger. Public artifacts contain source/input hashes, prompts, outputs and necessary short citations, not full-text payloads.
+
+R0 preserves the existing ai_lab reader's single-call reasoning and four-field output contract. Because that reader was abstract-only, a minimal full-text adapter changes the evidence description and payload field; its exact prompt and input hash are frozen before execution. R1 uses the same reader with two versioned cards and an explicit provisional-exemplar policy. R2 uses the same paper text and cards with eight judgment modules, source-status labels, literal quotes and programmatic citation checks. R2's output budget is the same but its contract differs: field coverage alone is not evidence of scientific gain.
+
+Generation: deepseek-flash, max output 3500 tokens, existing gateway deadline 90 seconds, serial calls, no automatic retries. Original cumulative ledger starts at 33 attempts / conservative CNY 1.073446. This round stops at 40 total attempts (at most seven new), also subject to original 60 calls / CNY 10 limits. Exact cache responses are reused; failed attempts retain reservations. No new paid background process.
+
+Assess scientific question versus method summary; necessity of any reframing; record-generation versus actual behavior; author claims versus independent novelty verification; associations versus causal explanation; conditional transfer and forced imitation. Locate important claims in PDF pages/sections. Label reviewer judgments as analysis, not ground truth. No LLM quality score is a success criterion.
+
+After first outputs, diagnose one observed defect, record a modification hypothesis, then at most one corrected R2 generation. Keep both versions, failures, and disagreement. A literal-quote check proves transcription provenance, not entailment. Fulltext_reviewed does not mean evidence_verified. This one case cannot establish generalization or justify scaling to dozens of papers without an unseen-paper check and human review.

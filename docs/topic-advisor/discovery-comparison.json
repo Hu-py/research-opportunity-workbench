@@ -1,0 +1,1273 @@
+{
+  "discovery_freeze": [
+    {
+      "id": "0e21c1f8-4b2e-44fa-9584-7370d95b0b4a",
+      "created_at": "2026-11-07T09:54:47.804860+00:00",
+      "content": {
+        "S0_revision": 1,
+        "commit": "5032872eaeec2e370bb9d2b18ad813430addea4e",
+        "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+        "external_retrieval": "none; shared frozen five-paper evidence",
+        "model": "deepseek-flash",
+        "source_sha256": "533218b3b50bdd81fc4712a168a74e61a22e7ef11b0c635e82fc97e99080bd83"
+      }
+    }
+  ],
+  "discovery_context": [
+    {
+      "id": "b7504cae-0259-445a-a4cf-976dcbb972ef",
+      "created_at": "2026-11-07T09:54:47.799450+00:00",
+      "content": {
+        "datasets": [],
+        "evidence_level": "公开论文元数据/摘要；数据访问未经核验；不含团队画像",
+        "goals": "发现值得研究的科学问题：说明问题来源、重要性、竞争解释、知识增量和证伪条件。允许无推荐。",
+        "line": {
+          "id": "heat",
+          "keywords": [],
+          "name": "城市热暴露与树冠公平",
+          "problem": "城市热暴露与树冠公平"
+        },
+        "papers": [
+          {
+            "abstract": "",
+            "doi": "https://doi.org/10.1016/j.ufug.2026.129611",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W7169789224",
+            "published": "2026-07-20",
+            "title": "Tree equity and urban heat: A comparative study of canopy distribution in Michigan Cities",
+            "url": "https://openalex.org/W7169789224"
+          },
+          {
+            "abstract": "Abstract Redlining was a racially discriminatory housing policy established by the federal government’s Home Owners’ Loan Corporation (HOLC) during the 1930s. For decades, redlining limited access to homeownership and wealth creation among racial minorities, contributing to a host of adverse social outcomes, including high unemployment, poverty, and residential vacancy, that persist today. While the multigenerational socioeconomic impacts of redlining are increasingly understood, the impacts on urban environments and ecosystems remain unclear. To begin to address this gap, we investigated how the HOLC policy administered 80 years ago may relate to present-day tree canopy at the neighborhood level. Urban trees provide many ecosystem services, mitigate the urban heat island effect, and may improve quality of life in cities. In our prior research in Baltimore, MD, we discovered that redlining policy influenced the location and allocation of trees and parks. Our analysis of 37 metropolitan areas here shows that areas formerly graded D, which were mostly inhabited by racial and ethnic minorities, have on average ~23% tree canopy cover today. Areas formerly graded A, characterized by U.S.-born white populations living in newer housing stock, had nearly twice as much tree canopy (~43%). Results are consistent across small and large metropolitan regions. The ranking system used by Home Owners’ Loan Corporation to assess loan risk in the 1930s parallels the rank order of average percent tree canopy cover today.",
+            "doi": "https://doi.org/10.1038/s42949-021-00022-0",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W3139378816",
+            "published": "2021-03-25",
+            "title": "Residential housing segregation and urban tree canopy in 37 US Cities",
+            "url": "https://openalex.org/W3139378816"
+          },
+          {
+            "abstract": "As cities warm and the need for climate adaptation strategies increases, a more detailed understanding of the cooling effects of land cover across a continuum of spatial scales will be necessary to guide management decisions. We asked how tree canopy cover and impervious surface cover interact to influence daytime and nighttime summer air temperature, and how effects vary with the spatial scale at which land-cover data are analyzed (10-, 30-, 60-, and 90-m radii). A bicycle-mounted measurement system was used to sample air temperature every 5 m along 10 transects (∼7 km length, sampled 3-12 times each) spanning a range of impervious and tree canopy cover (0-100%, each) in a midsized city in the Upper Midwest United States. Variability in daytime air temperature within the urban landscape averaged 3.5 °C (range, 1.1-5.7 °C). Temperature decreased nonlinearly with increasing canopy cover, with the greatest cooling when canopy cover exceeded 40%. The magnitude of daytime cooling also increased with spatial scale and was greatest at the size of a typical city block (60-90 m). Daytime air temperature increased linearly with increasing impervious cover, but the magnitude of warming was less than the cooling associated with increased canopy cover. Variation in nighttime air temperature averaged 2.1 °C (range, 1.2-3.0 °C), and temperature increased with impervious surface. Effects of canopy were limited at night; thus, reduction of impervious surfaces remains critical for reducing nighttime urban heat. Results suggest strategies for managing urban land-cover patterns to enhance resilience of cities to climate warming.",
+            "doi": "https://doi.org/10.1073/pnas.1817561116",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W2923210967",
+            "published": "2019-03-25",
+            "title": "Scale-dependent interactions between tree canopy cover and impervious surfaces reduce daytime urban heat during summer",
+            "url": "https://openalex.org/W2923210967"
+          },
+          {
+            "abstract": "The increasing intensity, duration, and frequency of heat waves due to human-caused climate change puts historically underserved populations in a heightened state of precarity, as studies observe that vulnerable communities—especially those within urban areas in the United States—are disproportionately exposed to extreme heat. Lacking, however, are insights into fundamental questions about the role of historical housing policies in cauterizing current exposure to climate inequities like intra-urban heat. Here, we explore the relationship between “redlining”, or the historical practice of refusing home loans or insurance to whole neighborhoods based on a racially motivated perception of safety for investment, with present-day summertime intra-urban land surface temperature anomalies. Through a spatial analysis of 108 urban areas in the United States, we ask two questions: (1) how do historically redlined neighborhoods relate to current patterns of intra-urban heat? and (2) do these patterns vary by US Census Bureau region? Our results reveal that 94% of studied areas display consistent city-scale patterns of elevated land surface temperatures in formerly redlined areas relative to their non-redlined neighbors by as much as 7 °C. Regionally, Southeast and Western cities display the greatest differences while Midwest cities display the least. Nationally, land surface temperatures in redlined areas are approximately 2.6 °C warmer than in non-redlined areas. While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences. This study reveals that historical housing policies may, in fact, be directly responsible for disproportionate exposu",
+            "doi": "https://doi.org/10.3390/cli8010012",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W2999943130",
+            "published": "2020-01-13",
+            "title": "The Effects of Historical Housing Policies on Resident Exposure to Intra-Urban Heat: A Study of 108 US Urban Areas",
+            "url": "https://openalex.org/W2999943130"
+          },
+          {
+            "abstract": "Rapid urbanization has led to a series of environmental problems that are harmful to the physical and mental health of residents. Not only can increasing urban tree canopy (UTC) improve sustainable city development, but it can also effectively promote the quality of life for residents; however, the uneven spatial distribution of UTC can also bring about social justice problems. Currently, there are few studies related to the justice of UTC distribution in China. Based on this, the paper adopts object-oriented image classification technology to interpret and extract UTC data from satellite images, and it uses house price to explore the justice of the spatial distribution of UTC in the main urban area of Guangzhou from the perspective of environmental justice by ANOVA, Pearson correlation coefficient, and bivariate local spatial autocorrelation. The results show that: (1) There is a significant positive correlation between UTC and house price in the main urban area of Guangzhou, and there are regional differences in the distribution of UTC, with the UTC in the \"very high\" house price group being significantly higher than that in other groups. (2) The spatial clustering of UTC and house price in the main urban area of Guangzhou is found to be \"low-low\" and \"high-high\"; thus, it can be concluded that the spatial distribution of UTC in the main urban area of Guangzhou is uneven. This is an environmental injustice, as the areas with low UTC are spatially clustered in old residential areas, while the areas with high UTC are spatially clustered in commercial housing estates with high house prices. The study shows that urban tree planting should not only focus on quantitative improvement but also on equitable spatial layouts to promote social equity and justice thereby improving",
+            "doi": "https://doi.org/10.3390/ijerph20054050",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W4321787046",
+            "published": "2023-02-24",
+            "title": "Urban Tree Canopy and Environmental Justice: Examining the Distributional Equity of Urban Tree Canopy in Guangzhou, China",
+            "url": "https://openalex.org/W4321787046"
+          }
+        ],
+        "team_achievements": []
+      }
+    }
+  ],
+  "discovery_result": [
+    {
+      "id": "c91515f3-2960-4e14-a5e3-69386a7fd111",
+      "created_at": "2026-11-07T09:54:52.998504+00:00",
+      "content": {
+        "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+        "label": "B0",
+        "new_calls": 1,
+        "result": {
+          "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+          "ideas": [
+            {
+              "baselines": [
+                "线性树冠-温度回归（无阈值）",
+                "仅不透水面解释的热暴露模型"
+              ],
+              "dataset_ids": [],
+              "method": "用高分辨率树冠与地表温度数据，分层（A–D历史等级）比较不同缓冲尺度下树冠-温度关系，检验40%阈值以上不平等是否收敛；需跨尺度分析以区分局部遮荫与邻域溢出效应。",
+              "minimal_experiment": "在同一城市内按历史等级分层，比较60 m与90 m缓冲下树冠≥40%与<40%街区的地表温度差；指标为社区间温差及阈值交互项显著性。",
+              "paper_ids": [
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W2999943130",
+                "https://openalex.org/W3139378816"
+              ],
+              "question": "树冠覆盖超过40%的降温阈值是否在街区尺度（60–90 m）上系统性缩小历史弱势社区与优势社区之间的夏季地表温度差？",
+              "risks": [
+                "无已登记数据集，需自采配对遥感与历史等级数据，存在尺度错配与混杂。",
+                "摘要级证据未给出阈值在城市间可迁移性，结论可能不稳健。"
+              ],
+              "title": "树冠覆盖与城市热暴露不平等的尺度依赖阈值检验",
+              "why_now": "已有研究分别确认红线和树冠不平等及40%降温阈值，但未检验该阈值能否在街区尺度上缩小社区间热暴露差距，属于真实跨论文组合的增量假设。"
+            }
+          ],
+          "novelty_status": "unverified",
+          "trace": {}
+        },
+        "status": "completed"
+      }
+    },
+    {
+      "id": "5152d662-8fe2-4ae3-a4e2-83990e95848d",
+      "created_at": "2026-11-07T09:55:17.029393+00:00",
+      "content": {
+        "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+        "label": "S0",
+        "new_calls": 5,
+        "result": {
+          "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+          "ideas": [
+            {
+              "baselines": [
+                "不含交互项的HOLC等级线性回归",
+                "仅以不透水面覆盖为解释变量的回归"
+              ],
+              "dataset_ids": [],
+              "method": "分层交互回归：地表温度~HOLC等级×树冠分段(<40%/≥40%)+不透水面+人口协变量；需交互项区分树冠中介与等级独立效应，并做多城市分层与预注册敏感性分析。",
+              "minimal_experiment": "在同城同年对齐HOLC边界、树冠栅格与地表温度产品，按<40%/≥40%分层比较A/D组地表温度差；主指标为交互项系数显著性及组间温差置信区间。",
+              "paper_ids": [
+                "https://openalex.org/W3139378816",
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W2999943130"
+              ],
+              "question": "控制不透水面后，原HOLC D级社区在树冠覆盖率<40%时相对A级的地表温度差，是否显著大于树冠≥40%时的差（即40%阈值处公平缺口收窄）？",
+              "risks": [
+                "无登记数据ID，HOLC、树冠、地表温度同社区单元对齐可得性未核验",
+                "40%阈值仅见于单城市移动气温摘要，跨城市可移植性无证据",
+                "生态谬误、遗漏变量与空间混杂"
+              ],
+              "title": "树冠降温阈值的HOLC等级交互：阈值公平假说",
+              "why_now": "团队无登记成果可作增量基准；摘要级证据分别报告HOLC—树冠差异、40%非线性降温阈值与红线区气温偏高，但未检验二者交互，构成可证伪增量假设。"
+            }
+          ],
+          "novelty_status": "unverified",
+          "trace": {
+            "critic": {
+              "reviews": {
+                "树冠降温公平的历史滞后检验": {
+                  "fatal_gaps": [
+                    "团队“已有树冠公平研究”无登记成果支撑，不能据此声称增量",
+                    "无数据集ID；移动气温样带须自采，HOLC与样带的空间配对未验证",
+                    "单城市A/D各10条样带样本量不足以检验40%处降温差，仅摘要级证据未核验全文协议细节"
+                  ],
+                  "minimum_data": [
+                    "单城市经许可使用的HOLC边界",
+                    "预先设定的A/D街区分层抽样框与样带坐标",
+                    "经校准的移动气温测量原始数据与时间戳",
+                    "树冠与不透水面高分辨率图层"
+                  ],
+                  "novelty_status": "尚未完成系统性先前研究检索，创新性未核验",
+                  "revised_experiment": "先做单城市预试：A/D区各分层采集可比样带，估计40%树冠处降温差的效应量与方差，据此计算正式样本量；主分析为分层非线性回归组间降温差；预试未达预设精度则停止或改为纯观测描述。",
+                  "stop_conditions": [
+                    "样带无法在A/D区按树冠梯度匹配则停止",
+                    "移动气温设备校准或重复测量精度不达标则停止",
+                    "组间降温差置信区间跨零且样本量不可扩充则停止"
+                  ],
+                  "verdict": "暂缓"
+                },
+                "树冠降温的阈值公平：HOLC等级是否放大临界树冠差异": {
+                  "fatal_gaps": [
+                    "无任何登记数据集ID，HOLC等级、树冠覆盖与地表温度在社区尺度的历史匹配数据实际可得性未核验",
+                    "40%阈值仅来自单城市移动气温摘要，其跨城市可移植性无证据",
+                    "仅分层比较无法区分“树冠中介”与“等级独立效应”，必须含交互项，且生态谬误与遗漏变量未控"
+                  ],
+                  "minimum_data": [
+                    "经授权获取的HOLC分级矢量边界，明确年份版本",
+                    "同城同年的树冠覆盖栅格与地表温度产品，含元数据与空间分辨率",
+                    "人口/不透水面等社区级协变量及合法使用许可",
+                    "跨城市样本量与配对规则预注册"
+                  ],
+                  "novelty_status": "尚未完成系统性先前研究检索，创新性未核验",
+                  "revised_experiment": "预注册分层交互回归：以地表温度为因变量，HOLC等级、树冠覆盖分段（<40%与≥40%）、二者交互项为自变量，控制不透水面与人口协变量；主指标为交互项系数及组间温差置信区间；先在2个城市做可行性与样本量检验，通过后再扩展。",
+                  "stop_conditions": [
+                    "HOLC、树冠、地表温度三类数据无法在同一社区单元对齐则停止",
+                    "缺少≥2个城市可比数据则停止",
+                    "交互项预检不显著且无组间温差趋势则停止"
+                  ],
+                  "verdict": "需要补充证据"
+                },
+                "树冠降温阈值是否随历史住房政策不平等而改变": {
+                  "fatal_gaps": [
+                    "无登记数据，移动气温、树冠、HOLC均须自采自配，可行性未核验",
+                    "断点回归在社会分组下空间混杂与尺度依赖难控，40%阈值交互在摘要中无直接证据",
+                    "标题声称“阈值随政策不平等改变”，但现有证据仅支持红线区气温偏高与单城市阈值存在，因果解释不成立"
+                  ],
+                  "minimum_data": [
+                    "同城A/D区可比样带的移动气温原始数据",
+                    "与样带同期的树冠覆盖与不透水面数据",
+                    "HOLC边界及社区社会经济协变量",
+                    "预注册的断点带宽与尺度敏感性方案"
+                  ],
+                  "novelty_status": "尚未完成系统性先前研究检索，创新性未核验",
+                  "revised_experiment": "改为预注册分层断点/分段回归：比较A/D区在40%树冠处前后每10%树冠的气温斜率差，做多尺度与协变量敏感性分析；若斜率差不稳健，则终止阈值公平假设，转为描述性比较。",
+                  "stop_conditions": [
+                    "断点两侧样本不足或协变量不连续则停止",
+                    "阈值斜率差在尺度敏感性分析中不稳定则停止",
+                    "无法排除不透水面与建成环境混杂则停止因果表述并降级"
+                  ],
+                  "verdict": "暂缓"
+                }
+              }
+            },
+            "已有研究深化": {
+              "ideas": [
+                {
+                  "baselines": [
+                    "不含交互项的HOLC等级线性回归",
+                    "仅以不透水面覆盖为解释变量的回归"
+                  ],
+                  "dataset_ids": [],
+                  "method": "对多城市做HOLC等级×树冠覆盖率分段的地表温度分层回归与交互项检验；需交互项才能区分“树冠中介”与“等级独立效应”。",
+                  "minimal_experiment": "按HOLC等级分层，比较树冠<40%与≥40%组内地表温度差；指标为交互项系数显著性及组间温差。",
+                  "paper_ids": [
+                    "https://openalex.org/W3139378816",
+                    "https://openalex.org/W2923210967",
+                    "https://openalex.org/W2999943130"
+                  ],
+                  "question": "在树冠覆盖率低于40%的社区，历史HOLC等级是否使地表温度差异显著大于树冠≥40%的社区？",
+                  "risks": [
+                    "无可用数据ID，需自建HOLC与地表温度匹配数据",
+                    "摘要未给阈值跨城市可移植性",
+                    "生态谬误与遗漏变量"
+                  ],
+                  "title": "树冠降温的阈值公平：HOLC等级是否放大临界树冠差异",
+                  "why_now": "已有研究分别确立HOLC与树冠、树冠与非线性降温的关系，但未检验40%阈值处公平差距是否收窄，构成可证伪增量假设。"
+                }
+              ]
+            },
+            "新兴学术前沿": {
+              "ideas": [
+                {
+                  "baselines": [
+                    "全域统一线性树冠-气温回归",
+                    "按红线等级分层的线性模型"
+                  ],
+                  "dataset_ids": [],
+                  "method": "用移动气温测量与树冠/不透水面图层做分层断点回归，检验阈值效应的社会差异，需区分尺度与历史政策混杂。",
+                  "minimal_experiment": "在同城A/D区各选可比样带，比较40%阈值前后每10%树冠的气温变化，指标为白天温差与阈值斜率差。",
+                  "paper_ids": [
+                    "https://openalex.org/W3139378816",
+                    "https://openalex.org/W2923210967",
+                    "https://openalex.org/W2999943130"
+                  ],
+                  "question": "原红线D区树冠覆盖跨过40%阈值时，其白天降温幅度是否显著小于A区？",
+                  "risks": [
+                    "无登记数据，需自采移动气温与树冠数据，空间混杂难控",
+                    "摘要级证据未含阈值交互结果，新颖性需全文核查"
+                  ],
+                  "title": "树冠降温阈值是否随历史住房政策不平等而改变",
+                  "why_now": "团队无登记成果；现有摘要仅报告红线区气温高2.6°C及40%降温阈值，未检验二者交互，属真实跨论文组合。"
+                }
+              ]
+            },
+            "跨领域方法与数据迁移": {
+              "ideas": [
+                {
+                  "baselines": [
+                    "整体城市树冠-气温线性回归",
+                    "按不透水面分层的无公平分组模型"
+                  ],
+                  "dataset_ids": [],
+                  "method": "将HOLC等级与移动气温样带协议迁移至同一城市，分层比较树冠-气温非线性曲线；需控制不透水面与尺度。",
+                  "minimal_experiment": "选一个HOLC城市，沿A/D街区分层各10条样带采气温，比较40%树冠处降温幅度；指标为组间降温差及置信区间。",
+                  "paper_ids": [
+                    "https://openalex.org/W3139378816",
+                    "https://openalex.org/W2923210967",
+                    "https://openalex.org/W2999943130"
+                  ],
+                  "question": "历史D级社区当前树冠降温效应是否显著低于A级，且在40%阈值处出现公平缺口？",
+                  "risks": [
+                    "无数据集ID，HOLC与样带数据须自采；仅摘要级证据，未核验全文方法细节；单城市外推有限"
+                  ],
+                  "title": "树冠降温公平的历史滞后检验",
+                  "why_now": "团队已有树冠公平研究未量化冷却服务差异；摘要显示冷却阈值与红lining树冠差异可组合，是真实增量假设。"
+                }
+              ]
+            }
+          }
+        },
+        "status": "completed"
+      }
+    },
+    {
+      "id": "7b0ba646-a4f4-494d-8ba3-0969987fbf12",
+      "created_at": "2026-11-07T09:56:38.118858+00:00",
+      "content": {
+        "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+        "detail": "Candidate has no validated problem",
+        "error": "ValueError",
+        "label": "S1",
+        "new_calls": 2,
+        "status": "failed"
+      }
+    },
+    {
+      "id": "f0c8e06e-d563-4c87-9acb-2c1a6182dfa1",
+      "created_at": "2026-11-07T09:57:32.478565+00:00",
+      "content": {
+        "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+        "label": "S1",
+        "new_calls": 1,
+        "result": {
+          "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+          "ideas": [],
+          "novelty_status": "unverified",
+          "reason": "科学审查存在未解决缺陷，本轮无推荐；保留问题及待修订候选供核查。",
+          "trace": {
+            "critic": [
+              {
+                "reason": "该候选问题具有明确的现实重要性，且对竞争解释的区分有设计意识（配对+回归分解），但尚不足以 recommend。核心缺陷：(1) 关键证伪条件与最小实验未指定温度结局的测量方式与时间窗（白天地表温度/近地气温、卫星过境时间或骑行采样），不同结局与时间窗可能改变树冠与不透水面的相对解释力（参见 PNAS 2019 的尺度与昼夜差异），而候选未处理这一异质性；(2) 配对策略未给出足够匹配精度与样本量方案，若树冠比例相近但历史等级不同的配对稀少，统计功效与混杂控制均不可保证；(3) 未说明如何排除建筑形态、灌溉、树种与维护等与历史等级共变的未观测混杂，回归分解的偏R²份额不能识别因果通道；(4) 仅以偏R²与通道解释份额为指标，缺乏对交互项预注册的模型规格与不确定性（如bootstrap或贝叶斯区间）方案；(5) 数据集为空且访问未核验，无法判断配对可得性。上述问题不是简单措辞可补，需要修订设计后方可评估。",
+                "title": "树冠独立降温效应与不透水面通道的配对分解",
+                "unresolved": [
+                  "温度结局的测量方式与时间窗（白天地表温度 vs 近地气温、昼夜差异、尺度依赖）未指定，可能决定通道排序",
+                  "树冠比例相近但历史等级不同的邻域配对是否足够多、匹配精度与样本量未知，统计功效与混杂控制无法保证",
+                  "如何排除建筑形态、灌溉与维护等与历史等级共变的未观测混杂，偏R²分解不能识别因果通道",
+                  "回归模型的交互项规格、不确定性区间与预注册分析方案缺失",
+                  "温度与树冠/不透水面空间数据的可得性与访问权限未经核验"
+                ],
+                "verdict": "revise"
+              }
+            ],
+            "hypothesis_reasoning": [
+              {
+                "baselines": [
+                  "仅以不透水面比例为预测变量的热暴露回归",
+                  "仅以树冠比例为预测变量的热暴露回归"
+                ],
+                "dataset_ids": [],
+                "method": "同城市内按树冠比例相近、历史等级不同的邻域配对，用回归分解树冠与不透水面独立及交互贡献；需配对以区分竞争解释。",
+                "minimal_experiment": "选取树冠比例相近但历史等级不同的邻域配对，比较地表温度并分解树冠与不透水面贡献；指标为偏R²与通道解释份额。",
+                "paper_ids": [
+                  "https://openalex.org/W3139378816",
+                  "https://openalex.org/W2999943130",
+                  "https://openalex.org/W2923210967"
+                ],
+                "problem": {
+                  "competing_explanations": [
+                    {
+                      "explanation": "树冠覆盖是热暴露差异的主导通道：同等条件下树冠越少，白天热暴露越高。",
+                      "prediction": "在控制不透水面比例与建筑密度后，树冠仍能独立解释redlining与非redlining区域间热暴露差异的大部分。"
+                    },
+                    {
+                      "explanation": "不透水面与建筑形态是主导通道，树冠只是与之共变的伴随标志。",
+                      "prediction": "控制不透水面比例与建筑密度后，树冠的独立解释力大幅下降，热暴露差异主要由不透水面解释。"
+                    }
+                  ],
+                  "distinguishing_observation": "在同一城市内选取树冠比例相近但历史等级不同（或反之）的邻域配对，比较其气温/地表温度，并分解树冠与不透水面的独立与交互贡献。",
+                  "evidence_status": "inferred_gap",
+                  "id": "heat-q1",
+                  "importance": "若树冠是主要可干预通道，补植即可缩小热暴露差距；若主要是不透水面与形态，则单靠种树难以奏效，政策优先级需改变。",
+                  "knowledge_increment": "现有研究虽报告树冠与redlining等级平行、并指出不透水面/树冠相对比例可部分解释，但未区分树冠独立贡献与其他共变土地覆盖的贡献，难以给出干预杠杆排序。",
+                  "question": "历史住房歧视（redlining）与当前城市树冠/热暴露的不平等关联，是源于树冠数量差异本身的因果效应，还是源于与树冠共变的其他土地覆盖（如不透水面）与建筑形态？",
+                  "source_refs": [
+                    {
+                      "paper_id": "https://openalex.org/W3139378816",
+                      "quote": "The ranking system used by Home Owners’ Loan Corporation to assess loan risk in the 1930s parallels the rank order of average percent tree canopy cover today."
+                    },
+                    {
+                      "paper_id": "https://openalex.org/W2999943130",
+                      "quote": "While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences."
+                    }
+                  ]
+                },
+                "problem_id": "heat-q1",
+                "question": "在控制不透水面比例与建筑密度后，树冠覆盖是否仍独立解释redlining相关热暴露差异？",
+                "risks": [
+                  "无可用数据集：需自建邻域配对与温度数据，未读取原始文件",
+                  "redlining等级与树冠共变可能残留混杂"
+                ],
+                "scientific_status": "hypothesis_pending_human_review",
+                "title": "树冠独立降温效应与不透水面通道的配对分解",
+                "why_now": "现有研究仅报告树冠与redlining等级平行、不透水面/树冠比例可部分解释，未给出两通道的独立解释力排序。"
+              }
+            ],
+            "problem_discovery": [
+              {
+                "competing_explanations": [
+                  {
+                    "explanation": "树冠覆盖是热暴露差异的主导通道：同等条件下树冠越少，白天热暴露越高。",
+                    "prediction": "在控制不透水面比例与建筑密度后，树冠仍能独立解释redlining与非redlining区域间热暴露差异的大部分。"
+                  },
+                  {
+                    "explanation": "不透水面与建筑形态是主导通道，树冠只是与之共变的伴随标志。",
+                    "prediction": "控制不透水面比例与建筑密度后，树冠的独立解释力大幅下降，热暴露差异主要由不透水面解释。"
+                  }
+                ],
+                "distinguishing_observation": "在同一城市内选取树冠比例相近但历史等级不同（或反之）的邻域配对，比较其气温/地表温度，并分解树冠与不透水面的独立与交互贡献。",
+                "evidence_status": "inferred_gap",
+                "id": "heat-q1",
+                "importance": "若树冠是主要可干预通道，补植即可缩小热暴露差距；若主要是不透水面与形态，则单靠种树难以奏效，政策优先级需改变。",
+                "knowledge_increment": "现有研究虽报告树冠与redlining等级平行、并指出不透水面/树冠相对比例可部分解释，但未区分树冠独立贡献与其他共变土地覆盖的贡献，难以给出干预杠杆排序。",
+                "question": "历史住房歧视（redlining）与当前城市树冠/热暴露的不平等关联，是源于树冠数量差异本身的因果效应，还是源于与树冠共变的其他土地覆盖（如不透水面）与建筑形态？",
+                "source_refs": [
+                  {
+                    "paper_id": "https://openalex.org/W3139378816",
+                    "quote": "The ranking system used by Home Owners’ Loan Corporation to assess loan risk in the 1930s parallels the rank order of average percent tree canopy cover today."
+                  },
+                  {
+                    "paper_id": "https://openalex.org/W2999943130",
+                    "quote": "While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences."
+                  }
+                ]
+              },
+              {
+                "competing_explanations": [
+                  {
+                    "explanation": "树冠降温阈值是普遍的生物物理规律，不同城市可共享同一覆盖目标。",
+                    "prediction": "在多个气候区与城市密度下重复测量，降温拐点仍在约40%附近且尺度依赖模式一致。"
+                  },
+                  {
+                    "explanation": "阈值与尺度效应是特定城市背景（中西部、特定不透水面配置、白天气温）的产物，换情境即改变。",
+                    "prediction": "在干燥或高密度城市中，降温拐点位置、幅度或空间尺度显著不同，统一40%标准不再适用。"
+                  }
+                ],
+                "distinguishing_observation": "在多气候区、多密度城市用统一移动测温或固定站点方案，比较树冠-温度曲线的拐点位置与最优分析尺度是否随背景变化。",
+                "evidence_status": "inferred_gap",
+                "id": "heat-q2",
+                "importance": "若降温存在阈值且随空间尺度变化，那么公平目标应是达到局部有效阈值并匹配空间尺度，而非全市统一的树冠百分比。",
+                "knowledge_increment": "已有研究指出树冠降温在超过约40%后最强、且效应随60–90 m尺度增大，但这些参数来自单一中西部城市白天气温观测，是否可外推到其他城市与地表温度指标尚不清楚。",
+                "question": "树冠对城市热暴露的降温效应是否存在阈值与尺度依赖，从而使得不同城市（如不同气候区、不同密度）的树冠公平目标不能通用同一覆盖标准？",
+                "source_refs": [
+                  {
+                    "paper_id": "https://openalex.org/W2923210967",
+                    "quote": "Temperature decreased nonlinearly with increasing canopy cover, with the greatest cooling when canopy cover exceeded 40%."
+                  },
+                  {
+                    "paper_id": "https://openalex.org/W2923210967",
+                    "quote": "The magnitude of daytime cooling also increased with spatial scale and was greatest at the size of a typical city block (60-90 m)."
+                  }
+                ]
+              }
+            ],
+            "withheld": [
+              {
+                "baselines": [
+                  "仅以不透水面比例为预测变量的热暴露回归",
+                  "仅以树冠比例为预测变量的热暴露回归"
+                ],
+                "dataset_ids": [],
+                "method": "同城市内按树冠比例相近、历史等级不同的邻域配对，用回归分解树冠与不透水面独立及交互贡献；需配对以区分竞争解释。",
+                "minimal_experiment": "选取树冠比例相近但历史等级不同的邻域配对，比较地表温度并分解树冠与不透水面贡献；指标为偏R²与通道解释份额。",
+                "paper_ids": [
+                  "https://openalex.org/W3139378816",
+                  "https://openalex.org/W2999943130",
+                  "https://openalex.org/W2923210967"
+                ],
+                "problem": {
+                  "competing_explanations": [
+                    {
+                      "explanation": "树冠覆盖是热暴露差异的主导通道：同等条件下树冠越少，白天热暴露越高。",
+                      "prediction": "在控制不透水面比例与建筑密度后，树冠仍能独立解释redlining与非redlining区域间热暴露差异的大部分。"
+                    },
+                    {
+                      "explanation": "不透水面与建筑形态是主导通道，树冠只是与之共变的伴随标志。",
+                      "prediction": "控制不透水面比例与建筑密度后，树冠的独立解释力大幅下降，热暴露差异主要由不透水面解释。"
+                    }
+                  ],
+                  "distinguishing_observation": "在同一城市内选取树冠比例相近但历史等级不同（或反之）的邻域配对，比较其气温/地表温度，并分解树冠与不透水面的独立与交互贡献。",
+                  "evidence_status": "inferred_gap",
+                  "id": "heat-q1",
+                  "importance": "若树冠是主要可干预通道，补植即可缩小热暴露差距；若主要是不透水面与形态，则单靠种树难以奏效，政策优先级需改变。",
+                  "knowledge_increment": "现有研究虽报告树冠与redlining等级平行、并指出不透水面/树冠相对比例可部分解释，但未区分树冠独立贡献与其他共变土地覆盖的贡献，难以给出干预杠杆排序。",
+                  "question": "历史住房歧视（redlining）与当前城市树冠/热暴露的不平等关联，是源于树冠数量差异本身的因果效应，还是源于与树冠共变的其他土地覆盖（如不透水面）与建筑形态？",
+                  "source_refs": [
+                    {
+                      "paper_id": "https://openalex.org/W3139378816",
+                      "quote": "The ranking system used by Home Owners’ Loan Corporation to assess loan risk in the 1930s parallels the rank order of average percent tree canopy cover today."
+                    },
+                    {
+                      "paper_id": "https://openalex.org/W2999943130",
+                      "quote": "While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences."
+                    }
+                  ]
+                },
+                "problem_id": "heat-q1",
+                "question": "在控制不透水面比例与建筑密度后，树冠覆盖是否仍独立解释redlining相关热暴露差异？",
+                "risks": [
+                  "无可用数据集：需自建邻域配对与温度数据，未读取原始文件",
+                  "redlining等级与树冠共变可能残留混杂"
+                ],
+                "scientific_status": "hypothesis_pending_human_review",
+                "title": "树冠独立降温效应与不透水面通道的配对分解",
+                "why_now": "现有研究仅报告树冠与redlining等级平行、不透水面/树冠比例可部分解释，未给出两通道的独立解释力排序。"
+              }
+            ]
+          }
+        },
+        "status": "completed"
+      }
+    }
+  ],
+  "discovery_judge": [
+    {
+      "id": "68769c9b-54e6-4602-8be6-b2f592faa396",
+      "created_at": "2026-11-07T09:59:51.141861+00:00",
+      "content": {
+        "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+        "mapping": {
+          "X0": "S1",
+          "X1": "B0",
+          "X2": "S0"
+        },
+        "result": {
+          "preference": "tie",
+          "reviews": [
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "依赖配对设计，但未提供任何可核对的数据集ID；所引论文（如W3139378816）报告的是树冠比例与HOLC等级的平行关系，而非可分解两通道的微观数据，数据可得性风险高，直接削弱其可执行性。",
+                "声称要分解树冠与不透水面的独立贡献，但引文本身（如W2999943130）已指出不透水面与树冠的共线性（“partly attributable to the relative preponderance of impervious land cover to tree canopy”），且缺乏建筑密度等高分辨率协变量，残留混杂难以控制；竞争解释未被充分排除。",
+                "没有提出任何明确的数据集或变量操作性定义，问题中的“配对的树冠比例相近但历史等级不同的邻域”是否真实存在于现有城市中未经验证，可能构成研究可行性缺陷。"
+              ],
+              "evidence_reliability": 1,
+              "falsifiability": 2,
+              "id": "X0",
+              "importance": 2,
+              "knowledge_increment": 2,
+              "reason": "问题重要且知识增量清晰，但因其声称要做分解检验却未提供任何数据来源、操作化指标或预注册计划，且依赖的配对设计在数据可获取性上未经验证，建议先解决数据可行性后再评审。",
+              "source_grounding": 2,
+              "worth_human_review": 0
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "“40%阈值”仅来自单一城市移动观测论文（W2923210967）中的非线性关系描述，未在其他城市或不同气候背景验证；将其直接应用于历史优势/弱势社区的公平比较是跨论文外推，阈值效应是否存在交互不确定。",
+                "引文所提供的是城市尺度或单一城市的结果，缺乏多城市、多气候区的阈值异质性证据；在无原始数据访问的情况下，无法保证所需的高分辨率树冠和地表温度数据能够支撑60–90m街区尺度分析。",
+                "推荐标题与想法内容基本一致，但未提供任何数据集ID或已验证的跨城市场景，方法上需跨尺度分析但未能解决空间尺度与历史区划边界错配的潜在问题。"
+              ],
+              "evidence_reliability": 1,
+              "falsifiability": 2,
+              "id": "X1",
+              "importance": 2,
+              "knowledge_increment": 2,
+              "reason": "想法有增量且可证伪，但核心阈值结论外推性证据不足，引文仅支持单一城市观测，缺乏多城市验证，建议补充可支撑多城市检验的设计后再评。",
+              "source_grounding": 2,
+              "worth_human_review": 0
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "所引的W3139378816和W2999943130均未提供40%阈值在历史红线社区内效应变化的统计检验，而W2923210967仅在城市尺度报告非线性冷却，未按HOLC等级分层；把二者结合成“阈值公平假说”需要更强的实证依据，当前仅是逻辑拼接。",
+                "引用摘要中缺少任何提供HOLC边界与树冠栅格精确匹配、建筑密度和人口协变量的公开数据，其假设中的“同城同年对齐”可能不可实现。",
+                "交互项检验依赖高分辨率多源数据，但未提出数据源或可行的样本量估计，且生态谬误风险高；尽管设计更具体，但不足以判定为独立可操作的研究方案。"
+              ],
+              "evidence_reliability": 1,
+              "falsifiability": 2,
+              "id": "X2",
+              "importance": 2,
+              "knowledge_increment": 2,
+              "reason": "想法具有可证伪性和一定的知识增量，但明显依赖跨论文假设的机械组合，且数据的可获取性完全未验证，建议拒绝。",
+              "source_grounding": 2,
+              "worth_human_review": 0
+            }
+          ]
+        },
+        "role": "construct validity and rival explanations"
+      }
+    },
+    {
+      "id": "ec96d36c-28a9-4e58-b0a9-65dd70ca8cbf",
+      "created_at": "2026-11-07T10:00:10.310362+00:00",
+      "content": {
+        "context_hash": "0ec89be342ac6f7e8e4c3b98503349d7507da6522cbc02a2bc249fdd8d550ae7",
+        "mapping": {
+          "X0": "S1",
+          "X1": "B0",
+          "X2": "S0"
+        },
+        "result": {
+          "preference": "none",
+          "reviews": [
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "The proposal relies on the claim that existing studies '未区分树冠独立贡献与其他共变土地覆盖的贡献' but the cited papers explicitly acknowledge and examine the relative contributions of impervious surfaces and tree canopy. For example, W2999943130 states 'While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences.' This indicates that the proposed contribution may not be novel.",
+                "The minimal experiment requires constructing paired neighborhoods with similar tree canopy but different historical grades, but no specific dataset or feasible methodology for such pairing is provided. The claim '需自建邻域配对与温度数据' suggests the feasibility is uncertain.",
+                "The proposal does not cite any direct evidence that redlining affects temperature independently of tree canopy after controlling for impervious surfaces, making the gap assertion unsupported.",
+                "The paper_ids cited as baselines are not explicitly identified as using only impervious surface or only tree canopy as predictors, so the claimed baselines may not exist."
+              ],
+              "evidence_reliability": 0,
+              "falsifiability": 1,
+              "id": "X0",
+              "importance": 1,
+              "knowledge_increment": 1,
+              "reason": "The submitted idea X0 fails to establish a clear knowledge increment because the cited papers already acknowledge and partially address the relative contributions of tree canopy and impervious surfaces. The proposal does not provide specific evidence that the independent effect of tree canopy on heat exposure after controlling for impervious surfaces remains unexplained. The minimal experiment lacks feasible data sourcing and the baselines are not validated. Consequently, the problem importance is moderate but the knowledge increment is negligible, and the evidence reliability is poor due to lack of direct support.",
+              "source_grounding": 2,
+              "worth_human_review": false
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "The proposal stitches together findings from two separate papers (W2923210967 for 40% threshold and W2999943130 for redlining) without demonstrated connection. The claim that '已有研究分别确认红线和树冠不平等及40%降温阈值' is accurate but the inference that '40%阈值以上不平等是否收敛' is not supported by either paper.",
+                "The minimal experiment requires '在同一城市内按历史等级分层，比较60 m与90 m缓冲下树冠≥40%与<40%街区的地表温度差' but there is no evidence that such data are available or that the 40% threshold applies across cities or historical grades. The threshold was observed in a single midsized city in the Upper Midwest, and its transferability is unknown.",
+                "The proposal does not specify which historical grades to compare, making the hypothesis vague. It says '历史弱势社区与优势社区' without operationalizing these categories.",
+                "The cited papers do not provide evidence that tree canopy cover differences between redlined and non-redlined areas exceed 40% in any city, so it is unclear if the threshold is relevant to equity."
+              ],
+              "evidence_reliability": 0,
+              "falsifiability": 1,
+              "id": "X1",
+              "importance": 1,
+              "knowledge_increment": 1,
+              "reason": "The submission X1 presents a plausible-sounding question about whether a 40% tree canopy threshold reduces heat disparities between historically disadvantaged and advantaged communities. However, the evidence for the existence and relevance of such a threshold in the context of redlining is absent. The proposal merely combines two separate findings without a mechanistic or empirical link. The minimal experiment is not grounded in available data, and the hypotheses are not clearly falsifiable because the necessary conditions (e.g., prevalence of canopy below/above threshold in redlined areas) are unverified. Therefore, the knowledge increment is minimal and the evidence reliability is poor.",
+              "source_grounding": 2,
+              "worth_human_review": false
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "The proposal is nearly identical to X1, differing mainly in phrasing. Both propose testing whether the 40% tree canopy threshold reduces heat disparities between redlined and non-redlined areas.",
+                "The cited paper W2923210967 reports a threshold of >40% for maximum cooling, but this was observed in a single city's daytime air temperature measurements; its applicability to land surface temperature and to other cities or historical grades is not established.",
+                "The minimal experiment requires aligning HOLC boundaries, tree canopy raster, and land surface temperature products, but no evidence is provided that such aligned data are readily available or that the interaction term would be estimable with sufficient power.",
+                "The proposal does not address potential confounding variables other than impervious surface, such as building density, albedo, or population density, despite acknowledging '遗漏变量与空间混杂' in risks but not proposing a concrete mitigation.",
+                "The title '阈值公平假说' is catchy but unsupported by the cited literature."
+              ],
+              "evidence_reliability": 0,
+              "falsifiability": 1,
+              "id": "X2",
+              "importance": 1,
+              "knowledge_increment": 1,
+              "reason": "Submission X2 proposes an interaction between HOLC grade and a tree canopy threshold on land surface temperature. However, this is essentially a restatement of X1, and both rely on a single-city threshold that has no demonstrated relevance to the redlining context. The evidence base for the 40% threshold as a moderator of historical inequities is nonexistent. The proposal does not provide a novel knowledge increment beyond what could be inferred from existing papers. Given the lack of data feasibility and weak grounding, it does not merit human review.",
+              "source_grounding": 2,
+              "worth_human_review": false
+            }
+          ]
+        },
+        "role": "problem importance and knowledge increment"
+      }
+    }
+  ],
+  "model_calls": [
+    {
+      "id": "e425e99f-6c3a-4f22-bc04-2de59a9e1d4c",
+      "created_at": "2026-11-07T09:54:47.807993+00:00",
+      "content": {
+        "charged_bound": 0.00709,
+        "digest": "d043f243061fa20835215bf803610f9cdba5d0581efe9b24a2663fb0c5919ed1",
+        "estimated_cny": 0.00709,
+        "input_hash": "d043f243061fa20835215bf803610f9cdba5d0581efe9b24a2663fb0c5919ed1",
+        "max_tokens": 3500,
+        "model": "deepseek-flash",
+        "reservation": 0.052954,
+        "result": {
+          "ideas": [
+            {
+              "baselines": [
+                "线性树冠-温度回归（无阈值）",
+                "仅不透水面解释的热暴露模型"
+              ],
+              "dataset_ids": [],
+              "method": "用高分辨率树冠与地表温度数据，分层（A–D历史等级）比较不同缓冲尺度下树冠-温度关系，检验40%阈值以上不平等是否收敛；需跨尺度分析以区分局部遮荫与邻域溢出效应。",
+              "minimal_experiment": "在同一城市内按历史等级分层，比较60 m与90 m缓冲下树冠≥40%与<40%街区的地表温度差；指标为社区间温差及阈值交互项显著性。",
+              "paper_ids": [
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W2999943130",
+                "https://openalex.org/W3139378816"
+              ],
+              "question": "树冠覆盖超过40%的降温阈值是否在街区尺度（60–90 m）上系统性缩小历史弱势社区与优势社区之间的夏季地表温度差？",
+              "risks": [
+                "无已登记数据集，需自采配对遥感与历史等级数据，存在尺度错配与混杂。",
+                "摘要级证据未给出阈值在城市间可迁移性，结论可能不稳健。"
+              ],
+              "title": "树冠覆盖与城市热暴露不平等的尺度依赖阈值检验",
+              "why_now": "已有研究分别确认红线和树冠不平等及40%降温阈值，但未检验该阈值能否在街区尺度上缩小社区间热暴露差距，属于真实跨论文组合的增量假设。"
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2249,
+          "output_tokens": 324
+        }
+      }
+    },
+    {
+      "id": "d196723f-3ac9-4d9b-a62c-97f848321a54",
+      "created_at": "2026-11-07T09:54:53.001509+00:00",
+      "content": {
+        "charged_bound": 0.007084,
+        "digest": "bfc05f1e2344cfb4427abf9e7d8cb4e3db3fa38196edeaacf3a56e0fa867515b",
+        "estimated_cny": 0.007084,
+        "input_hash": "bfc05f1e2344cfb4427abf9e7d8cb4e3db3fa38196edeaacf3a56e0fa867515b",
+        "max_tokens": 3500,
+        "model": "deepseek-flash",
+        "reservation": 0.053104,
+        "result": {
+          "ideas": [
+            {
+              "baselines": [
+                "不含交互项的HOLC等级线性回归",
+                "仅以不透水面覆盖为解释变量的回归"
+              ],
+              "dataset_ids": [],
+              "method": "对多城市做HOLC等级×树冠覆盖率分段的地表温度分层回归与交互项检验；需交互项才能区分“树冠中介”与“等级独立效应”。",
+              "minimal_experiment": "按HOLC等级分层，比较树冠<40%与≥40%组内地表温度差；指标为交互项系数显著性及组间温差。",
+              "paper_ids": [
+                "https://openalex.org/W3139378816",
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W2999943130"
+              ],
+              "question": "在树冠覆盖率低于40%的社区，历史HOLC等级是否使地表温度差异显著大于树冠≥40%的社区？",
+              "risks": [
+                "无可用数据ID，需自建HOLC与地表温度匹配数据",
+                "摘要未给阈值跨城市可移植性",
+                "生态谬误与遗漏变量"
+              ],
+              "title": "树冠降温的阈值公平：HOLC等级是否放大临界树冠差异",
+              "why_now": "已有研究分别确立HOLC与树冠、树冠与非线性降温的关系，但未检验40%阈值处公平差距是否收窄，构成可证伪增量假设。"
+            }
+          ],
+          "reason": "输入无数据集ID；选题仅基于三篇摘要公开结论，属摘要级证据，未读取全文。"
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2266,
+          "output_tokens": 319
+        }
+      }
+    },
+    {
+      "id": "0b4d930e-4886-44a0-9bee-0064a6288214",
+      "created_at": "2026-11-07T09:54:57.070125+00:00",
+      "content": {
+        "charged_bound": 0.006664,
+        "digest": "b345d6ba592db33880c44d544269a011b53ef3e7098bff71159a270d825c0352",
+        "estimated_cny": 0.006664,
+        "input_hash": "b345d6ba592db33880c44d544269a011b53ef3e7098bff71159a270d825c0352",
+        "max_tokens": 3500,
+        "model": "deepseek-flash",
+        "reservation": 0.053128,
+        "result": {
+          "ideas": [
+            {
+              "baselines": [
+                "整体城市树冠-气温线性回归",
+                "按不透水面分层的无公平分组模型"
+              ],
+              "dataset_ids": [],
+              "method": "将HOLC等级与移动气温样带协议迁移至同一城市，分层比较树冠-气温非线性曲线；需控制不透水面与尺度。",
+              "minimal_experiment": "选一个HOLC城市，沿A/D街区分层各10条样带采气温，比较40%树冠处降温幅度；指标为组间降温差及置信区间。",
+              "paper_ids": [
+                "https://openalex.org/W3139378816",
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W2999943130"
+              ],
+              "question": "历史D级社区当前树冠降温效应是否显著低于A级，且在40%阈值处出现公平缺口？",
+              "risks": [
+                "无数据集ID，HOLC与样带数据须自采；仅摘要级证据，未核验全文方法细节；单城市外推有限"
+              ],
+              "title": "树冠降温公平的历史滞后检验",
+              "why_now": "团队已有树冠公平研究未量化冷却服务差异；摘要显示冷却阈值与红lining树冠差异可组合，是真实增量假设。"
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2268,
+          "output_tokens": 266
+        }
+      }
+    },
+    {
+      "id": "0f10a617-e99d-47e2-82f5-afc1ea94397e",
+      "created_at": "2026-11-07T09:55:00.952633+00:00",
+      "content": {
+        "charged_bound": 0.006676,
+        "digest": "6322e4bdaf0c9147017afe02e189845e711e1a166f269ee4f647d54101ad52d1",
+        "estimated_cny": 0.006676,
+        "input_hash": "6322e4bdaf0c9147017afe02e189845e711e1a166f269ee4f647d54101ad52d1",
+        "max_tokens": 3500,
+        "model": "deepseek-flash",
+        "reservation": 0.053104,
+        "result": {
+          "ideas": [
+            {
+              "baselines": [
+                "全域统一线性树冠-气温回归",
+                "按红线等级分层的线性模型"
+              ],
+              "dataset_ids": [],
+              "method": "用移动气温测量与树冠/不透水面图层做分层断点回归，检验阈值效应的社会差异，需区分尺度与历史政策混杂。",
+              "minimal_experiment": "在同城A/D区各选可比样带，比较40%阈值前后每10%树冠的气温变化，指标为白天温差与阈值斜率差。",
+              "paper_ids": [
+                "https://openalex.org/W3139378816",
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W2999943130"
+              ],
+              "question": "原红线D区树冠覆盖跨过40%阈值时，其白天降温幅度是否显著小于A区？",
+              "risks": [
+                "无登记数据，需自采移动气温与树冠数据，空间混杂难控",
+                "摘要级证据未含阈值交互结果，新颖性需全文核查"
+              ],
+              "title": "树冠降温阈值是否随历史住房政策不平等而改变",
+              "why_now": "团队无登记成果；现有摘要仅报告红线区气温高2.6°C及40%降温阈值，未检验二者交互，属真实跨论文组合。"
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2266,
+          "output_tokens": 268
+        }
+      }
+    },
+    {
+      "id": "e5c6b2d7-581b-4962-bcc2-443d74107192",
+      "created_at": "2026-11-07T09:55:04.488321+00:00",
+      "content": {
+        "charged_bound": 0.01327,
+        "digest": "8f0d7b2a9f78447f1d5506afa3f3b8851913b010769d9060b0e0bf6f68ca2155",
+        "estimated_cny": 0.01327,
+        "input_hash": "8f0d7b2a9f78447f1d5506afa3f3b8851913b010769d9060b0e0bf6f68ca2155",
+        "max_tokens": 3500,
+        "model": "deepseek-flash",
+        "reservation": 0.05895,
+        "result": {
+          "reviews": [
+            {
+              "fatal_gaps": [
+                "无任何登记数据集ID，HOLC等级、树冠覆盖与地表温度在社区尺度的历史匹配数据实际可得性未核验",
+                "40%阈值仅来自单城市移动气温摘要，其跨城市可移植性无证据",
+                "仅分层比较无法区分“树冠中介”与“等级独立效应”，必须含交互项，且生态谬误与遗漏变量未控"
+              ],
+              "minimum_data": [
+                "经授权获取的HOLC分级矢量边界，明确年份版本",
+                "同城同年的树冠覆盖栅格与地表温度产品，含元数据与空间分辨率",
+                "人口/不透水面等社区级协变量及合法使用许可",
+                "跨城市样本量与配对规则预注册"
+              ],
+              "novelty_status": "尚未完成系统检索，创新性未核验",
+              "revised_experiment": "预注册分层交互回归：以地表温度为因变量，HOLC等级、树冠覆盖分段（<40%与≥40%）、二者交互项为自变量，控制不透水面与人口协变量；主指标为交互项系数及组间温差置信区间；先在2个城市做可行性与样本量检验，通过后再扩展。",
+              "stop_conditions": [
+                "HOLC、树冠、地表温度三类数据无法在同一社区单元对齐则停止",
+                "缺少≥2个城市可比数据则停止",
+                "交互项预检不显著且无组间温差趋势则停止"
+              ],
+              "title": "树冠降温的阈值公平：HOLC等级是否放大临界树冠差异",
+              "verdict": "需要补充证据"
+            },
+            {
+              "fatal_gaps": [
+                "团队“已有树冠公平研究”无登记成果支撑，不能据此声称增量",
+                "无数据集ID；移动气温样带须自采，HOLC与样带的空间配对未验证",
+                "单城市A/D各10条样带样本量不足以检验40%处降温差，仅摘要级证据未核验全文协议细节"
+              ],
+              "minimum_data": [
+                "单城市经许可使用的HOLC边界",
+                "预先设定的A/D街区分层抽样框与样带坐标",
+                "经校准的移动气温测量原始数据与时间戳",
+                "树冠与不透水面高分辨率图层"
+              ],
+              "novelty_status": "尚未完成系统检索，创新性未核验",
+              "revised_experiment": "先做单城市预试：A/D区各分层采集可比样带，估计40%树冠处降温差的效应量与方差，据此计算正式样本量；主分析为分层非线性回归组间降温差；预试未达预设精度则停止或改为纯观测描述。",
+              "stop_conditions": [
+                "样带无法在A/D区按树冠梯度匹配则停止",
+                "移动气温设备校准或重复测量精度不达标则停止",
+                "组间降温差置信区间跨零且样本量不可扩充则停止"
+              ],
+              "title": "树冠降温公平的历史滞后检验",
+              "verdict": "暂缓"
+            },
+            {
+              "fatal_gaps": [
+                "无登记数据，移动气温、树冠、HOLC均须自采自配，可行性未核验",
+                "断点回归在社会分组下空间混杂与尺度依赖难控，40%阈值交互在摘要中无直接证据",
+                "标题声称“阈值随政策不平等改变”，但现有证据仅支持红线区气温偏高与单城市阈值存在，因果解释不成立"
+              ],
+              "minimum_data": [
+                "同城A/D区可比样带的移动气温原始数据",
+                "与样带同期的树冠覆盖与不透水面数据",
+                "HOLC边界及社区社会经济协变量",
+                "预注册的断点带宽与尺度敏感性方案"
+              ],
+              "novelty_status": "尚未完成系统检索，创新性未核验",
+              "revised_experiment": "改为预注册分层断点/分段回归：比较A/D区在40%树冠处前后每10%树冠的气温斜率差，做多尺度与协变量敏感性分析；若斜率差不稳健，则终止阈值公平假设，转为描述性比较。",
+              "stop_conditions": [
+                "断点两侧样本不足或协变量不连续则停止",
+                "阈值斜率差在尺度敏感性分析中不稳定则停止",
+                "无法排除不透水面与建成环境混杂则停止因果表述并降级"
+              ],
+              "title": "树冠降温阈值是否随历史住房政策不平等而改变",
+              "verdict": "暂缓"
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3063,
+          "output_tokens": 893
+        }
+      }
+    },
+    {
+      "id": "3040a60e-3d2a-4dfe-b780-dad771fb9351",
+      "created_at": "2026-11-07T09:55:13.361542+00:00",
+      "content": {
+        "charged_bound": 0.011052,
+        "digest": "1ca3ac5f3e70cd739669bced283a3084fb5e372e3245d54bb58ba9303564f23f",
+        "estimated_cny": 0.011052,
+        "input_hash": "1ca3ac5f3e70cd739669bced283a3084fb5e372e3245d54bb58ba9303564f23f",
+        "max_tokens": 3500,
+        "model": "deepseek-flash",
+        "reservation": 0.067232,
+        "result": {
+          "ideas": [
+            {
+              "baselines": [
+                "不含交互项的HOLC等级线性回归",
+                "仅以不透水面覆盖为解释变量的回归"
+              ],
+              "dataset_ids": [],
+              "method": "分层交互回归：地表温度~HOLC等级×树冠分段(<40%/≥40%)+不透水面+人口协变量；需交互项区分树冠中介与等级独立效应，并做多城市分层与预注册敏感性分析。",
+              "minimal_experiment": "在同城同年对齐HOLC边界、树冠栅格与地表温度产品，按<40%/≥40%分层比较A/D组地表温度差；主指标为交互项系数显著性及组间温差置信区间。",
+              "paper_ids": [
+                "https://openalex.org/W3139378816",
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W2999943130"
+              ],
+              "question": "控制不透水面后，原HOLC D级社区在树冠覆盖率<40%时相对A级的地表温度差，是否显著大于树冠≥40%时的差（即40%阈值处公平缺口收窄）？",
+              "risks": [
+                "无登记数据ID，HOLC、树冠、地表温度同社区单元对齐可得性未核验",
+                "40%阈值仅见于单城市移动气温摘要，跨城市可移植性无证据",
+                "生态谬误、遗漏变量与空间混杂"
+              ],
+              "title": "树冠降温阈值的HOLC等级交互：阈值公平假说",
+              "why_now": "团队无登记成果可作增量基准；摘要级证据分别报告HOLC—树冠差异、40%非线性降温阈值与红线区气温偏高，但未检验二者交互，构成可证伪增量假设。"
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 4066,
+          "output_tokens": 365
+        }
+      }
+    },
+    {
+      "id": "2b2b67c2-a182-4bf8-bd6a-2a5125e6c42b",
+      "created_at": "2026-11-07T09:56:25.822867+00:00",
+      "content": {
+        "charged_bound": 0.011054,
+        "digest": "09d778ddd7d3f6223dd4b733891ecf0e65a804a495e6c21b655056546fd4c1d0",
+        "estimated_cny": 0.011054,
+        "input_hash": "09d778ddd7d3f6223dd4b733891ecf0e65a804a495e6c21b655056546fd4c1d0",
+        "max_tokens": 3000,
+        "model": "deepseek-flash",
+        "reservation": 0.048362,
+        "result": {
+          "problems": [
+            {
+              "competing_explanations": [
+                {
+                  "explanation": "树冠覆盖是热暴露差异的主导通道：同等条件下树冠越少，白天热暴露越高。",
+                  "prediction": "在控制不透水面比例与建筑密度后，树冠仍能独立解释redlining与非redlining区域间热暴露差异的大部分。"
+                },
+                {
+                  "explanation": "不透水面与建筑形态是主导通道，树冠只是与之共变的伴随标志。",
+                  "prediction": "控制不透水面比例与建筑密度后，树冠的独立解释力大幅下降，热暴露差异主要由不透水面解释。"
+                }
+              ],
+              "distinguishing_observation": "在同一城市内选取树冠比例相近但历史等级不同（或反之）的邻域配对，比较其气温/地表温度，并分解树冠与不透水面的独立与交互贡献。",
+              "evidence_status": "inferred_gap",
+              "id": "heat-q1",
+              "importance": "若树冠是主要可干预通道，补植即可缩小热暴露差距；若主要是不透水面与形态，则单靠种树难以奏效，政策优先级需改变。",
+              "knowledge_increment": "现有研究虽报告树冠与redlining等级平行、并指出不透水面/树冠相对比例可部分解释，但未区分树冠独立贡献与其他共变土地覆盖的贡献，难以给出干预杠杆排序。",
+              "question": "历史住房歧视（redlining）与当前城市树冠/热暴露的不平等关联，是源于树冠数量差异本身的因果效应，还是源于与树冠共变的其他土地覆盖（如不透水面）与建筑形态？",
+              "source_refs": [
+                {
+                  "paper_id": "https://openalex.org/W3139378816",
+                  "quote": "The ranking system used by Home Owners’ Loan Corporation to assess loan risk in the 1930s parallels the rank order of average percent tree canopy cover today."
+                },
+                {
+                  "paper_id": "https://openalex.org/W2999943130",
+                  "quote": "While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences."
+                }
+              ]
+            },
+            {
+              "competing_explanations": [
+                {
+                  "explanation": "树冠降温阈值是普遍的生物物理规律，不同城市可共享同一覆盖目标。",
+                  "prediction": "在多个气候区与城市密度下重复测量，降温拐点仍在约40%附近且尺度依赖模式一致。"
+                },
+                {
+                  "explanation": "阈值与尺度效应是特定城市背景（中西部、特定不透水面配置、白天气温）的产物，换情境即改变。",
+                  "prediction": "在干燥或高密度城市中，降温拐点位置、幅度或空间尺度显著不同，统一40%标准不再适用。"
+                }
+              ],
+              "distinguishing_observation": "在多气候区、多密度城市用统一移动测温或固定站点方案，比较树冠-温度曲线的拐点位置与最优分析尺度是否随背景变化。",
+              "evidence_status": "inferred_gap",
+              "id": "heat-q2",
+              "importance": "若降温存在阈值且随空间尺度变化，那么公平目标应是达到局部有效阈值并匹配空间尺度，而非全市统一的树冠百分比。",
+              "knowledge_increment": "已有研究指出树冠降温在超过约40%后最强、且效应随60–90 m尺度增大，但这些参数来自单一中西部城市白天气温观测，是否可外推到其他城市与地表温度指标尚不清楚。",
+              "question": "树冠对城市热暴露的降温效应是否存在阈值与尺度依赖，从而使得不同城市（如不同气候区、不同密度）的树冠公平目标不能通用同一覆盖标准？",
+              "source_refs": [
+                {
+                  "paper_id": "https://openalex.org/W2923210967",
+                  "quote": "Temperature decreased nonlinearly with increasing canopy cover, with the greatest cooling when canopy cover exceeded 40%."
+                },
+                {
+                  "paper_id": "https://openalex.org/W2923210967",
+                  "quote": "The magnitude of daytime cooling also increased with spatial scale and was greatest at the size of a typical city block (60-90 m)."
+                }
+              ]
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2175,
+          "output_tokens": 838
+        }
+      }
+    },
+    {
+      "id": "d3289a8e-4f58-4e3b-9576-e2e1ea6badcc",
+      "created_at": "2026-11-07T09:56:34.341695+00:00",
+      "content": {
+        "charged_bound": 0.008812,
+        "digest": "0654f6e961d129c755f2a93f59c508438b14f48e84a7c585c416ee107da4fc50",
+        "estimated_cny": 0.008812,
+        "input_hash": "0654f6e961d129c755f2a93f59c508438b14f48e84a7c585c416ee107da4fc50",
+        "max_tokens": 3500,
+        "model": "deepseek-flash",
+        "reservation": 0.061164,
+        "result": {
+          "ideas": [
+            {
+              "baselines": [
+                "仅以不透水面比例为预测变量的热暴露回归",
+                "仅以树冠比例为预测变量的热暴露回归"
+              ],
+              "dataset_ids": [],
+              "method": "同城市内按树冠比例相近、历史等级不同的邻域配对，用回归分解树冠与不透水面独立及交互贡献；需配对以区分竞争解释。",
+              "minimal_experiment": "选取树冠比例相近但历史等级不同的邻域配对，比较地表温度并分解树冠与不透水面贡献；指标为偏R²与通道解释份额。",
+              "paper_ids": [
+                "https://openalex.org/W3139378816",
+                "https://openalex.org/W2999943130",
+                "https://openalex.org/W2923210967"
+              ],
+              "question": "在控制不透水面比例与建筑密度后，树冠覆盖是否仍独立解释redlining相关热暴露差异？",
+              "risks": [
+                "无可用数据集：需自建邻域配对与温度数据，未读取原始文件",
+                "redlining等级与树冠共变可能残留混杂"
+              ],
+              "title": "树冠独立降温效应与不透水面通道的配对分解",
+              "why_now": "现有研究仅报告树冠与redlining等级平行、不透水面/树冠比例可部分解释，未给出两通道的独立解释力排序。"
+            }
+          ],
+          "problem_id": "heat-q1",
+          "reason": "仅一个问题生成候选；heat-q2因缺乏多气候区数据支撑，未推荐。"
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3198,
+          "output_tokens": 302
+        }
+      }
+    },
+    {
+      "id": "3ab7acb6-dc87-4d1b-953b-896f2a77de07",
+      "created_at": "2026-11-07T09:57:27.266570+00:00",
+      "content": {
+        "charged_bound": 0.00907,
+        "digest": "e1e48fe2fe153bc3148df39d6406a6cdda257bfee6221ff12e9d168f0b4efbed",
+        "estimated_cny": 0.00907,
+        "input_hash": "e1e48fe2fe153bc3148df39d6406a6cdda257bfee6221ff12e9d168f0b4efbed",
+        "max_tokens": 3000,
+        "model": "deepseek-flash",
+        "reservation": 0.054398,
+        "result": {
+          "reviews": [
+            {
+              "reason": "该候选问题具有明确的现实重要性，且对竞争解释的区分有设计意识（配对+回归分解），但尚不足以 recommend。核心缺陷：(1) 关键证伪条件与最小实验未指定温度结局的测量方式与时间窗（白天地表温度/近地气温、卫星过境时间或骑行采样），不同结局与时间窗可能改变树冠与不透水面的相对解释力（参见 PNAS 2019 的尺度与昼夜差异），而候选未处理这一异质性；(2) 配对策略未给出足够匹配精度与样本量方案，若树冠比例相近但历史等级不同的配对稀少，统计功效与混杂控制均不可保证；(3) 未说明如何排除建筑形态、灌溉、树种与维护等与历史等级共变的未观测混杂，回归分解的偏R²份额不能识别因果通道；(4) 仅以偏R²与通道解释份额为指标，缺乏对交互项预注册的模型规格与不确定性（如bootstrap或贝叶斯区间）方案；(5) 数据集为空且访问未核验，无法判断配对可得性。上述问题不是简单措辞可补，需要修订设计后方可评估。",
+              "title": "树冠独立降温效应与不透水面通道的配对分解",
+              "unresolved": [
+                "温度结局的测量方式与时间窗（白天地表温度 vs 近地气温、昼夜差异、尺度依赖）未指定，可能决定通道排序",
+                "树冠比例相近但历史等级不同的邻域配对是否足够多、匹配精度与样本量未知，统计功效与混杂控制无法保证",
+                "如何排除建筑形态、灌溉与维护等与历史等级共变的未观测混杂，偏R²分解不能识别因果通道",
+                "回归模型的交互项规格、不确定性区间与预注册分析方案缺失",
+                "温度与树冠/不透水面空间数据的可得性与访问权限未经核验"
+              ],
+              "verdict": "revise"
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2899,
+          "output_tokens": 409
+        }
+      }
+    },
+    {
+      "id": "64ed247e-f46c-4023-a332-fa04081bbee0",
+      "created_at": "2026-11-07T09:59:35.065826+00:00",
+      "content": {
+        "charged_bound": 0.058095,
+        "digest": "7d0249304f75e5bf303283b9f3f36aea56094087482e57c3905086ee03a4678e",
+        "estimated_cny": 0.058095,
+        "input_hash": "7d0249304f75e5bf303283b9f3f36aea56094087482e57c3905086ee03a4678e",
+        "max_tokens": 3000,
+        "model": "deepseek-v4-pro",
+        "reservation": 0.24291,
+        "result": {
+          "preference": "tie",
+          "reviews": [
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "依赖配对设计，但未提供任何可核对的数据集ID；所引论文（如W3139378816）报告的是树冠比例与HOLC等级的平行关系，而非可分解两通道的微观数据，数据可得性风险高，直接削弱其可执行性。",
+                "声称要分解树冠与不透水面的独立贡献，但引文本身（如W2999943130）已指出不透水面与树冠的共线性（“partly attributable to the relative preponderance of impervious land cover to tree canopy”），且缺乏建筑密度等高分辨率协变量，残留混杂难以控制；竞争解释未被充分排除。",
+                "没有提出任何明确的数据集或变量操作性定义，问题中的“配对的树冠比例相近但历史等级不同的邻域”是否真实存在于现有城市中未经验证，可能构成研究可行性缺陷。"
+              ],
+              "evidence_reliability": 1,
+              "falsifiability": 2,
+              "id": "X0",
+              "importance": 2,
+              "knowledge_increment": 2,
+              "reason": "问题重要且知识增量清晰，但因其声称要做分解检验却未提供任何数据来源、操作化指标或预注册计划，且依赖的配对设计在数据可获取性上未经验证，建议先解决数据可行性后再评审。",
+              "source_grounding": 2,
+              "worth_human_review": 0
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "“40%阈值”仅来自单一城市移动观测论文（W2923210967）中的非线性关系描述，未在其他城市或不同气候背景验证；将其直接应用于历史优势/弱势社区的公平比较是跨论文外推，阈值效应是否存在交互不确定。",
+                "引文所提供的是城市尺度或单一城市的结果，缺乏多城市、多气候区的阈值异质性证据；在无原始数据访问的情况下，无法保证所需的高分辨率树冠和地表温度数据能够支撑60–90m街区尺度分析。",
+                "推荐标题与想法内容基本一致，但未提供任何数据集ID或已验证的跨城市场景，方法上需跨尺度分析但未能解决空间尺度与历史区划边界错配的潜在问题。"
+              ],
+              "evidence_reliability": 1,
+              "falsifiability": 2,
+              "id": "X1",
+              "importance": 2,
+              "knowledge_increment": 2,
+              "reason": "想法有增量且可证伪，但核心阈值结论外推性证据不足，引文仅支持单一城市观测，缺乏多城市验证，建议补充可支撑多城市检验的设计后再评。",
+              "source_grounding": 2,
+              "worth_human_review": 0
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "所引的W3139378816和W2999943130均未提供40%阈值在历史红线社区内效应变化的统计检验，而W2923210967仅在城市尺度报告非线性冷却，未按HOLC等级分层；把二者结合成“阈值公平假说”需要更强的实证依据，当前仅是逻辑拼接。",
+                "引用摘要中缺少任何提供HOLC边界与树冠栅格精确匹配、建筑密度和人口协变量的公开数据，其假设中的“同城同年对齐”可能不可实现。",
+                "交互项检验依赖高分辨率多源数据，但未提出数据源或可行的样本量估计，且生态谬误风险高；尽管设计更具体，但不足以判定为独立可操作的研究方案。"
+              ],
+              "evidence_reliability": 1,
+              "falsifiability": 2,
+              "id": "X2",
+              "importance": 2,
+              "knowledge_increment": 2,
+              "reason": "想法具有可证伪性和一定的知识增量，但明显依赖跨论文假设的机械组合，且数据的可获取性完全未验证，建议拒绝。",
+              "source_grounding": 2,
+              "worth_human_review": 0
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3656,
+          "output_tokens": 933
+        }
+      }
+    },
+    {
+      "id": "6c5f8f8a-ea1d-4095-a758-4cb85237c931",
+      "created_at": "2026-11-07T09:59:51.145528+00:00",
+      "content": {
+        "charged_bound": 0.067491,
+        "digest": "f24ec50af84b3a6a5f37baa66479621dcadfa03d4bd7f663c6eb89db63316961",
+        "estimated_cny": 0.067491,
+        "input_hash": "f24ec50af84b3a6a5f37baa66479621dcadfa03d4bd7f663c6eb89db63316961",
+        "max_tokens": 3000,
+        "model": "deepseek-v4-pro",
+        "reservation": 0.242919,
+        "result": {
+          "preference": "none",
+          "reviews": [
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "The proposal relies on the claim that existing studies '未区分树冠独立贡献与其他共变土地覆盖的贡献' but the cited papers explicitly acknowledge and examine the relative contributions of impervious surfaces and tree canopy. For example, W2999943130 states 'While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences.' This indicates that the proposed contribution may not be novel.",
+                "The minimal experiment requires constructing paired neighborhoods with similar tree canopy but different historical grades, but no specific dataset or feasible methodology for such pairing is provided. The claim '需自建邻域配对与温度数据' suggests the feasibility is uncertain.",
+                "The proposal does not cite any direct evidence that redlining affects temperature independently of tree canopy after controlling for impervious surfaces, making the gap assertion unsupported.",
+                "The paper_ids cited as baselines are not explicitly identified as using only impervious surface or only tree canopy as predictors, so the claimed baselines may not exist."
+              ],
+              "evidence_reliability": 0,
+              "falsifiability": 1,
+              "id": "X0",
+              "importance": 1,
+              "knowledge_increment": 1,
+              "reason": "The submitted idea X0 fails to establish a clear knowledge increment because the cited papers already acknowledge and partially address the relative contributions of tree canopy and impervious surfaces. The proposal does not provide specific evidence that the independent effect of tree canopy on heat exposure after controlling for impervious surfaces remains unexplained. The minimal experiment lacks feasible data sourcing and the baselines are not validated. Consequently, the problem importance is moderate but the knowledge increment is negligible, and the evidence reliability is poor due to lack of direct support.",
+              "source_grounding": 2,
+              "worth_human_review": false
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "The proposal stitches together findings from two separate papers (W2923210967 for 40% threshold and W2999943130 for redlining) without demonstrated connection. The claim that '已有研究分别确认红线和树冠不平等及40%降温阈值' is accurate but the inference that '40%阈值以上不平等是否收敛' is not supported by either paper.",
+                "The minimal experiment requires '在同一城市内按历史等级分层，比较60 m与90 m缓冲下树冠≥40%与<40%街区的地表温度差' but there is no evidence that such data are available or that the 40% threshold applies across cities or historical grades. The threshold was observed in a single midsized city in the Upper Midwest, and its transferability is unknown.",
+                "The proposal does not specify which historical grades to compare, making the hypothesis vague. It says '历史弱势社区与优势社区' without operationalizing these categories.",
+                "The cited papers do not provide evidence that tree canopy cover differences between redlined and non-redlined areas exceed 40% in any city, so it is unclear if the threshold is relevant to equity."
+              ],
+              "evidence_reliability": 0,
+              "falsifiability": 1,
+              "id": "X1",
+              "importance": 1,
+              "knowledge_increment": 1,
+              "reason": "The submission X1 presents a plausible-sounding question about whether a 40% tree canopy threshold reduces heat disparities between historically disadvantaged and advantaged communities. However, the evidence for the existence and relevance of such a threshold in the context of redlining is absent. The proposal merely combines two separate findings without a mechanistic or empirical link. The minimal experiment is not grounded in available data, and the hypotheses are not clearly falsifiable because the necessary conditions (e.g., prevalence of canopy below/above threshold in redlined areas) are unverified. Therefore, the knowledge increment is minimal and the evidence reliability is poor.",
+              "source_grounding": 2,
+              "worth_human_review": false
+            },
+            {
+              "anti_stitching": 2,
+              "defects": [
+                "The proposal is nearly identical to X1, differing mainly in phrasing. Both propose testing whether the 40% tree canopy threshold reduces heat disparities between redlined and non-redlined areas.",
+                "The cited paper W2923210967 reports a threshold of >40% for maximum cooling, but this was observed in a single city's daytime air temperature measurements; its applicability to land surface temperature and to other cities or historical grades is not established.",
+                "The minimal experiment requires aligning HOLC boundaries, tree canopy raster, and land surface temperature products, but no evidence is provided that such aligned data are readily available or that the interaction term would be estimable with sufficient power.",
+                "The proposal does not address potential confounding variables other than impervious surface, such as building density, albedo, or population density, despite acknowledging '遗漏变量与空间混杂' in risks but not proposing a concrete mitigation.",
+                "The title '阈值公平假说' is catchy but unsupported by the cited literature."
+              ],
+              "evidence_reliability": 0,
+              "falsifiability": 1,
+              "id": "X2",
+              "importance": 1,
+              "knowledge_increment": 1,
+              "reason": "Submission X2 proposes an interaction between HOLC grade and a tree canopy threshold on land surface temperature. However, this is essentially a restatement of X1, and both rely on a single-city threshold that has no demonstrated relevance to the redlining context. The evidence base for the 40% threshold as a moderator of historical inequities is nonexistent. The proposal does not provide a novel knowledge increment beyond what could be inferred from existing papers. Given the lack of data feasibility and weak grounding, it does not merit human review.",
+              "source_grounding": 2,
+              "worth_human_review": false
+            }
+          ]
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3656,
+          "output_tokens": 1281
+        }
+      }
+    }
+  ],
+  "round_usage": {
+    "attempts": 11,
+    "charged_bound_cny": 0.206358,
+    "input_tokens": 31762,
+    "output_tokens": 6198,
+    "unknown_usage": 0
+  },
+  "cumulative_usage": {
+    "attempts": 33,
+    "charged_bound_cny": 1.073446,
+    "input_tokens": 58706,
+    "output_tokens": 12376,
+    "unknown_usage": 9
+  }
+}

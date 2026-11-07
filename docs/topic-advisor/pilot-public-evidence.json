@@ -1,0 +1,267 @@
+{
+  "assessment": [],
+  "context": [
+    {
+      "content": {
+        "availability": "no dataset access verified; no private team facts supplied",
+        "case": "heat",
+        "datasets": [],
+        "goals": "发现具体、可证伪、可用公开数据初步验证的科学问题；团队擅长GIS和统计建模。",
+        "line": {
+          "id": "heat",
+          "keywords": [],
+          "name": "城市热暴露与树冠公平",
+          "problem": "城市热暴露与树冠公平"
+        },
+        "material": "synthetic team; real public bibliography",
+        "papers": [
+          {
+            "abstract": "",
+            "doi": "https://doi.org/10.1016/j.ufug.2026.129611",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W7169789224",
+            "published": "2026-07-20",
+            "title": "Tree equity and urban heat: A comparative study of canopy distribution in Michigan Cities",
+            "url": "https://openalex.org/W7169789224"
+          },
+          {
+            "abstract": "Abstract Redlining was a racially discriminatory housing policy established by the federal government’s Home Owners’ Loan Corporation (HOLC) during the 1930s. For decades, redlining limited access to homeownership and wealth creation among racial minorities, contributing to a host of adverse social outcomes, including high unemployment, poverty, and residential vacancy, that persist today. While the multigenerational socioeconomic impacts of redlining are increasingly understood, the impacts on urban environments and ecosystems remain unclear. To begin to address this gap, we investigated how the HOLC policy administered 80 years ago may relate to present-day tree canopy at the neighborhood level. Urban trees provide many ecosystem services, mitigate the urban heat island effect, and may improve quality of life in cities. In our prior research in Baltimore, MD, we discovered that redlining policy influenced the location and allocation of trees and parks. Our analysis of 37 metropolitan areas here shows that areas formerly graded D, which were mostly inhabited by racial and ethnic minorities, have on average ~23% tree canopy cover today. Areas formerly graded A, characterized by U.S.-born white populations living in newer housing stock, had nearly twice as much tree canopy (~43%). Results are consistent across small and large metropolitan regions. The ranking system used by Home Owners’ Loan Corporation to assess loan risk in the 1930s parallels the rank order of average percent tree canopy cover today.",
+            "doi": "https://doi.org/10.1038/s42949-021-00022-0",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W3139378816",
+            "published": "2021-03-25",
+            "title": "Residential housing segregation and urban tree canopy in 37 US Cities",
+            "url": "https://openalex.org/W3139378816"
+          },
+          {
+            "abstract": "As cities warm and the need for climate adaptation strategies increases, a more detailed understanding of the cooling effects of land cover across a continuum of spatial scales will be necessary to guide management decisions. We asked how tree canopy cover and impervious surface cover interact to influence daytime and nighttime summer air temperature, and how effects vary with the spatial scale at which land-cover data are analyzed (10-, 30-, 60-, and 90-m radii). A bicycle-mounted measurement system was used to sample air temperature every 5 m along 10 transects (∼7 km length, sampled 3-12 times each) spanning a range of impervious and tree canopy cover (0-100%, each) in a midsized city in the Upper Midwest United States. Variability in daytime air temperature within the urban landscape averaged 3.5 °C (range, 1.1-5.7 °C). Temperature decreased nonlinearly with increasing canopy cover, with the greatest cooling when canopy cover exceeded 40%. The magnitude of daytime cooling also increased with spatial scale and was greatest at the size of a typical city block (60-90 m). Daytime air temperature increased linearly with increasing impervious cover, but the magnitude of warming was less than the cooling associated with increased canopy cover. Variation in nighttime air temperature averaged 2.1 °C (range, 1.2-3.0 °C), and temperature increased with impervious surface. Effects of canopy were limited at night; thus, reduction of impervious surfaces remains critical for reducing nighttime urban heat. Results suggest strategies for managing urban land-cover patterns to enhance resilience of cities to climate warming.",
+            "doi": "https://doi.org/10.1073/pnas.1817561116",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W2923210967",
+            "published": "2019-03-25",
+            "title": "Scale-dependent interactions between tree canopy cover and impervious surfaces reduce daytime urban heat during summer",
+            "url": "https://openalex.org/W2923210967"
+          },
+          {
+            "abstract": "The increasing intensity, duration, and frequency of heat waves due to human-caused climate change puts historically underserved populations in a heightened state of precarity, as studies observe that vulnerable communities—especially those within urban areas in the United States—are disproportionately exposed to extreme heat. Lacking, however, are insights into fundamental questions about the role of historical housing policies in cauterizing current exposure to climate inequities like intra-urban heat. Here, we explore the relationship between “redlining”, or the historical practice of refusing home loans or insurance to whole neighborhoods based on a racially motivated perception of safety for investment, with present-day summertime intra-urban land surface temperature anomalies. Through a spatial analysis of 108 urban areas in the United States, we ask two questions: (1) how do historically redlined neighborhoods relate to current patterns of intra-urban heat? and (2) do these patterns vary by US Census Bureau region? Our results reveal that 94% of studied areas display consistent city-scale patterns of elevated land surface temperatures in formerly redlined areas relative to their non-redlined neighbors by as much as 7 °C. Regionally, Southeast and Western cities display the greatest differences while Midwest cities display the least. Nationally, land surface temperatures in redlined areas are approximately 2.6 °C warmer than in non-redlined areas. While these trends are partly attributable to the relative preponderance of impervious land cover to tree canopy in these areas, which we also examine, other factors may also be driving these differences. This study reveals that historical housing policies may, in fact, be directly responsible for disproportionate exposu",
+            "doi": "https://doi.org/10.3390/cli8010012",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W2999943130",
+            "published": "2020-01-13",
+            "title": "The Effects of Historical Housing Policies on Resident Exposure to Intra-Urban Heat: A Study of 108 US Urban Areas",
+            "url": "https://openalex.org/W2999943130"
+          },
+          {
+            "abstract": "Rapid urbanization has led to a series of environmental problems that are harmful to the physical and mental health of residents. Not only can increasing urban tree canopy (UTC) improve sustainable city development, but it can also effectively promote the quality of life for residents; however, the uneven spatial distribution of UTC can also bring about social justice problems. Currently, there are few studies related to the justice of UTC distribution in China. Based on this, the paper adopts object-oriented image classification technology to interpret and extract UTC data from satellite images, and it uses house price to explore the justice of the spatial distribution of UTC in the main urban area of Guangzhou from the perspective of environmental justice by ANOVA, Pearson correlation coefficient, and bivariate local spatial autocorrelation. The results show that: (1) There is a significant positive correlation between UTC and house price in the main urban area of Guangzhou, and there are regional differences in the distribution of UTC, with the UTC in the \"very high\" house price group being significantly higher than that in other groups. (2) The spatial clustering of UTC and house price in the main urban area of Guangzhou is found to be \"low-low\" and \"high-high\"; thus, it can be concluded that the spatial distribution of UTC in the main urban area of Guangzhou is uneven. This is an environmental injustice, as the areas with low UTC are spatially clustered in old residential areas, while the areas with high UTC are spatially clustered in commercial housing estates with high house prices. The study shows that urban tree planting should not only focus on quantitative improvement but also on equitable spatial layouts to promote social equity and justice thereby improving",
+            "doi": "https://doi.org/10.3390/ijerph20054050",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W4321787046",
+            "published": "2023-02-24",
+            "title": "Urban Tree Canopy and Environmental Justice: Examining the Distributional Equity of Urban Tree Canopy in Guangzhou, China",
+            "url": "https://openalex.org/W4321787046"
+          }
+        ],
+        "split": "development",
+        "team_achievements": []
+      },
+      "created_at": "2026-11-07T07:37:03.401023+00:00",
+      "id": "c2d3a020-f77b-48f3-a911-5d9ac9baae84"
+    },
+    {
+      "content": {
+        "availability": "no dataset access verified; no private team facts supplied",
+        "case": "transit",
+        "datasets": [],
+        "goals": "发现具体、可证伪、可用公开数据初步验证的科学问题；团队擅长GIS和统计建模。",
+        "line": {
+          "id": "transit",
+          "keywords": [],
+          "name": "公交可靠性与就业可达性",
+          "problem": "公交可靠性与就业可达性"
+        },
+        "material": "synthetic team; real public bibliography",
+        "papers": [
+          {
+            "abstract": "Accessibility is one of the most important outcomes of the transportation system. Public transport can be more attractive by providing \"Door to door mobility\" and development of transportation services is an important factor of social quality. Public transport accessibility has gained vital importance in designing and evaluating the transit system in terms of mobility and sustainability. Apart from the transport system itself, public transport accessibility has the considerable impact on life satisfaction in the form of perceived accessibility. Moreover, researchers have revealed several impact and correlation of provision of public transport accessibility to the environment and daily life which would have a noticeable impact on public health and other aspects of public daily life. Furthermore, the correlation between public transport accessibility and job opportunities has attracted the researchers' attention in the literature. Also, public participation in social activities has been investigated based on public transport accessibility and their close connection has been revealed under the topic of social exclusion. In this paper, the available literature on public transport accessibility has been reviewed. As a conclusion, it should be highlighted that not just the performance of public transportation but its impact on other social aspects should be considered while planning the public transport facilities.",
+            "doi": "https://doi.org/10.3311/pptr.12072",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W2802733409",
+            "published": "2018-05-03",
+            "title": "Public Transport Accessibility: A Literature Review",
+            "url": "https://openalex.org/W2802733409"
+          },
+          {
+            "abstract": "",
+            "doi": "https://doi.org/10.3929/ethz-b-000444038",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W3162885718",
+            "published": "2020-09-01",
+            "title": "Public transport reliability: The spatio-temporal accessibility case",
+            "url": "https://openalex.org/W3162885718"
+          },
+          {
+            "abstract": "",
+            "doi": "https://doi.org/10.2139/ssrn.7353279",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W7204228408",
+            "published": "2026-01-01",
+            "title": "The Role of Digital Payment and Information Tools in Public Transport Accessibility",
+            "url": "https://openalex.org/W7204228408"
+          },
+          {
+            "abstract": "Service quality in public transport is proposed as a key determinant of perceived accessibility, the ease to live the life one wants with the help of the transport system, as low service quality may be a barrier for use, decreasing the ease to participate in daily activities. The first aim was to validate the direct relationship between public transport quality and perceived accessibility. Secondly, we analyzed the mediating role of safety perceptions to better explain the link between service quality and perceived accessibility. Public transport travelers (n = 4944) from five northern European cities were surveyed. Results from PLS-SEM modeling show that service quality has a significant and direct relationship with perceived accessibility, especially regarding functionality. An indirect relationship through travel safety perceptions was also observed, highlighting information and comfort as main drivers. High car use, low public transport use, increasing age, and being a woman were also associated with greater perceived accessibility. City comparisons yielded a number of significant differences. Our results contribute to the research literature by highlighting the importance of service quality in public transport for perceptions of accessibility in daily travel. In particular, we argue that functionality is the core attribute to focus on, and that attributes related to travel safety perceptions should be carefully considered when planning for sustainable transport.",
+            "doi": "https://doi.org/10.3390/su12093563",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W3020318139",
+            "published": "2020-04-27",
+            "title": "Public Transport Quality, Safety, and Perceived Accessibility",
+            "url": "https://openalex.org/W3020318139"
+          },
+          {
+            "abstract": "The ability to live the life one wants with public transport is one of the key factors of sustainable and inclusive societies. Given the current trend in the transport domain, providing accessible public transport is necessary in order to allow people to participate in their day-to-day activities without using a car. Using survey data obtained from Sweden, this study investigates factors that may have a negative effect on the perceived accessibility of public transportation in major city areas and other areas. Overall, regression analyses show that time and economic resources, organizational and temporal functions, frequent travel by public transport, and geographical context all act as accessibility barriers. These findings highlight the need not only to target increased mobility in urban environments, but also to turn the focus to the citizenry’s perceived accessibility. These findings point to implications for policies, planning and interventions targeted at accessible public transport. Adopting an accessibility-oriented approach to urban development, including the individual perspective, could be a pathway for creating a socially sustainable transport system.",
+            "doi": "https://doi.org/10.3390/urbansci5030063",
+            "evidence_status": "public_metadata_not_human_reviewed",
+            "id": "https://openalex.org/W3194608217",
+            "published": "2021-08-25",
+            "title": "Accessibility Barriers and Perceived Accessibility: Implications for Public Transport",
+            "url": "https://openalex.org/W3194608217"
+          }
+        ],
+        "split": "test",
+        "team_achievements": []
+      },
+      "created_at": "2026-11-07T07:45:35.315423+00:00",
+      "id": "48f0a764-180d-4038-9997-3c80c4a2efc6"
+    }
+  ],
+  "failure": [
+    {
+      "content": {
+        "case": "heat",
+        "error": "ValueError",
+        "revision": 1,
+        "strategy": "A"
+      },
+      "created_at": "2026-11-07T07:37:21.377912+00:00",
+      "id": "6262615d-bd40-41c3-b4e3-c1f164768280"
+    },
+    {
+      "content": {
+        "case": "heat",
+        "error": "ValueError",
+        "revision": 1,
+        "strategy": "B"
+      },
+      "created_at": "2026-11-07T07:37:51.067606+00:00",
+      "id": "0012dffd-a772-420d-a843-1fa35c4bef3b"
+    },
+    {
+      "content": {
+        "case": "heat",
+        "error": "ModelCallError",
+        "revision": 1,
+        "strategy": "C"
+      },
+      "created_at": "2026-11-07T07:38:10.716057+00:00",
+      "id": "17306f9c-6276-4113-9b74-86f21faff1a7"
+    },
+    {
+      "content": {
+        "case": "heat",
+        "error": "ModelCallError",
+        "revision": 1,
+        "strategy": "A"
+      },
+      "created_at": "2026-11-07T07:41:33.752795+00:00",
+      "id": "13d428dc-bfd9-408f-abef-24a08092c815"
+    },
+    {
+      "content": {
+        "case": "heat",
+        "error": "ModelCallError",
+        "revision": 1,
+        "strategy": "C"
+      },
+      "created_at": "2026-11-07T07:43:35.643457+00:00",
+      "id": "de3b7c95-f264-494d-b312-524bfd9e9889"
+    },
+    {
+      "content": {
+        "case": "transit",
+        "error": "ModelCallError",
+        "revision": 1,
+        "strategy": "A"
+      },
+      "created_at": "2026-11-07T07:45:36.043696+00:00",
+      "id": "1e7dcba0-b8ae-4914-b391-af60f71bd196"
+    },
+    {
+      "content": {
+        "case": "transit",
+        "error": "ModelCallError",
+        "revision": 1,
+        "strategy": "B"
+      },
+      "created_at": "2026-11-07T07:47:06.062154+00:00",
+      "id": "f186157c-145a-43ce-849e-ebcab3b778f5"
+    },
+    {
+      "content": {
+        "case": "transit",
+        "error": "ModelCallError",
+        "revision": 1,
+        "strategy": "C"
+      },
+      "created_at": "2026-11-07T07:47:06.895321+00:00",
+      "id": "643fa6bf-4c79-4aab-b1e0-53c605fe7552"
+    }
+  ],
+  "result": [
+    {
+      "content": {
+        "case": "heat",
+        "result": {
+          "context_hash": "a091154ef97fe8b731ec0996bb5bfc87d5b1c059a8e353e1aa3e2c3c5c2cfec8",
+          "ideas": [
+            {
+              "baselines": [
+                "线性OLS树冠-地表温度模型",
+                "无交互项的树冠+红线评分加性模型"
+              ],
+              "dataset_ids": [],
+              "method": "用多城市公开树冠、HOLC红线边界与Landsat地表温度，按10/30/60/90米缓冲聚合，拟合分位数回归与分段回归检验阈值差异；GIS空间自相关控制邻域溢出。",
+              "minimal_experiment": "在同一城市集合内，对比加性模型与含红线×树冠样条交互模型的交叉验证R²，并报告40%阈值在A与D组的估计差异及置信区间。",
+              "paper_ids": [
+                "https://openalex.org/W3139378816",
+                "https://openalex.org/W2999943130",
+                "https://openalex.org/W2923210967",
+                "https://openalex.org/W7169789224"
+              ],
+              "question": "历史红线评分（A-D）与树冠覆盖的交互是否在60-90米邻域尺度上出现约40%树冠的非线性降温阈值，且阈值在D级街区更高？",
+              "risks": [
+                "无公开数据集登记，需自行获取HOLC边界与LST，空间匹配误差可能混淆阈值",
+                "Landsat地表温度与骑行气温测量非同一变量，尺度外推有风险",
+                "阈值差异可能由不透水面共变解释，需敏感性分析"
+              ],
+              "title": "树冠覆盖对历史红线街区日间热暴露的尺度阈值效应",
+              "why_now": "团队擅长GIS与统计建模但缺热暴露公平课题；已有摘要分别报道红线—树冠差距与40%阈值，但未在红线梯度上检验阈值是否迁移，属于真实跨论文组合的新增量假设。"
+            }
+          ],
+          "novelty_status": "unverified",
+          "trace": {}
+        },
+        "revision": 1,
+        "strategy": "B"
+      },
+      "created_at": "2026-11-07T07:42:15.095051+00:00",
+      "id": "ac2e4544-3139-4c9a-ab76-8098382eec8d"
+    }
+  ],
+  "usage": {
+    "attempts": 19,
+    "estimated_cny_including_unknown_reservations": 0.8201,
+    "input_tokens_observed": 23322,
+    "output_tokens_observed": 4737,
+    "unknown_usage_calls": 9
+  }
+}
