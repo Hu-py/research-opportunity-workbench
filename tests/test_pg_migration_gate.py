@@ -106,3 +106,13 @@ def test_restore_targets_a_database_and_verifies_counts(tmp_path):
     assert command[command.index("--dbname")+1]=="postgres"
     assert "--clean" not in command
     assert "--single-transaction" in command
+
+
+def test_security_lockdown_refuses_source_database(tmp_path):
+    target=PgTarget("same.example.com",5432,"postgres","secret","research")
+    archive=tmp_path/"backup.dump"
+    with patch("scripts.pg_migration_gate.verify_archive",return_value=(
+        {"source":{"fingerprint":target.fingerprint,"table_counts":{"papers":1}}},"mocktoc"
+    )):
+        with pytest.raises(ValueError,match="source database"):
+            secure_target(target,archive,True)
