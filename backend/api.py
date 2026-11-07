@@ -164,6 +164,23 @@ def require_admin(actor:TeamMember|None=Depends(require_actor)):
 async def lifespan(app:FastAPI):
     if os.getenv("APP_ENV","development").lower()=="production" and not os.getenv("API_BEARER_TOKEN"):
         raise RuntimeError("Set API_BEARER_TOKEN before production deployment")
+    # One-shot content integrity gate BEFORE creating any app sessions on the
+    # new database. A failed Render deploy leaves the old service live.
+    if (os.getenv("RESEARCH_DATABASE_PROVIDER","render").strip().lower()=="supabase"
+            and os.getenv("MIGRATION_CUTOVER_GUARD","").strip()=="1"):
+        from backend.managed_migration import precutover_verify, _cfg
+        try:
+            result=precutover_verify(
+                _cfg(os.getenv("DATABASE_URL","")),
+                _cfg(os.getenv("MIGRATION_TARGET_DATABASE_URL","")))
+            if result.get("result")!="ready":
+                raise RuntimeError("Cutover integrity gate failed")
+            logging.getLogger("uvicorn.error").info(
+                "DATABASE_CUTOVER_INTEGRITY_PASSED tables=%s",result["tables"])
+        except Exception:
+            logging.getLogger("uvicorn.error").error(
+                "DATABASE_CUTOVER_INTEGRITY_FAILED; refusing new app startup")
+            raise RuntimeError("Cannot switch database: integrity verification failed") from None
     factory=get_factory()
     bootstrap_admin_from_env(factory)
     with factory() as db:
@@ -307,6 +324,19 @@ app=FastAPI(
     docs_url="/docs" if os.getenv("APP_ENV")!="production" else None,
     redoc_url=None,
 )
+
+@app.middleware("http")
+async def _read_only_migration_window(request:Request,call_next):
+    # Freeze old Render HTTP writes while the replacement starts; rollout is
+    # blue/green and the new service removes this flag after verification.
+    if (os.getenv("MIGRATION_FREEZE_WRITES","").strip()=="1"
+            and request.method.upper() not in ("GET","HEAD","OPTIONS")):
+        return JSONResponse(
+            status_code=503,
+            content={"detail":"Database migration: write operations temporarily paused"},
+            headers={"Retry-After":"120","Cache-Control":"no-store"})
+    return await call_next(request)
+
 
 class TaskRequest(BaseModel):
     kind:Literal["explore","sync","weekly"]="explore"
