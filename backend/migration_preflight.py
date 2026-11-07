@@ -95,6 +95,47 @@ def inspect_target(source_uri: str, target_uri: str) -> dict:
             engine.dispose()
 
 
+
+def source_inventory(db) -> dict:
+    """Non-invasive source-size gate. Never returns any database values or secrets."""
+    from sqlalchemy import text as sql_text
+    if db.get_bind().dialect.name != "postgresql":
+        raise ValueError("Expected a PostgreSQL source database")
+    important = (
+        "profiles", "team_profile_revisions", "team_achievements",
+        "cusp_datasets", "papers", "ideas", "evidence", "events",
+        "research_evolution_runs", "research_evolution_feedback",
+        "research_tasks", "team_members",
+    )
+    # Only fixed, trusted identifiers appear in dynamic SQL.
+    table_names = set(db.execute(sql_text(
+        "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'"
+    )).scalars().all())
+    counts = {}
+    for name in important:
+        if name in table_names:
+            counts[name] = int(db.execute(
+                sql_text('SELECT count(*) FROM public."' + name + '"')
+            ).scalar_one())
+    total_bytes = int(db.execute(
+        sql_text("SELECT pg_database_size(current_database())")
+    ).scalar_one())
+    source_is_expected_name = bool(db.execute(sql_text(
+        "SELECT current_database() = :expected"
+    ), {"expected":"research_atlas_test_db"}).scalar_one())
+    return {
+        "source_db_name_matches_expected": source_is_expected_name,
+        "postgresql": True,
+        "total_database_bytes": total_bytes,
+        "total_database_megabytes": round(total_bytes / 1024 / 1024, 2),
+        "public_table_count": len(table_names),
+        "critical_table_counts": counts,
+        "writes_performed": False,
+        "backup_completed": False,
+        "migration_completed": False,
+    }
+
+
 def mount(app, *, require_admin):
     router = APIRouter()
 
