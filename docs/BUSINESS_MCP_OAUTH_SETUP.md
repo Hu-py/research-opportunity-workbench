@@ -97,6 +97,7 @@ BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=false
 ```text
 BUSINESS_MCP_WRITE_ENABLED=false
 BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS=
+BUSINESS_MCP_ALLOWED_WRITE_SUBJECTS=
 ```
 
 ### 多 Agent 任务执行权限（初始关闭）
@@ -104,6 +105,7 @@ BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS=
 ```text
 BUSINESS_MCP_EXECUTION_ENABLED=false
 BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS=
+BUSINESS_MCP_ALLOWED_EXECUTION_SUBJECTS=
 ```
 
 权限含义：
@@ -112,7 +114,21 @@ BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS=
 - `research:execute`：启动或恢复会消耗模型和学术检索预算的选题任务。
 - `research:write`：保存 Workspace Agent 直接生成、且未由选题引擎重复保存的版本化推荐。
 
-执行权限与写入权限相互独立。首次 OAuth 连接只开放读取；完成读取验证后，才考虑对指定 client 开放执行；完成持久化回读测试后，才考虑开放写入。所有执行/写入 client 必须同时属于已批准的 read client 集合。禁止使用通配符。
+执行和写入分别需要**用户 subject 白名单 + OAuth client ID 白名单 + 独立开关**。因此，即使所有团队成员都能读取，只有被列入 `BUSINESS_MCP_ALLOWED_EXECUTION_SUBJECTS` 的成员才能启动耗费预算的多 Agent 任务；只有被列入 `BUSINESS_MCP_ALLOWED_WRITE_SUBJECTS` 的成员才能提交直接推荐。所有执行/写入 client 和 subject 还必须分别属于已批准的 read client/subject 集合。初始两个 subject allowlist 都留空。禁止使用通配符。
+
+### 当前数据访问边界（重要）
+
+Render MCP 当前使用服务端 PostgreSQL 连接读取 Supabase 数据库；OAuth access token 用于验证用户身份、client ID 和授权范围，但不会作为用户 JWT 转发到 Supabase Data API。因此，**Supabase RLS 不会自动应用于这条直接 SQLAlchemy 数据访问路径**。
+
+当前授权边界由以下机制共同实现：
+
+- Supabase OAuth JWT 的签名、issuer、audience、subject 和 client ID 验证；
+- 服务端 subject/client allowlists 和独立 read/execute/write scopes；
+- `BUSINESS_AGENT_SHARING_APPROVED` 总开关；
+- `team_evidence_bundle` 对受限数据、原始文件和私有资产的服务端过滤；
+- 仅开放明确注册的 MCP 工具，不提供任意 SQL 或数据库管理工具。
+
+因此，所有通过 read allowlist 的成员目前读取的是**同一份团队级安全上下文**，不是按成员隔离的数据库行。End-user account 仍然提供身份识别和运行审计；若未来需要成员级行隔离，必须增加应用层 row authorization，或改为使用带用户 JWT 的 Supabase Data API/RLS 路径，不能仅依赖 OAuth 登录模式。
 
 `BUSINESS_AGENT_SHARING_APPROVED=true` 代表团队 Owner 已明确批准该 MCP 连接读取共享科研上下文。没有 Owner 批准时保持 false。
 
