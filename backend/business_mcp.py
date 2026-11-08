@@ -2,8 +2,10 @@
 
 Fail-closed, not mounted unless BUSINESS_MCP_ENABLED=true and explicit owner
 authorization is present. Uses an external OAuth 2.1 authorization server
-(Auth0/Entra/etc) rather than implementing an unsafe custom auth server.
-JWT audience, issuer, subject allowlist and scopes are verified per request.
+(the team's Supabase project) rather than implementing an unsafe custom
+authorization server. Supabase JWTs default to aud="authenticated" and do
+not support custom OAuth scopes, so exact issuer, audience, authorized subject,
+client_id and an independent write allowlist are all enforced server-side.
 
 This is an *adapter*. It doesn't publish an app in ChatGPT or create an Agent.
 """
@@ -26,6 +28,8 @@ class AuthConfig:
     jwks_url: str
     allowed_subjects: frozenset[str]
     host: str
+    allowed_clients: frozenset[str] = frozenset()
+    write_clients: frozenset[str] = frozenset()
 
 
 def get_auth_config() -> AuthConfig:
@@ -40,6 +44,12 @@ def get_auth_config() -> AuthConfig:
     subjects=frozenset(
         x.strip() for x in os.getenv("BUSINESS_MCP_ALLOWED_SUBJECTS","").split(",")
         if x.strip())
+    clients=frozenset(
+        x.strip() for x in os.getenv("BUSINESS_MCP_ALLOWED_CLIENT_IDS","").split(",")
+        if x.strip())
+    write_clients=frozenset(
+        x.strip() for x in os.getenv("BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS","").split(",")
+        if x.strip())
     urls=[urlparse(v) for v in (resource,issuer,jwks_url)]
     if not all(u.scheme=="https" and u.hostname and not u.username
                and not u.password and not u.query and not u.fragment
@@ -49,8 +59,22 @@ def get_auth_config() -> AuthConfig:
         raise RuntimeError("Unexpected MCP resource path")
     if not subjects or any(v=="*" or len(v)>200 for v in subjects):
         raise RuntimeError("Explicit approved OAuth subjects required")
+    if not clients or any(v=="*" or len(v)>240 for v in clients):
+        raise RuntimeError("Explicit approved Supabase OAuth client IDs required")
+    if not write_clients.issubset(clients):
+        raise RuntimeError("Write-allowed clients must also be approved read clients")
+    # Pin to the same single Supabase project: an arbitrary OAuth issuer
+    # or JWKS endpoint would make the team's data accessible to strangers.
+    if not urls[1].hostname.endswith(".supabase.co"):
+        raise RuntimeError("Supabase OAuth issuer must be pinned to project")
+    if urls[1].path.rstrip("/")!="/auth/v1":
+        raise RuntimeError("Unexpected Supabase OAuth issuer path")
+    if (urls[2].hostname!=urls[1].hostname
+            or urls[2].path!="/auth/v1/.well-known/jwks.json"):
+        raise RuntimeError("Supabase signing keys must come from same project")
     return AuthConfig(resource=resource,issuer=issuer,jwks_url=jwks_url,
-                      allowed_subjects=subjects,host=urls[0].hostname)
+                      allowed_subjects=subjects,host=urls[0].hostname,
+                      allowed_clients=clients,write_clients=write_clients)
 
 
 class OAuthJwtVerifier:
@@ -71,23 +95,26 @@ class OAuthJwtVerifier:
                                                  cache_jwk_set=True,lifespan=300)
             key=self._key_client.get_signing_key_from_jwt(token).key
             decoded=jwt.decode(
-                token,key,algorithms=["RS256"],
-                audience=self.config.resource,issuer=self.config.issuer,
-                leeway=30,options={"require":["exp","iat","iss","aud","sub"]},
+                token,key,algorithms=["RS256","ES256"],
+                audience="authenticated",issuer=self.config.issuer,
+                leeway=30,options={"require":["exp","iat","iss","aud","sub","client_id"]},
             )
             subject=str(decoded.get("sub",""))
-            scopes=set(str(decoded.get("scope","")).split())
-            scopes.update(decoded.get("permissions",[])
-                          if isinstance(decoded.get("permissions"),list) else [])
-            if subject not in self.config.allowed_subjects:
+            client_id=str(decoded.get("client_id",""))
+            if (not subject or subject not in self.config.allowed_subjects
+                    or not client_id or client_id not in self.config.allowed_clients
+                    or decoded.get("role")!="authenticated"):
                 return None
-            if "research:read" not in scopes:
-                return None
+            # Supabase OAuth supports standard OIDC scopes only. Internal
+            # research privileges come from server-side allowlists, NOT any
+            # untrusted JWT "scope" or "permissions" claims.
+            effective={"research:read"}
+            if (client_id in self.config.write_clients
+                    and os.getenv("BUSINESS_MCP_WRITE_ENABLED","").lower().strip()=="true"):
+                effective.add("research:write")
             return AccessToken(
-                token=token,
-                client_id=str(decoded.get("azp","approved-oauth-client"))[:240],
-                scopes=sorted(scopes),
-                resource=self.config.resource,
+                token=token,client_id=client_id,
+                scopes=sorted(effective),resource=self.config.resource,
             )
         except (jwt.InvalidTokenError, ValueError, TypeError, KeyError,
                 ConnectionError, OSError):
@@ -127,8 +154,11 @@ def build_mcp_server(config: AuthConfig):
         auth=AuthSettings(
             issuer_url=AnyHttpUrl(config.issuer),
             resource_server_url=AnyHttpUrl(config.resource),
-            required_scopes=["research:read"],
-            validate_token_resource=True,
+            # Supabase access JWTs use aud="authenticated", even though
+            # the MCP protected resource is a distinct URL. We instead
+            # enforce project issuer + client_id + user UUID at every request.
+            required_scopes=[],
+            validate_token_resource=False,
         ),
     )
 
@@ -163,7 +193,7 @@ def build_mcp_server(config: AuthConfig):
                 raise ValueError("Research run does not exist")
             return _run_view(db,row)
 
-    @mcp.tool(description="Save evidence-checked, versioned scientific proposals to team PostgreSQL. Requires research:write scope; human review cannot be written by an Agent.")
+    @mcp.tool(description="Persist evidence-checked versioned proposals. Disabled until admin explicitly enables write access for a verified OAuth client; human feedback cannot be written by an Agent.")
     def submit_research_run(submission: RunSubmission) -> dict:
         require_scope("research:read")
         require_scope("research:write")
