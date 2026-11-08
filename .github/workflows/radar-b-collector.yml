@@ -65,7 +65,7 @@ jobs:
           PY
       - name: Retrieve OpenAlex venue papers and arXiv preprints
         env:
-          OPENALEX_API_KEY: \${{ secrets.OPENALEX_API_KEY }}
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
         run: python scripts/radar_b_collector.py
       - name: Verify published JSON integrity
         shell: bash
