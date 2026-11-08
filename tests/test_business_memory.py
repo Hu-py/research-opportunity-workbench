@@ -82,6 +82,10 @@ def test_database_memory_roundtrip_feedback_and_idempotency(setup_client):
     context = response.json()
     assert "private-asset" not in response.text
     assert "SECRET INTERNAL PROJECT" not in response.text
+    assert context["context"]["memory_schema"] == "business_agent_v2"
+    assert isinstance(context["context"]["research_lines"], list)
+    assert isinstance(context["context"]["academic_source_registry"], list)
+    assert isinstance(context["context"]["recent_evolution_feedback"], list)
 
     body = payload(context)
     created = client.post(base + "/runs", headers=agent_headers(), json=body)
