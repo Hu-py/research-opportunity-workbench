@@ -1,6 +1,13 @@
-name: Legacy manual weekly reporting (automatic report uses LLM Cron)
+name: Weekly Research Intelligence
+
 on:
+  # GitHub Actions cron uses UTC.
+  # 00:17 UTC on Monday = 08:17 Monday in UTC+8 (Asia/Shanghai).
+  schedule:
+    - cron: '17 0 * * 1'
+  # Keep manual execution available for testing and ad-hoc runs.
   workflow_dispatch:
+
 jobs:
   brief:
     if: ${{ vars.ENABLE_WEEKLY == 'true' }}
