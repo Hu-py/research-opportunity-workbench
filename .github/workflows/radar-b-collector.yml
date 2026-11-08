@@ -3,7 +3,7 @@ name: Radar B independent AI method evidence feed
 on:
   workflow_dispatch:
   schedule:
-    - cron: '15 8 * * 1'
+    - cron: '15 6 * * 1'
       timezone: 'Asia/Shanghai'
   push:
     branches: [main]
