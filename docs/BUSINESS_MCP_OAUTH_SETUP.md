@@ -190,3 +190,43 @@ Sources:
   keeping Authorization Path `/oauth/consent`.
 - A complete end-to-end OAuth PKCE sign-in / ChatGPT connection test has not
   been run. BUSINESS_MCP_ENABLED and BUSINESS_MCP_WRITE_ENABLED remain false.
+
+
+
+## Updated priority (2026-11-08): Minimum OAuth UI on Render, full dashboard deferred
+
+For the first real Business Agent trial, **Vercel is not required**:
+the same Render FastAPI instance now serves a minimal standalone OAuth consent
+page at `https://research-atlas-api-test.onrender.com/oauth/consent`.
+It uses Supabase browser OAuth APIs with a **public publishable key** to
+authenticate the approved researcher, display the requesting OAuth client's
+name and scopes, and approve or deny access. It does not expose the team
+research database or allow agent execution on its own.
+
+- Module: `backend/oauth_consent.py`.
+- Enable/disable: `OAUTH_CONSENT_ENABLED=true|false` (defaults disabled).
+- Public-only configuration stored on Render:
+  `OAUTH_CONSENT_SUPABASE_URL=https://tfyfupxabojddixwjkat.supabase.co`;
+  `OAUTH_CONSENT_PUBLISHABLE_KEY=sb_publishable_...`
+  (no service-role or DB URL).
+- Recommended authorization host: **Render**, not Vercel. In Supabase
+  Authentication → URL Configuration set **Site URL** to
+  `https://research-atlas-api-test.onrender.com`, and add
+  `https://research-atlas-api-test.onrender.com/oauth/consent` to the
+  redirect allow list for passwordless email login. OAuth Server
+  Authorization Path remains `/oauth/consent`.
+- Only after the actual Render consent route is deployed and confirmed should
+  the team owner update the Supabase Site URL. The code is a minimal UI,
+  **not** a complete research dashboard.
+- A Supabase Auth user identity must be registered/approved first. This
+  identity can be different from the existing Research Atlas team login.
+- For ChatGPT Business OAuth, an explicitly reviewed client registration or
+  compatible dynamic registration must be configured on the Supabase OAuth
+  Server. Validate signed JWT client_id and user sub against the read-only
+  MCP allowlists before setting `BUSINESS_MCP_ENABLED=true`.
+- On first connection, **do not allow writes**:
+  `BUSINESS_MCP_WRITE_ENABLED=false`. After verified private integration,
+  enable writes only for the intended approved `client_id`, then run the
+  context → submit → read-back → new-chat replay round trip.
+- Full UI to visualize multi-Agent runs, evidence and proposal versions is a
+  separate later phase; it can continue using the existing Vercel platform.
