@@ -209,3 +209,6 @@ Supabase OAuth Server supports authorization code with PKCE, dynamic client regi
 
 
 For first-time OAuth client registration, the MCP server supports a temporary `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED` mode with an empty client allowlist. This only exposes discovery/registration; the verifier rejects every bearer token until the exact client ID is added. The flag must be turned off immediately after registration and before normal tool use.
+
+
+The Render OAuth verifier accepts only asymmetric `RS256` or `ES256` JWTs and validates them through the project's public JWKS endpoint. Supabase projects still using the default `HS256` signing key must migrate to an asymmetric signing key before the Business MCP connection can succeed. Never copy the Supabase JWT secret or signing private key into Render.
