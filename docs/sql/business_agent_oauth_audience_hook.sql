@@ -59,7 +59,7 @@ begin
 
     return jsonb_build_object('claims', claims);
 end;
-$;
+$$;
 
 alter function public.business_agent_oauth_access_token_hook(jsonb) owner to postgres;
 
