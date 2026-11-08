@@ -163,3 +163,30 @@ Sources:
 - https://help.openai.com/en/articles/20001143-chatgpt-workspace-agents-for-enterprise-and-business
 - https://developers.openai.com/plugins/build/auth
 - https://py.sdk.modelcontextprotocol.io/run/authorization/
+
+
+## Actual deploy checkpoint (2026-11-08)
+
+- Team owner confirmed Supabase OAuth Server is switched on and saved.
+- `/oauth/consent` route and Supabase Auth sign-in+approve/deny logic were
+  added **only** to the Vercel production branch `main` in commit
+  `8d206212b5af2286a3e7896599ce5a138750b363`.
+  All three GitHub CI jobs passed, but a Vercel deployment API attempt was
+  rejected with HTTP 402 `api-deployments-free-per-day` (daily quota of 100).
+  **Do not describe the page as live until a new production deployment is
+  independently confirmed.** The existing website is unaffected.
+- Vercel public env `NEXT_PUBLIC_SUPABASE_URL` is configured for the team
+  Supabase project; `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is **still
+  missing**. Must be set to the project's *publishable* key, NEVER service-role
+  or secret API key. The page is programmed to refuse use when it is absent.
+- Supabase OAuth standard scopes **do not include** research read/write.
+  MCP verifier was hardened to JWT issuer + `aud=authenticated` +
+  approved `sub` + approved `client_id`. An independent write switch is
+  disabled by default. The OAuth client ID and Supabase Auth user ID are not
+  yet registered on the backend.
+- Do **not** update Supabase Authentication → URL Configuration → Site URL to
+  the Vercel domain before the route actually deploys. After it is live, set
+  Site URL to `https://research-opportunity-workbench.vercel.app` while
+  keeping Authorization Path `/oauth/consent`.
+- A complete end-to-end OAuth PKCE sign-in / ChatGPT connection test has not
+  been run. BUSINESS_MCP_ENABLED and BUSINESS_MCP_WRITE_ENABLED remain false.
