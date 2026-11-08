@@ -1,0 +1,77 @@
+name: Radar B independent AI method evidence feed
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 8 * * 1'
+      timezone: 'Asia/Shanghai'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/radar_b_collector.py'
+      - 'config/radar_b_sources.json'
+      - 'tests/test_radar_b_collector.py'
+      - '.github/workflows/radar-b-collector.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: radar-b-independent-public-feed
+  cancel-in-progress: false
+
+jobs:
+  radar-b-collect:
+    name: Collect public AI/CS method evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run offline collector tests
+        run: python -m unittest discover -s tests -p 'test_radar_b_collector.py' -v
+      - name: Retrieve OpenAlex venue papers and arXiv preprints
+        env:
+          OPENALEX_API_KEY: \${{ secrets.OPENALEX_API_KEY }}
+        run: python scripts/radar_b_collector.py
+      - name: Verify published JSON integrity
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('data/radar/radar_b_latest.json').read_text())
+          assert data['feed_kind'] == 'radar_b_public_method_evidence'
+          papers = data['recent_method_papers']
+          assert len(papers) >= 10, f'Too few papers: {len(papers)}'
+          assert len({p.get('openalex_id') or p.get('arxiv_id') for p in papers}) == len(papers)
+          assert all(p.get('title') and p.get('paper_url') for p in papers)
+          print('Radar B validation:', len(papers), 'papers,',
+                data['coverage']['with_abstract_excerpt'], 'with abstract excerpts,',
+                len(data['warnings']), 'collection warnings')
+          PY
+      - name: Preserve downloadable method evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-b-public-method-evidence
+          path: data/radar/radar_b_latest.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish stable public evidence feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f -- data/radar/radar_b_latest.json
+          if git diff --cached --quiet; then
+            echo 'No public Radar B changes'
+          else
+            git commit -m 'data(radar-b): refresh public method evidence'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
