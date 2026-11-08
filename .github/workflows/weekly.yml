@@ -1,11 +1,8 @@
-name: Weekly Research Intelligence
+name: Weekly Research Intelligence (database-backed)
 
 on:
-  # GitHub Actions cron uses UTC.
-  # 00:17 UTC on Monday = 08:17 Monday in UTC+8 (Asia/Shanghai).
-  schedule:
-    - cron: '17 0 * * 1'
-  # Keep manual execution available for testing and ad-hoc runs.
+  # Database-backed report generation is intentionally manual-only for now.
+  # Re-enable schedule only after PostgreSQL and the V3.1 API pipeline are ready.
   workflow_dispatch:
 
 jobs:
@@ -62,7 +59,6 @@ jobs:
 
   archive-private-report:
     needs: brief
-    # Never commit potentially unpublished research ideas to a public repository.
     if: ${{ github.event.repository.private && vars.ARCHIVE_REPORT_TO_GIT == 'true' }}
     runs-on: ubuntu-latest
     permissions:
