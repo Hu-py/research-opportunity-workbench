@@ -49,7 +49,7 @@ When the user asks to discover, compare, generate or systematically improve rese
 7. If the run is failed or demonstrably stale, use `resume_topic_advisor_run(run_id)` only when authorized and when the server permits recovery.
 8. Use the persisted result, not a guessed or reconstructed result, for the final report.
 
-The current production engine runs **one research line per invocation**, with a maximum of 14 papers and three independent initial idea lenses. The long-term target is up to five themes and 80 papers per day, but batch scheduling is not yet the current single-run contract. Do not claim the full target is already implemented.
+The current production engine runs **one research line per invocation**, with a maximum of 14 papers and three independent initial idea lenses. It allows only one active evolution run globally. If another run is queued/running, inspect that run rather than starting a duplicate. The first implementation executes as an in-process Render background task with stage checkpoints in Supabase; after a restart, a stale run can be resumed only after the server's eight-minute guard. The long-term target is up to five themes and 80 papers per day, but batch scheduling and a durable worker queue are not yet implemented. Do not claim the full target is already implemented.
 
 ## Research execution logic
 
