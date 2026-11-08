@@ -53,10 +53,12 @@ def http_payload(url, *, parse="json", attempts=3):
 
 
 def openalex(endpoint, params):
-    key = os.getenv("OPENALEX_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError("OPENALEX_API_KEY is missing")
-    payload = http_payload(OA_API + endpoint + "?" + urlencode(dict(params, api_key=key)))
+    """Share the same OpenAlex request path already proven by Radar A."""
+    try:
+        from scripts.openalex_weekly_radar import api as shared_api
+    except ImportError:
+        from openalex_weekly_radar import api as shared_api
+    payload = shared_api(endpoint, params)
     if not isinstance(payload, dict):
         raise ValueError("Unexpected OpenAlex response")
     return payload
