@@ -120,22 +120,60 @@ def _agent_auth(request: Request):
 
 
 def _context(db: Session):
-    """Public-safe evidence plus prior team decisions, bounded for LLM context."""
+    """Public-safe team evidence, source registry and prior human decisions."""
     bundle = team_evidence_bundle(db, sharing_approved=True)
+
+    # Promote the official, sanitized research lines to an explicit top-level
+    # field so a Workspace Agent does not need to infer their location.
+    profile=bundle.get("old_profile") or {}
+    research_lines=profile.get("research_lines",[])
+    bundle["research_lines"] = [{
+        "id":line.get("id",""),"name":line.get("name",""),
+        "problem":line.get("problem",""),
+        "keywords":line.get("keywords",[])[:12],
+    } for line in research_lines[:12] if isinstance(line,dict)] if isinstance(research_lines,list) else []
+
+    # Reuse the same curated source registry as the production evolution engine.
+    from backend.research_sources import list_sources
+    bundle["academic_source_registry"] = [{
+        "name":src["name"],"kind":src["kind"],"domain":src["domain"],
+        "rank_label":src["rank_label"]
+    } for src in list_sources(db,enabled_only=True)[:25]]
+
     reviews = db.execute(
         select(BusinessMeetingFeedback, BusinessAgentIdea)
         .join(BusinessAgentIdea, BusinessMeetingFeedback.idea_id == BusinessAgentIdea.id)
-        .order_by(BusinessMeetingFeedback.created_at.desc()).limit(24)
+        .order_by(BusinessMeetingFeedback.created_at.desc()).limit(12)
     ).all()
     bundle["meeting_history"] = [
         {"idea_id":idea.id, "title":idea.title[:180], "decision":review.decision,
          "scores":{"novelty":review.novelty, "feasibility":review.feasibility,
                    "scientific_value":review.scientific_value,
                    "testability":review.testability},
-         "comment":review.comment[:700]}
+         "comment":(review.comment or "")[:500]}
         for review, idea in reviews
     ]
-    bundle["memory_schema"] = "business_agent_v1"
+
+    # Include final reviews of the production topic-discovery engine as
+    # decision memory, without exposing reviewer identities.
+    from backend.research_evolution import EvolutionFeedback, EvolutionRun
+    evolution_reviews=db.execute(
+        select(EvolutionFeedback,EvolutionRun)
+        .join(EvolutionRun,EvolutionFeedback.run_id==EvolutionRun.id)
+        .order_by(EvolutionFeedback.created_at.desc()).limit(12)
+    ).all()
+    bundle["recent_evolution_feedback"] = [{
+        "run_id":run.id,"line_id":run.line_id,"decision":review.decision,
+        "scores":{"novelty":review.novelty,"feasibility":review.feasibility,
+                  "scientific_value":review.scientific_value,
+                  "testability":review.testability},
+        "comment":(review.comment or "")[:500],
+        "created_at":review.created_at.isoformat() if review.created_at else None,
+    } for review,run in evolution_reviews]
+    bundle["memory_schema"] = "business_agent_v2"
+    packed=json.dumps(bundle,ensure_ascii=False,separators=(",",":")).encode("utf-8")
+    if len(packed)>72_000:
+        raise ValueError("Business Agent context exceeds the safe 72 KB response budget")
     return bundle
 
 

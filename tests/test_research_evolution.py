@@ -176,3 +176,11 @@ def test_fatal_prior_art_blocks_a_high_scoring_candidate(tmp_path,monkeypatch):
         assert row.status=="held"
         assert evo.load(row.outputs_json)["counter_referee"]["prior_art_risk"]=="fatal"
         assert view(row,True)["recommendation"] is None
+
+
+def test_explicit_strategy_is_respected_for_workspace_agent_runs(tmp_path,monkeypatch):
+    factory=make_factory(tmp_path,monkeypatch)
+    with factory() as db:
+        run=create_run(db,"city","supabase-user-id",strategy="novelty")
+        assert run.strategy=="novelty"
+

@@ -143,8 +143,10 @@ def readiness(db,line_id):
             "reasons":reasons,"paper_human_approval_required":False,
             "max_model_calls":len(MODEL_STAGES),"minimum_quality_score":THRESHOLD}
 
-def create_run(db,line_id,actor_id):
+def create_run(db,line_id,actor_id,strategy=None):
     if not actor_id:raise ValueError("需要已登录的团队研究人员")
+    if strategy is not None and strategy not in STRATEGIES:
+        raise ValueError("未知科研策略；允许 balanced、novelty 或 feasibility")
     cfg=db.get(ModelCredential,"deepseek")
     if not cfg or not cfg.encrypted_key or not load_key(db):
         raise ValueError("DeepSeek Key 未配置或不可解密")
@@ -154,8 +156,11 @@ def create_run(db,line_id,actor_id):
     snap=snapshot(db,line_id) # No human-paper-review gate.
     check=readiness(db,line_id)
     if not check["ready"]:raise ValueError("；".join(check["reasons"]))
+    # Workspace Agent callers can choose an explicit strategy. Legacy callers
+    # retain the existing feedback-guided policy when strategy is omitted.
+    selected_strategy=strategy or policy_choice(db)
     row=EvolutionRun(id=str(uuid.uuid4()),line_id=line_id,actor_id=actor_id,
-                     strategy=policy_choice(db),snapshot_json=dump(snap))
+                     strategy=selected_strategy,snapshot_json=dump(snap))
     db.add(row);add_audit(db,"evolution.queued",actor_id,row.id);db.commit()
     return row
 
