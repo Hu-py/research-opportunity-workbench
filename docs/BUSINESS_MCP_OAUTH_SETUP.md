@@ -59,7 +59,9 @@ Supabase Dashboard → Authentication → URL Configuration：
 
 原 Research Atlas 团队登录与 Supabase Auth 登录是两套身份。必须先创建或确认 Supabase Auth 用户，再由管理员批准具体 Supabase user UUID。
 
-ChatGPT 的 MCP OAuth client 必须使用 Supabase OAuth Server 支持的注册方式。首次接入时，确认 ChatGPT 是否要求动态客户端注册，或是否能使用预先登记的 OAuth app。不要为了排错而无范围地开放动态注册；由团队 Owner 确认注册模式后，再登记准确 client ID。
+Supabase OAuth Server 支持 MCP 兼容客户端的动态注册，也支持授权码 + PKCE 和 refresh-token grant。首次接入时，优先按 ChatGPT 的 OAuth discovery / client-registration 流程测试；只在 consent 页面已验证、Owner 批准后启用所需的动态注册能力，并记录实际生成的 client ID，再加入 Render allowlist。不要使用通配符 client allowlist。
+
+**Refresh-token 兼容性需要实测。** Supabase OAuth Server 支持 refresh-token grant，但其当前公开文档列出的标准 scope 为 `openid`、`email`、`profile`、`phone`，没有明确列出 `offline_access`；ChatGPT 自定义 MCP OAuth 文档建议 OIDC 提供方支持 refresh token，并通常通过 `offline_access` 请求。首次连接必须确认 ChatGPT 的实际授权请求和 Supabase discovery 是否兼容。如果 ChatGPT 请求 `offline_access` 而 Supabase 拒绝，先停止发布，不要通过放宽 JWT 校验解决；应评估兼容的 OAuth adapter 或其他标准 OIDC provider。
 
 Supabase OAuth 的标准 scope 不会自动授予本项目的科研权限。服务器不信任 JWT 中自报的 `research:read`、`research:write` 或 `research:execute`。权限由服务端对签名、issuer、audience、用户 subject、OAuth client ID 和独立开关进行验证后授予。
 
@@ -130,10 +132,11 @@ BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS=
 3. 按确认后的注册方式完成 ChatGPT OAuth client 注册。
 4. 把准确 Supabase user UUID 和 ChatGPT OAuth client ID 加入 Render read allowlist。
 5. 在 Owner 明确批准后，将 `BUSINESS_AGENT_SHARING_APPROVED=true` 和 `BUSINESS_MCP_ENABLED=true`。
-6. 在 ChatGPT Business → Workspace settings → Plugins / Manage Legacy Apps 创建 custom MCP connection，填写 MCP endpoint 并完成 OAuth。
-7. 先只测试 `get_research_context`、`get_run_history` 和 `get_research_run`。
-8. 确认身份隔离和公开元数据范围正确后，再单独开放 `research:execute`。
-9. 最后才考虑为特定 client 开放 `research:write`。
+6. 在 ChatGPT Business 网页版的 **Plugins → + → Add custom MCP server** 创建 custom MCP app，填写 MCP endpoint 并完成 OAuth；扫描工具后先私下测试，再由 Owner/Admin 发布。
+7. 在 Workspace Agent builder 中添加该 app，优先选择 **End-user account**，让每个成员使用自己的 Supabase Auth 身份授权；Agent-owned account 仅适用于团队明确接受共享服务身份和共享审计归属的情况。
+8. 先只测试 `get_research_context`、`get_run_history` 和 `get_research_run`。
+9. 确认身份隔离和公开元数据范围正确后，再单独开放 `research:execute`。
+10. 最后才考虑为特定 client 开放 `research:write`。
 
 Workspace Agent 创建、Skill 上传、工具绑定、团队分享和 Schedule 配置在 ChatGPT Agents Builder 内完成，代码仓库不能代替这些 UI 操作。
 
@@ -161,3 +164,8 @@ Render 当前服务：
 8. 只有通过证据、可行性、可证伪性和先前研究门控的候选才能进入 review-ready 推荐包。
 
 如果出现错误，先定位 OAuth 发现、PKCE consent、JWKS 验签、client/subject allowlist、工具 scope 或模型预算，不要通过关闭安全校验来“快速修复”。
+
+
+## 9. MCP 工具版本刷新
+
+ChatGPT Workspace 使用已审核工具定义的冻结快照。服务器部署新工具后，ChatGPT 不会自动启用它们。Owner/Admin 必须进入 Workspace Settings → Apps/Plugins，刷新现有 custom MCP app 的工具列表，审查新动作并发布更新，然后在 Workspace Agent Builder 中确认工具已可用。不要删除并重建 app，除非刷新流程无法修复连接。
