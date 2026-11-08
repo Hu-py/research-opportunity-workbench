@@ -77,6 +77,13 @@ Only a Business workspace admin or owner can create and publish a custom MCP con
 
 Workspace Agent API triggers are not used as the internal multi-agent bus: the API currently exposes run status and a conversation URL but does not return the Agent's final response. The actual multi-agent tournament remains in the Python research engine.
 
+### Team sharing and unattended schedules
+
+- After the private pilot passes, share the agent with the team as **Can chat**. Keep **Can edit** limited to the owner and one or two maintainers; custom MCP setup remains owner-only.
+- Keep schedules off until the durable worker and daily budget controls are ready.
+- The initial interactive MCP connection should use **End-user account** so each member authenticates individually.
+- For unattended daily/weekly schedules, do not assume an End-user connection can run without an active user. Test the actual schedule behavior first. If a shared connection is required, use a dedicated least-privilege Supabase service identity with an Agent-owned account—not an owner's personal account—or keep scheduling in the backend worker and let the Workspace Agent read the persisted report.
+
 ## Model responsibility
 
 - The Workspace Agent uses its selected ChatGPT model for user interaction, task interpretation, context explanation and final report delivery.
