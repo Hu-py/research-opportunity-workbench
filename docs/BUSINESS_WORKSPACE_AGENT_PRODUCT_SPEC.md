@@ -192,3 +192,10 @@ Research Agent Lab 的 V2 当前默认使用合成数据 Dry-run，只能作为�
 - `BUSINESS_MCP_ENABLED`、`BUSINESS_MCP_WRITE_ENABLED`、`BUSINESS_MCP_EXECUTION_ENABLED` 默认关闭。
 - 不把 Supabase Secret/Service Role Key、数据库 URL、DeepSeek Key 或 OAuth Token 写入 GitHub、Agent Skill 或提示词。
 - Workspace Agent 的创建、连接和团队分享必须在 ChatGPT Business 管理界面完成；代码仓库不能代替该 UI 操作。
+
+
+## 11. Execution reliability boundary
+
+The first MCP execution implementation returns a persistent run ID and starts the current Python pipeline as an in-process background task on Render. The pipeline checkpoints its stage outputs and trace to Supabase after each completed stage. If Render restarts or the process is interrupted, the run record remains in Supabase and can be resumed after the existing eight-minute stale-run guard.
+
+This is sufficient for a controlled single-line pilot, but it is **not yet a durable distributed job queue**. The current engine also permits only one active evolution run globally. Before enabling five-theme batches, 80-paper/day automation or unattended daily schedules, add a durable queue/worker design (for example Supabase Queues plus a separately managed worker, or an equivalent persistent execution service), idempotent job claims, heartbeat/lease expiry and bounded retry policy.
