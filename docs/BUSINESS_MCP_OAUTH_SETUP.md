@@ -1,5 +1,44 @@
 # Business Research Advisor — OAuth MCP connection and rollout
 
+## Supabase OAuth onboarding (2026-11-08, verified)
+
+The team owner has **enabled and saved** the Supabase OAuth Server. The
+Vercel consent UI `frontend/app/oauth/consent/page.tsx` is implemented.
+The authorized **Site URL still needs to be changed away from localhost**.
+
+Supabase OAuth tokens use `aud=authenticated`, issuer
+`https://<project-ref>.supabase.co/auth/v1` and a signed `client_id`.
+Supabase OAuth currently supports only standard `openid/email/profile/phone`
+scopes; it does **not** issue custom `research:read`/`research:write`
+scopes. The MCP backend therefore validates the exact issuer/signature,
+audience, Supabase Auth user subject and OAuth client ID. **Independent server
+configuration alone** grants research read/write capabilities.
+
+Consent page configuration (Vercel environment variables, publicly
+publishable values; never use the service-role key):
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<Supabase Settings → API Keys → Publishable key>
+```
+
+Supabase dashboard → Authentication → URL Configuration → Site URL:
+`https://research-opportunity-workbench.vercel.app`
+when that domain is serving the actual consent route.
+Supabase dashboard → Authentication → OAuth Server → Authorization Path:
+`/oauth/consent`.
+
+**The original Research Atlas team login and Supabase Auth login are distinct.**
+The consent page accepts a previously registered Supabase Auth user's
+email/password or email-login link; creating an account in the normal team
+workspace does not create a Supabase Auth identity. Only explicitly allowed
+Supabase user UUIDs can receive MCP data access. Do not put admin user
+credentials or keys in GitHub or ChatGPT prompts.
+
+Until a stable consent route is deployed, leave Supabase's dynamic OAuth app
+registration off. Do not expose the MCP service or trust scope names alone.
+
+
 **Status (2026-11-08): MCP implementation prepared, disabled by default.**
 The persistent team database and private REST bridge are deployed on the
 Supabase-backed Render service. **This does NOT mean a Workspace Agent or
@@ -22,25 +61,29 @@ methods are not exposed.
 
 | Name | Required OAuth scope | Behavior |
 |---|---|---|
-| `get_research_context` | `research:read` | Approved metadata + real meeting reviews + context hash |
-| `get_run_history` | `research:read` | Up to 20 recent persisted research runs |
-| `get_research_run` | `research:read` | Fetch one run to confirm saved idea IDs |
-| `submit_research_run` | `research:read research:write` | Evidence-checked, versioned, idempotent persistence |
+| `get_research_context` | Approved user + client (server-side read capability) | Approved metadata + real meeting reviews + context hash |
+| `get_run_history` | Approved user + client | Up to 20 recent persisted research runs |
+| `get_research_run` | Approved user + client | Fetch one run to confirm saved idea IDs |
+| `submit_research_run` | Explicit write-client allowlist + write enabled | Evidence-checked, versioned, idempotent persistence |
 
 **There is no `save_human_feedback` MCP tool.** Human meeting reviews are
 accepted exclusively through the separate authenticated team member API.
 
 ## Hard security gates before enabling
 
-The OAuth authorization server must support OAuth 2.1 authorization code,
-PKCE S256, a resource/audience parameter, user consent and token
-refresh/renewal. OpenAI recommends a trusted external provider (e.g. Auth0)
-rather than writing a custom production authorization server.
+Use the **existing Supabase OAuth 2.1 Server** as issuer. It supports
+authorization code with PKCE and refresh token rotation; its resource JWT
+audience is `authenticated` rather than the MCP URL. For this reason the
+resource server enforces exact OAuth client ID and user identity allowlists,
+and limits writes separately from the identity-provider scope claim. Confirm
+the ChatGPT OAuth handshake and resource discovery with real browser sign-in
+before enabling external access.
 
-The resource server is already implemented in `backend/business_mcp.py`,
-using the official MCP Python SDK v2, JWT RS256 signature verification via
-the provider's JWKS, exact issuer/audience matching, expiration checks,
-explicit allowlisted subject IDs, tool-level scopes, and HTTPS host validation.
+The resource server is implemented in `backend/business_mcp.py`, using
+the official MCP Python SDK v2 and RS256/ES256 signature validation via
+Supabase JWKS, exact issuer/audience matching, expiration checks, explicit
+approved Supabase subject and client IDs, and HTTPS host validation.
+The independent `BUSINESS_MCP_WRITE_ENABLED` toggle defaults off.
 
 The backend **must not** enable its MCP endpoint until an administrator has
 an established OAuth provider and explicitly approved which team identities
@@ -50,14 +93,19 @@ can connect. These settings are server-side Render secrets/configuration only:
 BUSINESS_MCP_ENABLED=false
 BUSINESS_AGENT_SHARING_APPROVED=false
 BUSINESS_MCP_RESOURCE_URL=https://research-atlas-api-test.onrender.com/research-advisor/mcp
-BUSINESS_MCP_ISSUER_URL=<exact HTTPS OAuth issuer, including trailing slash if required>
-BUSINESS_MCP_JWKS_URL=<provider's HTTPS JSON Web Key Set URL>
-BUSINESS_MCP_ALLOWED_SUBJECTS=<approved OAuth user subject IDs, comma-separated>
+BUSINESS_MCP_ISSUER_URL=https://<project-ref>.supabase.co/auth/v1
+BUSINESS_MCP_JWKS_URL=https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+BUSINESS_MCP_ALLOWED_SUBJECTS=<approved Supabase Auth user UUIDs, comma-separated>
+BUSINESS_MCP_ALLOWED_CLIENT_IDS=<approved OAuth client IDs from Supabase OAuth Apps>
+BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS=
+BUSINESS_MCP_WRITE_ENABLED=false
 ```
 
-The exact `resource` token audience must match
-`BUSINESS_MCP_RESOURCE_URL`; required scopes are `research:read` and
-`research:write`. ChatGPT uses an authorization-code/PKCE browser flow;
+The signed Supabase JWT has `aud=authenticated`, and the backend grants
+internal `research:read` only to a validated user+client combination.
+Research writes remain disabled until the administrator explicitly
+allowlists a client for writing and enables the separate write switch.
+ChatGPT uses an authorization-code/PKCE browser flow;
 do NOT expose a static bearer secret, put tokens in an Agent prompt, or
 connect a no-authentication MCP server.
 
