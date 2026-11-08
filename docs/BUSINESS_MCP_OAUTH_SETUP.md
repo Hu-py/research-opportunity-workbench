@@ -163,8 +163,9 @@ Render MCP 当前使用服务端 PostgreSQL 连接读取 Supabase 数据库；OA
 2. 在 Render 临时设置 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=true`、`BUSINESS_MCP_ENABLED=true`、`BUSINESS_AGENT_SHARING_APPROVED=true`，将 `BUSINESS_MCP_ALLOWED_SUBJECTS` 限定为首位测试用户，并暂时留空 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`。
 3. 此模式只允许 MCP OAuth discovery / client registration 流程启动。由于服务端的 approved client 集合为空，`OAuthJwtVerifier` 会拒绝**所有**访问令牌，任何 MCP 工具都不能执行。
 4. 在 ChatGPT 发起 custom MCP 连接，让 Supabase 创建 OAuth client；在 consent 页面批准前暂停/拒绝本次授权，然后从 Supabase Dashboard → Authentication → OAuth Apps 读取准确的 client ID。
-5. 将该 client ID 写入 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`，立即把 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=false`，重新部署 Render。
-6. 重新发起 ChatGPT OAuth 授权，确认只有该 client 和 allowlist 中的 user subject 能读取数据。
+5. 先按 SQL 文件末尾的 INSERT 模板，将准确 client ID 加入 `business_agent_private.oauth_clients`，使 Supabase Custom Access Token Hook 为该 client 签发正确的 MCP resource audience。
+6. 将同一个 client ID 写入 Render 的 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`，确认首位测试用户 UUID 已写入 `BUSINESS_MCP_ALLOWED_SUBJECTS`，立即把 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=false`，重新部署 Render。
+7. 重新发起 ChatGPT OAuth 授权，检查 access token 的 `aud` 包含完整 MCP resource URL，然后只测试只读工具。
 
 如果 ChatGPT 连接界面允许预先配置已注册 OAuth client，则优先使用预注册 client，不需要 bootstrap。**不得**把 bootstrap 长期打开，不得用 `*` 或其他通配符代替 allowlist。
 
