@@ -218,3 +218,6 @@ For first-time OAuth client registration, the MCP server supports a temporary `B
 
 
 The Render OAuth verifier accepts only asymmetric `RS256` or `ES256` JWTs and validates them through the project's public JWKS endpoint. Supabase projects still using the default `HS256` signing key must migrate to an asymmetric signing key before the Business MCP connection can succeed. Never copy the Supabase JWT secret or signing private key into Render.
+
+
+For interactive team use, prefer per-user **End-user account** authentication. For unattended Workspace Agent schedules, do not assume an end-user connection can run without a person present; test the platform behavior before enabling schedules. If a shared connection is required, use a dedicated least-privilege Supabase service identity with Agent-owned account, never an owner's personal account. A backend worker that runs the schedule and writes results to Supabase is an equally valid alternative; the Workspace Agent can then read and explain the persisted report.
