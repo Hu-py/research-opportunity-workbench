@@ -1,0 +1,161 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "Broad, changeable PUBLIC academic source selection for Radar B evidence collection. The Research Advisor, not this collector, judges methodological breakthroughs and urban-science transfer.",
+  "lookback_days": 60,
+  "max_openalex_records": 170,
+  "max_arxiv_records": 110,
+  "max_public_records": 260,
+  "per_source_sample": 30,
+  "annual_topic_count_limit": 12,
+  "openalex_sources": [
+    {
+      "name": "NeurIPS",
+      "aliases": [
+        "Advances in Neural Information Processing Systems",
+        "Neural Information Processing Systems"
+      ]
+    },
+    {
+      "name": "ICML",
+      "aliases": [
+        "Proceedings of the International Conference on Machine Learning",
+        "International Conference on Machine Learning"
+      ]
+    },
+    {
+      "name": "ICLR",
+      "aliases": [
+        "International Conference on Learning Representations"
+      ]
+    },
+    {
+      "name": "AAAI",
+      "aliases": [
+        "Proceedings of the AAAI Conference on Artificial Intelligence",
+        "AAAI Conference on Artificial Intelligence"
+      ]
+    },
+    {
+      "name": "KDD",
+      "aliases": [
+        "Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining",
+        "ACM SIGKDD Conference on Knowledge Discovery and Data Mining"
+      ]
+    },
+    {
+      "name": "CVPR",
+      "aliases": [
+        "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition",
+        "IEEE Conference on Computer Vision and Pattern Recognition"
+      ]
+    },
+    {
+      "name": "ICCV",
+      "aliases": [
+        "Proceedings of the IEEE/CVF International Conference on Computer Vision",
+        "International Conference on Computer Vision"
+      ]
+    },
+    {
+      "name": "ACL",
+      "aliases": [
+        "Annual Meeting of the Association for Computational Linguistics",
+        "Proceedings of the Annual Meeting of the Association for Computational Linguistics"
+      ]
+    },
+    {
+      "name": "EMNLP",
+      "aliases": [
+        "Conference on Empirical Methods in Natural Language Processing",
+        "Proceedings of the Conference on Empirical Methods in Natural Language Processing"
+      ]
+    },
+    {
+      "name": "SIGSPATIAL",
+      "aliases": [
+        "ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems"
+      ]
+    },
+    {
+      "name": "JMLR",
+      "aliases": [
+        "Journal of Machine Learning Research"
+      ]
+    },
+    {
+      "name": "TPAMI",
+      "aliases": [
+        "IEEE Transactions on Pattern Analysis and Machine Intelligence"
+      ]
+    },
+    {
+      "name": "IJCV",
+      "aliases": [
+        "International Journal of Computer Vision"
+      ]
+    },
+    {
+      "name": "TNNLS",
+      "aliases": [
+        "IEEE Transactions on Neural Networks and Learning Systems"
+      ]
+    },
+    {
+      "name": "TKDE",
+      "aliases": [
+        "IEEE Transactions on Knowledge and Data Engineering"
+      ]
+    },
+    {
+      "name": "Artificial Intelligence",
+      "aliases": [
+        "Artificial Intelligence"
+      ]
+    }
+  ],
+  "arxiv_category_groups": [
+    {
+      "name": "learning_reasoning",
+      "categories": [
+        "cs.AI",
+        "cs.LG",
+        "stat.ML",
+        "cs.CL"
+      ],
+      "max_results": 40
+    },
+    {
+      "name": "vision_geometry",
+      "categories": [
+        "cs.CV",
+        "cs.GR"
+      ],
+      "max_results": 40
+    },
+    {
+      "name": "data_spatial_systems",
+      "categories": [
+        "cs.DB",
+        "cs.DC",
+        "cs.IR"
+      ],
+      "max_results": 40
+    },
+    {
+      "name": "agents_robots_hci",
+      "categories": [
+        "cs.MA",
+        "cs.RO",
+        "cs.HC"
+      ],
+      "max_results": 40
+    }
+  ],
+  "non_research_work_types": [
+    "editorial",
+    "erratum",
+    "paratext",
+    "retraction",
+    "letter"
+  ]
+}
