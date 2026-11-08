@@ -1,14 +1,15 @@
-"""OAuth resource-server gates: no accidental public research API access."""
+"""OAuth resource-server gates: real Supabase claims, fail closed, no public data."""
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from backend.business_mcp import AuthConfig, OAuthJwtVerifier, get_auth_config
 
-
 RESOURCE="https://research-atlas-api-test.onrender.com/research-advisor/mcp"
-ISSUER="https://idp.example.org/"
-JWKS="https://idp.example.org/.well-known/jwks.json"
+ISSUER="https://example-project.supabase.co/auth/v1"
+JWKS="https://example-project.supabase.co/auth/v1/.well-known/jwks.json"
+SUBJECT="11111111-1111-4111-8111-111111111111"
+CLIENT="22222222-2222-4222-8222-222222222222"
 
 
 def _settings(monkeypatch):
@@ -17,7 +18,10 @@ def _settings(monkeypatch):
     monkeypatch.setenv("BUSINESS_MCP_RESOURCE_URL",RESOURCE)
     monkeypatch.setenv("BUSINESS_MCP_ISSUER_URL",ISSUER)
     monkeypatch.setenv("BUSINESS_MCP_JWKS_URL",JWKS)
-    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_SUBJECTS","research-team-owner")
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_SUBJECTS",SUBJECT)
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_CLIENT_IDS",CLIENT)
+    monkeypatch.delenv("BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS",raising=False)
+    monkeypatch.delenv("BUSINESS_MCP_WRITE_ENABLED",raising=False)
 
 
 def test_disabled_without_owner_approval(monkeypatch):
@@ -30,59 +34,89 @@ def test_disabled_without_owner_approval(monkeypatch):
         get_auth_config()
 
 
-def test_requires_https_scopes_and_explicit_authorized_identity(monkeypatch):
+def test_requires_https_same_supabase_issuer_and_explicit_allowlists(monkeypatch):
     _settings(monkeypatch)
     config=get_auth_config()
     assert config.resource==RESOURCE
     assert config.host=="research-atlas-api-test.onrender.com"
-    assert config.allowed_subjects=={"research-team-owner"}
-    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_SUBJECTS","*")
-    with pytest.raises(RuntimeError,match="Explicit approved"):
+    assert config.allowed_subjects=={SUBJECT}
+    assert config.allowed_clients=={CLIENT}
+    assert config.write_clients==set()
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_CLIENT_IDS","*")
+    with pytest.raises(RuntimeError,match="Explicit approved Supabase"):
         get_auth_config()
-    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_SUBJECTS","research-team-owner")
-    monkeypatch.setenv("BUSINESS_MCP_JWKS_URL","http://idp.example.org/jwks")
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_CLIENT_IDS",CLIENT)
+    monkeypatch.setenv("BUSINESS_MCP_JWKS_URL","http://example-project.supabase.co/jwks")
     with pytest.raises(RuntimeError,match="HTTPS"):
         get_auth_config()
+    monkeypatch.setenv("BUSINESS_MCP_JWKS_URL","https://attacker.example.org/auth/v1/.well-known/jwks.json")
+    with pytest.raises(RuntimeError,match="same project"):
+        get_auth_config()
+    monkeypatch.setenv("BUSINESS_MCP_JWKS_URL",JWKS)
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS","unknown-client")
+    with pytest.raises(RuntimeError,match="Write-allowed"):
+        get_auth_config()
 
 
-def test_verifier_rejects_unapproved_subject_or_wrong_scope(monkeypatch):
-    _settings(monkeypatch)
-    config=get_auth_config()
+def _claims(sub=SUBJECT,client=CLIENT):
+    return {"iss":ISSUER,"aud":"authenticated","sub":sub,
+            "client_id":client,"role":"authenticated",
+            "exp":2000000000,"iat":1000000000,
+            "scope":"email","permissions":["research:write"]}
+
+
+def _mocked_verifier(config):
     verifier=OAuthJwtVerifier(config)
     key_client=MagicMock()
     key_client.get_signing_key_from_jwt.return_value.key="test-key"
     verifier._key_client=key_client
-    verified={
-        "iss":ISSUER,"aud":RESOURCE,"sub":"unknown-user",
-        "scope":"research:read research:write","exp":2000000000,
-        "iat":1000000000,
-    }
-    with patch("jwt.decode",return_value=verified):
+    return verifier
+
+
+def test_token_validates_project_subject_client_and_server_write_policy(monkeypatch):
+    _settings(monkeypatch)
+    cfg=get_auth_config()
+    verifier=_mocked_verifier(cfg)
+    with patch("jwt.decode",return_value=_claims(sub="unknown-user")):
         assert verifier._validate("opaque-test-token") is None
-    verified["sub"]="research-team-owner"
-    verified["scope"]="research:write"
-    with patch("jwt.decode",return_value=verified):
+    with patch("jwt.decode",return_value=_claims(client="unapproved-client")):
         assert verifier._validate("opaque-test-token") is None
-    verified["scope"]="research:read research:write"
-    with patch("jwt.decode",return_value=verified):
-        bearer=verifier._validate("opaque-test-token")
-    assert bearer is not None
-    assert bearer.resource==RESOURCE
-    assert "research:write" in bearer.scopes
-    assert verifier._validate("") is None
+    with patch("jwt.decode",return_value={**_claims(),"role":"service_role"}):
+        assert verifier._validate("opaque-test-token") is None
+    with patch("jwt.decode",return_value=_claims()):
+        result=verifier._validate("opaque-test-token")
+    assert result is not None
+    assert result.resource==RESOURCE
+    assert result.client_id==CLIENT
+    # Untrusted JWT claims can never grant writes.
+    assert result.scopes==["research:read"]
+    monkeypatch.setenv("BUSINESS_MCP_WRITE_ENABLED","true")
+    with patch("jwt.decode",return_value=_claims()):
+        still_read_only=verifier._validate("opaque-test-token")
+    assert still_read_only.scopes==["research:read"]
+
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS",CLIENT)
+    allowed=_mocked_verifier(get_auth_config())
+    with patch("jwt.decode",return_value=_claims()):
+        write_capability=allowed._validate("opaque-test-token")
+    assert "research:write" in write_capability.scopes
 
 
-def test_bad_jwt_is_rejected_without_secrets():
-    verifier=OAuthJwtVerifier(AuthConfig(
-        RESOURCE,ISSUER,JWKS,frozenset({"research-team-owner"}),
-        "research-atlas-api-test.onrender.com"
-    ))
-    with patch("jwt.PyJWKClient") as cls:
-        cls.return_value.get_signing_key_from_jwt.side_effect=ValueError("bad jwt")
-        assert verifier._validate("bad-token") is None
+def test_invalid_or_expired_supabase_jwt_rejected(monkeypatch):
+    _settings(monkeypatch)
+    verifier=_mocked_verifier(get_auth_config())
+    import jwt
+    with patch("jwt.decode",side_effect=jwt.ExpiredSignatureError):
+        assert verifier._validate("expired") is None
+    with patch("jwt.decode",side_effect=jwt.InvalidAudienceError):
+        assert verifier._validate("wrong-audience") is None
+    with patch("jwt.decode",return_value=_claims()):
+        assert verifier._validate("") is None
+    with patch("jwt.decode",return_value=_claims()):
+        assert verifier._validate("opaque-test-token") is not None
 
 
-def test_oauth_server_constructs_with_four_tools_only(monkeypatch):
+def test_mcp_server_constructs_with_four_tools_only(monkeypatch):
     _settings(monkeypatch)
     from backend.business_mcp import build_mcp_server
     mcp,asgi=build_mcp_server(get_auth_config())
