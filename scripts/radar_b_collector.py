@@ -31,10 +31,10 @@ RETRY_CODES = {429, 500, 502, 503, 504}
 
 def http_payload(url, *, parse="json", attempts=3):
     """Fail without logging a URL (OpenAlex URLs contain an API key)."""
-    request = Request(url, headers={
-        "Accept": "application/json" if parse == "json" else "application/atom+xml",
-        "User-Agent": "CUSP-public-academic-radar/2.0",
-    })
+    headers = {"User-Agent": "CUSP-public-academic-radar/2.0"}
+    if parse != "json":
+        headers["Accept"] = "application/atom+xml"
+    request = Request(url, headers=headers)
     failure = "UnknownFailure"
     for attempt in range(attempts):
         try:
