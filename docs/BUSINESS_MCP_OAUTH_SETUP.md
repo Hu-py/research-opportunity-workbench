@@ -39,6 +39,8 @@ JWKS：
 
 `https://tfyfupxabojddixwjkat.supabase.co/auth/v1/.well-known/jwks.json`
 
+**JWT Signing Key 必须使用非对称算法。** 当前 Render verifier 只接受 `RS256` 或 `ES256`，并通过同一 Supabase 项目的 JWKS 公钥验证签名。Supabase 新项目默认可能使用 `HS256`；如果当前项目仍是 HS256，OAuth MCP 连接会被拒绝。请先在 Supabase JWT Signing Keys 设置中确认并迁移到 RS256/ES256，再验证 JWKS 中存在对应公钥。不要把 Supabase JWT secret 或私钥复制到 Render。
+
 Render consent 页所需公开配置：
 
 - `OAUTH_CONSENT_ENABLED=true`
