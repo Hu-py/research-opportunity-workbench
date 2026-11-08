@@ -1486,6 +1486,11 @@ from backend.business_memory import mount as _mount_business_memory_routes
 _mount_business_memory_routes(app, get_db=get_db, require_actor=require_actor,
                               require_editor=require_editor, require_admin=require_admin)
 
+# Independent minimal OAuth consent page, served from Render instead of Vercel.
+# It is enabled only after a project publishable key is configured on Render.
+from backend.oauth_consent import router as _oauth_consent_router
+app.include_router(_oauth_consent_router)
+
 # Custom MCP is intentionally off until a reviewed external OAuth provider,
 # approved subjects, and explicit team data-sharing grant are configured.
 if os.getenv("BUSINESS_MCP_ENABLED","").strip().lower()=="true":
