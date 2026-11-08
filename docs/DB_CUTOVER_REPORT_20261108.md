@@ -90,3 +90,26 @@ connection. Never store provider secrets in GitHub.
   `docs/SERVER_SIDE_MIGRATION_20261108.md`
 - Business Agent Skill:
   `skills/business_research_advisor/SKILL.md`
+
+
+## 2026-11-08 update — Business Research Advisor OAuth MCP adapter
+
+- Versioned REST bridge plus agent-authenticated read-after-write endpoints have
+  passed integration tests; human meeting feedback remains team-member-only.
+- An opt-in OAuth 2.1 Streamable HTTP MCP resource-server adapter was added at
+  `backend/business_mcp.py`, using MCP SDK v2 and JWT/JWKS verification.
+- Registered tool names are `get_research_context`, `get_run_history`,
+  `get_research_run`, and `submit_research_run`. JWT issuer, resource
+  audience, allowed user subjects, and scopes are checked at the boundary.
+- CI validated OAuth configuration failure modes, approved-subject and scope
+  checks, server construction and that anonymous MCP JSON-RPC requests get
+  an HTTP 401 challenge.
+- Latest verified CI: https://github.com/Hu-py/research-opportunity-workbench/actions/runs/42436391084 (all jobs passed).
+- Render successfully deployed the OAuth adapter dependencies in commit
+  `5ecb7f7e2f34fda443ad367b9e710349bd8013d9` at
+  2026-11-08 01:57 UTC; team portrait and 28 datasets still load normally.
+- **BUSINESS_MCP_ENABLED stays unset/false.** No external authorization
+  server is configured, no OAuth client has been approved, and no ChatGPT
+  plugin or Workspace Agent has been created yet.
+- Exact instructions and trust gates:
+  `docs/BUSINESS_MCP_OAUTH_SETUP.md`.
