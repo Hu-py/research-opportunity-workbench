@@ -1,0 +1,51 @@
+name: Weekly OpenAlex public radar feed
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1'
+      timezone: 'Asia/Shanghai'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-openalex-public-feed
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Retrieve and publish public academic metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Collect annual counts and recent work metadata
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        run: python scripts/openalex_weekly_radar.py
+      - name: Preserve result as downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-openalex-public-radar
+          path: data/radar/openalex_latest.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Update stable public JSON feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/radar/openalex_latest.json
+          if git diff --cached --quiet; then
+            echo "No feed changes to publish"
+          else
+            git commit -m "data(radar): refresh public OpenAlex weekly feed"
+            git push origin HEAD:main
+          fi
