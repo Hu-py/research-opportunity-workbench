@@ -95,6 +95,20 @@ def test_database_memory_roundtrip_feedback_and_idempotency(setup_client):
     assert client.post(base + "/runs", headers=agent_headers(),
                        json=changed).status_code == 409
 
+
+    # The external agent must read back persisted ideas through its own narrow key.
+    assert client.get(base + "/agent-runs").status_code == 401
+    history = client.get(base + "/agent-runs", headers=agent_headers())
+    assert history.status_code == 200, history.text
+    assert len(history.json()["items"]) == 1
+    assert history.json()["items"][0]["run_id"] == run["run_id"]
+    detail = client.get(base + "/agent-runs/" + run["run_id"],headers=agent_headers())
+    assert detail.status_code == 200
+    assert detail.json()["ideas"][0]["id"] == idea_id
+    assert client.get(base + "/agent-runs/bad-id",headers=agent_headers()).status_code == 422
+    assert client.get(base + "/agent-runs/00000000-0000-4000-a000-000000000000",
+                      headers=agent_headers()).status_code == 404
+
     assert client.get(base + "/runs", headers=service(researcher)).status_code == 200
     feedback_route = base + "/ideas/" + idea_id + "/feedback"
     vote = {"decision": "revise", "novelty": 3, "feasibility": 4,
