@@ -68,7 +68,13 @@ def get_auth_config() -> AuthConfig:
         raise RuntimeError("Unexpected MCP resource path")
     if not subjects or any(v=="*" or len(v)>200 for v in subjects):
         raise RuntimeError("Explicit approved OAuth subjects required")
-    if not clients or any(v=="*" or len(v)>240 for v in clients):
+    dcr_bootstrap=os.getenv("BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED","").lower().strip()=="true"
+    if any(v=="*" or len(v)>240 for v in clients):
+        raise RuntimeError("Explicit approved Supabase OAuth client IDs required")
+    # Temporary bootstrap mode exposes OAuth discovery/consent so an MCP
+    # client can register. With an empty allowlist every bearer token is still
+    # rejected by OAuthJwtVerifier until the exact client ID is approved.
+    if not clients and not dcr_bootstrap:
         raise RuntimeError("Explicit approved Supabase OAuth client IDs required")
     if not write_clients.issubset(clients):
         raise RuntimeError("Write-allowed clients must also be approved read clients")
