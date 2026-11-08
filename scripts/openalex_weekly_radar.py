@@ -1,168 +1,246 @@
-"""Collect public OpenAlex topic trends and recent-work metadata for the weekly Research Advisor.
+"""OpenAlex public evidence feed. Topic selection and scientific judgments belong to the Agent.
 
-No team data or credentials are written to the output. No paid-model calls.
-Run: OPENALEX_API_KEY=... python scripts/openalex_weekly_radar.py
+Reads config/radar_source_pools.json; discovers topics *each run* from recent
+papers published in broadly selected academic outlets. Never reads team data
+or stores API keys in the public feed.
 """
 from __future__ import annotations
 
-import datetime as dt
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta, timezone
 import json
 import os
-import pathlib
+from pathlib import Path
+import re
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
-API = "https://api.openalex.org/works"
-OUT = pathlib.Path("data/radar/openalex_latest.json")
-TOPICS = [
-    ("T10766", "Urban Heat Island Mitigation", "城市热岛缓解"),
-    ("T10298", "Urban Transport and Accessibility", "城市交通与可达性"),
-    ("T12325", "Urban Design and Spatial Analysis", "城市设计与空间分析"),
-    ("T11980", "Human Mobility and Location-Based Analysis", "人类移动与位置分析"),
-    ("T11479", "Smart Cities and Technologies", "智慧城市与技术"),
-]
+API = "https://api.openalex.org"
+CONFIG = Path("config/radar_source_pools.json")
+OUTPUT = Path("data/radar/openalex_latest.json")
+YEARS = (2023, 2024, 2025)  # Replaced at runtime by the last 3 complete years.
 
 
-def request_json(parameters: dict) -> dict:
-    """Use the configured key; never expose a key-bearing URL in logs or files."""
+def api(endpoint, params):
     key = os.getenv("OPENALEX_API_KEY", "").strip()
     if not key:
-        raise RuntimeError("OPENALEX_API_KEY is not configured")
-    params = dict(parameters, api_key=key)
-    url = API + "?" + urllib.parse.urlencode(params)
+        raise RuntimeError("OPENALEX_API_KEY is missing")
+    url = API + endpoint + "?" + urllib.parse.urlencode(dict(params, api_key=key))
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "research-opportunity-workbench/weekly-radar-1.0", "Accept": "application/json"},
+        headers={"Accept": "application/json", "User-Agent": "CUSP-public-academic-radar/2.0"},
     )
-    last_error = None
+    last = "unknown"
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(request, timeout=35) as response:
+            with urllib.request.urlopen(request, timeout=40) as response:
                 payload = json.load(response)
             if not isinstance(payload, dict):
-                raise ValueError("Unexpected API payload")
+                raise ValueError("Non-object OpenAlex response")
+            time.sleep(0.15)
             return payload
         except urllib.error.HTTPError as exc:
-            last_error = f"HTTP {exc.code}"
+            last = "HTTP " + str(exc.code)
             if exc.code not in (429, 500, 502, 503, 504):
                 break
         except Exception as exc:
-            last_error = type(exc).__name__
+            last = type(exc).__name__
         if attempt < 2:
-            time.sleep(2 ** attempt)
-    raise RuntimeError("OpenAlex request failed: " + str(last_error))
+            time.sleep(1 + attempt * 2)
+    # Deliberately do NOT print the key-containing request URL or response body.
+    raise RuntimeError(last)
 
 
-def get_counts(topic: str, years: list[int]) -> dict[str, int]:
-    result = request_json({
-        "filter": f"primary_topic.id:{topic},publication_year:{years[0]}-{years[-1]}",
+def normalized(value):
+    return re.sub("[^a-z0-9]", "", (value or "").casefold())
+
+
+def short_id(value):
+    return (value or "").rsplit("/", 1)[-1]
+
+
+def resolve_source(name):
+    response = api("/sources", {"search": name, "per-page": 10})
+    candidates = response.get("results") or []
+    matches = [item for item in candidates
+               if normalized(item.get("display_name")) == normalized(name)]
+    if len(matches) != 1:
+        return None, "No unique exact source-name match"
+    return short_id(matches[0].get("id")), None
+
+
+def public_work(work, source_name, stream):
+    source = (work.get("primary_location") or {}).get("source") or {}
+    authors = [
+        (a.get("author") or {}).get("display_name")
+        for a in (work.get("authorships") or [])[:6] if isinstance(a, dict)
+    ]
+    topic = work.get("primary_topic") or {}
+    return {
+        "openalex_id": work.get("id"),
+        "doi": work.get("doi"),
+        "title": str(work.get("title") or work.get("display_name") or "")[:700],
+        "publication_date": work.get("publication_date"),
+        "work_type": work.get("type"),
+        "authors": [a for a in authors if a],
+        "venue": source.get("display_name") or source_name,
+        "primary_topic_id": short_id(topic.get("id")),
+        "primary_topic": topic.get("display_name"),
+        "stream": stream,
+        "evidence_level": "metadata_only",
+    }
+
+
+def recent_from_source(source_id, source_name, stream, since):
+    response = api("/works", {
+        "filter": "primary_location.source.id:" + source_id + ",from_publication_date:" + since,
+        "per-page": 30,
+        "sort": "publication_date:desc",
+        "select": "id,title,doi,publication_date,type,authorships,primary_topic,primary_location,is_retracted",
+    })
+    return [public_work(item, source_name, stream)
+            for item in (response.get("results") or [])
+            if isinstance(item, dict) and not item.get("is_retracted")]
+
+
+def annual_counts(topic_id, years):
+    response = api("/works", {
+        "filter": "primary_topic.id:" + topic_id + ",publication_year:" + str(years[0]) + "-" + str(years[-1]),
         "group_by": "publication_year",
     })
-    groups = result.get("group_by")
+    groups = response.get("group_by")
     if not isinstance(groups, list):
-        raise ValueError("OpenAlex returned no annual grouping")
-    counts = {str(y): 0 for y in years}
-    for row in groups:
-        year = str(row.get("key", ""))
+        raise ValueError("Missing group_by")
+    counts = {str(year): 0 for year in years}
+    for item in groups:
+        year = str(item.get("key"))
         if year in counts:
-            counts[year] = int(row["count"])
+            counts[year] = int(item["count"])
     return counts
 
 
-def recent_works(topic: str, since: str, max_records: int = 20) -> list[dict]:
-    response = request_json({
-        "filter": f"primary_topic.id:{topic},from_publication_date:{since}",
-        "sort": "publication_date:desc",
-        "per-page": str(max_records),
-    })
-    works = response.get("results")
-    if not isinstance(works, list):
-        raise ValueError("OpenAlex returned no works results")
-    items = []
-    for work in works:
-        if not isinstance(work, dict) or work.get("is_retracted"):
-            continue
-        source = (work.get("primary_location") or {}).get("source") or {}
-        people = work.get("authorships") or []
-        authors = [
-            str((person.get("author") or {}).get("display_name") or "")
-            for person in people[:8] if isinstance(person, dict)
-        ]
-        items.append({
-            "openalex_id": work.get("id"),
-            "title": str(work.get("title") or work.get("display_name") or "")[:600],
-            "doi": work.get("doi"),
-            "publication_date": work.get("publication_date"),
-            "type": work.get("type"),
-            "venue": source.get("display_name"),
-            "authors": [name for name in authors if name],
-            "source_topic_id": topic,
-            "evidence_level": "metadata_only",
-        })
-    return items
-
-
-def main() -> int:
-    now = dt.datetime.now(dt.timezone.utc)
-    since = (now.date() - dt.timedelta(days=60)).isoformat()
-    years = list(range(now.year - 3, now.year))
-    data = {
-        "schema_version": "1.0.0",
-        "purpose": "public_scholarly_metadata_only",
+def main():
+    settings = json.loads(CONFIG.read_text(encoding="utf-8"))
+    streams = settings["streams"]
+    now = datetime.now(timezone.utc)
+    since = (now.date() - timedelta(days=60)).isoformat()
+    years = [now.year - 3, now.year - 2, now.year - 1]
+    feed = {
+        "schema_version": "2.0.0",
+        "feed_kind": "public_scholarly_evidence_only",
         "retrieved_at_utc": now.isoformat(),
-        "retrieval_window_start": since,
+        "recent_window_start": since,
         "complete_publication_years": years,
-        "dataset": "OpenAlex Works API",
-        "query_basis": "primary_topic.id; publication_year counts; recent works sorted by publication_date descending",
+        "source_pool_config": str(CONFIG),
+        "discovery_protocol": "Select academic SOURCE pools; harvest latest source papers; observe their current PRIMARY topics; objectively count 3 recent complete years for dynamically observed topic IDs. Agent, not GitHub, selects scientifically worthwhile research themes.",
+        "scientific_topic_selections": [],
         "caveats": [
-            "OpenAlex may reclassify works and backfill citations; results are a point-in-time snapshot.",
-            "These topics are broad. Publication volume is not evidence of novelty.",
-            "Recent papers are API samples, not an exhaustive all-papers download.",
-            "Titles, authors, DOI and venues are OpenAlex metadata, not publisher-verified abstracts or full texts.",
-            "Radar B computer-science method surveillance is NOT covered by this dataset.",
+            "Topic candidates change with the sampled recent papers; no permanent five-topic list.",
+            "Source-name resolution is exact; unresolved sources and request failures appear in warnings.",
+            "Per-source paper sampling is capped and may miss relevant papers or distort prevalence.",
+            "Topic-wide annual counts cover all OpenAlex works assigned to that primary topic, not only curated source publications.",
+            "OpenAlex indexing, topic assignments, publication dates and sample coverage may change.",
+            "Metadata_only is not evidence that abstracts or full texts have been read.",
+            "The Agent must independently validate method novelty and research gaps against primary sources.",
+            "No team portrait, private papers, evaluation history or AI generated idea is in this public feed.",
         ],
-        "topic_trends": [],
+        "source_coverage": {},
+        "observed_topic_distributions": {},
+        "topic_candidates": [],
         "recent_papers": [],
+        "warnings": [],
     }
-    by_id = {}
-    for topic_id, en, zh in TOPICS:
-        counts = get_counts(topic_id, years)
-        before = counts[str(years[-2])]
-        after = counts[str(years[-1])]
-        growth = round((after - before) / before * 100, 2) if before else None
-        papers = recent_works(topic_id, since)
-        for paper in papers:
-            unique = paper.get("doi") or paper.get("openalex_id")
-            if unique and unique not in by_id:
-                by_id[unique] = paper
-        data["topic_trends"].append({
-            "topic_id": topic_id,
-            "name_en": en,
-            "name_zh": zh,
-            "annual_counts": counts,
-            "growth_rate_latest_complete_year_pct": growth,
-            "recent_sample_count": len(papers),
-            "query_filter": f"primary_topic.id:{topic_id}",
-        })
-        print(f"OK {topic_id}: annual counts {counts}; recent sample {len(papers)}")
-        time.sleep(0.35)
-    data["recent_papers"] = sorted(
-        by_id.values(), key=lambda row: row.get("publication_date") or "", reverse=True
-    )
-    data["recent_unique_paper_count"] = len(data["recent_papers"])
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"Exported {len(TOPICS)} topics and {len(data['recent_papers'])} distinct recent paper metadata records")
-    print(f"Public-only export: {OUT}")
-    return 0
+
+    known = {}
+    for stream, group in streams.items():
+        coverage = {"configured": len(group["source_names"]), "resolved": 0,
+                    "sampled_papers": 0, "unresolved": []}
+        all_works = {}
+        for source_name in group["source_names"]:
+            try:
+                sid, why = resolve_source(source_name)
+                if not sid:
+                    coverage["unresolved"].append({"name": source_name, "reason": why})
+                    continue
+                coverage["resolved"] += 1
+                works = recent_from_source(sid, source_name, stream, since)
+                for item in works:
+                    wid = item.get("openalex_id")
+                    if wid:
+                        all_works[wid] = item
+                        # Paper may occur across outlets/streams; retain both categories.
+                        if wid not in known:
+                            known[wid] = dict(item, streams=[stream])
+                        elif stream not in known[wid]["streams"]:
+                            known[wid]["streams"].append(stream)
+            except Exception as exc:
+                coverage["unresolved"].append({"name": source_name, "reason": str(exc)})
+        coverage["sampled_papers"] = len(all_works)
+        feed["source_coverage"][stream] = coverage
+        print("Source scan", stream, "resolved", coverage["resolved"],
+              "out of", coverage["configured"], "sampled", len(all_works))
+
+        occurrences = Counter()
+        topic_names = {}
+        topic_works = defaultdict(list)
+        for item in all_works.values():
+            topic_id = item["primary_topic_id"]
+            if re.fullmatch(r"T\d+", topic_id or ""):
+                occurrences[topic_id] += 1
+                topic_names[topic_id] = item["primary_topic"]
+                topic_works[topic_id].append(item["openalex_id"])
+
+        feed["observed_topic_distributions"][stream] = [
+            {"topic_id": tid, "name": topic_names.get(tid),
+             "observed_recent_source_sample_count": frequency}
+            for tid, frequency in occurrences.most_common(60)
+        ]
+        # A deterministic *coverage cap*, not an LLM topic recommendation.
+        candidate_cap = int(group.get("established_topics", 5)) + int(group.get("rising_topics", 4))
+        for topic_id, count in occurrences.most_common(max(0, min(candidate_cap, 30))):
+            item = {
+                "topic_id": topic_id,
+                "name": topic_names.get(topic_id),
+                "observed_stream": stream,
+                "sampled_recent_papers": count,
+                "sample_paper_ids": topic_works[topic_id][:5],
+                "annual_counts": None,
+                "latest_full_year_growth_pct": None,
+                "evidence_status": "trend_unavailable",
+                "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample",
+            }
+            try:
+                counts = annual_counts(topic_id, years)
+                prev, latest = counts[str(years[-2])], counts[str(years[-1])]
+                item["annual_counts"] = counts
+                item["latest_full_year_growth_pct"] = (
+                    round(100 * (latest - prev) / prev, 2) if prev else None
+                )
+                item["evidence_status"] = "measured"
+            except Exception as exc:
+                feed["warnings"].append("Annual count failed for " + topic_id + ": " + str(exc))
+            feed["topic_candidates"].append(item)
+
+    feed["recent_papers"] = sorted(
+        known.values(), key=lambda row: (row.get("publication_date") or ""), reverse=True
+    )[:240]
+    if not feed["recent_papers"]:
+        raise RuntimeError("No recent academic metadata retrieved. Refusing to publish an empty feed.")
+    if not feed["topic_candidates"]:
+        raise RuntimeError("No topic candidates discovered. Refusing to publish an empty feed.")
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT.write_text(json.dumps(feed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("Wrote public feed:", OUTPUT, "recent papers", len(feed["recent_papers"]),
+          "dynamic topic candidates", len(feed["topic_candidates"]),
+          "warnings", len(feed["warnings"]))
 
 
 if __name__ == "__main__":
     try:
-        sys.exit(main())
-    except Exception as error:
-        print("OpenAlex weekly data collection failed:", str(error), file=sys.stderr)
+        main()
+    except Exception as exc:
+        print("OpenAlex public radar collection failed:", str(exc), file=sys.stderr)
         sys.exit(1)
