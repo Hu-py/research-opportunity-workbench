@@ -52,13 +52,25 @@ def http_payload(url, *, parse="json", attempts=3):
     raise RuntimeError(failure)
 
 
+OA_ANONYMOUS_FALLBACK_ENDPOINTS = set()
+
+
 def openalex(endpoint, params):
-    """Share the same OpenAlex request path already proven by Radar A."""
+    """Reuse Radar A transport, with disclosed keyless fallback on HTTP 401 only."""
     try:
         from scripts.openalex_weekly_radar import api as shared_api
     except ImportError:
         from openalex_weekly_radar import api as shared_api
-    payload = shared_api(endpoint, params)
+    try:
+        payload = shared_api(endpoint, params)
+    except RuntimeError as exc:
+        if str(exc) != "HTTP 401":
+            raise
+        # The keyed source search is known to fail with 401 in this workflow
+        # even while independent credential probes succeed. OpenAlex permits
+        # basic public anonymous queries; never silently hide this fallback.
+        payload = http_payload(OA_API + endpoint + "?" + urlencode(params))
+        OA_ANONYMOUS_FALLBACK_ENDPOINTS.add(endpoint)
     if not isinstance(payload, dict):
         raise ValueError("Unexpected OpenAlex response")
     return payload
@@ -382,6 +394,10 @@ def main():
             warnings.append(f"Topic {topic_id} trend unavailable: {exc}")
         topics.append(row)
 
+    if OA_ANONYMOUS_FALLBACK_ENDPOINTS:
+        warnings.append("OpenAlex keyed requests returned HTTP 401 for " +
+                        ", ".join(sorted(OA_ANONYMOUS_FALLBACK_ENDPOINTS)) +
+                        "; collection used public keyless fallback. Check key status and quota.")
     feed = {
         "schema_version": "1.0.0",
         "feed_kind": "radar_b_public_method_evidence",
@@ -394,6 +410,7 @@ def main():
         "coverage": {
             "openalex_sources": venue_status, "arxiv_groups": arxiv_status,
             "openalex_sampled": len(oa), "arxiv_sampled": len(ax),
+            "openalex_anonymous_fallback_endpoints": sorted(OA_ANONYMOUS_FALLBACK_ENDPOINTS),
             "total_after_cross_source_dedup": len(papers),
             "with_abstract_excerpt": sum(bool(p.get("abstract_excerpt")) for p in papers),
             "with_pdf_link": sum(bool(p.get("pdf_url")) for p in papers),
