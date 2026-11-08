@@ -89,3 +89,23 @@ def test_oauth_server_constructs_with_four_tools_only(monkeypatch):
     assert mcp.session_manager is not None
     assert asgi is not None
     assert any("mcp" in getattr(route,"path","") for route in asgi.routes)
+
+
+def test_mcp_http_rejects_anonymous_tool_calls(monkeypatch):
+    _settings(monkeypatch)
+    from fastapi.testclient import TestClient
+    from backend.business_mcp import build_mcp_server
+    _server,asgi=build_mcp_server(get_auth_config())
+    with TestClient(asgi) as client:
+        response=client.post(
+            "/mcp",
+            json={"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}},
+            headers={
+                "Host":"research-atlas-api-test.onrender.com",
+                "Accept":"application/json, text/event-stream",
+                "Mcp-Protocol-Version":"2025-06-18",
+            },
+        )
+    assert response.status_code==401
+    assert "www-authenticate" in response.headers
+    assert "SECRET" not in response.text
