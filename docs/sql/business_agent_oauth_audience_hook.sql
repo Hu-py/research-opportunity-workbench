@@ -8,6 +8,8 @@ create schema if not exists business_agent_private;
 
 revoke all on schema business_agent_private from public, anon, authenticated, service_role;
 
+grant usage on schema public to supabase_auth_admin;
+
 create table if not exists business_agent_private.oauth_clients (
     client_id text primary key,
     audience text not null
