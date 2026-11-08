@@ -36,6 +36,8 @@ class AuthConfig:
     allowed_clients: frozenset[str] = frozenset()
     write_clients: frozenset[str] = frozenset()
     execution_clients: frozenset[str] = frozenset()
+    write_subjects: frozenset[str] = frozenset()
+    execution_subjects: frozenset[str] = frozenset()
 
 
 def get_auth_config() -> AuthConfig:
@@ -59,6 +61,12 @@ def get_auth_config() -> AuthConfig:
     execution_clients=frozenset(
         x.strip() for x in os.getenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS","").split(",")
         if x.strip())
+    write_subjects=frozenset(
+        x.strip() for x in os.getenv("BUSINESS_MCP_ALLOWED_WRITE_SUBJECTS","").split(",")
+        if x.strip())
+    execution_subjects=frozenset(
+        x.strip() for x in os.getenv("BUSINESS_MCP_ALLOWED_EXECUTION_SUBJECTS","").split(",")
+        if x.strip())
     urls=[urlparse(v) for v in (resource,issuer,jwks_url)]
     if not all(u.scheme=="https" and u.hostname and not u.username
                and not u.password and not u.query and not u.fragment
@@ -80,6 +88,10 @@ def get_auth_config() -> AuthConfig:
         raise RuntimeError("Write-allowed clients must also be approved read clients")
     if not execution_clients.issubset(clients):
         raise RuntimeError("Execution-allowed clients must also be approved read clients")
+    if not write_subjects.issubset(subjects):
+        raise RuntimeError("Write-allowed subjects must also be approved read subjects")
+    if not execution_subjects.issubset(subjects):
+        raise RuntimeError("Execution-allowed subjects must also be approved read subjects")
     # Pin to the same single Supabase project: an arbitrary OAuth issuer
     # or JWKS endpoint would make the team's data accessible to strangers.
     if not urls[1].hostname.endswith(".supabase.co"):
@@ -92,7 +104,9 @@ def get_auth_config() -> AuthConfig:
     return AuthConfig(resource=resource,issuer=issuer,jwks_url=jwks_url,
                       allowed_subjects=subjects,host=urls[0].hostname,
                       allowed_clients=clients,write_clients=write_clients,
-                      execution_clients=execution_clients)
+                      execution_clients=execution_clients,
+                      write_subjects=write_subjects,
+                      execution_subjects=execution_subjects)
 
 
 class OAuthJwtVerifier:
@@ -128,9 +142,11 @@ class OAuthJwtVerifier:
             # untrusted JWT "scope" or "permissions" claims.
             effective={"research:read"}
             if (client_id in self.config.write_clients
+                    and subject in self.config.write_subjects
                     and os.getenv("BUSINESS_MCP_WRITE_ENABLED","").lower().strip()=="true"):
                 effective.add("research:write")
             if (client_id in self.config.execution_clients
+                    and subject in self.config.execution_subjects
                     and os.getenv("BUSINESS_MCP_EXECUTION_ENABLED","").lower().strip()=="true"):
                 effective.add("research:execute")
             return AccessToken(

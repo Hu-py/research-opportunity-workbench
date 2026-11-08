@@ -121,7 +121,7 @@ Research Agent Lab 的 V2 当前默认使用合成数据 Dry-run，只能作为�
 - `research:execute`：启动/恢复会消耗模型和检索预算的科研任务；
 - `research:write`：提交直接推荐结果。
 
-三个权限由服务器端用户 ID、OAuth client ID 白名单和独立开关控制，不能相信 JWT 中任意自报的 scope。首次连接只开放读取；完成授权测试后，再分别开放执行和写入。
+三个权限由服务器端用户 subject、OAuth client ID 白名单和独立开关控制，不能相信 JWT 中任意自报的 scope。read 需要 subject/client 均在读取白名单；execute 和 write 除各自开关外，还必须同时命中各自独立的 subject/client 白名单。首次连接只开放读取；完成授权测试后，再分别开放执行和写入。
 
 ## 8. 模型分工与运行预算
 
@@ -184,6 +184,12 @@ Research Agent Lab 的 V2 当前默认使用合成数据 Dry-run，只能作为�
 - 将最终人工反馈与历史候选、研究主线关联；
 - 归纳团队在问题重要性、创新性、方法和可行性上的稳定判断；
 - 先使用可审计的决策记忆，不进行自动模型训练或强化学习。
+
+
+
+### 数据隔离边界
+
+当前 Render MCP 使用服务端 PostgreSQL 连接直接读取 Supabase 数据库。OAuth JWT 用于身份、client 和权限验证，但不会作为用户 JWT 转发到 Supabase Data API，因此 Supabase RLS 不会自动应用于这条直接 SQLAlchemy 访问路径。当前返回的是经过 `team_evidence_bundle` 过滤的团队级安全上下文；所有通过 read allowlist 的成员读取同一份团队上下文，而不是各自独立的数据库行。若未来需要成员级数据隔离，必须增加应用层 row authorization，或改用带用户 JWT 的 Supabase Data API/RLS 路径。
 
 ## 10. 当前发布安全边界
 

@@ -25,6 +25,8 @@ def _settings(monkeypatch):
     monkeypatch.delenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS",raising=False)
     monkeypatch.delenv("BUSINESS_MCP_EXECUTION_ENABLED",raising=False)
     monkeypatch.delenv("BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED",raising=False)
+    monkeypatch.delenv("BUSINESS_MCP_ALLOWED_WRITE_SUBJECTS",raising=False)
+    monkeypatch.delenv("BUSINESS_MCP_ALLOWED_EXECUTION_SUBJECTS",raising=False)
 
 
 def test_disabled_without_owner_approval(monkeypatch):
@@ -46,6 +48,8 @@ def test_requires_https_same_supabase_issuer_and_explicit_allowlists(monkeypatch
     assert config.allowed_clients=={CLIENT}
     assert config.write_clients==set()
     assert config.execution_clients==set()
+    assert config.write_subjects==set()
+    assert config.execution_subjects==set()
     monkeypatch.setenv("BUSINESS_MCP_ALLOWED_CLIENT_IDS","*")
     with pytest.raises(RuntimeError,match="Explicit approved Supabase"):
         get_auth_config()
@@ -63,6 +67,14 @@ def test_requires_https_same_supabase_issuer_and_explicit_allowlists(monkeypatch
     monkeypatch.setenv("BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS","")
     monkeypatch.setenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS","unknown-client")
     with pytest.raises(RuntimeError,match="Execution-allowed"):
+        get_auth_config()
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS","")
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_WRITE_SUBJECTS","unknown-user")
+    with pytest.raises(RuntimeError,match="Write-allowed subjects"):
+        get_auth_config()
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_WRITE_SUBJECTS","")
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_EXECUTION_SUBJECTS","unknown-user")
+    with pytest.raises(RuntimeError,match="Execution-allowed subjects"):
         get_auth_config()
 
 
@@ -119,6 +131,7 @@ def test_token_validates_project_subject_client_and_server_write_policy(monkeypa
     assert still_read_only.scopes==["research:read"]
 
     monkeypatch.setenv("BUSINESS_MCP_ALLOWED_WRITE_CLIENT_IDS",CLIENT)
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_WRITE_SUBJECTS",SUBJECT)
     allowed=_mocked_verifier(get_auth_config())
     with patch("jwt.decode",return_value=_claims()):
         write_capability=allowed._validate("opaque-test-token")
@@ -126,7 +139,7 @@ def test_token_validates_project_subject_client_and_server_write_policy(monkeypa
 
 
 
-def test_execution_scope_requires_separate_client_allowlist_and_toggle(monkeypatch):
+def test_execution_scope_requires_client_subject_allowlists_and_toggle(monkeypatch):
     _settings(monkeypatch)
     monkeypatch.setenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS",CLIENT)
     cfg=get_auth_config()
@@ -136,6 +149,12 @@ def test_execution_scope_requires_separate_client_allowlist_and_toggle(monkeypat
     assert "research:execute" not in without_toggle.scopes
 
     monkeypatch.setenv("BUSINESS_MCP_EXECUTION_ENABLED","true")
+    enabled_without_subject=_mocked_verifier(get_auth_config())
+    with patch("jwt.decode",return_value=_claims()):
+        still_read_only=enabled_without_subject._validate("opaque-test-token")
+    assert "research:execute" not in still_read_only.scopes
+
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_EXECUTION_SUBJECTS",SUBJECT)
     enabled=_mocked_verifier(get_auth_config())
     with patch("jwt.decode",return_value=_claims()):
         with_execution=enabled._validate("opaque-test-token")
