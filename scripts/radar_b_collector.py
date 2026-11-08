@@ -33,7 +33,7 @@ def http_payload(url, *, parse="json", attempts=3):
     """Fail without logging a URL (OpenAlex URLs contain an API key)."""
     request = Request(url, headers={
         "Accept": "application/json" if parse == "json" else "application/atom+xml",
-        "User-Agent": "CUSP-Research-RadarB/1.0 (scholarly metadata collection)",
+        "User-Agent": "CUSP-public-academic-radar/2.0",
     })
     failure = "UnknownFailure"
     for attempt in range(attempts):
