@@ -164,6 +164,62 @@ def _run_view(db: Session, row: BusinessAgentRun):
 
 
 
+
+def persist_run(db: Session, payload: RunSubmission) -> dict:
+    """Shared validation and persistence used by HTTP and future OAuth MCP.
+
+    No agent auth belongs here: transport adapters must authorize first.
+    """
+    body = payload.model_dump()
+    request_hash = _digest(body)
+    previous = db.scalar(select(BusinessAgentRun).where(
+        BusinessAgentRun.run_key == payload.run_key))
+    if previous:
+        if previous.request_hash != request_hash:
+            raise HTTPException(409, "The run key was already used for different content")
+        return _run_view(db, previous)
+    try:
+        context_data = _context(db)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if payload.context_hash != _digest(context_data):
+        raise HTTPException(409, "Research context changed; retrieve it again")
+    allowed = _refs(context_data)
+    for idea in payload.proposals:
+        if any(ref not in allowed for ref in idea.evidence_refs):
+            raise HTTPException(422, "A proposal cites a non-existent or unapproved evidence ID")
+        if len(set(idea.evidence_refs)) != len(idea.evidence_refs):
+            raise HTTPException(422, "Duplicate evidence IDs")
+    run = BusinessAgentRun(
+        id=str(uuid.uuid4()), run_key=payload.run_key, request_hash=request_hash,
+        context_hash=payload.context_hash, topic=payload.topic,
+        agent_version=payload.agent_version,
+        snapshot_json=json.dumps(context_data, ensure_ascii=False),
+        notes=payload.notes,
+    )
+    db.add(run)
+    for p in payload.proposals:
+        version = 1
+        if p.parent_idea_id:
+            parent = db.get(BusinessAgentIdea, p.parent_idea_id)
+            if parent is None:
+                db.rollback()
+                raise HTTPException(422, "Parent proposal does not exist")
+            version = parent.version + 1
+        db.add(BusinessAgentIdea(
+            id=str(uuid.uuid4()), run_id=run.id, parent_id=p.parent_idea_id,
+            version=version, title=p.title,
+            payload_json=json.dumps(p.model_dump(), ensure_ascii=False),
+        ))
+    add_audit(db, "business_agent.submitted", None, run.id,
+              "external_agent; ideas=" + str(len(payload.proposals)))
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Duplicate run key; retry with the same payload") from exc
+    return _run_view(db, run)
+
 def secure_new_tables(db: Session) -> None:
     """Enforce table-level RLS and prevent direct Supabase Data API access.
 
@@ -205,55 +261,7 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin):
     @router.post("/api/business-agent/runs", status_code=201)
     def submit(request: Request, payload: RunSubmission, db: Session = Depends(get_db)):
         _agent_auth(request)
-        body = payload.model_dump()
-        request_hash = _digest(body)
-        previous = db.scalar(select(BusinessAgentRun).where(
-            BusinessAgentRun.run_key == payload.run_key))
-        if previous:
-            if previous.request_hash != request_hash:
-                raise HTTPException(409, "The run key was already used for different content")
-            return _run_view(db, previous)
-        try:
-            context_data = _context(db)
-        except ValueError as exc:
-            raise HTTPException(422, str(exc)) from exc
-        if payload.context_hash != _digest(context_data):
-            raise HTTPException(409, "Research context changed; retrieve it again")
-        allowed = _refs(context_data)
-        for idea in payload.proposals:
-            if any(ref not in allowed for ref in idea.evidence_refs):
-                raise HTTPException(422, "A proposal cites a non-existent or unapproved evidence ID")
-            if len(set(idea.evidence_refs)) != len(idea.evidence_refs):
-                raise HTTPException(422, "Duplicate evidence IDs")
-        run = BusinessAgentRun(
-            id=str(uuid.uuid4()), run_key=payload.run_key, request_hash=request_hash,
-            context_hash=payload.context_hash, topic=payload.topic,
-            agent_version=payload.agent_version,
-            snapshot_json=json.dumps(context_data, ensure_ascii=False),
-            notes=payload.notes,
-        )
-        db.add(run)
-        for p in payload.proposals:
-            version = 1
-            if p.parent_idea_id:
-                parent = db.get(BusinessAgentIdea, p.parent_idea_id)
-                if parent is None:
-                    db.rollback()
-                    raise HTTPException(422, "Parent proposal does not exist")
-                version = parent.version + 1
-            db.add(BusinessAgentIdea(
-                id=str(uuid.uuid4()), run_id=run.id, parent_id=p.parent_idea_id,
-                version=version, title=p.title,
-                payload_json=json.dumps(p.model_dump(), ensure_ascii=False),
-            ))
-        add_audit(db, "business_agent.submitted", None, run.id,
-                  "external_agent; ideas=" + str(len(payload.proposals)))
-        try:
-            db.commit()
-        except IntegrityError as exc:
-            db.rollback()
-            raise HTTPException(409, "Duplicate run key; retry with the same payload") from exc
-        return _run_view(db, run)
+        return persist_run(db,payload)
 
     @router.get("/api/business-agent/agent-runs")
     def agent_run_history(request: Request, db: Session = Depends(get_db)):
