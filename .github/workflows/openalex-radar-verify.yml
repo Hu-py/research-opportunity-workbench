@@ -1,0 +1,102 @@
+name: Verify OpenAlex API and Radar A trends
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Read-only OpenAlex check
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe API and collect annual topic counts
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import datetime
+          import json
+          import os
+          import pathlib
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          key = os.environ.get("OPENALEX_API_KEY", "").strip()
+          if not key:
+              raise SystemExit("OPENALEX_API_KEY secret is absent or empty. Add it under Settings > Secrets and variables > Actions.")
+
+          topics = [
+              ("T10766", "Urban Heat Island Mitigation"),
+              ("T10298", "Urban Transport and Accessibility"),
+              ("T12325", "Urban Design and Spatial Analysis"),
+              ("T11980", "Human Mobility and Location-Based Analysis"),
+              ("T11479", "Smart Cities and Technologies"),
+          ]
+          result = {
+              "source": "OpenAlex Works API",
+              "retrieved_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "scope": "primary_topic.id (primary assignment only); all indexed works; complete publication years 2023-2025",
+              "yearly_query": "filter=primary_topic.id:<TOPIC_ID>,publication_year:2023-2025&group_by=publication_year",
+              "note": "OpenAlex may revise topic assignments; compare years from the same retrieval rather than stitching old snapshots.",
+              "topics": [],
+          }
+          failed = 0
+          for topic_id, title in topics:
+              params = urllib.parse.urlencode({
+                  "filter": f"primary_topic.id:{topic_id},publication_year:2023-2025",
+                  "group_by": "publication_year",
+                  "api_key": key,
+              })
+              url = "https://api.openalex.org/works?" + params
+              item = {"topic_id": topic_id, "title": title, "annual_counts": None, "status": "error"}
+              try:
+                  request = urllib.request.Request(url, headers={
+                      "User-Agent": "research-opportunity-workbench-openalex-probe/1.0",
+                      "Accept": "application/json",
+                  })
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      payload = json.load(response)
+                  groups = payload.get("group_by")
+                  if not isinstance(groups, list):
+                      raise ValueError("No group_by list in response")
+                  counts = {str(y): 0 for y in range(2023, 2026)}
+                  for group in groups:
+                      year = str(group.get("key", ""))
+                      if year in counts:
+                          counts[year] = int(group["count"])
+                  item["annual_counts"] = counts
+                  item["status"] = "ok"
+                  print(f"OK {topic_id}: " + ", ".join(f"{year}={counts[year]}" for year in counts))
+              except urllib.error.HTTPError as exc:
+                  failed += 1
+                  item["error"] = f"HTTP {exc.code}"
+                  print(f"ERROR {topic_id}: HTTP {exc.code} (key and full URL not printed)")
+              except Exception as exc:
+                  failed += 1
+                  item["error"] = type(exc).__name__
+                  print(f"ERROR {topic_id}: {type(exc).__name__} (key and full URL not printed)")
+              result["topics"].append(item)
+              time.sleep(0.5)
+
+          output = pathlib.Path("openalex-topic-trends.json")
+          output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(f"Result saved to {output} (contains public aggregate counts only)")
+          if failed:
+              raise SystemExit(f"{failed} of {len(topics)} topic queries failed; inspect logs and artifact")
+          PY
+
+      - name: Save public aggregate report for Research Advisor
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openalex-radar-a-topic-trends
+          path: openalex-topic-trends.json
+          if-no-files-found: warn
+          retention-days: 14
