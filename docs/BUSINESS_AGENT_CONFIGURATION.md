@@ -1,6 +1,6 @@
 # ChatGPT Business Workspace Agent — Research Advisor v1 (deployment-ready instructions, connection pending)
 
-**Backend status (2026-11-08):** The versioned Business Agent REST bridge and private tables are now deployed on the Supabase-backed Render service. External agent access remains disabled. A supported authenticated OAuth/MCP adapter and Business Agent connection are still required; this is not a running Workspace Agent.
+**Backend status (2026-11-08):** The versioned Business Agent REST bridge and private tables are now deployed on the Supabase-backed Render service. External agent access remains disabled. An OAuth-verified MCP adapter has been implemented but remains disabled until an approved identity provider is configured. No ChatGPT plugin or Workspace Agent has been created.
 
 ## Proposed Agent identity
 
@@ -37,22 +37,25 @@ count as human meeting feedback. Publish a bilingual, concise meeting report.
 Follow the attached Research Advisor Skill. Respect team privacy, approvals
 and API budgets. Do not read restricted datasets or commit secrets to GitHub.
 
-## Recommended tools (pending implementation and testing)
+## Recommended tools (implemented; OAuth connection pending)
 
 A custom MCP server (Streamable HTTP over HTTPS, authenticated with a
 ChatGPT-supported OAuth flow) should expose:
 - `get_research_context` — retrieve approved metadata and feedback history.
 - `submit_research_run` — write versioned ideas with source references.
-- `get_run_history` — confirm persisted results and previous outcomes.
+- `get_run_history` — inspect persisted results and previous outcomes.
+- `get_research_run` — read back one persisted run and its idea IDs.
 
 **Do not expose** an MCP tool for `save_human_feedback`.
 Human meeting decisions must be recorded via a logged-in team member
 against the authenticated backend human-feedback endpoint.
 
-This repository currently has an opt-in REST bridge for the first two
-operations, not a ready-to-add OAuth MCP endpoint. Do NOT connect a public
-unauthenticated proxy or put the REST token in an Agent instruction.
-Implement and security-test the OAuth/MCP adapter before setting Tools.
+The codebase now contains an opt-in OAuth-verified Streamable HTTP MCP
+adapter, but it is disabled by default and not connected to ChatGPT. Configure
+an approved external OAuth 2.1 identity provider, verify user identity, scopes,
+resource audience and HTTPS integration before turning it on. See
+`docs/BUSINESS_MCP_OAUTH_SETUP.md`. Do NOT connect a public unauthenticated
+proxy or place REST tokens in an Agent instruction.
 
 ## First manual trial
 
