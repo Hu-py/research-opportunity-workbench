@@ -15,6 +15,9 @@ import uuid
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+# MCP SDK introspects function annotations in module globals.
+from backend.business_memory import RunSubmission
+
 
 @dataclass(frozen=True)
 class AuthConfig:
@@ -106,7 +109,7 @@ def build_mcp_server(config: AuthConfig):
     from sqlalchemy import select
 
     from backend.business_memory import (
-        RunSubmission, BusinessAgentRun, _context, _digest, _run_view, persist_run
+        BusinessAgentRun, _context, _digest, _run_view, persist_run
     )
     from research_workbench.core import session_factory
 
