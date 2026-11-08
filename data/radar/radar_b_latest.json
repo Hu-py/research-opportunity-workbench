@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "feed_kind": "radar_b_public_method_evidence",
-  "retrieved_at_utc": "2026-11-08T16:40:39.020866+00:00",
+  "retrieved_at_utc": "2026-11-08T16:41:39.434638+00:00",
   "lookback_start": "2026-09-09",
   "complete_publication_years": [
     2023,
@@ -129,10 +129,7 @@
     ],
     "openalex_sampled": 56,
     "arxiv_sampled": 110,
-    "openalex_anonymous_fallback_endpoints": [
-      "/sources",
-      "/works"
-    ],
+    "openalex_anonymous_fallback_endpoints": [],
     "total_after_cross_source_dedup": 157,
     "with_abstract_excerpt": 118,
     "with_pdf_link": 120,
@@ -5020,9 +5017,7 @@
       ]
     }
   ],
-  "warnings": [
-    "OpenAlex keyed requests returned HTTP 401 for /sources, /works; collection used public keyless fallback. Check key status and quota."
-  ],
+  "warnings": [],
   "caveats": [
     "Sampled-source popularity is NOT scientific importance or a novelty score.",
     "OpenAlex publication date and source indexing may be incomplete or delayed.",
