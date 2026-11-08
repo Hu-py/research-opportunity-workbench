@@ -47,16 +47,7 @@ OIDC discovery：
 
 `https://tfyfupxabojddixwjkat.supabase.co/auth/v1/.well-known/openid-configuration`
 
-**当前项目为 HS256，必须先迁移到非对称签名，再进行真实 OAuth 授权。** Render MCP 只接受 `RS256` / `ES256`，通过 Supabase JWKS 公钥验签；Supabase OAuth 的 `openid` ID token 也要求使用非对称签名。推荐 `ES256`（P-256），Render 同时兼容 RS256。不要把 JWT secret、私钥或任何签名材料复制到 Render。
-
-#### HS256 → ES256 安全迁移步骤
-
-1. 打开 Supabase Dashboard → Project Settings → **JWT Keys / JWT Signing Keys**。
-2. 点击 **Migrate JWT secret**。这一步将现有 legacy JWT secret 导入新的 Signing Keys 管理体系，并生成一个新的非对称 standby key；此时尚未切换当前签名算法。
-3. 确认新 standby key 算法为 **ES256**，并确认它的公钥出现在项目 JWKS 中。只检查公钥元数据，不导出或复制 private key。
-4. 点击 **Rotate keys**，让 Supabase Auth 开始使用 ES256 签发新 JWT。Supabase 文档说明，轮换后新 JWT 使用新 key，尚未过期的旧 JWT 仍可被 Supabase 接受；该过程支持回滚。
-5. 重新登录/刷新一次 Supabase Auth 会话，确认新 access token 的 JWT header 为 `alg=ES256`，并且 `kid` 能在 JWKS 中找到。随后再进行 ChatGPT OAuth 授权。
-6. 观察现有登录、Render API、Vercel 前端、Edge Functions 和其他 JWT 验证服务。**不要现在撤销 legacy JWT secret**：撤销它还涉及停用旧的 JWT 型 `anon` / `service_role` API keys；应先完成独立的 Publishable/Secret API Key 迁移，并确认所有旧 token 已过期。当前 Business Agent 只需要激活 ES256，不需要立刻撤销旧 key。
+**签名密钥迁移已完成。** Supabase JWT Signing Keys 页面显示 Current key 为 `ECC (P-256)`，即 ES256；旧的 HS256 位于 Previously used keys，仅用于验证尚未过期的旧 Token。Render MCP 只接受 `RS256` / `ES256`，通过 Supabase JWKS 公钥验签。**不要撤销旧 HS256 Legacy Secret**，因为旧的 JWT 型 `anon` / `service_role` API keys 和未过期 Token 仍可能依赖它。此阶段不需要再创建 Standby Key 或再次 Rotate。
 
 Supabase 官方迁移说明：[JWT Signing Keys](https://supabase.com/docs/guides/auth/signing-keys)。
 
@@ -64,8 +55,8 @@ Supabase 官方迁移说明：[JWT Signing Keys](https://supabase.com/docs/guide
 
 ChatGPT 的 MCP OAuth 要求 access token 的 `aud` 包含 MCP resource URL。Supabase OAuth Server 的标准 access token 默认使用 `aud=authenticated`，且当前不能仅依赖授权请求中的 `resource` 参数完成绑定。我们为此增加了 Supabase Custom Access Token Hook：只有登记在专用 OAuth client registry 中的 ChatGPT client 才会获得 `aud=[MCP resource URL, authenticated]`；普通 Supabase 登录不受影响。
 
-1. 在 Supabase SQL Editor 中，以项目 owner 身份执行仓库文件 [`docs/sql/business_agent_oauth_audience_hook.sql`](sql/business_agent_oauth_audience_hook.sql)。该 SQL 只创建专用 registry 和 hook 函数，不会自动启用 hook，也不会改变 JWT signing key。
-2. 打开 Authentication → Hooks → **Custom Access Token Hook**，选择 `public.business_agent_oauth_access_token_hook` 并启用。
+1. 已在 Supabase SQL Editor 创建专用 registry 和 `public.business_agent_oauth_access_token_hook`（SQL 源文件：[`docs/sql/business_agent_oauth_audience_hook.sql`](sql/business_agent_oauth_audience_hook.sql)；PR #54 修正了 dollar-quote 结束符）。
+2. **已由项目 Owner 在 Authentication → Hooks 中启用** `public.business_agent_oauth_access_token_hook`。2026-11-08 截图确认状态为 ENABLED。
 3. 等 ChatGPT 完成一次 DCR client registration 后，从 Authentication → OAuth Apps 复制准确的 `client_id`，再按 SQL 文件末尾的 INSERT 模板写入 `business_agent_private.oauth_clients`。不要猜测或手工改写 client ID。
 4. 同一个 client ID 之后还要加入 Render 的 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`。在 registry 和 Render allowlist 两处都没有批准之前，MCP 工具不会接受它。
 5. 完成 hook 后重新进行 OAuth 授权，并检查 access token 的 `aud` 同时包含 MCP resource URL 和 `authenticated`。Render 将严格验证 MCP resource audience；没有正确 audience 的 token 一律拒绝。
