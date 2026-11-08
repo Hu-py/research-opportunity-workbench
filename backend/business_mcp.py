@@ -5,7 +5,7 @@ authorization is present. Uses an external OAuth 2.1 authorization server
 (the team's Supabase project) rather than implementing an unsafe custom
 authorization server. Supabase JWTs default to aud="authenticated" and do
 not support custom OAuth scopes, so exact issuer, audience, authorized subject,
-client_id and an independent write allowlist are all enforced server-side.
+client_id and independent write/execution allowlists are all enforced server-side.
 
 This is an *adapter*. It doesn't publish an app in ChatGPT or create an Agent.
 """
