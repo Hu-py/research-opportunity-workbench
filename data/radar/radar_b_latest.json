@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "feed_kind": "radar_b_public_method_evidence",
-  "retrieved_at_utc": "2026-11-08T07:41:28.940435+00:00",
+  "retrieved_at_utc": "2026-11-08T07:48:50.299979+00:00",
   "lookback_start": "2026-09-09",
   "complete_publication_years": [
     2023,
@@ -15,83 +15,94 @@
     "openalex_sources": [
       {
         "name": "NeurIPS",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S4363606243",
+        "sample_count": 0
       },
       {
         "name": "ICML",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S4306419644",
+        "sample_count": 0
       },
       {
         "name": "ICLR",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S4306419637",
+        "sample_count": 0
       },
       {
         "name": "AAAI",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S4210191458",
+        "sample_count": 0
       },
       {
         "name": "KDD",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S4393918197",
+        "sample_count": 0
       },
       {
         "name": "CVPR",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "unresolved",
+        "detail": "Ambiguous or unresolved exact source"
       },
       {
         "name": "ICCV",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "unresolved",
+        "detail": "Ambiguous or unresolved exact source"
       },
       {
         "name": "ACL",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "unresolved",
+        "detail": "Ambiguous or unresolved exact source"
       },
       {
         "name": "EMNLP",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "unresolved",
+        "detail": "Ambiguous or unresolved exact source"
       },
       {
         "name": "SIGSPATIAL",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "unresolved",
+        "detail": "Ambiguous or unresolved exact source"
       },
       {
         "name": "JMLR",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S118988714",
+        "sample_count": 0
       },
       {
         "name": "TPAMI",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S199944782",
+        "sample_count": 1
       },
       {
         "name": "IJCV",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S25538012",
+        "sample_count": 30
       },
       {
         "name": "TNNLS",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S4210175523",
+        "sample_count": 1
       },
       {
         "name": "TKDE",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S30698027",
+        "sample_count": 4
       },
       {
         "name": "Artificial Intelligence",
-        "status": "error",
-        "detail": "HTTP 401"
+        "status": "ok",
+        "source_id": "S196139623",
+        "sample_count": 20
       }
     ],
     "arxiv_groups": [
@@ -116,14 +127,163 @@
         "sample_count": 40
       }
     ],
-    "openalex_sampled": 0,
+    "openalex_sampled": 56,
     "arxiv_sampled": 110,
-    "total_after_cross_source_dedup": 101,
-    "with_abstract_excerpt": 101,
-    "with_pdf_link": 101,
+    "openalex_anonymous_fallback_endpoints": [
+      "/sources",
+      "/works"
+    ],
+    "total_after_cross_source_dedup": 157,
+    "with_abstract_excerpt": 118,
+    "with_pdf_link": 121,
     "with_code_link": 3
   },
-  "candidate_topic_statistics": [],
+  "candidate_topic_statistics": [
+    {
+      "topic_id": "T10812",
+      "name": "Human Pose and Action Recognition",
+      "observed_openalex_sample_count": 4,
+      "annual_counts": {
+        "2023": 4189,
+        "2024": 4849,
+        "2025": 5145
+      },
+      "growth_latest_complete_year_pct": 6.1,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T11714",
+      "name": "Multimodal Machine Learning Applications",
+      "observed_openalex_sample_count": 4,
+      "annual_counts": {
+        "2023": 4607,
+        "2024": 9009,
+        "2025": 13948
+      },
+      "growth_latest_complete_year_pct": 54.82,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T11307",
+      "name": "Domain Adaptation and Few-Shot Learning",
+      "observed_openalex_sample_count": 3,
+      "annual_counts": {
+        "2023": 5993,
+        "2024": 6810,
+        "2025": 7843
+      },
+      "growth_latest_complete_year_pct": 15.17,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T12205",
+      "name": "Time Series Analysis and Forecasting",
+      "observed_openalex_sample_count": 3,
+      "annual_counts": {
+        "2023": 1827,
+        "2024": 2336,
+        "2025": 3240
+      },
+      "growth_latest_complete_year_pct": 38.7,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10719",
+      "name": "3D Shape Modeling and Analysis",
+      "observed_openalex_sample_count": 3,
+      "annual_counts": {
+        "2023": 3838,
+        "2024": 5573,
+        "2025": 6913
+      },
+      "growth_latest_complete_year_pct": 24.04,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10036",
+      "name": "Advanced Neural Network Applications",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 20707,
+        "2024": 25981,
+        "2025": 31417
+      },
+      "growth_latest_complete_year_pct": 20.92,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10991",
+      "name": "Game Theory and Voting Systems",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 1897,
+        "2024": 1969,
+        "2025": 2443
+      },
+      "growth_latest_complete_year_pct": 24.07,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10531",
+      "name": "Advanced Vision and Imaging",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 2583,
+        "2024": 2715,
+        "2025": 3042
+      },
+      "growth_latest_complete_year_pct": 12.04,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T11010",
+      "name": "Logic, Reasoning, and Knowledge",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 1843,
+        "2024": 1837,
+        "2025": 2340
+      },
+      "growth_latest_complete_year_pct": 27.38,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10331",
+      "name": "Video Surveillance and Tracking Methods",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 4804,
+        "2024": 5002,
+        "2025": 5496
+      },
+      "growth_latest_complete_year_pct": 9.88,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10203",
+      "name": "Recommender Systems and Techniques",
+      "observed_openalex_sample_count": 1,
+      "annual_counts": {
+        "2023": 7691,
+        "2024": 8546,
+        "2025": 10690
+      },
+      "growth_latest_complete_year_pct": 25.09,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T11303",
+      "name": "Bayesian Modeling and Causal Inference",
+      "observed_openalex_sample_count": 1,
+      "annual_counts": {
+        "2023": 1134,
+        "2024": 1225,
+        "2025": 1431
+      },
+      "growth_latest_complete_year_pct": 16.82,
+      "status": "measured"
+    }
+  ],
   "recent_method_papers": [
     {
       "openalex_id": null,
@@ -3173,25 +3333,1695 @@
       "provenance": [
         "arxiv"
       ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225121553",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104655",
+      "title": "Constraint-search collaborative genetic algorithm for Bayesian network structure learning",
+      "publication_date": "2026-11-02",
+      "work_type": "article",
+      "authors": [
+        "Zuowei He",
+        "Hengyang Lu",
+        "Shuwei Zhu",
+        "Yunyang Shi",
+        "Wei Hua Fang",
+        "Kalyanmoy Deb"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11303",
+      "primary_topic": "Bayesian Modeling and Causal Inference",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104655",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4416050924",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03105-6",
+      "title": "Saving for the Future: Enhancing Generalization via Partial Logic Regularization",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Zhaorui Tan",
+        "Yijie Hu",
+        "Xi Yang",
+        "Qiufeng Wang",
+        "Anh Nguyen",
+        "Kaizhu Huang"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11307",
+      "primary_topic": "Domain Adaptation and Few-Shot Learning",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03105-6",
+      "pdf_url": "https://arxiv.org/pdf/2508.15317",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7123903152",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03114-5",
+      "title": "3D CoCa v2: Contrastive Learners with Test-Time Search for Generalizable Spatial Intelligence",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "H. W. Tang",
+        "Ting Huang",
+        "Zeyu Zhang"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11714",
+      "primary_topic": "Multimodal Machine Learning Applications",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03114-5",
+      "pdf_url": "https://arxiv.org/pdf/2601.06496",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7125370837",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03113-6",
+      "title": "BBoxMaskPose v2: Expanding Mutual Conditioning to 3D",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Miroslav Purkrábek",
+        "Constantin Kolomiiets",
+        "Jiří Matas"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10812",
+      "primary_topic": "Human Pose and Action Recognition",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03113-6",
+      "pdf_url": "https://arxiv.org/pdf/2601.15200",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225326025",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03120-7",
+      "title": "Hint-Guided Point-Supervised Camouflaged Object Detection with Edge-Aware Refinement",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Huafeng Chen",
+        "Dian Shao",
+        "Dongsheng Yang",
+        "Yao Yang",
+        "Kai Zhang",
+        "Shan Gao"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10036",
+      "primary_topic": "Advanced Neural Network Applications",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03120-7",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225418816",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03117-2",
+      "title": "Feed-Forward Gaussian Splatting from Asymmetric Dual-Lens Stereo",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Hyunjun Jung",
+        "Hojoon Lee",
+        "Changyeon Won",
+        "Jin-Hwi Park",
+        "Hae‐Gon Jeon"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10719",
+      "primary_topic": "3D Shape Modeling and Analysis",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03117-2",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225421659",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03109-2",
+      "title": "OODD++: Test-Time Out-of-Distribution Detection with Diversified Dictionary",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Yifeng Yang",
+        "Mingtao Xian",
+        "Lin Zhu",
+        "Qinying Gu",
+        "Guang-Zhong Yang",
+        "Xinbing Wang",
+        "Nanyang Ye"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11689",
+      "primary_topic": "Adversarial Robustness in Machine Learning",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03109-2",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7224266045",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03087-5",
+      "title": "Performance Evaluation of Embedded AI Inference on Zynq Ultrascale+ and Versal SoCs for Onboard Space Applications",
+      "publication_date": "2026-10-29",
+      "work_type": "article",
+      "authors": [
+        "Arthur de Freitas Precht",
+        "Edoardo Caroselli",
+        "Bharadwaj Chintalapati",
+        "Riccardo Gallon",
+        "Filippo Ales"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10904",
+      "primary_topic": "Embedded Systems Design Techniques",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03087-5",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7224629994",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03104-7",
+      "title": "Flexible Focus Sampling for Depth from Focus",
+      "publication_date": "2026-10-29",
+      "work_type": "article",
+      "authors": [
+        "Jiangfeng Zhang",
+        "Yuhua Qian",
+        "Tao Yan",
+        "Hongren Yan",
+        "Zikun Jin"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T13114",
+      "primary_topic": "Image Processing Techniques and Applications",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03104-7",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4415307127",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03085-7",
+      "title": "EdgePoint2: Compact Descriptors for Superior Efficiency and Accuracy",
+      "publication_date": "2026-10-28",
+      "work_type": "article",
+      "authors": [
+        "Haodi Yao",
+        "Fenghua He",
+        "Ning Hao",
+        "Xie Chen"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10627",
+      "primary_topic": "Advanced Image and Video Retrieval Techniques",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03085-7",
+      "pdf_url": "https://arxiv.org/pdf/2504.17280",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4417271468",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03072-y",
+      "title": "Reconstructing 4D Spatial Intelligence: A Survey",
+      "publication_date": "2026-10-28",
+      "work_type": "article",
+      "authors": [
+        "Yukang Cao",
+        "Jiahao Lu",
+        "Zhisheng Huang",
+        "Zhuowen Shen",
+        "Chengfeng Zhao",
+        "Fangzhou Hong",
+        "Zhaoxi Chen",
+        "Xin Li"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10531",
+      "primary_topic": "Advanced Vision and Imaging",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03072-y",
+      "pdf_url": "https://arxiv.org/pdf/2507.21045",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7224394542",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03103-8",
+      "title": "Event-Based Facial Expression Recognition via Knowledge-Enhanced Hypergraph Computation",
+      "publication_date": "2026-10-28",
+      "work_type": "article",
+      "authors": [
+        "Siqi Li",
+        "Yongji Zhang",
+        "Xinhu Zheng",
+        "Shaoyi Du",
+        "Chuan Shi",
+        "Liu Liping",
+        "Zongze Wu",
+        "Yue Gao"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11448",
+      "primary_topic": "Face recognition and analysis",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03103-8",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7224639068",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03111-8",
+      "title": "Reconstruction and Restoration of 4D Light Fields via Super-resolved Inverse Image-Based Rendering",
+      "publication_date": "2026-10-28",
+      "work_type": "article",
+      "authors": [
+        "Hyunjun Jung",
+        "Hae‐Gon Jeon"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10531",
+      "primary_topic": "Advanced Vision and Imaging",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03111-8",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223791744",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104645",
+      "title": "Enhancing few-shot continual relation extraction via pairwise augmentation and guided sharpness-aware optimization",
+      "publication_date": "2026-10-27",
+      "work_type": "article",
+      "authors": [
+        "Thanh Dat Hoang",
+        "Nguyen Hoang Anh",
+        "Nam Le Hai",
+        "Linh Ngo Van",
+        "Sang Dinh"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10028",
+      "primary_topic": "Topic Modeling",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104645",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223797034",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03080-y",
+      "title": "Manhattan Gaussian Splatting SLAM",
+      "publication_date": "2026-10-27",
+      "work_type": "article",
+      "authors": [
+        "Yingzhao Li",
+        "Yan Li",
+        "Yanjie Liu",
+        "Lijun Zhao",
+        "Gim Hee Lee"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10191",
+      "primary_topic": "Robotics and Sensor-Based Localization",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03080-y",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223648337",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104647",
+      "title": "HiMAE: High-intensity mask-based autoencoder framework for unsupervised human action recognition",
+      "publication_date": "2026-10-26",
+      "work_type": "article",
+      "authors": [
+        "Jianqi Zhong",
+        "Zhenrong Wang",
+        "Xu Tan",
+        "Wenming Cao"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10812",
+      "primary_topic": "Human Pose and Action Recognition",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104647",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4362707108",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03110-9",
+      "title": "Inst-Inpaint: Instructing to Remove Objects with Diffusion Models",
+      "publication_date": "2026-10-26",
+      "work_type": "article",
+      "authors": [
+        "Ahmet Burak Yildirim",
+        "Vedat Baday",
+        "Erkut Erdem",
+        "Aykut Erdem",
+        "Ayşegül Dündar"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10775",
+      "primary_topic": "Generative Adversarial Networks and Image Synthesis",
+      "abstract_excerpt": "Abstract Image inpainting task refers to erasing unwanted pixels from images and filling them in a semantically consistent and realistic way. Traditionally, the pixels that are wished to be erased are defined with binary masks. From the application point of view, a user needs to generate the masks for the objects they would like to remove which can be time-consuming and prone to errors. In this work, we are interested in an image inpainting algorithm that estimates which object to be removed based on natural language input and removes it, simultaneously. For this purpose, first, we construct a dataset named GQA-Inpaint for this task. Second,…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03110-9",
+      "pdf_url": "https://link.springer.com/content/pdf/10.1007/s11263-026-03110-9.pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4416092020",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03081-x",
+      "title": "TokLIP: Marry Visual Tokens to CLIP for Multimodal Comprehension and Generation",
+      "publication_date": "2026-10-26",
+      "work_type": "article",
+      "authors": [
+        "Haokun Lin",
+        "Teng Wang",
+        "Yixiao Ge",
+        "Yuying Ge",
+        "Zhichao Lu",
+        "Ying Wei",
+        "Qingfu Zhang",
+        "Zhenan Sun"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11714",
+      "primary_topic": "Multimodal Machine Learning Applications",
+      "abstract_excerpt": "Abstract Pioneering token-based works such as Chameleon and Emu3 have established a foundation for multimodal unification but face challenges of high training computational overhead and limited comprehension performance due to a lack of high-level semantics. In this paper, we introduce TokLIP, a visual tokenizer that enhances comprehension by semanticizing vector-quantized (VQ) tokens and incorporating CLIP-level semantics while enabling end-to-end multimodal autoregressive training with standard VQ tokens. TokLIP integrates a low-level discrete VQ tokenizer with a ViT-based token encoder to capture high-level continuous semantics. Unlike pre…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03081-x",
+      "pdf_url": "https://link.springer.com/content/pdf/10.1007/s11263-026-03081-x.pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223670501",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03099-1",
+      "title": "SuperSVG++: Semantic-Driven Layer-Wise Scalable Vector Graphics Synthesis with Semantic Layer Decomposition",
+      "publication_date": "2026-10-26",
+      "work_type": "article",
+      "authors": [
+        "Teng Hu",
+        "Ran Yi",
+        "Hongrui Huang",
+        "Lizhuang Ma",
+        "Paul L. Rosin",
+        "Yu-Kun Lai"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10481",
+      "primary_topic": "Computer Graphics and Visualization Techniques",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03099-1",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223571178",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03042-4",
+      "title": "Eyegent: Visual Attention Orchestration on Concepts",
+      "publication_date": "2026-10-25",
+      "work_type": "article",
+      "authors": [
+        "Alessandro D’Amelio",
+        "Sabrina Patania",
+        "Luca Annese",
+        "Giuseppe Boccignone"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11605",
+      "primary_topic": "Visual Attention and Saliency Detection",
+      "abstract_excerpt": "Abstract Where a human looks is not random, nor is it merely a reflex to visual salience. It is a decision shaped by goals, constrained by language, and driven by the need to resolve uncertainty. We propose Eyegent , an active vision agent built on this premise: that visual search is best understood as sequential Bayesian inference over semantically grounded hypotheses, with fixations serving as epistemic actions. Given an image and a natural-language query, Eyegent constructs a discrete hypothesis space of candidate segmentation masks, maintains an explicit posterior belief distribution, and selects each fixation to maximise expected informa…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03042-4",
+      "pdf_url": "https://link.springer.com/content/pdf/10.1007/s11263-026-03042-4.pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223572034",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03050-4",
+      "title": "$${\\text {VLScene}}^{++}$$: Enhancing 3D Semantic Scene Completion via VLM Discrepancy-Aware Semantic Distillation and Sparse–Dense Hybrid Awareness",
+      "publication_date": "2026-10-25",
+      "work_type": "article",
+      "authors": [
+        "Meng Wang",
+        "Yujie Xue",
+        "Jijiang Liu",
+        "Ruihui Li",
+        "Zhuo Tang",
+        "Kenli Li"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10719",
+      "primary_topic": "3D Shape Modeling and Analysis",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03050-4",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223265039",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03089-3",
+      "title": "BCP3D: Robust 3D Object Tracking Using Brain-Inspired Complementary-Pathway for Challenging Scenarios",
+      "publication_date": "2026-10-23",
+      "work_type": "article",
+      "authors": [
+        "Lijian Wang",
+        "Taoyi Wang",
+        "Xiangru Chen",
+        "Yuguo Chen",
+        "Yihan Lin",
+        "Yapeng Meng",
+        "Rong Zhao",
+        "Luping Shi"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10331",
+      "primary_topic": "Video Surveillance and Tracking Methods",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03089-3",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223286273",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03084-8",
+      "title": "Synergizing Disentangled Representation and Split Federated Learning to Break Centralized Bottlenecks in Gaze Estimation",
+      "publication_date": "2026-10-23",
+      "work_type": "article",
+      "authors": [
+        "Yunlong Wang",
+        "Zhengquan Luo",
+        "Kunbo Zhang",
+        "Zhenan Sun",
+        "Zhaofeng He",
+        "Dacheng Tao",
+        "Tieniu Tan"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11707",
+      "primary_topic": "Gaze Tracking and Assistive Technology",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03084-8",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223382679",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03095-5",
+      "title": "Cross3DReg: A Real-world Cross-source Point Cloud Registration Benchmark",
+      "publication_date": "2026-10-23",
+      "work_type": "article",
+      "authors": [
+        "Zongyi Xu",
+        "Z. Lang",
+        "Yilong Chen",
+        "Shanshan Zhao",
+        "Xiaoshui Huang",
+        "Sean Bin Yang",
+        "Yan Zhang",
+        "Qianni Zhang"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10719",
+      "primary_topic": "3D Shape Modeling and Analysis",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03095-5",
+      "pdf_url": "https://arxiv.org/pdf/2509.06456",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223177298",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03075-9",
+      "title": "LexSign: Learning Sign Language from Lexical Descriptions",
+      "publication_date": "2026-10-22",
+      "work_type": "article",
+      "authors": [
+        "Yuecong Min",
+        "Honggang Zou",
+        "Peiqi Jiao",
+        "Xilin Chen"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11398",
+      "primary_topic": "Hand Gesture Recognition Systems",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03075-9",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223225359",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03088-4",
+      "title": "Zero-Shot Domain Generalization via Domain Prompt Learning",
+      "publication_date": "2026-10-22",
+      "work_type": "article",
+      "authors": [
+        "Shiming Chen",
+        "Salman Khan",
+        "Salman Khan",
+        "Fahad Shahbaz Khan"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11307",
+      "primary_topic": "Domain Adaptation and Few-Shot Learning",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03088-4",
+      "pdf_url": "https://arxiv.org/pdf/2610.30680",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223225784",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03056-y",
+      "title": "PASG-RoboKeyBench: A Closed-Loop Automated Framework and Benchmark for Operation Primitive Extraction and Semantic Anchoring in Robotic Manipulation",
+      "publication_date": "2026-10-22",
+      "work_type": "article",
+      "authors": [
+        "Yifan Zheng",
+        "Siyu Pan",
+        "Zhihao Zhu",
+        "Yibin Liu",
+        "Yiheng Ge",
+        "Yuhao Zhang",
+        "Zanxin Chen",
+        "Congsheng Xu"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10653",
+      "primary_topic": "Robot Manipulation and Learning",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03056-y",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223085329",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03067-9",
+      "title": "Learning Complex Scene Segmentation from Noisy Label",
+      "publication_date": "2026-10-21",
+      "work_type": "article",
+      "authors": [
+        "Jin Zhang",
+        "Ruiheng Zhang",
+        "Zhe Cao",
+        "Lixin Xu",
+        "Nian Liu",
+        "Rao Muhammad Anwer"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10036",
+      "primary_topic": "Advanced Neural Network Applications",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03067-9",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7163647565",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104644",
+      "title": "Central description length (CDL) clustering validation index",
+      "publication_date": "2026-10-20",
+      "work_type": "article",
+      "authors": [
+        "Mahdi Shamsi",
+        "Soosan Beheshti"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10637",
+      "primary_topic": "Advanced Clustering Algorithms Research",
+      "abstract_excerpt": "Clustering is an unsupervised machine-learning technique that groups unlabeled data and is used in various applications to provide valuable insights into underlying patterns and structures within datasets. A critical issue in unsupervised clustering is choosing the best algorithm among a set of clustering algorithms with the optimal set of hyperparameters for a given dataset. Clustering validation index (CVI) approaches aim to provide the optimal tuning hyperparameter and compare different clustering algorithms. Existing CVI methods rely on the convexity of the datasets and do not perform well for non-convex and irregular datasets. In these s…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104644",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7131431487",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03100-x",
+      "title": "Test-Time Computing for Referring Multimodal Large Language Models",
+      "publication_date": "2026-10-20",
+      "work_type": "article",
+      "authors": [
+        "Mingrui Wu",
+        "Hao Chen",
+        "Jiayi Ji",
+        "Xiaoshuai Sun",
+        "Zhiyuan Liu",
+        "Liujuan Cao",
+        "Ming-Ming Cheng",
+        "Rongrong Ji"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11714",
+      "primary_topic": "Multimodal Machine Learning Applications",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03100-x",
+      "pdf_url": "https://arxiv.org/pdf/2602.19505",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223034958",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03057-x",
+      "title": "Event-Guided Decomposition from a Long-Exposure Nighttime Snapshot into Video Sequence",
+      "publication_date": "2026-10-20",
+      "work_type": "article",
+      "authors": [
+        "Jianbo Cao",
+        "Yuqi Han",
+        "Siming Zheng",
+        "徐桂林 Xu Guilin",
+        "Qiang Zhang",
+        "Jinli Suo"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11105",
+      "primary_topic": "Advanced Image Processing Techniques",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03057-x",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7223058405",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03093-7",
+      "title": "Multi-View Optimal Transport for Multi-View Crowd Localization and Tracking",
+      "publication_date": "2026-10-20",
+      "work_type": "article",
+      "authors": [
+        "Kaiyi Zhang",
+        "Qi Zhang",
+        "Jixuan Chen",
+        "Antoni B. Chan",
+        "Hui Huang"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10331",
+      "primary_topic": "Video Surveillance and Tracking Methods",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03093-7",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4414856726",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03083-9",
+      "title": "LLM-Powered Query Expansion for Enhancing Boundary Prediction in Language-Driven Action Localization",
+      "publication_date": "2026-10-18",
+      "work_type": "article",
+      "authors": [
+        "Zirui Shang",
+        "Xinxiao Wu",
+        "Shuo Yang"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10812",
+      "primary_topic": "Human Pose and Action Recognition",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03083-9",
+      "pdf_url": "https://arxiv.org/pdf/2505.24282",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7157285616",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03031-7",
+      "title": "GoClick: Lightweight Element Grounding Model for Autonomous GUI Interaction",
+      "publication_date": "2026-10-18",
+      "work_type": "article",
+      "authors": [
+        "Hongxin Li",
+        "Yuntao Chen",
+        "Zhaoxiang Zhang"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11714",
+      "primary_topic": "Multimodal Machine Learning Applications",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03031-7",
+      "pdf_url": "https://arxiv.org/pdf/2604.23941",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4390306565",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104643",
+      "title": "ITEACH-Net: Inverted teacher-student search network for emotion recognition in conversation",
+      "publication_date": "2026-10-16",
+      "work_type": "article",
+      "authors": [
+        "Haiyang Sun",
+        "Zheng Lian",
+        "Chenglong Wang",
+        "Kang Chen",
+        "Licai Sun",
+        "Bin Liu",
+        "Jianhua Tao"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10667",
+      "primary_topic": "Emotion and Mood Recognition",
+      "abstract_excerpt": "Due to the widespread applications of conversations in human-computer interaction, Emotion Recognition in Conversation (ERC) has attracted increasing attention from researchers. Although many studies have achieved notable results, there remain two critical challenges that hinder the development of ERC. Firstly, there is a lack of exploration into mining deeper insights from the data itself for conversational emotion tasks. Secondly, the systems exhibit vulnerability to random modality feature missing, which is a common occurrence in realistic settings. Focusing on these two key challenges, we propose a novel framework for incomplete multimoda…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104643",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7221066044",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104641",
+      "title": "Mitigating data reconstruction attacks in federated learning: Conditions, bounds, and theoretical guarantees",
+      "publication_date": "2026-10-09",
+      "work_type": "article",
+      "authors": [
+        "Xiaojin Zhang",
+        "Mingcong Xu",
+        "Wei Chen",
+        "Qiang Yang"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10764",
+      "primary_topic": "Privacy-Preserving Technologies in Data",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104641",
+      "pdf_url": "https://arxiv.org/pdf/2407.16735",
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7220974393",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1109/tkde.2026.3728237",
+      "title": "Toward Practical Large-Scale Dynamic Heterogeneous Graph Embedding: Cold-Start Resilient Recommendation",
+      "publication_date": "2026-10-08",
+      "work_type": "article",
+      "authors": [
+        "Mabiao Long",
+        "Jiaxi Liu",
+        "YuFeng LI",
+        "Kefan Wang",
+        "Yi Cao",
+        "Jiandong Ding",
+        "Hao Xiong",
+        "Junchi Yan"
+      ],
+      "academic_source": "TKDE",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10203",
+      "primary_topic": "Recommender Systems and Techniques",
+      "abstract_excerpt": "Deploying dynamic heterogeneous graph embeddings in production faces key challenges of scalability, data freshness, and cold-start. This paper introduces a practical, two-stage solution that balances deep graph representation with low-latency incremental updates. Our framework combines HetSGFormer, a scalable graph transformer for static learning, with Incremental Locally Linear Embedding (ILLE), a lightweight, CPU-based algorithm for real-time updates. HetSGFormer captures global structure with linear scalability, while ILLE provides rapid, targeted updates to incorporate new data, thus avoiding costly full retraining. This dual approach is…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1109/tkde.2026.3728237",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7221030983",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1109/tkde.2026.3720279",
+      "title": "Entity-Dependent Relation Learning for Knowledge Graph Completion",
+      "publication_date": "2026-10-08",
+      "work_type": "article",
+      "authors": [
+        "Kangye Wang",
+        "Pengwen Dai",
+        "Chuan Wang",
+        "Xiaochun Cao"
+      ],
+      "academic_source": "TKDE",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11273",
+      "primary_topic": "Advanced Graph Neural Networks",
+      "abstract_excerpt": "Knowledge graph completion (KGC) aims to predict missing relationships between pairs of entities. Recently, Message Passing Neural Networks (MPNNs) have been employed in KGC and demonstrated superior ability in embedding learning. Current methods, however, face two major dilemmas. One focuses on learning complex entity embedding while neglecting the importance of relation embedding learning. The other is that some KGC methods conduct relation embedding learning through a neural network. However, this learning procedure limits learning independence from neighboring entities. To address this issue, we propose a Relation Entity Graph Message Pas…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1109/tkde.2026.3720279",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7167063149",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104642",
+      "title": "Optimal any-angle path planning in static and dynamic environments",
+      "publication_date": "2026-10-08",
+      "work_type": "article",
+      "authors": [
+        "Yiyuan Zou",
+        "Clark Borst"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10586",
+      "primary_topic": "Robotic Path Planning Algorithms",
+      "abstract_excerpt": "Any-angle path planning extends traditional graph-based path planning by allowing movement between any pair of vertices, rather than being restricted by predefined edges. It can find straighter and shorter paths in continuous space with graphs, making it particularly suitable for navigation in open areas such as airspaces, warehouses, and oceans. Many any-angle path-planning algorithms have been proposed, but only a few can guarantee optimal solutions, especially in the presence of dynamic obstacles. To address this challenge, this article focuses on optimal any-angle path planning on grids and introduces two general techniques that accelerat…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104642",
+      "pdf_url": "https://www.sciencedirect.com/science/article/pii/S0004370226001682/pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7220841113",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1109/tpami.2026.3741360",
+      "title": "Unlock the Benefits",
+      "publication_date": "2026-10-07",
+      "work_type": "article",
+      "authors": [],
+      "academic_source": "TPAMI",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": null,
+      "primary_topic": null,
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1109/tpami.2026.3741360",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4407123257",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104630",
+      "title": "Optimal metric distortion for matching on the line",
+      "publication_date": "2026-10-07",
+      "work_type": "article",
+      "authors": [
+        "Aris Filos-Ratsikas",
+        "Vasilis Gkatzelis",
+        "Mohamad Latifian",
+        "Emma Rewinski",
+        "Alexandros A. Voudouris"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10991",
+      "primary_topic": "Game Theory and Voting Systems",
+      "abstract_excerpt": "We study the distortion of one-sided and two-sided matching problems on the line. In the one-sided case, n agents need to be matched to n items, and each agent’s cost in a matching is their distance from the item they were matched to. We propose an algorithm that is provided only with ordinal information regarding the agents’ preferences (each agent’s ranking of the items from most- to least-preferred) and returns a matching aiming to minimize the social cost with respect to the agents’ true (cardinal) costs. We prove that our algorithm simultaneously achieves the best-possible approximation of 3 (known as distortion) with respect to a variet…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104630",
+      "pdf_url": "https://www.sciencedirect.com/science/article/pii/S0004370226001566/pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7220854789",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104640",
+      "title": "Adaptive large language model reasoning for autonomous driving decision-making",
+      "publication_date": "2026-10-07",
+      "work_type": "article",
+      "authors": [
+        "Haicheng Liao",
+        "Chengyue Wang",
+        "Hanlin Kong",
+        "Zhenning Li",
+        "Zhengbing He",
+        "Zhiyong Cui",
+        "Guohui Zhang",
+        "Chengzhong Xu"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11099",
+      "primary_topic": "Autonomous Vehicle Technology and Safety",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104640",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4399448155",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104639",
+      "title": "Are language models rational? The case of coherence norms and belief revision",
+      "publication_date": "2026-10-06",
+      "work_type": "article",
+      "authors": [
+        "Thomas Hofweber",
+        "Peter Hase",
+        "Elias Stengel-Eskin",
+        "Mohit Bansal"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11010",
+      "primary_topic": "Logic, Reasoning, and Knowledge",
+      "abstract_excerpt": "Do norms of rationality apply to machine learning models, in particular language models? In this paper we investigate this question by focusing on a special subset of rational norms: coherence norms. We consider both logical coherence norms as well as coherence norms tied to the strength of belief. To make sense of the latter, we introduce the Minimal Assent Connection (MAC) and propose a new account of credence, which captures the strength of belief in language models. This proposal uniformly assigns strength of belief simply on the basis of model-internal next token probabilities. We argue that rational norms tied to coherence do apply to s…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104639",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4405023379",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104638",
+      "title": "Rising rested bandits: Lower bounds and efficient algorithms",
+      "publication_date": "2026-10-06",
+      "work_type": "article",
+      "authors": [
+        "Marco Fiandri",
+        "Alberto Maria Metelli",
+        "Francesco Trovò"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T12101",
+      "primary_topic": "Advanced Bandit Algorithms Research",
+      "abstract_excerpt": "This paper is in the field of stochastic Multi-Armed Bandits (MABs), i.e., those sequential selection techniques able to learn online using only the feedback given by the chosen option (a.k.a. arm). We study a particular case of the rested bandits in which the arms’ expected reward is monotonically non-decreasing and concave. We study the inherent sample complexity of the regret minimization problem by deriving suitable regret lower bounds. Then, we design an algorithm for the rested case ( R-ed-UCB ), providing a regret bound depending on the properties of the instance and, under certain circumstances, of ̃ 𝒪 ⁡ ( 𝑇 2 3 ) . We empirically com…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104638",
+      "pdf_url": "https://www.sciencedirect.com/science/article/pii/S0004370226001645/pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7215698865",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104628",
+      "title": "Capacity alternating-time temporal epistemic logic",
+      "publication_date": "2026-10-02",
+      "work_type": "article",
+      "authors": [
+        "Gabriel Ballot",
+        "Vadim Malvone",
+        "Jean Leneutre"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11010",
+      "primary_topic": "Logic, Reasoning, and Knowledge",
+      "abstract_excerpt": "mas verification comprises formal techniques for modelling distributed and intelligent systems, expressing system properties, and verifying those properties. Agents within such systems may possess distinct profiles (e.g. personality traits, levels of experience, or physical characteristics) or may specialise during execution (e.g. through software or hardware updates, or restrictions from access control policies). These aspects are captured through the novel concept of capacity, which determines the subset of actions that an agent can perform, thereby constraining the agent’s behaviour throughout the interaction. This article considers mas wi…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104628",
+      "pdf_url": "https://www.sciencedirect.com/science/article/pii/S0004370226001542/pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7154451065",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1109/tnnls.2026.3678945",
+      "title": "Causal Counterfactual Inference Network for Video Object State Changes in Open-World Scenarios",
+      "publication_date": "2026-10-01",
+      "work_type": "article",
+      "authors": [
+        "Zhichao Wang",
+        "Shucheng Huang",
+        "Mingxing Li",
+        "Yifan Jiao"
+      ],
+      "academic_source": "TNNLS",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10812",
+      "primary_topic": "Human Pose and Action Recognition",
+      "abstract_excerpt": "Object state changes (OSCs) play a critical role in video understanding, as they focus on localizing the stages of state transitions within temporal sequences. However, existing methods face two key challenges in open-world scenarios. First, there is a significant background-causal scene imbalance due to dataset bias. This leads to reliance on irrelevant features and degrades prediction capability. Second, existing methods have poor generalization performance on unseen objects. They typically focus on a single state change of a specific object, which limits them to understand the state change of an unseen object in a generalized way as humans…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1109/tnnls.2026.3678945",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7224627924",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104646",
+      "title": "PASER: Patchified Spectral Representation Learning for Non-Stationary and Non-Periodic User Behavior Sequence",
+      "publication_date": "2026-10-01",
+      "work_type": "article",
+      "authors": [
+        "Hao Wang",
+        "Zhichao Chen",
+        "Yuan Lu",
+        "Qingsong Wen",
+        "Xiaoxi Li",
+        "Yinuo Wang",
+        "Xu Chen",
+        "Haoxuan Li"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T12205",
+      "primary_topic": "Time Series Analysis and Forecasting",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104646",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4415025624",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104627",
+      "title": "P2Mark: Plug-and-play parameter-level watermarking for neural speech generation",
+      "publication_date": "2026-09-30",
+      "work_type": "article",
+      "authors": [
+        "Yong Sheng Ren",
+        "Jiangyan Yi",
+        "Tao Wang",
+        "Jianhua Tao",
+        "Zheng Lian",
+        "Zhengqi Wen",
+        "Chenxing Li",
+        "Ruibo Fu"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10388",
+      "primary_topic": "Advanced Steganography and Watermarking Techniques",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104627",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7104693445",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104629",
+      "title": "Persuading stable matching",
+      "publication_date": "2026-09-26",
+      "work_type": "article",
+      "authors": [
+        "Jonathan Shaki",
+        "Jiarui Gan",
+        "Sarit Kraus"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10991",
+      "primary_topic": "Game Theory and Voting Systems",
+      "abstract_excerpt": "In bipartite matching problems, agents on two sides of a graph want to be paired according to their preferences. The stability of a matching depends on these preferences, which in uncertain environments also reflect agents’ beliefs about the underlying state of the world. We investigate how a principal—who observes the true state of the world—can strategically shape these beliefs through Bayesian persuasion to induce stable matching that maximizes a desired utility. Due to the general intractability of the underlying matching optimization problem as well as the multi-receiver persuasion problem, our main considerations are two important speci…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104629",
+      "pdf_url": "https://www.sciencedirect.com/science/article/pii/S0004370226001554/pdf",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7214342846",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104626",
+      "title": "Multi-subspace meta-learning",
+      "publication_date": "2026-09-25",
+      "work_type": "article",
+      "authors": [
+        "Weisen Jiang",
+        "Yu Zhang",
+        "James Tin-Yau Kwok"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11307",
+      "primary_topic": "Domain Adaptation and Few-Shot Learning",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104626",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7213514041",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104623",
+      "title": "SiameseNet+: Classification of HDLSS data with tensor affinities",
+      "publication_date": "2026-09-17",
+      "work_type": "article",
+      "authors": [
+        "Hongmin Cai",
+        "Yu Wang",
+        "Fei Qi",
+        "Junyu Li",
+        "Zhuoyao Wang",
+        "Yuhua Qian",
+        "Yiu‐ming Cheung"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T12303",
+      "primary_topic": "Tensor decomposition and applications",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104623",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7213412244",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104624",
+      "title": "ADKF: Adaptive decomposition and KAN-based fusion for long-term time series forecasting",
+      "publication_date": "2026-09-16",
+      "work_type": "article",
+      "authors": [
+        "Yiguo Zhu",
+        "Xinyang Yuan",
+        "Cong Han",
+        "Peng Cheng"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T12205",
+      "primary_topic": "Time Series Analysis and Forecasting",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104624",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7213432600",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104625",
+      "title": "Automatic prompt debiasing via contrastive reflection for fairness enhancement in large language models",
+      "publication_date": "2026-09-16",
+      "work_type": "article",
+      "authors": [
+        "Juncheng Hu",
+        "Yingji Li",
+        "Rui Song",
+        "Kedi Lyu",
+        "Yi Chang"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10883",
+      "primary_topic": "Ethics and Social Impacts of AI",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104625",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7212119659",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1109/tkde.2026.3732941",
+      "title": "Neuralized Multi-Wavelet Decomposition for Time Series Classification and Forecasting",
+      "publication_date": "2026-09-10",
+      "work_type": "article",
+      "authors": [
+        "Xiaohan Jiang",
+        "Jingyuan Wang",
+        "Jiahao Ji",
+        "Yongyao Wang",
+        "Chen Yang",
+        "Junjie Wu"
+      ],
+      "academic_source": "TKDE",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T12205",
+      "primary_topic": "Time Series Analysis and Forecasting",
+      "abstract_excerpt": "Time series analysis is fundamental in domains such as finance, healthcare, and meteorology. Real-world time series often exhibit multiscale characteristics shaped by diverse latent factors, resulting in intricate temporal patterns and rich frequency structures. However, existing approaches typically focus on either frequency-domain decomposition or time-domain pattern extraction in isolation, neglecting their joint structure. This decoupled modeling limits representation expressiveness and undermines performance in tasks requiring simultaneous temporal and spectral reasoning. To address this gap, we propose m-WCN, a novel end-to-end deep lea…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1109/tkde.2026.3732941",
+      "pdf_url": "https://arxiv.org/pdf/2609.29317",
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7211997711",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1109/tkde.2026.3732475",
+      "title": "SWTD: A Sliding Window Index for Routing in Dynamic Time-Dependent Road Networks",
+      "publication_date": "2026-09-09",
+      "work_type": "article",
+      "authors": [
+        "Yehong Xu",
+        "Lei Li",
+        "Mengxuan Zhang",
+        "Xiaofang Zhou"
+      ],
+      "academic_source": "TKDE",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11106",
+      "primary_topic": "Data Management and Algorithms",
+      "abstract_excerpt": "The Time-Dependent Shortest Path (TDSP) problem aims to find the departure time with minimal travel time between locations in road networks with time-varying traffic conditions. This problem is fundamental to modern navigation systems, which use traffic prediction models to continuously update each road's travel time at different future times. However, finding TDSP in real-time based on these frequent prediction updates remains an unsolved problem. Existing methods either compute results from scratch (ensuring accuracy but sacrificing efficiency) or ignore updates (ensuring efficiency but sacrificing accuracy). To break this obstacle, we prop…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1109/tkde.2026.3732475",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4416410188",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1016/j.artint.2026.104622",
+      "title": "Learning neuro-symbolic convergent term rewriting systems",
+      "publication_date": "2026-09-09",
+      "work_type": "article",
+      "authors": [
+        "Flavio Petruzzellis",
+        "Alberto Testolin",
+        "Alessandro Sperduti"
+      ],
+      "academic_source": "Artificial Intelligence",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T10126",
+      "primary_topic": "Logic, programming, and type systems",
+      "abstract_excerpt": "Building neural systems that can learn to execute symbolic algorithms is a challenging open problem in artificial intelligence, especially when aiming for strong generalization and out-of-distribution performance. In this work, we introduce a general framework for learning convergent term rewriting systems using a neuro-symbolic architecture inspired by the rewriting algorithm itself. We present two modular implementations of such architecture: the Neural Rewriting System (NRS) and the Fast Neural Rewriting System (FastNRS). As a result of algorithmic-inspired design and key architectural elements, both models can generalize to out-of-distrib…",
+      "abstract_available": true,
+      "paper_url": "https://doi.org/10.1016/j.artint.2026.104622",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_with_abstract_excerpt",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
     }
   ],
   "warnings": [
-    "OpenAlex source NeurIPS failed: HTTP 401",
-    "OpenAlex source ICML failed: HTTP 401",
-    "OpenAlex source ICLR failed: HTTP 401",
-    "OpenAlex source AAAI failed: HTTP 401",
-    "OpenAlex source KDD failed: HTTP 401",
-    "OpenAlex source CVPR failed: HTTP 401",
-    "OpenAlex source ICCV failed: HTTP 401",
-    "OpenAlex source ACL failed: HTTP 401",
-    "OpenAlex source EMNLP failed: HTTP 401",
-    "OpenAlex source SIGSPATIAL failed: HTTP 401",
-    "OpenAlex source JMLR failed: HTTP 401",
-    "OpenAlex source TPAMI failed: HTTP 401",
-    "OpenAlex source IJCV failed: HTTP 401",
-    "OpenAlex source TNNLS failed: HTTP 401",
-    "OpenAlex source TKDE failed: HTTP 401",
-    "OpenAlex source Artificial Intelligence failed: HTTP 401"
+    "OpenAlex keyed requests returned HTTP 401 for /sources, /works; collection used public keyless fallback. Check key status and quota."
   ],
   "caveats": [
     "Sampled-source popularity is NOT scientific importance or a novelty score.",
