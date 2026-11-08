@@ -59,7 +59,9 @@ begin
 
     return jsonb_build_object('claims', claims);
 end;
-$$;
+$;
+
+alter function public.business_agent_oauth_access_token_hook(jsonb) owner to postgres;
 
 revoke all on function public.business_agent_oauth_access_token_hook(jsonb)
     from public, anon, authenticated, service_role;
