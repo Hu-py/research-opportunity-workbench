@@ -199,3 +199,10 @@ Research Agent Lab 的 V2 当前默认使用合成数据 Dry-run，只能作为�
 The first MCP execution implementation returns a persistent run ID and starts the current Python pipeline as an in-process background task on Render. The pipeline checkpoints its stage outputs and trace to Supabase after each completed stage. If Render restarts or the process is interrupted, the run record remains in Supabase and can be resumed after the existing eight-minute stale-run guard.
 
 This is sufficient for a controlled single-line pilot, but it is **not yet a durable distributed job queue**. The current engine also permits only one active evolution run globally. Before enabling five-theme batches, 80-paper/day automation or unattended daily schedules, add a durable queue/worker design (for example Supabase Queues plus a separately managed worker, or an equivalent persistent execution service), idempotent job claims, heartbeat/lease expiry and bounded retry policy.
+
+
+## 12. Team identity and OAuth connection mode
+
+The default shared-agent connection mode should be **End-user account**: each teammate authenticates through their own Supabase Auth identity, and the Render MCP server checks the verified user subject and OAuth client ID. This preserves least privilege and per-user audit attribution. Each teammate who needs access must have a Supabase Auth identity and be explicitly allowlisted. An Agent-owned account is an intentional alternative only if the team chooses a dedicated shared service identity and accepts that tool calls share its authorization and audit identity.
+
+Supabase OAuth Server supports authorization code with PKCE, dynamic client registration for MCP-compatible clients and refresh-token grant. Its currently documented standard scopes do not explicitly list `offline_access`, while ChatGPT's custom MCP OAuth guidance recommends refresh-token compatibility. The first real handshake must verify the requested scopes, discovery metadata, refresh-token issuance and refresh behavior before workspace publication. A failed refresh-token handshake is an integration blocker, not a reason to weaken JWT verification or allowlists.
