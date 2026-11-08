@@ -2,6 +2,17 @@
 
 A research intelligence workbench that continuously links **urban research questions**, **computer-science methods**, **scholarly evidence** and **versioned research opportunities**.
 
+## ChatGPT Business Workspace Agent
+
+The primary user-facing research interface is being built as a **ChatGPT Business Workspace Agent**. It connects to the single OAuth-protected Render MCP endpoint, reads the shared Supabase research context, and can launch the existing multi-agent topic-discovery pipeline. Supabase remains the only durable research database; Render is the Python/MCP execution layer; Vercel remains an optional visualization frontend.
+
+- Product requirements and target architecture: [Business Workspace Agent specification](docs/BUSINESS_WORKSPACE_AGENT_PRODUCT_SPEC.md)
+- Agent instructions and setup: [Business Agent configuration](docs/BUSINESS_AGENT_CONFIGURATION.md)
+- OAuth and permission gates: [Business MCP OAuth setup](docs/BUSINESS_MCP_OAUTH_SETUP.md)
+- Versioned Agent Skill: [Research Advisor Skill](skills/business_research_advisor/SKILL.md)
+
+The MCP server, execution permission and write permission remain disabled by default until the OAuth client, approved user identities and end-to-end tests are verified.
+
 ## Development studio & research interest watchlist
 
 Development progress tracking now lives in the **standalone development console**
