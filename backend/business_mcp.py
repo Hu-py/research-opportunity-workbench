@@ -128,7 +128,10 @@ class OAuthJwtVerifier:
             key=self._key_client.get_signing_key_from_jwt(token).key
             decoded=jwt.decode(
                 token,key,algorithms=["RS256","ES256"],
-                audience="authenticated",issuer=self.config.issuer,
+                # ChatGPT MCP requires resource-bound access tokens. The
+                # Supabase custom access-token hook maps approved OAuth client
+                # IDs to [this resource URI, "authenticated"] in the aud claim.
+                audience=self.config.resource,issuer=self.config.issuer,
                 leeway=30,options={"require":["exp","iat","iss","aud","sub","client_id"]},
             )
             subject=str(decoded.get("sub",""))
@@ -217,11 +220,10 @@ def build_mcp_server(config: AuthConfig):
         auth=AuthSettings(
             issuer_url=AnyHttpUrl(config.issuer),
             resource_server_url=AnyHttpUrl(config.resource),
-            # Supabase access JWTs use aud="authenticated", even though
-            # the MCP protected resource is a distinct URL. We instead
-            # enforce project issuer + client_id + user UUID at every request.
+            # Resource-bound audience is verified by OAuthJwtVerifier and
+            # again by the MCP authorization middleware.
             required_scopes=[],
-            validate_token_resource=False,
+            validate_token_resource=True,
         ),
     )
 
