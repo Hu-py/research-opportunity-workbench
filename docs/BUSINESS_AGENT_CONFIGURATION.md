@@ -67,13 +67,13 @@ See `docs/BUSINESS_MCP_OAUTH_SETUP.md` for the staged OAuth and server-side allo
 
 Only a Business workspace admin or owner can create and publish a custom MCP connection.
 
-1. In ChatGPT Business, open **Workspace settings → Plugins / Manage Legacy Apps** and create a custom MCP server connection.
-2. Enter the HTTPS MCP endpoint above and configure the Supabase OAuth flow. Do not use a public unauthenticated proxy or paste a REST bearer token into Agent instructions.
-3. Test the OAuth consent and read-only connection privately.
-4. Open **Agents → Create** and create a private agent named Research Advisor.
-5. Attach the approved Research Advisor MCP app, Web Search and the uploaded Skill.
-6. Paste the instructions above, preview the agent, and test context retrieval and read-back.
-7. Keep the agent private and its schedule disabled until the end-to-end checks below pass.
+1. In ChatGPT Business web, open **Plugins → + → Add custom MCP server** (or the workspace's Apps creation page if using the legacy app flow). Only a workspace admin/owner can create and publish the custom MCP app.
+2. Enter the HTTPS MCP endpoint above, configure OAuth, acknowledge the server risk warning, complete authorization and scan the discovered tools. Create it as a draft/plugin, test it privately, then publish it from the workspace admin console.
+3. For the Workspace Agent's MCP connection, choose **End-user account** for the initial rollout. Each teammate should authenticate with their own Supabase Auth identity; this preserves per-user subject allowlists and audit attribution. Avoid an Agent-owned personal account for a shared team agent unless the team deliberately chooses one shared service identity and accepts shared attribution.
+4. Open **Agents** in the ChatGPT sidebar, select **Create**, and create a private agent named Research Advisor.
+5. In the Agent builder, add the published Research Advisor MCP app, Web Search and the uploaded Skill. Paste the instructions above and preview the agent.
+6. Test context retrieval and read-back with one approved user. Keep the agent private and its schedule disabled until the end-to-end checks below pass.
+7. When MCP tool definitions change after deployment, an admin must **refresh the app's tool list and review/publish the updated actions**. ChatGPT keeps a frozen snapshot of approved tools; server-side changes do not automatically appear in the workspace.
 
 Workspace Agent API triggers are not used as the internal multi-agent bus: the API currently exposes run status and a conversation URL but does not return the Agent's final response. The actual multi-agent tournament remains in the Python research engine.
 
