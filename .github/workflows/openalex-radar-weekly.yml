@@ -3,7 +3,8 @@ name: Weekly OpenAlex public radar feed
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * 1'
+    # 06:00 every Monday in China Standard Time.
+    - cron: '0 6 * * 1'
       timezone: 'Asia/Shanghai'
 
 permissions:
@@ -17,7 +18,7 @@ jobs:
   collect:
     name: Retrieve and publish public academic metadata
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,10 +26,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Check required OpenAlex credential
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENALEX_API_KEY:-}" ]; then
+            echo 'Missing OPENALEX_API_KEY repository secret. Add it under Settings > Secrets and variables > Actions.' >&2
+            exit 1
+          fi
       - name: Collect annual counts and recent work metadata
         env:
           OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
         run: python scripts/openalex_weekly_radar.py
+      - name: Validate public feed structure and freshness metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from datetime import datetime
+          from pathlib import Path
+
+          path = Path("data/radar/openalex_latest.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          assert data.get("schema_version") == "2.0.0", "Unexpected schema_version"
+          datetime.fromisoformat(data["retrieved_at_utc"].replace("Z", "+00:00"))
+          assert isinstance(data.get("source_coverage"), dict) and data["source_coverage"], "Missing source_coverage"
+          assert isinstance(data.get("topic_candidates"), list) and data["topic_candidates"], "No topic candidates"
+          assert isinstance(data.get("recent_papers"), list) and data["recent_papers"], "No recent papers"
+          assert len(data["recent_papers"]) <= 240, "Recent paper cap exceeded"
+          print("Validated OpenAlex feed:", len(data["topic_candidates"]), "topics;",
+                len(data["recent_papers"]), "papers;",
+                len(data.get("warnings", [])), "warnings")
+          PY
+          sha256sum data/radar/openalex_latest.json
       - name: Preserve result as downloadable artifact
         uses: actions/upload-artifact@v4
         with:
