@@ -1,0 +1,48 @@
+name: Supabase Research MCP (safe build, no deployment)
+on:
+  push:
+    branches:
+      - feat/supabase-native-mcp
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/research-mcp-ci.yml'
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/research-mcp-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deno:
+    name: Deno type-check and identity-gate tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check the Supabase Edge MCP
+        run: deno check supabase/functions/research-advisor-mcp/index.ts
+      - name: Verify OAuth gate behavior
+        run: deno test supabase/functions/research-advisor-mcp/auth_policy.test.ts
+      - name: Confirm read-only pilot has no write tools
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source=Path('supabase/functions/research-advisor-mcp/index.ts').read_text()
+          assert 'withOAuthProtectedResource()' in source
+          assert 'withSupabase({ auth: "user" })' in source
+          assert 'getUser(token)' in source
+          assert 'SET TRANSACTION READ ONLY' in source
+          assert 'RESEARCH_MCP_ALLOWED_CLIENT_IDS' in source
+          assert 'RESEARCH_MCP_ALLOWED_USER_IDS' in source
+          assert 'submit_research_run' not in source
+          assert 'RESEARCH_MCP_ENABLED' in source
+          print('Safe read-only MCP verification passed')
+          PY
