@@ -139,7 +139,7 @@ def test_token_validates_project_subject_client_and_server_write_policy(monkeypa
 
 
 
-def test_execution_scope_requires_separate_client_allowlist_and_toggle(monkeypatch):
+def test_execution_scope_requires_client_subject_allowlists_and_toggle(monkeypatch):
     _settings(monkeypatch)
     monkeypatch.setenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS",CLIENT)
     cfg=get_auth_config()
