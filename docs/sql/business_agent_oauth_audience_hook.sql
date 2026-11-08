@@ -4,11 +4,11 @@
 -- Supabase Auth hook automatically. Complete the Dashboard steps in
 -- docs/BUSINESS_MCP_OAUTH_SETUP.md after running this SQL.
 
-create schema if not exists private;
+create schema if not exists business_agent_private;
 
-revoke all on schema private from public, anon, authenticated, service_role;
+revoke all on schema business_agent_private from public, anon, authenticated, service_role;
 
-create table if not exists private.business_agent_oauth_clients (
+create table if not exists business_agent_private.oauth_clients (
     client_id text primary key,
     audience text not null
         check (audience = 'https://research-atlas-api-test.onrender.com/research-advisor/mcp'),
@@ -16,9 +16,9 @@ create table if not exists private.business_agent_oauth_clients (
     created_at timestamptz not null default now()
 );
 
-alter table private.business_agent_oauth_clients enable row level security;
+alter table business_agent_private.oauth_clients enable row level security;
 
-revoke all on table private.business_agent_oauth_clients
+revoke all on table business_agent_private.oauth_clients
     from public, anon, authenticated, service_role;
 
 create or replace function public.business_agent_oauth_access_token_hook(event jsonb)
@@ -39,7 +39,7 @@ begin
     if oauth_client_id is not null then
         select c.audience
           into resource_audience
-          from private.business_agent_oauth_clients as c
+          from business_agent_private.oauth_clients as c
          where c.client_id = oauth_client_id
            and c.enabled = true;
 
@@ -72,7 +72,7 @@ comment on function public.business_agent_oauth_access_token_hook(jsonb) is
 -- below with the exact client_id from Supabase Authentication > OAuth Apps.
 -- Then run this INSERT separately:
 --
--- insert into private.business_agent_oauth_clients (client_id, audience)
+-- insert into business_agent_private.oauth_clients (client_id, audience)
 -- values (
 --   '<EXACT_CHATGPT_OAUTH_CLIENT_ID>',
 --   'https://research-atlas-api-test.onrender.com/research-advisor/mcp'
