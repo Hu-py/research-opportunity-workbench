@@ -318,7 +318,14 @@ async def lifespan(app:FastAPI):
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
         )
-    yield
+    # The mounted OAuth MCP session manager has its own ASGI lifespan.
+    # Never run or expose it unless the owner explicitly enabled the MCP app.
+    managed_mcp=getattr(app.state,"research_advisor_mcp",None)
+    if managed_mcp is not None:
+        async with managed_mcp.session_manager.run():
+            yield
+    else:
+        yield
 
 app=FastAPI(
     title="Research Opportunity Workbench API",
@@ -1478,3 +1485,9 @@ _mount_migration_preflight_routes(app, require_admin=require_admin)
 from backend.business_memory import mount as _mount_business_memory_routes
 _mount_business_memory_routes(app, get_db=get_db, require_actor=require_actor,
                               require_editor=require_editor, require_admin=require_admin)
+
+# Custom MCP is intentionally off until a reviewed external OAuth provider,
+# approved subjects, and explicit team data-sharing grant are configured.
+if os.getenv("BUSINESS_MCP_ENABLED","").strip().lower()=="true":
+    from backend.business_mcp import mount_mcp as _mount_research_advisor_mcp
+    _mount_research_advisor_mcp(app)
