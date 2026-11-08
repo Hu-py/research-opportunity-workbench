@@ -314,9 +314,15 @@ def main():
         label = source["name"]
         try:
             sid, problem = resolve_source(source)
-            if not sid:
-                venue_status.append({"name": label, "status": "unresolved", "detail": problem})
-                continue
+        except Exception as exc:
+            venue_status.append({"name": label, "status": "error",
+                                 "stage": "source_lookup", "detail": str(exc)})
+            warnings.append(f"OpenAlex source lookup {label} failed: {exc}")
+            continue
+        if not sid:
+            venue_status.append({"name": label, "status": "unresolved", "detail": problem})
+            continue
+        try:
             papers = openalex_recent(
                 sid, label, since, int(config["per_source_sample"]), excluded
             )
@@ -324,8 +330,10 @@ def main():
             venue_status.append({"name": label, "status": "ok", "source_id": sid,
                                  "sample_count": len(papers)})
         except Exception as exc:
-            venue_status.append({"name": label, "status": "error", "detail": str(exc)})
-            warnings.append(f"OpenAlex source {label} failed: {exc}")
+            venue_status.append({"name": label, "status": "error",
+                                 "stage": "works_retrieval", "source_id": sid,
+                                 "detail": str(exc)})
+            warnings.append(f"OpenAlex works lookup {label} failed: {exc}")
     print("OpenAlex venues", sum(v["status"] == "ok" for v in venue_status),
           "/", len(venue_status), "collected", sum(len(x) for x in venue_results))
 
