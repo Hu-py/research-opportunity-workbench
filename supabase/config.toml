@@ -1,0 +1,6 @@
+# Supabase Research Advisor. The platform JWT check is deliberately disabled
+# because unauthenticated OAuth discovery requests must reach the middleware.
+# The function itself verifies Supabase Auth JWTs (JWKS) and fails closed
+# without both an approved OAuth user AND approved OAuth client.
+[functions.research-advisor-mcp]
+verify_jwt = false
