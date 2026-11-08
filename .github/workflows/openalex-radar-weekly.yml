@@ -80,5 +80,6 @@ jobs:
             echo "No feed changes to publish"
           else
             git commit -m "data(radar): refresh public OpenAlex weekly feed"
+          git pull --rebase origin main
             git push origin HEAD:main
           fi
