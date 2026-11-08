@@ -47,7 +47,30 @@ OIDC discovery：
 
 `https://tfyfupxabojddixwjkat.supabase.co/auth/v1/.well-known/openid-configuration`
 
-**JWT Signing Key 必须使用非对称算法。** 当前 Render verifier 只接受 `RS256` 或 `ES256`，并通过同一 Supabase 项目的 JWKS 公钥验证签名。如果当前项目仍使用 legacy `HS256` shared-secret signing key，OAuth MCP 连接会被拒绝。请先在 Supabase Dashboard → Project Settings → JWT Keys 中确认当前算法；如需迁移，先评估现有 API/服务的 token 兼容性，再切换到 RS256/ES256，并确认 JWKS 中存在对应公钥。不要把 Supabase JWT secret 或私钥复制到 Render。
+**当前项目为 HS256，必须先迁移到非对称签名，再进行真实 OAuth 授权。** Render MCP 只接受 `RS256` / `ES256`，通过 Supabase JWKS 公钥验签；Supabase OAuth 的 `openid` ID token 也要求使用非对称签名。推荐 `ES256`（P-256），Render 同时兼容 RS256。不要把 JWT secret、私钥或任何签名材料复制到 Render。
+
+#### HS256 → ES256 安全迁移步骤
+
+1. 打开 Supabase Dashboard → Project Settings → **JWT Keys / JWT Signing Keys**。
+2. 点击 **Migrate JWT secret**。这一步将现有 legacy JWT secret 导入新的 Signing Keys 管理体系，并生成一个新的非对称 standby key；此时尚未切换当前签名算法。
+3. 确认新 standby key 算法为 **ES256**，并确认它的公钥出现在项目 JWKS 中。只检查公钥元数据，不导出或复制 private key。
+4. 点击 **Rotate keys**，让 Supabase Auth 开始使用 ES256 签发新 JWT。Supabase 文档说明，轮换后新 JWT 使用新 key，尚未过期的旧 JWT 仍可被 Supabase 接受；该过程支持回滚。
+5. 重新登录/刷新一次 Supabase Auth 会话，确认新 access token 的 JWT header 为 `alg=ES256`，并且 `kid` 能在 JWKS 中找到。随后再进行 ChatGPT OAuth 授权。
+6. 观察现有登录、Render API、Vercel 前端、Edge Functions 和其他 JWT 验证服务。**不要现在撤销 legacy JWT secret**：撤销它还涉及停用旧的 JWT 型 `anon` / `service_role` API keys；应先完成独立的 Publishable/Secret API Key 迁移，并确认所有旧 token 已过期。当前 Business Agent 只需要激活 ES256，不需要立刻撤销旧 key。
+
+Supabase 官方迁移说明：[JWT Signing Keys](https://supabase.com/docs/guides/auth/signing-keys)。
+
+#### 为 ChatGPT MCP 绑定 resource audience
+
+ChatGPT 的 MCP OAuth 要求 access token 的 `aud` 包含 MCP resource URL。Supabase OAuth Server 的标准 access token 默认使用 `aud=authenticated`，且当前不能仅依赖授权请求中的 `resource` 参数完成绑定。我们为此增加了 Supabase Custom Access Token Hook：只有登记在专用 OAuth client registry 中的 ChatGPT client 才会获得 `aud=[MCP resource URL, authenticated]`；普通 Supabase 登录不受影响。
+
+1. 在 Supabase SQL Editor 中，以项目 owner 身份执行仓库文件 [`docs/sql/business_agent_oauth_audience_hook.sql`](sql/business_agent_oauth_audience_hook.sql)。该 SQL 只创建专用 registry 和 hook 函数，不会自动启用 hook，也不会改变 JWT signing key。
+2. 打开 Authentication → Hooks → **Custom Access Token Hook**，选择 `public.business_agent_oauth_access_token_hook` 并启用。
+3. 等 ChatGPT 完成一次 DCR client registration 后，从 Authentication → OAuth Apps 复制准确的 `client_id`，再按 SQL 文件末尾的 INSERT 模板写入 `business_agent_private.oauth_clients`。不要猜测或手工改写 client ID。
+4. 同一个 client ID 之后还要加入 Render 的 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`。在 registry 和 Render allowlist 两处都没有批准之前，MCP 工具不会接受它。
+5. 完成 hook 后重新进行 OAuth 授权，并检查 access token 的 `aud` 同时包含 MCP resource URL 和 `authenticated`。Render 将严格验证 MCP resource audience；没有正确 audience 的 token 一律拒绝。
+
+
 
 Render consent 页所需公开配置：
 
@@ -137,11 +160,12 @@ Render MCP 当前使用服务端 PostgreSQL 连接读取 Supabase 数据库；OA
 如果 ChatGPT 通过 Supabase Dynamic Client Registration 创建 OAuth client，而 client ID 尚未进入 Render allowlist，可使用一次性 fail-closed bootstrap：
 
 1. 先确认 Supabase consent 页面可访问，并且 Owner 已批准连接。
-2. 在 Render 临时设置 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=true`、`BUSINESS_MCP_ENABLED=true`、`BUSINESS_AGENT_SHARING_APPROVED=true)，将 `BUSINESS_MCP_ALLOWED_SUBJECTS` 限定为首位测试用户，并暂时留空 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`。
+2. 在 Render 临时设置 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=true`、`BUSINESS_MCP_ENABLED=true`、`BUSINESS_AGENT_SHARING_APPROVED=true`，将 `BUSINESS_MCP_ALLOWED_SUBJECTS` 限定为首位测试用户，并暂时留空 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`。
 3. 此模式只允许 MCP OAuth discovery / client registration 流程启动。由于服务端的 approved client 集合为空，`OAuthJwtVerifier` 会拒绝**所有**访问令牌，任何 MCP 工具都不能执行。
 4. 在 ChatGPT 发起 custom MCP 连接，让 Supabase 创建 OAuth client；在 consent 页面批准前暂停/拒绝本次授权，然后从 Supabase Dashboard → Authentication → OAuth Apps 读取准确的 client ID。
-5. 将该 client ID 写入 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`，立即把 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=false`，重新部署 Render。
-6. 重新发起 ChatGPT OAuth 授权，确认只有该 client 和 allowlist 中的 user subject 能读取数据。
+5. 先按 SQL 文件末尾的 INSERT 模板，将准确 client ID 加入 `business_agent_private.oauth_clients`，使 Supabase Custom Access Token Hook 为该 client 签发正确的 MCP resource audience。
+6. 将同一个 client ID 写入 Render 的 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`，确认首位测试用户 UUID 已写入 `BUSINESS_MCP_ALLOWED_SUBJECTS`，立即把 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=false`，重新部署 Render。
+7. 重新发起 ChatGPT OAuth 授权，检查 access token 的 `aud` 包含完整 MCP resource URL，然后只测试只读工具。
 
 如果 ChatGPT 连接界面允许预先配置已注册 OAuth client，则优先使用预注册 client，不需要 bootstrap。**不得**把 bootstrap 长期打开，不得用 `*` 或其他通配符代替 allowlist。
 

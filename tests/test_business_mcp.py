@@ -93,8 +93,10 @@ def test_dcr_bootstrap_never_authorizes_unregistered_clients(monkeypatch):
         assert verifier._validate("opaque-test-token") is None
 
 
-def _claims(sub=SUBJECT,client=CLIENT):
-    return {"iss":ISSUER,"aud":"authenticated","sub":sub,
+def _claims(sub=SUBJECT,client=CLIENT,aud=None):
+    if aud is None:
+        aud=[RESOURCE,"authenticated"]
+    return {"iss":ISSUER,"aud":aud,"sub":sub,
             "client_id":client,"role":"authenticated",
             "exp":2000000000,"iat":1000000000,
             "scope":"email","permissions":["research:write"]}
@@ -160,6 +162,29 @@ def test_execution_scope_requires_client_subject_allowlists_and_toggle(monkeypat
         with_execution=enabled._validate("opaque-test-token")
     assert "research:execute" in with_execution.scopes
     assert "research:write" not in with_execution.scopes
+
+
+def test_token_must_be_bound_to_the_business_mcp_resource(monkeypatch):
+    _settings(monkeypatch)
+    verifier=_mocked_verifier(get_auth_config())
+    import jwt
+
+    def decode_for(aud):
+        def _decode(token,key,**kwargs):
+            assert kwargs["audience"]==RESOURCE
+            values=aud if isinstance(aud,list) else [aud]
+            if RESOURCE not in values:
+                raise jwt.InvalidAudienceError("wrong MCP resource")
+            return _claims(aud=aud)
+        return _decode
+
+    with patch("jwt.decode",side_effect=decode_for("authenticated")):
+        assert verifier._validate("wrong-resource-token") is None
+
+    with patch("jwt.decode",side_effect=decode_for([RESOURCE,"authenticated"])):
+        accepted=verifier._validate("resource-bound-token")
+    assert accepted is not None
+    assert accepted.resource==RESOURCE
 
 
 def test_invalid_or_expired_supabase_jwt_rejected(monkeypatch):
