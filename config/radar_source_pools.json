@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "note": "Source pools are broad discovery boundaries, not fixed topics. Exact OpenAlex source IDs are resolved at run time. Expand this list after reviewing weekly source coverage. No private/team data.",
+  "streams": {
+    "planning": {
+      "description": "Urban planning, urban science, GIS and environment",
+      "source_names": [
+        "Environment and Planning B: Urban Analytics and City Science",
+        "Cities",
+        "Urban Studies",
+        "Landscape and Urban Planning",
+        "Computers, Environment and Urban Systems",
+        "Journal of Transport Geography",
+        "Sustainable Cities and Society",
+        "Applied Geography",
+        "Urban Climate",
+        "Environment and Planning A: Economy and Space",
+        "Habitat International",
+        "International Journal of Geographical Information Science"
+      ],
+      "established_topics": 5,
+      "rising_topics": 4,
+      "recent_per_topic": 9,
+      "minimum_recent_year_count": 5
+    },
+    "methods": {
+      "description": "Machine learning, AI, computer vision and data mining method watch",
+      "source_names": [
+        "Advances in Neural Information Processing Systems",
+        "International Conference on Machine Learning",
+        "International Conference on Learning Representations",
+        "Journal of Machine Learning Research",
+        "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+        "International Journal of Computer Vision",
+        "Artificial Intelligence",
+        "IEEE Transactions on Neural Networks and Learning Systems",
+        "IEEE Transactions on Knowledge and Data Engineering"
+      ],
+      "established_topics": 3,
+      "rising_topics": 4,
+      "recent_per_topic": 9,
+      "minimum_recent_year_count": 5
+    }
+  }
+}
