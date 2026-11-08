@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "feed_kind": "radar_b_public_method_evidence",
-  "retrieved_at_utc": "2026-11-08T07:48:50.299979+00:00",
+  "retrieved_at_utc": "2026-11-08T16:40:39.020866+00:00",
   "lookback_start": "2026-09-09",
   "complete_publication_years": [
     2023,
@@ -135,7 +135,7 @@
     ],
     "total_after_cross_source_dedup": 157,
     "with_abstract_excerpt": 118,
-    "with_pdf_link": 121,
+    "with_pdf_link": 120,
     "with_code_link": 3
   },
   "candidate_topic_statistics": [
@@ -144,23 +144,11 @@
       "name": "Human Pose and Action Recognition",
       "observed_openalex_sample_count": 4,
       "annual_counts": {
-        "2023": 4189,
-        "2024": 4849,
-        "2025": 5145
+        "2023": 4197,
+        "2024": 4876,
+        "2025": 5160
       },
-      "growth_latest_complete_year_pct": 6.1,
-      "status": "measured"
-    },
-    {
-      "topic_id": "T11714",
-      "name": "Multimodal Machine Learning Applications",
-      "observed_openalex_sample_count": 4,
-      "annual_counts": {
-        "2023": 4607,
-        "2024": 9009,
-        "2025": 13948
-      },
-      "growth_latest_complete_year_pct": 54.82,
+      "growth_latest_complete_year_pct": 5.82,
       "status": "measured"
     },
     {
@@ -168,23 +156,23 @@
       "name": "Domain Adaptation and Few-Shot Learning",
       "observed_openalex_sample_count": 3,
       "annual_counts": {
-        "2023": 5993,
-        "2024": 6810,
-        "2025": 7843
+        "2023": 5998,
+        "2024": 6789,
+        "2025": 7834
       },
-      "growth_latest_complete_year_pct": 15.17,
+      "growth_latest_complete_year_pct": 15.39,
       "status": "measured"
     },
     {
-      "topic_id": "T12205",
-      "name": "Time Series Analysis and Forecasting",
+      "topic_id": "T11714",
+      "name": "Multimodal Machine Learning Applications",
       "observed_openalex_sample_count": 3,
       "annual_counts": {
-        "2023": 1827,
-        "2024": 2336,
-        "2025": 3240
+        "2023": 5174,
+        "2024": 9475,
+        "2025": 13996
       },
-      "growth_latest_complete_year_pct": 38.7,
+      "growth_latest_complete_year_pct": 47.72,
       "status": "measured"
     },
     {
@@ -192,11 +180,47 @@
       "name": "3D Shape Modeling and Analysis",
       "observed_openalex_sample_count": 3,
       "annual_counts": {
-        "2023": 3838,
-        "2024": 5573,
-        "2025": 6913
+        "2023": 3858,
+        "2024": 5581,
+        "2025": 6920
       },
-      "growth_latest_complete_year_pct": 24.04,
+      "growth_latest_complete_year_pct": 23.99,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10531",
+      "name": "Advanced Vision and Imaging",
+      "observed_openalex_sample_count": 3,
+      "annual_counts": {
+        "2023": 2575,
+        "2024": 2706,
+        "2025": 3017
+      },
+      "growth_latest_complete_year_pct": 11.49,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10203",
+      "name": "Recommender Systems and Techniques",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 7708,
+        "2024": 8535,
+        "2025": 10696
+      },
+      "growth_latest_complete_year_pct": 25.32,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T12205",
+      "name": "Time Series Analysis and Forecasting",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 1831,
+        "2024": 2341,
+        "2025": 3225
+      },
+      "growth_latest_complete_year_pct": 37.76,
       "status": "measured"
     },
     {
@@ -204,11 +228,35 @@
       "name": "Advanced Neural Network Applications",
       "observed_openalex_sample_count": 2,
       "annual_counts": {
-        "2023": 20707,
-        "2024": 25981,
-        "2025": 31417
+        "2023": 20686,
+        "2024": 25993,
+        "2025": 31484
       },
-      "growth_latest_complete_year_pct": 20.92,
+      "growth_latest_complete_year_pct": 21.12,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T10764",
+      "name": "Privacy-Preserving Technologies in Data",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 7677,
+        "2024": 10490,
+        "2025": 14359
+      },
+      "growth_latest_complete_year_pct": 36.88,
+      "status": "measured"
+    },
+    {
+      "topic_id": "T11105",
+      "name": "Advanced Image Processing Techniques",
+      "observed_openalex_sample_count": 2,
+      "annual_counts": {
+        "2023": 2781,
+        "2024": 3326,
+        "2025": 3666
+      },
+      "growth_latest_complete_year_pct": 10.22,
       "status": "measured"
     },
     {
@@ -216,23 +264,11 @@
       "name": "Game Theory and Voting Systems",
       "observed_openalex_sample_count": 2,
       "annual_counts": {
-        "2023": 1897,
-        "2024": 1969,
-        "2025": 2443
+        "2023": 1894,
+        "2024": 1954,
+        "2025": 2442
       },
-      "growth_latest_complete_year_pct": 24.07,
-      "status": "measured"
-    },
-    {
-      "topic_id": "T10531",
-      "name": "Advanced Vision and Imaging",
-      "observed_openalex_sample_count": 2,
-      "annual_counts": {
-        "2023": 2583,
-        "2024": 2715,
-        "2025": 3042
-      },
-      "growth_latest_complete_year_pct": 12.04,
+      "growth_latest_complete_year_pct": 24.97,
       "status": "measured"
     },
     {
@@ -240,47 +276,11 @@
       "name": "Logic, Reasoning, and Knowledge",
       "observed_openalex_sample_count": 2,
       "annual_counts": {
-        "2023": 1843,
-        "2024": 1837,
-        "2025": 2340
+        "2023": 1825,
+        "2024": 1830,
+        "2025": 2316
       },
-      "growth_latest_complete_year_pct": 27.38,
-      "status": "measured"
-    },
-    {
-      "topic_id": "T10331",
-      "name": "Video Surveillance and Tracking Methods",
-      "observed_openalex_sample_count": 2,
-      "annual_counts": {
-        "2023": 4804,
-        "2024": 5002,
-        "2025": 5496
-      },
-      "growth_latest_complete_year_pct": 9.88,
-      "status": "measured"
-    },
-    {
-      "topic_id": "T10203",
-      "name": "Recommender Systems and Techniques",
-      "observed_openalex_sample_count": 1,
-      "annual_counts": {
-        "2023": 7691,
-        "2024": 8546,
-        "2025": 10690
-      },
-      "growth_latest_complete_year_pct": 25.09,
-      "status": "measured"
-    },
-    {
-      "topic_id": "T11303",
-      "name": "Bayesian Modeling and Causal Inference",
-      "observed_openalex_sample_count": 1,
-      "annual_counts": {
-        "2023": 1134,
-        "2024": 1225,
-        "2025": 1431
-      },
-      "growth_latest_complete_year_pct": 16.82,
+      "growth_latest_complete_year_pct": 26.56,
       "status": "measured"
     }
   ],
@@ -3546,6 +3546,34 @@
       ]
     },
     {
+      "openalex_id": "https://openalex.org/W7225466555",
+      "arxiv_id": null,
+      "doi": "https://doi.org/10.1007/s11263-026-03101-w",
+      "title": "E$$^2$$MA-VFI: Enhancing Video Frame Interpolation with Inter-Frame Attention",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Guozhen Zhang",
+        "Chunxu Liu",
+        "Limin Wang"
+      ],
+      "academic_source": "IJCV",
+      "source_kind": "openalex_venue",
+      "method_category": null,
+      "primary_topic_id": "T11105",
+      "primary_topic": "Advanced Image Processing Techniques",
+      "abstract_excerpt": null,
+      "abstract_available": false,
+      "paper_url": "https://doi.org/10.1007/s11263-026-03101-w",
+      "pdf_url": null,
+      "code_url": null,
+      "evidence_level": "metadata_only",
+      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
+      "provenance": [
+        "openalex"
+      ]
+    },
+    {
       "openalex_id": "https://openalex.org/W7224266045",
       "arxiv_id": null,
       "doi": "https://doi.org/10.1007/s11263-026-03087-5",
@@ -3592,8 +3620,8 @@
       "academic_source": "IJCV",
       "source_kind": "openalex_venue",
       "method_category": null,
-      "primary_topic_id": "T13114",
-      "primary_topic": "Image Processing Techniques and Applications",
+      "primary_topic_id": "T10531",
+      "primary_topic": "Advanced Vision and Imaging",
       "abstract_excerpt": null,
       "abstract_available": false,
       "paper_url": "https://doi.org/10.1007/s11263-026-03104-7",
@@ -3897,8 +3925,8 @@
       "academic_source": "IJCV",
       "source_kind": "openalex_venue",
       "method_category": null,
-      "primary_topic_id": "T10481",
-      "primary_topic": "Computer Graphics and Visualization Techniques",
+      "primary_topic_id": "T10775",
+      "primary_topic": "Generative Adversarial Networks and Image Synthesis",
       "abstract_excerpt": null,
       "abstract_available": false,
       "paper_url": "https://doi.org/10.1007/s11263-026-03099-1",
@@ -4022,8 +4050,8 @@
       "academic_source": "IJCV",
       "source_kind": "openalex_venue",
       "method_category": null,
-      "primary_topic_id": "T11707",
-      "primary_topic": "Gaze Tracking and Assistive Technology",
+      "primary_topic_id": "T10764",
+      "primary_topic": "Privacy-Preserving Technologies in Data",
       "abstract_excerpt": null,
       "abstract_available": false,
       "paper_url": "https://doi.org/10.1007/s11263-026-03084-8",
@@ -4332,34 +4360,6 @@
       "abstract_available": false,
       "paper_url": "https://doi.org/10.1007/s11263-026-03083-9",
       "pdf_url": "https://arxiv.org/pdf/2505.24282",
-      "code_url": null,
-      "evidence_level": "metadata_only",
-      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
-      "provenance": [
-        "openalex"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7157285616",
-      "arxiv_id": null,
-      "doi": "https://doi.org/10.1007/s11263-026-03031-7",
-      "title": "GoClick: Lightweight Element Grounding Model for Autonomous GUI Interaction",
-      "publication_date": "2026-10-18",
-      "work_type": "article",
-      "authors": [
-        "Hongxin Li",
-        "Yuntao Chen",
-        "Zhaoxiang Zhang"
-      ],
-      "academic_source": "IJCV",
-      "source_kind": "openalex_venue",
-      "method_category": null,
-      "primary_topic_id": "T11714",
-      "primary_topic": "Multimodal Machine Learning Applications",
-      "abstract_excerpt": null,
-      "abstract_available": false,
-      "paper_url": "https://doi.org/10.1007/s11263-026-03031-7",
-      "pdf_url": "https://arxiv.org/pdf/2604.23941",
       "code_url": null,
       "evidence_level": "metadata_only",
       "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
@@ -4738,8 +4738,8 @@
       "academic_source": "Artificial Intelligence",
       "source_kind": "openalex_venue",
       "method_category": null,
-      "primary_topic_id": "T12205",
-      "primary_topic": "Time Series Analysis and Forecasting",
+      "primary_topic_id": "T10203",
+      "primary_topic": "Recommender Systems and Techniques",
       "abstract_excerpt": null,
       "abstract_available": false,
       "paper_url": "https://doi.org/10.1016/j.artint.2026.104646",
