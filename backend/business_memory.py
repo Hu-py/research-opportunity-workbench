@@ -255,6 +255,30 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin):
             raise HTTPException(409, "Duplicate run key; retry with the same payload") from exc
         return _run_view(db, run)
 
+    @router.get("/api/business-agent/agent-runs")
+    def agent_run_history(request: Request, db: Session = Depends(get_db)):
+        """Agent-scoped, authenticated read-back. Never grants human feedback writes."""
+        _agent_auth(request)
+        rows=db.scalars(select(BusinessAgentRun)
+                        .order_by(BusinessAgentRun.created_at.desc(),
+                                  BusinessAgentRun.id.desc()).limit(20)).all()
+        return JSONResponse({"items":[_run_view(db,row) for row in rows]},
+                            headers={"Cache-Control":"no-store, private"})
+
+    @router.get("/api/business-agent/agent-runs/{run_id}")
+    def agent_run_detail(run_id: str, request: Request,
+                         db: Session = Depends(get_db)):
+        _agent_auth(request)
+        try:
+            uuid.UUID(run_id)
+        except ValueError:
+            raise HTTPException(422,"Invalid run identifier") from None
+        row=db.get(BusinessAgentRun,run_id)
+        if row is None:
+            raise HTTPException(404,"Research run not found")
+        return JSONResponse(_run_view(db,row),
+                            headers={"Cache-Control":"no-store, private"})
+
     @router.get("/api/business-agent/runs", dependencies=[Depends(require_actor)])
     def list_runs(db: Session = Depends(get_db)):
         runs = db.scalars(select(BusinessAgentRun).order_by(
