@@ -79,6 +79,7 @@ BUSINESS_MCP_ISSUER_URL=https://tfyfupxabojddixwjkat.supabase.co/auth/v1
 BUSINESS_MCP_JWKS_URL=https://tfyfupxabojddixwjkat.supabase.co/auth/v1/.well-known/jwks.json
 BUSINESS_MCP_ALLOWED_SUBJECTS=<approved-supabase-user-uuid>
 BUSINESS_MCP_ALLOWED_CLIENT_IDS=<approved-chatgpt-oauth-client-id>
+BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=false
 ```
 
 ### 写入权限（初始关闭）
@@ -105,7 +106,20 @@ BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS=
 
 `BUSINESS_AGENT_SHARING_APPROVED=true` 代表团队 Owner 已明确批准该 MCP 连接读取共享科研上下文。没有 Owner 批准时保持 false。
 
-## 5. MCP 工具与权限
+## 5. 首次 OAuth client 注册（仅在 DCR client ID 尚未知时）
+
+如果 ChatGPT 通过 Supabase Dynamic Client Registration 创建 OAuth client，而 client ID 尚未进入 Render allowlist，可使用一次性 fail-closed bootstrap：
+
+1. 先确认 Supabase consent 页面可访问，并且 Owner 已批准连接。
+2. 在 Render 临时设置 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=true`、`BUSINESS_MCP_ENABLED=true`、`BUSINESS_AGENT_SHARING_APPROVED=true)，将 `BUSINESS_MCP_ALLOWED_SUBJECTS` 限定为首位测试用户，并暂时留空 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`。
+3. 此模式只允许 MCP OAuth discovery / client registration 流程启动。由于服务端的 approved client 集合为空，`OAuthJwtVerifier` 会拒绝**所有**访问令牌，任何 MCP 工具都不能执行。
+4. 在 ChatGPT 发起 custom MCP 连接，让 Supabase 创建 OAuth client；在 consent 页面批准前暂停/拒绝本次授权，然后从 Supabase Dashboard → Authentication → OAuth Apps 读取准确的 client ID。
+5. 将该 client ID 写入 `BUSINESS_MCP_ALLOWED_CLIENT_IDS`，立即把 `BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED=false`，重新部署 Render。
+6. 重新发起 ChatGPT OAuth 授权，确认只有该 client 和 allowlist 中的 user subject 能读取数据。
+
+如果 ChatGPT 连接界面允许预先配置已注册 OAuth client，则优先使用预注册 client，不需要 bootstrap。**不得**把 bootstrap 长期打开，不得用 `*` 或其他通配符代替 allowlist。
+
+## 6. MCP 工具与权限
 
 | 工具 | 权限 | 作用 |
 |---|---|---|
@@ -123,7 +137,7 @@ BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS=
 
 当前生产引擎一次执行一条研究主线，最多分析 14 篇论文。5 个主题/80 篇论文/天是后续批量调度目标，不是当前 MCP 单次调用的能力承诺。
 
-## 6. ChatGPT Business 接入顺序
+## 7. ChatGPT Business 接入顺序
 
 只有 Business Workspace 的 Owner/Admin 可以创建和发布 custom MCP server connection。
 
@@ -140,7 +154,7 @@ BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS=
 
 Workspace Agent 创建、Skill 上传、工具绑定、团队分享和 Schedule 配置在 ChatGPT Agents Builder 内完成，代码仓库不能代替这些 UI 操作。
 
-## 7. 运行分支与部署纪律
+## 8. 运行分支与部署纪律
 
 Render 当前服务：
 
@@ -150,7 +164,7 @@ Render 当前服务：
 
 本轮开发从该运行分支建立独立 feature branch；CI 通过并审查后再合并到运行分支，然后手动部署。不要将严重分叉的 `main` 整体合并进当前服务。
 
-## 8. 连接验收与故障排查
+## 9. 连接验收与故障排查
 
 必须完成以下测试才可开放团队使用：
 
@@ -166,6 +180,6 @@ Render 当前服务：
 如果出现错误，先定位 OAuth 发现、PKCE consent、JWKS 验签、client/subject allowlist、工具 scope 或模型预算，不要通过关闭安全校验来“快速修复”。
 
 
-## 9. MCP 工具版本刷新
+## 10. MCP 工具版本刷新
 
 ChatGPT Workspace 使用已审核工具定义的冻结快照。服务器部署新工具后，ChatGPT 不会自动启用它们。Owner/Admin 必须进入 Workspace Settings → Apps/Plugins，刷新现有 custom MCP app 的工具列表，审查新动作并发布更新，然后在 Workspace Agent Builder 中确认工具已可用。不要删除并重建 app，除非刷新流程无法修复连接。
