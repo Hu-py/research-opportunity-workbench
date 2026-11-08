@@ -24,6 +24,7 @@ def _settings(monkeypatch):
     monkeypatch.delenv("BUSINESS_MCP_WRITE_ENABLED",raising=False)
     monkeypatch.delenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS",raising=False)
     monkeypatch.delenv("BUSINESS_MCP_EXECUTION_ENABLED",raising=False)
+    monkeypatch.delenv("BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED",raising=False)
 
 
 def test_disabled_without_owner_approval(monkeypatch):
@@ -63,6 +64,21 @@ def test_requires_https_same_supabase_issuer_and_explicit_allowlists(monkeypatch
     monkeypatch.setenv("BUSINESS_MCP_ALLOWED_EXECUTION_CLIENT_IDS","unknown-client")
     with pytest.raises(RuntimeError,match="Execution-allowed"):
         get_auth_config()
+
+
+
+def test_dcr_bootstrap_never_authorizes_unregistered_clients(monkeypatch):
+    _settings(monkeypatch)
+    monkeypatch.setenv("BUSINESS_MCP_ALLOWED_CLIENT_IDS","")
+    with pytest.raises(RuntimeError,match="Explicit approved"):
+        get_auth_config()
+
+    monkeypatch.setenv("BUSINESS_MCP_DCR_BOOTSTRAP_ENABLED","true")
+    config=get_auth_config()
+    assert config.allowed_clients==set()
+    verifier=_mocked_verifier(config)
+    with patch("jwt.decode",return_value=_claims()):
+        assert verifier._validate("opaque-test-token") is None
 
 
 def _claims(sub=SUBJECT,client=CLIENT):
