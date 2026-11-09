@@ -70,12 +70,14 @@ def test_crossref_doi_lookup_and_metadata_only():
         return httpx.Response(200, json={"message": {
             "DOI": "10.1234/abc", "title": ["Research Title"],
             "publisher": "Example Press", "type": "journal-article",
+            "author": [{"given":"Yao", "family":"Shen"}],
         }})
     with fake_http(response) as http:
         result = REGISTRY.invoke("crossref.lookup_doi",
              {"doi": "https://doi.org/10.1234/abc"},
              session=session(), client=http)
     assert result["data"]["title"] == "Research Title"
+    assert result["data"]["authors"] == ["Yao Shen"]
     assert result["evidence_level"] == "bibliographic_metadata"
 
 

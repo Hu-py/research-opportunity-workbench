@@ -1376,3 +1376,6 @@ from backend.research_evolution_api import mount as _mount_evolution_routes
 _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
                        require_actor=require_actor, require_editor=require_editor,
                        team_auth_enabled=team_auth_enabled)
+
+from backend.topic_advisor_api import mount as _mount_topic_advisor
+_mount_topic_advisor(app, get_factory, require_actor, require_editor)

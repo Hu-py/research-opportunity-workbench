@@ -1,0 +1,123 @@
+{
+  "date": "2026-11-07",
+  "http_attempts": 19,
+  "paid_retrieval_calls": 0,
+  "charged_retrieval_cny": 0,
+  "notes": "Reconstructed from retained command outputs and local response files; per-request wall times were not retained. Public metadata only was accepted before the authorized user PDF arrived. No search interpretations or target answer cards were used.",
+  "requests": [
+    {
+      "name": "crossref",
+      "url": "https://api.crossref.org/works/10.1016/j.cities.2022.103597",
+      "status": 200,
+      "outcome": "verified title, authors, DOI; no abstract"
+    },
+    {
+      "name": "openalex",
+      "url": "https://api.openalex.org/works/https://doi.org/10.1016/j.cities.2022.103597",
+      "status": 200,
+      "outcome": "closed; no abstract or OA location"
+    },
+    {
+      "name": "publisher",
+      "url": "https://www.sciencedirect.com/science/article/abs/pii/S0264275122000361",
+      "status": "ProxyError",
+      "outcome": "not acquired"
+    },
+    {
+      "name": "elsevier",
+      "url": "https://api.elsevier.com/content/article/doi/10.1016/j.cities.2022.103597?httpAccept=text/xml",
+      "status": "ProxyError",
+      "outcome": "not acquired"
+    },
+    {
+      "name": "ucl",
+      "url": "https://discovery.ucl.ac.uk/cgi/search/simple?q=Spatiotemporal+patterns+and+mechanisms+of+street+vending&_action_search=Search",
+      "status": 403,
+      "outcome": "not acquired"
+    },
+    {
+      "name": "s2",
+      "url": "https://api.semanticscholar.org/graph/v1/paper/DOI:10.1016/j.cities.2022.103597?fields=title,authors,abstract,openAccessPdf,url",
+      "status": 429,
+      "outcome": "no retry"
+    },
+    {
+      "name": "publisher2",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0264275122000361",
+      "status": "ProxyError",
+      "outcome": "proxy tunnel 403; not acquired"
+    },
+    {
+      "name": "crossreftransform",
+      "url": "https://api.crossref.org/works/10.1016/j.cities.2022.103597/transform/application/vnd.crossref.unixsd+xml",
+      "status": 200,
+      "outcome": "no abstract element"
+    },
+    {
+      "name": "uclapi",
+      "url": "https://discovery.ucl.ac.uk/cgi/search/archive/advanced/export_ucl_JSON.js?screen=Search&dataset=archive&title_merge=ALL&title=Spatiotemporal+patterns+and+mechanisms+of+street+vending&output=JSON",
+      "status": 403,
+      "outcome": "not acquired"
+    },
+    {
+      "name": "search",
+      "url": "https://www.google.com/search?q=%2210.1016%2Fj.cities.2022.103597%22",
+      "status": 200,
+      "outcome": "challenge; no evidence used"
+    },
+    {
+      "name": "europe",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:10.1016/j.cities.2022.103597&format=json",
+      "status": 200,
+      "outcome": "no matching source"
+    },
+    {
+      "name": "crossrefpage",
+      "url": "https://api.elsevier.com/content/abstract/doi/10.1016/j.cities.2022.103597?httpAccept=text/xml",
+      "status": "ProxyError",
+      "outcome": "not acquired"
+    },
+    {
+      "name": "bing",
+      "url": "https://www.bing.com/search?q=%22Spatiotemporal+patterns+and+mechanisms+of+street+vending%22",
+      "status": 200,
+      "outcome": "irrelevant results; not evidence"
+    },
+    {
+      "name": "cusp",
+      "url": "https://www.cusplab.org/",
+      "status": "ProxyError",
+      "outcome": "not acquired"
+    },
+    {
+      "name": "s2page",
+      "url": "https://www.semanticscholar.org/search?q=Spatiotemporal%20patterns%20and%20mechanisms%20of%20street%20vending&sort=relevance",
+      "status": 202,
+      "outcome": "empty body"
+    },
+    {
+      "name": "bingdoi",
+      "url": "https://www.bing.com/search?q=%22103597%22+%22vending%22",
+      "status": 200,
+      "outcome": "irrelevant results; not evidence"
+    },
+    {
+      "name": "bingauthor",
+      "url": "https://www.bing.com/search?q=%22street+vending%22+%22Shen%22+%222022%22",
+      "status": 200,
+      "outcome": "irrelevant results; not evidence"
+    },
+    {
+      "name": "repec",
+      "url": "https://ideas.repec.org/a/eee/cities/v124y2022ics0264275122000361.html",
+      "status": 404,
+      "outcome": "not acquired"
+    },
+    {
+      "name": "econpapers",
+      "url": "https://econpapers.repec.org/article/eeecities/v_3a124_3ay_3a2022_3ai_3ac_3as0264275122000361.htm",
+      "status": 404,
+      "outcome": "not acquired"
+    }
+  ]
+}

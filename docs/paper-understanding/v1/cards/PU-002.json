@@ -1,0 +1,41 @@
+{
+  "schema_version": "paper-understanding-v1",
+  "case_id": "PU-002",
+  "title": "伦敦就业可达性：从平均空间效率到职业阶层机会分配",
+  "citation": {
+    "authors": "Smith, Shen, Barros, Zhong, Batty & Giannotti",
+    "year": 2020,
+    "doi": "10.1016/j.jtrangeo.2020.102767",
+    "url": "https://discovery.ucl.ac.uk/id/eprint/10102429/"
+  },
+  "competency_tags": [
+    "distributional_question_reframing",
+    "accessibility_equity",
+    "causal_boundary"
+  ],
+  "reasoning_pattern": "Distributional Question Reframing",
+  "existing_knowledge": "城市中心区可能具有较高的潜在就业可达性，但群体居住选址与交通方式需求不同。",
+  "problem_origin": "城市整体可达性较高，并不保证不同职业群体能够平等到达就业机会。",
+  "question_before": "某地在给定交通时间内能到达多少工作岗位？",
+  "question_after": "不同职业群体、借助不同交通方式，在伦敦大都市区各自能到达多少就业机会？",
+  "reasoning_turn": "从空间机会总量转向机会收益的群体分配，并检验交通方式与居住结构的影响。",
+  "substantive_increment": "把职业阶层、交通方式与大都市区住房空间背景共同纳入可达性不平等的实证检验。",
+  "method_necessity": "需要职业群体分层、多交通方式、都市区尺度与住房信息；只用城市平均值或单一模式不足以回答分配问题。",
+  "evidence_boundary": "潜在机会可达性不是实际就业所得；以2011年截面关联不能证明绅士化导致的因果效应。",
+  "applicability_conditions": [
+    "总体指标可能掩盖重要且可界定的群体差异",
+    "有充分的群体与交通/住房数据",
+    "分配视角改变了研究的核心问题而非仅增加控制变量"
+  ],
+  "failure_pattern": "已有可达性模型加入职业分类就被直接标记为社会公平创新。",
+  "positive_transfer": "交通网络扩展后，应检验依赖公交/步行者实际可到达的机会是否同步改善。",
+  "counterfactual_test": "更换可达性算法后不平等问题是否仍重要？是否有证据把群体相关性升级为因果主张？",
+  "evidence_status": "reasoned_draft_pending_passage_audit",
+  "human_feedback": {
+    "status": "pending_case_specific_review",
+    "priority": null,
+    "scope": "assistant_proposed_teaching_focus"
+  },
+  "training_use": "development_exemplar_not_holdout",
+  "full_archive_path": "docs/paper-understanding/v1/cases/PU-002.md"
+}

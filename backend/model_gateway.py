@@ -24,7 +24,7 @@ def _error(exc):
         return "DeepSeek HTTP "+str(code)+"："+hints.get(code,"请求失败，请查看 DeepSeek 服务状态")
     return "模型返回或验证失败："+type(exc).__name__
 
-def request_json(api_key,model,system,payload,client=None,max_tokens=2000):
+def request_json(api_key,model,system,payload,client=None,max_tokens=2000,on_usage=None):
     """Return (strict JSON object, token usage), never a plain free-form answer."""
     if model not in ("deepseek-flash","deepseek-v4-pro"):
         raise ModelCallError("模型类型不在许可列表中")
@@ -43,6 +43,10 @@ def request_json(api_key,model,system,payload,client=None,max_tokens=2000):
                   "stream":False})
         response.raise_for_status()
         raw=response.json()
+        if on_usage is not None:
+            observed_usage = raw.get("usage") or {}
+            on_usage({"input_tokens": max(0, int(observed_usage.get("prompt_tokens") or 0)),
+                      "output_tokens": max(0, int(observed_usage.get("completion_tokens") or 0))})
         options=raw.get("choices") or []
         if not options:raise ModelCallError("DeepSeek 返回了空的模型结果")
         choice=options[0]
