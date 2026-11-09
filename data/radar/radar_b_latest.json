@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
   "feed_kind": "radar_b_public_method_evidence",
-  "retrieved_at_utc": "2026-11-08T16:41:39.434638+00:00",
-  "lookback_start": "2026-09-09",
+  "retrieved_at_utc": "2026-11-09T01:43:54.034695+00:00",
+  "lookback_start": "2026-09-10",
   "complete_publication_years": [
     2023,
     2024,
@@ -96,13 +96,13 @@
         "name": "TKDE",
         "status": "ok",
         "source_id": "S30698027",
-        "sample_count": 4
+        "sample_count": 3
       },
       {
         "name": "Artificial Intelligence",
         "status": "ok",
         "source_id": "S196139623",
-        "sample_count": 20
+        "sample_count": 19
       }
     ],
     "arxiv_groups": [
@@ -127,11 +127,11 @@
         "sample_count": 40
       }
     ],
-    "openalex_sampled": 56,
+    "openalex_sampled": 54,
     "arxiv_sampled": 110,
     "openalex_anonymous_fallback_endpoints": [],
-    "total_after_cross_source_dedup": 157,
-    "with_abstract_excerpt": 118,
+    "total_after_cross_source_dedup": 155,
+    "with_abstract_excerpt": 116,
     "with_pdf_link": 120,
     "with_code_link": 3
   },
@@ -4952,63 +4952,6 @@
       "abstract_available": true,
       "paper_url": "https://doi.org/10.1109/tkde.2026.3732941",
       "pdf_url": "https://arxiv.org/pdf/2609.29317",
-      "code_url": null,
-      "evidence_level": "metadata_with_abstract_excerpt",
-      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
-      "provenance": [
-        "openalex"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7211997711",
-      "arxiv_id": null,
-      "doi": "https://doi.org/10.1109/tkde.2026.3732475",
-      "title": "SWTD: A Sliding Window Index for Routing in Dynamic Time-Dependent Road Networks",
-      "publication_date": "2026-09-09",
-      "work_type": "article",
-      "authors": [
-        "Yehong Xu",
-        "Lei Li",
-        "Mengxuan Zhang",
-        "Xiaofang Zhou"
-      ],
-      "academic_source": "TKDE",
-      "source_kind": "openalex_venue",
-      "method_category": null,
-      "primary_topic_id": "T11106",
-      "primary_topic": "Data Management and Algorithms",
-      "abstract_excerpt": "The Time-Dependent Shortest Path (TDSP) problem aims to find the departure time with minimal travel time between locations in road networks with time-varying traffic conditions. This problem is fundamental to modern navigation systems, which use traffic prediction models to continuously update each road's travel time at different future times. However, finding TDSP in real-time based on these frequent prediction updates remains an unsolved problem. Existing methods either compute results from scratch (ensuring accuracy but sacrificing efficiency) or ignore updates (ensuring efficiency but sacrificing accuracy). To break this obstacle, we prop…",
-      "abstract_available": true,
-      "paper_url": "https://doi.org/10.1109/tkde.2026.3732475",
-      "pdf_url": null,
-      "code_url": null,
-      "evidence_level": "metadata_with_abstract_excerpt",
-      "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
-      "provenance": [
-        "openalex"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W4416410188",
-      "arxiv_id": null,
-      "doi": "https://doi.org/10.1016/j.artint.2026.104622",
-      "title": "Learning neuro-symbolic convergent term rewriting systems",
-      "publication_date": "2026-09-09",
-      "work_type": "article",
-      "authors": [
-        "Flavio Petruzzellis",
-        "Alberto Testolin",
-        "Alessandro Sperduti"
-      ],
-      "academic_source": "Artificial Intelligence",
-      "source_kind": "openalex_venue",
-      "method_category": null,
-      "primary_topic_id": "T10126",
-      "primary_topic": "Logic, programming, and type systems",
-      "abstract_excerpt": "Building neural systems that can learn to execute symbolic algorithms is a challenging open problem in artificial intelligence, especially when aiming for strong generalization and out-of-distribution performance. In this work, we introduce a general framework for learning convergent term rewriting systems using a neuro-symbolic architecture inspired by the rewriting algorithm itself. We present two modular implementations of such architecture: the Neural Rewriting System (NRS) and the Fast Neural Rewriting System (FastNRS). As a result of algorithmic-inspired design and key architectural elements, both models can generalize to out-of-distrib…",
-      "abstract_available": true,
-      "paper_url": "https://doi.org/10.1016/j.artint.2026.104622",
-      "pdf_url": null,
       "code_url": null,
       "evidence_level": "metadata_with_abstract_excerpt",
       "publication_status": "OpenAlex indexed; venue metadata not independently publisher-verified",
