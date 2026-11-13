@@ -1,0 +1,318 @@
+{
+  "schema_version": "1.0.0",
+  "reviewed_date": "2026-11-13",
+  "reviewed_commit": "2b5e2c8878b5e360c93b838a6e6d31432bddf943",
+  "note": "状态由人工审核；程序只核查路径、变更、Skill 和工作流清单。人工核验基准应在审查后更新。",
+  "capabilities": [
+    {
+      "id": "A1",
+      "name": "Agent A：应用与实践",
+      "reviewed_state": "未实现",
+      "evidence_paths": [
+        "config/agent_profiles/application.json"
+      ]
+    },
+    {
+      "id": "A2",
+      "name": "Agent B：前沿与问题重构",
+      "reviewed_state": "未实现",
+      "evidence_paths": [
+        "config/agent_profiles/frontier.json"
+      ]
+    },
+    {
+      "id": "A3",
+      "name": "Agent C：技术与方法",
+      "reviewed_state": "未实现",
+      "evidence_paths": [
+        "config/agent_profiles/methodology.json"
+      ]
+    },
+    {
+      "id": "E1",
+      "name": "通用 GPT Research Agent",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/agent.py"
+      ]
+    },
+    {
+      "id": "E2",
+      "name": "DeepSeek AI 选题分析工作流",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/ai_lab.py"
+      ]
+    },
+    {
+      "id": "E3",
+      "name": "自主调用学术工具的科学探索",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/scientific_agent.py"
+      ]
+    },
+    {
+      "id": "E4",
+      "name": "多 Agent 博弈与研究演化",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/scientific_tournament.py",
+        "backend/research_evolution_runner.py"
+      ]
+    },
+    {
+      "id": "D1",
+      "name": "OpenAlex Radar A 定时数据采集",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        ".github/workflows/openalex-radar-weekly.yml"
+      ]
+    },
+    {
+      "id": "D2",
+      "name": "Radar B AI/CS 方法采集",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        ".github/workflows/radar-b-collector.yml"
+      ]
+    },
+    {
+      "id": "D3",
+      "name": "学术来源库与期刊会议管理",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/research_sources.py",
+        "frontend/components/AcademicSourceRegistry.tsx"
+      ]
+    },
+    {
+      "id": "D4",
+      "name": "团队作者自动监测",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "backend/repository.py"
+      ]
+    },
+    {
+      "id": "D5",
+      "name": "LLM 语义检索规划",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "backend/llm_discovery.py",
+        "backend/discovery_runner.py"
+      ]
+    },
+    {
+      "id": "D6",
+      "name": "多轮检索覆盖缺口迭代",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "backend/discovery_runner.py",
+        "backend/scientific_agent.py"
+      ]
+    },
+    {
+      "id": "D7",
+      "name": "引用网络与跨学科检索工具",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "backend/scientific_tools.py"
+      ]
+    },
+    {
+      "id": "P1",
+      "name": "论文元数据及 DOI 去重",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "research_workbench/core.py"
+      ]
+    },
+    {
+      "id": "P2",
+      "name": "候选论文人工审核",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/discovery.py"
+      ]
+    },
+    {
+      "id": "P3",
+      "name": "语义相关性及方法迁移评价",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/llm_discovery.py"
+      ]
+    },
+    {
+      "id": "P4",
+      "name": "全文阅读及逐段证据定位",
+      "reviewed_state": "未实现",
+      "evidence_paths": [
+        "backend/fulltext_reader.py"
+      ]
+    },
+    {
+      "id": "K1",
+      "name": "任务级一级主题与子类分类",
+      "reviewed_state": "未实现",
+      "evidence_paths": [
+        "backend/topic_taxonomy.py"
+      ]
+    },
+    {
+      "id": "K2",
+      "name": "议题方法场景知识结构化",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "backend/ai_lab.py",
+        "skills/method_transfer/SKILL.md"
+      ]
+    },
+    {
+      "id": "K3",
+      "name": "论文与结论的证据关联",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "backend/scientific_agent.py",
+        "research_workbench/core.py"
+      ]
+    },
+    {
+      "id": "K4",
+      "name": "跨论文方法输入输出关系",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "skills/method_transfer/SKILL.md"
+      ]
+    },
+    {
+      "id": "R1",
+      "name": "版本化选题及 Markdown 周报",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/radar_pipeline.py",
+        "research_workbench/core.py"
+      ]
+    },
+    {
+      "id": "R2",
+      "name": "层级 Research Brief 与折叠文献",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "frontend/components/ResearchRadar.tsx"
+      ]
+    },
+    {
+      "id": "U1",
+      "name": "团队正式画像和修订历史",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/team.py",
+        "backend/profile_intelligence.py"
+      ]
+    },
+    {
+      "id": "U2",
+      "name": "研究兴趣清单",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/interests.py"
+      ]
+    },
+    {
+      "id": "U3",
+      "name": "个人私有研究画像",
+      "reviewed_state": "未实现",
+      "evidence_paths": [
+        "backend/personal_profiles.py"
+      ]
+    },
+    {
+      "id": "U4",
+      "name": "本次自由主题与任务限定",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "backend/tasks.py",
+        "backend/discovery_runner.py"
+      ]
+    },
+    {
+      "id": "O1",
+      "name": "GitHub CI",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "id": "O2",
+      "name": "数据库周报定时调度",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        ".github/workflows/daily.yml",
+        ".github/workflows/weekly.yml"
+      ]
+    },
+    {
+      "id": "O3",
+      "name": "Vercel Cron 入口",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "frontend/vercel.json",
+        "frontend/app/api/cron/weekly-research/route.ts"
+      ]
+    },
+    {
+      "id": "O4",
+      "name": "团队账号权限与审计",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/team.py"
+      ]
+    },
+    {
+      "id": "O5",
+      "name": "任务阶段记录与追踪",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "backend/tasks.py"
+      ]
+    },
+    {
+      "id": "O6",
+      "name": "独立开发追踪面板",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        "dev-tracker/app.js",
+        "dev-tracker/roadmap.json"
+      ]
+    },
+    {
+      "id": "Q1",
+      "name": "自动化单测和前端构建",
+      "reviewed_state": "已实现",
+      "evidence_paths": [
+        ".github/workflows/ci.yml",
+        "tests/test_api_agent.py"
+      ]
+    },
+    {
+      "id": "Q2",
+      "name": "论文发现科研质量基准",
+      "reviewed_state": "未实现",
+      "evidence_paths": [
+        "tests/test_literature_quality.py"
+      ]
+    },
+    {
+      "id": "O7",
+      "name": "Agent Maintenance Map 自动更新",
+      "reviewed_state": "部分实现",
+      "evidence_paths": [
+        "scripts/update_agent_maintenance_map.py",
+        ".github/workflows/agent-maintenance-map.yml"
+      ]
+    }
+  ]
+}
