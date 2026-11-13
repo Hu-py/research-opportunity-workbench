@@ -23,8 +23,6 @@ def git(root: Path, *args: str) -> str:
 
 def render(root: Path, data: dict) -> str:
     base = data["reviewed_commit"]
-    head = git(root, "rev-parse", "HEAD")
-    timestamp = git(root, "show", "-s", "--format=%cI", "HEAD")
     files = set(git(root, "ls-files").splitlines())
     changes = set(git(root, "diff", "--name-only", base + "..HEAD", "--").splitlines())
     capabilities = data["capabilities"]
