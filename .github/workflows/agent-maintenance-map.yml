@@ -1,0 +1,59 @@
+name: Agent Maintenance Map auto-update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'skills/**'
+      - 'scripts/**'
+      - 'config/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+      - 'pyproject.toml'
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: agent-maintenance-map
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Regenerate evidence-backed map
+        run: |
+          python -m py_compile scripts/update_agent_maintenance_map.py
+          python scripts/update_agent_maintenance_map.py
+          python scripts/update_agent_maintenance_map.py --check
+      - name: Propose map change for review
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: docs/AGENT_MAINTENANCE_MAP.md
+          branch: docs/auto-agent-maintenance-map
+          delete-branch: true
+          commit-message: 'docs(agent-map): refresh capability evidence'
+          title: 'docs(agent-map): refresh capability inventory'
+          body: |
+            Automatically generated source-path and change audit.
+
+            - Evidence presence and source changes are checked automatically.
+            - Reviewed capability states are **never** auto-promoted by this job.
+            - Please review any "需人工复核" rows and compare test/run evidence before manually editing the manifest.
+          labels: documentation
