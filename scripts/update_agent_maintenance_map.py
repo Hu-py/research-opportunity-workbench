@@ -69,7 +69,6 @@ def render(root: Path, data: dict) -> str:
     lines = [
         "# Agent Maintenance Map｜Research Atlas（自动维护）",
         "",
-        "> 代码快照：[`{}`]({}/commit/{}) · {}".format(head[:12], BASE_URL, head, timestamp),
         "> 人工核验基准：{}，提交 `{}`。".format(data["reviewed_date"], base[:12]),
         "> **自动更新的是文件存在性和变更提醒，不是能力已完成的科研判断。**",
         "",
