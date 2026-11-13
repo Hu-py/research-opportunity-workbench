@@ -51,8 +51,8 @@ def render(root: Path, data: dict) -> str:
         if uncertain:
             flagged.append((entry["id"], entry["name"], touched))
         references = "、".join(
-            "[\`{}\`]({}/blob/main/{})".format(p, BASE_URL, p) if p in files
-            else "\`{}\`（不存在）".format(p)
+            "[`{}`]({}/blob/main/{})".format(p, BASE_URL, p) if p in files
+            else "`{}`（不存在）".format(p)
             for p in paths
         ) or "—"
         rows.append("| {} | {} | {} | {} | {} | {} |".format(
@@ -69,8 +69,8 @@ def render(root: Path, data: dict) -> str:
     lines = [
         "# Agent Maintenance Map｜Research Atlas（自动维护）",
         "",
-        "> 代码快照：[\`{}\`]({}/commit/{}) · {}".format(head[:12], BASE_URL, head, timestamp),
-        "> 人工核验基准：{}，提交 \`{}\`。".format(data["reviewed_date"], base[:12]),
+        "> 代码快照：[`{}`]({}/commit/{}) · {}".format(head[:12], BASE_URL, head, timestamp),
+        "> 人工核验基准：{}，提交 `{}`。".format(data["reviewed_date"], base[:12]),
         "> **自动更新的是文件存在性和变更提醒，不是能力已完成的科研判断。**",
         "",
         "## 状态概览",
@@ -91,20 +91,20 @@ def render(root: Path, data: dict) -> str:
     ]
     if flagged:
         for ident, name, touched in flagged:
-            reason = "、".join("\`{}\`".format(x) for x in touched) if touched else "代码路径与已审核结论不一致"
+            reason = "、".join("`{}`".format(x) for x in touched) if touched else "代码路径与已审核结论不一致"
             lines.append("- **{} {}**：{}".format(ident, name, reason))
     else:
         lines.append("- 暂无被映射能力的变更。")
 
     lines += ["", "### 尚未映射的相关改动", ""]
-    lines += ["- \`{}\`".format(x) for x in changed_other[:50]] or ["- 暂无。"]
+    lines += ["- `{}`".format(x) for x in changed_other[:50]] or ["- 暂无。"]
     if len(changed_other) > 50:
         lines.append("- 另有 {} 项未展示。".format(len(changed_other)-50))
     lines += [
         "", "## 当前 Skills 与工作流", "",
-        "**Skills**：{}".format("、".join("\`{}\`".format(x.split("/")[1]) for x in skills) or "暂无"),
+        "**Skills**：{}".format("、".join("`{}`".format(x.split("/")[1]) for x in skills) or "暂无"),
         "",
-        "**工作流**：{}".format("、".join("\`{}\`".format(x.rsplit("/", 1)[-1]) for x in workflows) or "暂无"),
+        "**工作流**：{}".format("、".join("`{}`".format(x.rsplit("/", 1)[-1]) for x in workflows) or "暂无"),
         "",
         "## 当前建设优先级",
         "",
@@ -115,9 +115,9 @@ def render(root: Path, data: dict) -> str:
         "",
         "## 维护规则",
         "",
-        "1. 提交或合并代码至 \`main\` 后，GitHub Actions 自动生成本文件。",
+        "1. 提交或合并代码至 `main` 后，GitHub Actions 自动生成本文件。",
         "2. 自动检测只标记源代码路径和变动；**不自动把部分实现升级为已实现**。",
-        "3. 审核者应在 Pull Request 中修改 \`config/agent_maintenance_capabilities.json\` 的人工状态、证据路径、核验日期及基准提交。",
+        "3. 审核者应在 Pull Request 中修改 `config/agent_maintenance_capabilities.json` 的人工状态、证据路径、核验日期及基准提交。",
         "4. 运行是否成功以具体 GitHub Actions run 和真实科研评测为准，不以文件存在代替验证。",
         "5. 代码变更通过 GitHub PR/commit 追溯，开发计划仍以 [dev-tracker]({}/tree/main/dev-tracker) 追踪。".format(BASE_URL),
         "",
