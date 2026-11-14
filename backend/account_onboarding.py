@@ -51,6 +51,7 @@ class EnrollmentTicket(Base):
     created_at: Mapped[int] = mapped_column(Integer)
     expires_at: Mapped[int] = mapped_column(Integer)
     used_at: Mapped[int] = mapped_column(Integer, default=0)
+    revoked_at: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class EmailRequest(BaseModel):
@@ -167,10 +168,10 @@ def _singleton(db: Session) -> OwnerClaim:
     return claim
 
 
-def mount(app, *, get_db, require_actor, require_admin, team_auth_enabled):
+def mount(app, *, get_db, authenticate, require_actor, require_admin, team_auth_enabled):
     router = APIRouter()
 
-    @router.post("/api/account/owner/request", status_code=202)
+    @router.post("/api/account/owner/request", status_code=202, dependencies=[Depends(authenticate)])
     def owner_request(data: EmailRequest, db: Session = Depends(get_db)):
         # Server-side API_BEARER_TOKEN remains enforced at the Next proxy.
         if not team_auth_enabled() or os.getenv(OWNER_FLAG_ENV, "").lower() not in ("1", "true", "yes"):
@@ -191,7 +192,7 @@ def mount(app, *, get_db, require_actor, require_admin, team_auth_enabled):
             _issue(db, "owner", wanted, "Research Atlas Owner", "owner")
         return {"ok": True, "message": "如果邮箱匹配预设 Owner，验证邮件将发送至该邮箱"}
 
-    @router.post("/api/account/reset/request", status_code=202)
+    @router.post("/api/account/reset/request", status_code=202, dependencies=[Depends(authenticate)])
     def reset_request(data: EmailRequest, db: Session = Depends(get_db)):
         if not team_auth_enabled():
             raise HTTPException(404, "Team auth disabled")
@@ -206,7 +207,7 @@ def mount(app, *, get_db, require_actor, require_admin, team_auth_enabled):
             _issue(db, "reset", email, member.name, member.role, member.id)
         return {"ok": True, "message": "如果账号存在，将发送重置密码邮件"}
 
-    @router.post("/api/account/setup/redeem")
+    @router.post("/api/account/setup/redeem", dependencies=[Depends(authenticate)])
     def redeem(data: RedeemRequest, db: Session = Depends(get_db)):
         if not team_auth_enabled():
             raise HTTPException(404, "Team auth disabled")
@@ -216,7 +217,7 @@ def mount(app, *, get_db, require_actor, require_admin, team_auth_enabled):
             .with_for_update()
         ).scalar_one_or_none()
         now = int(time.time())
-        if ticket is None or ticket.used_at or ticket.expires_at <= now:
+        if ticket is None or ticket.used_at or ticket.revoked_at or ticket.expires_at <= now:
             raise HTTPException(410, "链接无效或已过期")
         if ticket.kind == "owner":
             claim = db.execute(select(OwnerClaim).where(OwnerClaim.id == 1).with_for_update()).scalar_one_or_none()
@@ -283,7 +284,7 @@ def mount(app, *, get_db, require_actor, require_admin, team_auth_enabled):
             "email": x.email,
             "name": x.name,
             "role": x.role,
-            "status": "used" if x.used_at else ("expired" if x.expires_at <= int(time.time()) else "pending"),
+            "status": "revoked" if x.revoked_at else ("used" if x.used_at else ("expired" if x.expires_at <= int(time.time()) else "pending")),
             "expires_at": x.expires_at,
         } for x in tickets]}
 
@@ -302,5 +303,27 @@ def mount(app, *, get_db, require_actor, require_admin, team_auth_enabled):
             raise HTTPException(409, "账号已经存在")
         sent = _issue(db, "invite", email, data.name, data.role, actor.id)
         return {"ok": True, "sent": sent, "message": "邀请邮件已发送" if sent else "最近已发送邀请，请稍后再试"}
+
+    @router.post("/api/team/invitations/{ticket_id}/revoke")
+    def revoke_invitation(ticket_id: str, actor: TeamMember = Depends(require_admin),
+                          db: Session = Depends(get_db)):
+        if len(ticket_id) != 12 or any(c not in "0123456789abcdef" for c in ticket_id):
+            raise HTTPException(404, "邀请不存在")
+        item = db.scalar(
+            select(EnrollmentTicket).where(
+                EnrollmentTicket.kind == "invite",
+                EnrollmentTicket.token_sha256.like(ticket_id + "%")
+            ).with_for_update()
+        )
+        if item is None:
+            raise HTTPException(404, "邀请不存在")
+        if actor.role != "owner" and item.issued_by != actor.id:
+            raise HTTPException(403, "只能撤销本人发出的邀请")
+        if item.used_at or item.revoked_at:
+            raise HTTPException(409, "邀请已经结束")
+        item.revoked_at = int(time.time())
+        add_audit(db, "member.invitation.revoked", actor.id, item.email)
+        db.commit()
+        return {"ok": True}
 
     app.include_router(router)
