@@ -329,70 +329,69 @@ export default function Workbench(){
     </div>
   </div>;
 
-  const primary=primarySection(section);
-  const currentModule=moduleTabs[primary];
-  const primaryLabel=navigationGroups.flatMap(group=>group.items)
-    .find(item=>item.key===primary)?.label||(primary==="settings"?"系统管理":"科研总览");
-  const sectionLabel=currentModule?.items.find(tab=>tab.key===section)?.label||primaryLabel;
-  return <div className="shell">
-    {mobileOpen&&<div className="mobile-scrim" onClick={()=>setMobileOpen(false)}/>}
-    <aside className={"sidebar "+(mobileOpen?"sidebar-open":"")}>
-      <div className="brand"><div className="brand-mark"><BrainCircuit size={22}/></div>
-        <div><strong>Research Atlas</strong><span>INTELLIGENCE WORKSPACE</span></div>
-        <button className="close-mobile" onClick={()=>setMobileOpen(false)} aria-label="关闭导航"><X size={20}/></button>
-      </div>
-      <nav className="sidebar-nav" aria-label="科研工作台主导航">
-        {navigationGroups.map(group=><div className="nav-group" key={group.label}>
-          <div className="nav-group-title">{group.label}</div>
-          {group.items.map(item=><button type="button"
-            aria-current={primary===item.key?"page":undefined}
-            className={"nav-item "+(primary===item.key?"nav-active":"")}
-            key={item.key} onClick={()=>changeSection(item.key)}>
-            <item.icon size={18} strokeWidth={1.8}/><span>{item.label}</span>
-            {primary===item.key&&<div className="nav-dot"/>}
-          </button>)}
-        </div>)}
+  const inChat=section==="chat";
+  const researchGroup=researchGroups.find(group=>group.items.some(item=>item.key===section));
+  const sectionLabel=sectionNames[section]||"研究台";
+  const historyTasks=tasks.filter(t=>t.kind==="explore"&&(t.query||"").toLowerCase().includes(conversationSearch.trim().toLowerCase()));
+  const chatTask=selectedTask?.kind==="explore"?selectedTask:null;
+  const researchLines=profile?.research_lines||[];
+  const currentLine=researchLines.find(line=>line.id===selectedResearchLine);
+  return <div className="shell atlas-v05">
+    {mobileOpen&&<button type="button" className="atlas-mobile-scrim" aria-label="关闭侧栏" onClick={()=>setMobileOpen(false)}/>}
+    <aside className="atlas-rail" aria-label="一级工作区">
+      <div className="atlas-rail-brand" title="Research Atlas">RA</div>
+      <nav className="atlas-rail-nav">
+        <button type="button" aria-label="对话" title="对话" aria-current={inChat?"page":undefined}
+          className={"atlas-rail-item "+(inChat?"is-active":"")} onClick={()=>changeSection("chat")}><MessageCircle size={21}/></button>
+        <button type="button" aria-label="研究台" title="研究台" aria-current={!inChat?"page":undefined}
+          className={"atlas-rail-item "+(!inChat?"is-active":"")} onClick={()=>changeSection(lastResearchSection)}><Layers3 size={21}/></button>
       </nav>
-      <div className="sidebar-bottom">
-        <div className="nav-group-title">管理</div>
-        <button type="button" aria-current={section==="settings"?"page":undefined}
-          className={"nav-item sidebar-settings "+(section==="settings"?"nav-active":"")}
-          onClick={()=>changeSection("settings")}>
-          <Settings2 size={18} strokeWidth={1.8}/><span>系统管理</span>
-          {section==="settings"&&<div className="nav-dot"/>}
-        </button>
-        <div className="status-panel"><span className="online-dot"/> <span>Research Agent</span>
-          <small>服务状态取决于后端配置</small></div>
-        <button className="account" onClick={()=>void logout()}><span className="avatar">R</span>
-          <span>{member?.name||"团队共享科研空间"}<small>{member?member.role+" · 退出登录":"退出登录"}</small></span><LogOut size={16}/></button>
-      </div>
+      <div className="atlas-rail-spacer"/>
+      <button type="button" className="atlas-rail-item" title="退出登录" aria-label="退出登录" onClick={()=>void logout()}><LogOut size={19}/></button>
+      <div className="atlas-rail-account" title={member?.name||"Research Atlas"}><UserRound size={17}/></div>
     </aside>
-    <main className="main">
-      <header className="topbar">
-        <button className="menu-mobile" onClick={()=>setMobileOpen(true)} aria-label="打开导航"><Menu size={20}/></button>
-        <div className="breadcrumb">WORKSPACE <span>/</span> {primaryLabel}{sectionLabel!==primaryLabel&&<><span>/</span> {sectionLabel}</>}</div>
-        <div className="top-actions">
-          <span className="top-badge"><span className="online-dot"/> 研究数据实时关联</span>
-          <IconBtn className="icon-only" onClick={()=>void load()} disabled={loading} >
-            {loading?<Spinner/>:<RefreshCw size={17}/>}
-          </IconBtn>
+    <aside className={"atlas-context "+(mobileOpen?"atlas-context-open":"")} aria-label={inChat?"科研对话历史":"研究台子模块"}>
+      <div className="atlas-context-heading">
+        <div><span className="atlas-kicker">RESEARCH ATLAS</span><h2>{inChat?"对话":"研究台"}</h2></div>
+        <button type="button" className="atlas-close-mobile" onClick={()=>setMobileOpen(false)} aria-label="关闭侧栏"><X size={18}/></button>
+      </div>
+      {inChat?<div className="atlas-context-body">
+        <button className="atlas-new-conversation" type="button" onClick={()=>{setSelectedTaskId("");setQuestion("");changeSection("chat");}}><Plus size={16}/> 新建科研任务</button>
+        <label className="atlas-context-search"><Search size={15}/><input value={conversationSearch} onChange={e=>setConversationSearch(e.target.value)} placeholder="搜索历史任务" aria-label="搜索历史任务"/></label>
+        <div className="atlas-sidebar-label">研究任务记录</div>
+        {historyTasks.length===0?<p className="atlas-sidebar-empty">尚无与关键词匹配的研究任务。</p>:
+          historyTasks.map(task=><button type="button" key={task.id} className={"atlas-side-link atlas-task-link "+(selectedTaskId===task.id?"is-current":"")}
+            onClick={()=>{setSelectedTaskId(task.id);changeSection("chat");}}>
+            <FileText size={15}/><span>{task.query?.trim()||"未命名探索任务"}<small>{dateLabel(task.created_at)} · {task.status}</small></span>
+          </button>)}
+        <div className="atlas-sidebar-label">共享会话</div>
+        <p className="atlas-sidebar-empty">团队共同聊天与多轮上下文仍需后端支持。当前任务历史不是共享聊天。</p>
+      </div>:<nav className="atlas-context-body" aria-label="研究台二级导航">
+        {researchGroups.map(group=><div className="atlas-nav-group" key={group.label}>
+          <div className="atlas-nav-group-title"><group.icon size={17}/><strong>{group.label}</strong></div>
+          {group.items.map(item=><button type="button" className={"atlas-side-link "+(section===item.key?"is-current":"")}
+            key={item.key} aria-current={section===item.key?"page":undefined} onClick={()=>changeSection(item.key)}>{item.label}</button>)}
+        </div>)}
+      </nav>}
+      <div className="atlas-context-foot">{inChat?"Research Agent · 真实任务记录":"Research Desk · 工作区"}<span>{teamMode?"团队模式":"单用户模式"}</span></div>
+    </aside>
+    <main className="main atlas-main">
+      <header className="topbar atlas-topbar">
+        <div className="atlas-header-left">
+          <button type="button" className="atlas-mobile-menu" onClick={()=>setMobileOpen(true)} aria-label="打开侧栏"><Menu size={19}/></button>
+          <div className="atlas-breadcrumb"><span>{inChat?"对话":"研究台"}</span>{!inChat&&<><ChevronDown size={13}/><strong>{researchGroup?.label||"数据概览"}</strong></>}{!inChat&&sectionLabel!==researchGroup?.label&&<><ChevronDown size={13}/><span>{sectionLabel}</span></>}</div>
+        </div>
+        <div className="atlas-header-tools">
+          <span className="atlas-session-label">{member?.name||"研究空间"}</span>
+          <button type="button" className="atlas-refresh" onClick={()=>void load()} disabled={loading} aria-label="刷新当前数据" title="刷新数据">{loading?<Spinner/>:<RefreshCw size={17}/>}</button>
         </div>
       </header>
-      <div className="content">
-        {currentModule&&<div className="module-switcher" aria-label={currentModule.title+"子页面"}>
-          <div className="module-switcher-heading">
-            <span className="module-eyebrow">WORKSPACE MODULE</span>
-            <strong>{currentModule.title}</strong>
-          </div>
-          <nav className="module-tabs" aria-label={currentModule.title}>
-            {currentModule.items.map(tab=><button type="button" key={tab.key}
-              aria-current={section===tab.key?"page":undefined}
-              className={"module-tab "+(section===tab.key?"module-tab-active":"")}
-              onClick={()=>changeSection(tab.key)}>{tab.label}</button>)}
-          </nav>
-        </div>}
-        {error&&<div className="alert alert-error"><span>{error}</span><button onClick={()=>setError("")}><X size={15}/></button></div>}
-        {notice&&<div className="alert alert-success"><CheckCircle2 size={16}/><span>{notice}</span><button onClick={()=>setNotice("")}><X size={15}/></button></div>}
+      <div className={"content "+(inChat?"atlas-chat-content":"atlas-research-content")}>
+        {error&&<div className="alert alert-error" role="alert"><span>{error}</span><button type="button" onClick={()=>setError("")}><X size={15}/></button></div>}
+        {notice&&<div className="alert alert-success"><CheckCircle2 size={16}/><span>{notice}</span><button type="button" onClick={()=>setNotice("")}><X size={15}/></button></div>}
+        {section==="chat"&&<AtlasConversation task={chatTask} question={question} onQuestionChange={setQuestion}
+          onSubmit={()=>void submit("explore",question)} onOpenLegacy={()=>changeSection("agent")}
+          busy={busy} canEdit={canEdit} onRetry={t=>void dispatchExistingTask(t)}/>}
 
         {section==="interest"&&<InterestWatchlist canEdit={canEdit}/>}
         {section==="overview"&&<>
