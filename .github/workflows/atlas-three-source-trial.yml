@@ -1,0 +1,79 @@
+name: Research Atlas three-source collector trial
+
+on:
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: OpenAlex recent publication window in days
+        required: false
+        default: '30'
+      max_per_source:
+        description: Maximum paper records from each venue
+        required: false
+        default: '10'
+      max_sources_per_group:
+        description: Venue cap for cost-controlled A/B/C smoke test
+        required: false
+        default: '2'
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    name: Collect A B C public evidence for review
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install collector
+        run: python -m pip install -e .
+      - name: Require OpenAlex API credential
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        run: |
+          if [ -z "${OPENALEX_API_KEY:-}" ]; then
+            echo 'Configure OPENALEX_API_KEY Actions secret; no fallback to fake data.' >&2
+            exit 1
+          fi
+      - name: Collect three independent sources
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days }}
+          MAX_PER_SOURCE: ${{ inputs.max_per_source }}
+          SOURCE_CAP: ${{ inputs.max_sources_per_group }}
+        run: |
+          python scripts/atlas_collect.py \
+            --lookback-days "$LOOKBACK_DAYS" \
+            --max-per-source "$MAX_PER_SOURCE" \
+            --max-sources-per-group "$SOURCE_CAP" \
+            --out scratch/atlas-public-trial.json
+      - name: Validate bounded public sample and disclose coverage
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('scratch/atlas-public-trial.json').read_text(encoding='utf-8'))
+          assert p['feed_kind']=='atlas_three_source_public_evidence'
+          assert set(p['coverage']['group_distinct_papers'])=={'planning_application','urban_science','computational_methods'}
+          assert len({x['paper_id'] for x in p['papers']})==len(p['papers'])
+          assert p['status'] in {'complete','partial'}
+          print('COLLECTION_STATUS',p['status'])
+          print('GROUP_SAMPLE_COUNTS',p['coverage']['group_distinct_papers'])
+          print('FAILURE_DETAILS',[(g,len(d['failed_sources'])) for g,d in p['coverage']['source_groups'].items()])
+          if not p['papers']:
+              raise SystemExit('No research papers collected; check coverage errors before interpreting')
+          PY
+      - name: Preserve review-only feed (no publication)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-three-source-public-trial
+          path: scratch/atlas-public-trial.json
+          if-no-files-found: warn
+          retention-days: 7
+
+# This workflow does not update the repository, database, or published weekly reports.
