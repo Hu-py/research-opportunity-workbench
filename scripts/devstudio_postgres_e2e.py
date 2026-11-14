@@ -50,6 +50,17 @@ def main() -> int:
         actual_schema = session.execute(text("SELECT current_schema()")).scalar_one()
         if actual_schema != SCHEMA:
             raise RuntimeError("Refusing test: PostgreSQL search_path is not isolated")
+        # A browser E2E fixture exists only in the dedicated test schema.
+        browser_email = os.getenv("DEVSTUDIO_BROWSER_TEST_EMAIL", "").strip()
+        browser_password = os.getenv("DEVSTUDIO_BROWSER_TEST_PASSWORD", "")
+        if browser_email and browser_password:
+            from sqlalchemy import select
+            from backend.team import TeamMember
+            if not session.scalar(select(TeamMember.id).where(TeamMember.email == browser_email)):
+                if session.execute(text("SELECT count(*) FROM team_members")).scalar_one() < 1:
+                    raise RuntimeError("Refusing browser fixture: initial team not provisioned")
+                create_member(session, browser_email, "Preview E2E Administrator",
+                              browser_password, role="admin", initial=False)
         # On Render instance restarts, never create another initial team.
         # Validate the previously committed E2E row instead of mutating it.
         persisted = session.execute(text(
