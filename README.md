@@ -22,7 +22,7 @@ and verified achievements. Editors can add/pause topics or test an OpenAlex
 scan. The existing weekly CLI / GitHub Actions workflow now includes enabled
 interests, grouped separately in Markdown reports. To actually schedule weekly
 runs, the GitHub Action must be enabled and a persistent database configured.
-See [development studio and acceptance checklist](docs/DEVELOPMENT_STUDIO.md).
+See [development studio and acceptance checklist](docs/09-operations/DEVELOPMENT_STUDIO.md).
 
 ## What is implemented (v0.3 team development)
 
@@ -42,7 +42,7 @@ See [development studio and acceptance checklist](docs/DEVELOPMENT_STUDIO.md).
 
 This feature is **opt-in** with \`TEAM_AUTH_ENABLED=true\` on both Vercel and FastAPI; the existing personal prototype remains the compatibility default until a database and first administrator are configured. Do **not** enable team mode on Vercel before the persistent PostgreSQL backend is ready.
 
-Read [Team setup / migration / roles](docs/TEAM_SETUP.md) and use [Example team profile JSON](examples/team-profile.example.json). Existing papers/ideas and profile JSON are preserved; never commit actual confidential research data or passwords.
+Read [Team setup / migration / roles](docs/08-governance/TEAM_SETUP.md) and use [Example team profile JSON](examples/team-profile.example.json). Existing papers/ideas and profile JSON are preserved; never commit actual confidential research data or passwords.
 
 ## Start the full stack locally
 
@@ -84,7 +84,10 @@ Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAP
 
 ## Architecture and tests
 
-- [Architecture, API and data/agent boundaries](docs/ARCHITECTURE.md)
+- [Documentation catalog / 文档分类索引](docs/README.md)
+
+
+- [Architecture, API and data/agent boundaries](docs/04-architecture/ARCHITECTURE.md)
 - \`python -m pytest -q\`
 - \`cd frontend && npm run typecheck && npm run build\`
 - API docs in local development: \`http://localhost:8000/docs\`
@@ -101,4 +104,4 @@ a protected, interactive replay of saved Research Agent Lab competitions,
 including dual-judge debates, Elo changes, scientific verification, paper
 screening and hypothesis family trees.
 
-[Configure secure server-only Supabase access and view limitations](docs/research-agent-game-replay.md).
+[Configure secure server-only Supabase access and view limitations](docs/03-ai/research-agent-game-replay.md).
