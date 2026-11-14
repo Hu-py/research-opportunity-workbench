@@ -19,7 +19,7 @@ from sqlalchemy import DateTime, String, Text, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
-from backend.devstudio import DevRunRef, DevEvaluation
+from backend.devstudio import DevRunRef
 
 REPO = "Hu-py/research-opportunity-workbench"
 REPO_URL = "https://github.com/" + REPO
@@ -158,18 +158,19 @@ def ingest(db: Session, event: str, data: Mapping[str, Any], delivery: str, dige
     updated = 0
     for obj in activities:
         row = db.get(DevGithubActivity, obj["event_key"])
+        stale = bool(row is not None and row.source_updated_at and obj["source_updated_at"]
+                     and obj["source_updated_at"] < row.source_updated_at)
         if row is None:
             db.add(DevGithubActivity(**obj))
             updated += 1
-        elif not (row.source_updated_at and obj["source_updated_at"]
-                  and obj["source_updated_at"] < row.source_updated_at):
+        elif not stale:
             for key, value in obj.items():
                 if key != "event_key":
                     setattr(row, key, value)
             row.updated_at = utc_now()
             updated += 1
 
-        if obj["kind"] == "workflow_run":
+        if obj["kind"] == "workflow_run" and not stale:
             # Only engineering CI provenance changes; never a human evaluation.
             github_run = REPO_URL + "/actions/runs/" + obj["event_key"].split(":")[1]
             refs = db.scalars(select(DevRunRef).where(
@@ -215,7 +216,7 @@ def mount(app, *, get_db, require_actor, team_auth_enabled):
                 else "missing_secret" if not os.getenv(SYNC_SECRET_ENV)
                 else "ready_for_signed_events"
             ),
-            "last_received_at": rows[0].received_at.isoformat() if rows else None,
+            "last_received_at": rows[0].updated_at.isoformat() if rows else None,
             "note": "只同步 GitHub 工程事件；实验与科研质量必须单独登记并审核。"
         }
 
