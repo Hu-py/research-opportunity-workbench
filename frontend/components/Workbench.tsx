@@ -5,7 +5,7 @@ import {
   Activity, ArrowRight, ArrowUpRight, BookOpen, BrainCircuit, CheckCircle2,
   ChevronDown, Clock3, Database, FileText, GitBranch, KeyRound, Layers3,
   Lightbulb, Loader2, LockKeyhole, LogOut, Menu, Play, Plus, RefreshCw,
-  Search, Settings2, ShieldCheck, Sparkles, Workflow, X,
+  Search, Settings2, ShieldCheck, Sparkles, Workflow, X, MessageCircle, FolderOpen, UserRound,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import ResearchArchive from "@/components/ResearchArchive";
@@ -18,62 +18,43 @@ import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import AgentGameReplay from "@/components/AgentGameReplay";
+import AtlasConversation from "@/components/AtlasConversation";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings"|"sources"|"game-lab";
-type NavEntry = {key:Section;label:string;icon:typeof BookOpen};
-const navigationGroups:{label:string;items:NavEntry[]}[] = [
-  {label:"工作台",items:[
-    {key:"overview",label:"科研总览",icon:Layers3},
+type Section = "chat"|"topics"|"personal-profile"|"interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings"|"sources"|"game-lab";
+type ResearchNavGroup={label:string;icon:typeof BookOpen;items:{key:Section;label:string}[]};
+const researchGroups:ResearchNavGroup[]=[
+  {label:"研究专题",icon:FolderOpen,items:[{key:"topics",label:"专题列表"}]},
+  {label:"科研发现",icon:Search,items:[
+    {key:"discovery",label:"文献发现"},
+    {key:"radar",label:"科研雷达与评审"},
+    {key:"ideas",label:"研究机会池"},
+    {key:"brief",label:"科研周报"},
+    {key:"ai-lab",label:"AI 选题分析"},
+    {key:"history",label:"选题演化"},
+    {key:"agent",label:"传统 Agent 任务台"},
+    {key:"game-lab",label:"多智能体回放"},
   ]},
-  {label:"研究基础",items:[
-    {key:"profile",label:"团队画像",icon:ShieldCheck},
-    {key:"papers",label:"科研资源库",icon:Database},
-  ]},
-  {label:"学术基础",items:[
-    {key:"sources",label:"学术来源管理",icon:BookOpen},
-  ]},
-  {label:"研究发现",items:[
-    {key:"discovery",label:"文献发现",icon:Search},
-    {key:"ideas",label:"选题中心",icon:Lightbulb},
-  ]},
-  {label:"研究执行",items:[
-    {key:"agent",label:"Research Agent",icon:BrainCircuit},
-    {key:"game-lab",label:"多智能体博弈回放",icon:GitBranch},
-  ]},
-  {label:"研究产出",items:[
-    {key:"brief",label:"科研简报",icon:FileText},
-  ]},
-];
-
-// All original feature routes remain available as secondary navigation.
-const moduleTabs:Partial<Record<Section,{title:string;items:{key:Section;label:string}[]}>> = {
-  profile:{title:"团队画像与研究方向",items:[
-    {key:"profile",label:"正式画像"},
-    {key:"profile-draft",label:"数据画像"},
-    {key:"interest",label:"研究兴趣"},
-    {key:"profile-skill",label:"画像更新"},
-  ]},
-  papers:{title:"科研资源库",items:[
-    {key:"papers",label:"论文情报"},
+  {label:"知识资产",icon:Database,items:[
+    {key:"papers",label:"论文索引"},
     {key:"repository",label:"团队成果"},
     {key:"assets",label:"数据台账"},
+    {key:"profile",label:"团队研究画像"},
+    {key:"personal-profile",label:"个人研究画像"},
+    {key:"profile-draft",label:"数据库画像"},
+    {key:"profile-skill",label:"画像审核"},
   ]},
-  ideas:{title:"选题中心",items:[
-    {key:"ideas",label:"研究选题池"},
-    {key:"ai-lab",label:"AI 选题分析"},
-    {key:"radar",label:"科研雷达与评审"},
-    {key:"history",label:"选题演化"},
+  {label:"管理与设置",icon:Settings2,items:[
+    {key:"settings",label:"成员、模型与运行"},
+    {key:"sources",label:"学术来源管理"},
+    {key:"interest",label:"研究兴趣监测"},
+    {key:"overview",label:"数据概览"},
   ]},
+];
+const sectionNames:Partial<Record<Section,string>>={
+  chat:"科研对话",topics:"研究专题",...Object.fromEntries(researchGroups.flatMap(g=>g.items.map(i=>[i.key,i.label])))
 };
-const parentSections:Partial<Record<Section,Section>> = {
-  "profile-draft":"profile","profile-skill":"profile",interest:"profile",
-  repository:"papers",assets:"papers",
-  "ai-lab":"ideas",radar:"ideas",history:"ideas",
-};
-function primarySection(current:Section):Section {
-  return parentSections[current]||current;
-}
+
 const statuses:Record<string,string>={
   candidate:"待评估",watch:"持续关注",shortlist:"重点选题",
   experiment:"实验准备",rejected:"暂不考虑",archived:"已归档",
@@ -132,7 +113,10 @@ export default function Workbench(){
   const [inviteRole,setInviteRole]=useState<"admin"|"researcher"|"viewer">("researcher");
   const [profileVersion,setProfileVersion]=useState(0);
   const [loginBusy,setLoginBusy]=useState(false);
-  const [section,setSection]=useState<Section>("overview");
+  const [section,setSection]=useState<Section>("chat");
+  const [lastResearchSection,setLastResearchSection]=useState<Section>("topics");
+  const [conversationSearch,setConversationSearch]=useState("");
+  const [selectedResearchLine,setSelectedResearchLine]=useState("");
   const [mobileOpen,setMobileOpen]=useState(false);
   const [overview,setOverview]=useState<Overview|null>(null);
   const [papers,setPapers]=useState<Paper[]>([]);
@@ -222,7 +206,7 @@ export default function Workbench(){
     (p.title+" "+(p.abstract||"")+" "+(p.venue||"")).toLowerCase().includes(paperSearch.toLowerCase())
   ),[papers,paperSearch]);
   const filteredIdeas=useMemo(()=>ideas.filter(i=>ideaStatus==="all"||i.status===ideaStatus),[ideas,ideaStatus]);
-  const changeSection=(next:Section)=>{setSection(next);setMobileOpen(false);setNotice("");};
+  const changeSection=(next:Section)=>{setSection(next);if(next!=="chat")setLastResearchSection(next);setMobileOpen(false);setNotice("");};
 
   async function login(){
     setLoginBusy(true);setError("");
@@ -244,7 +228,7 @@ export default function Workbench(){
       const job=await api<Task>("tasks",{method:"POST",body:JSON.stringify({kind,query})});
       setSelectedTaskId(job.id);
       setTasks(prev=>[job,...prev.filter(t=>t.id!==job.id)]);
-      if(kind==="explore")changeSection("agent");
+      if(kind==="explore")changeSection("chat");
       setNotice("任务已提交："+job.id.slice(0,8)+"。工作台会持续查询进度。");
     }catch(e){setError(e instanceof Error?e.message:"提交失败");}
     finally{setBusy(false);}
@@ -327,110 +311,116 @@ export default function Workbench(){
     URL.revokeObjectURL(url);
   }
   if(auth===null)return <div className="screen-center"><Spinner/><span>正在加载科研工作台…</span></div>;
-  if(!auth)return <div className="login-page">
-    <div className="login-visual"><div className="login-emblem"><BrainCircuit size={34}/></div>
-      <span className="overline">TEAM RESEARCH INTELLIGENCE</span>
-      <h1>让每一篇论文，<br/>成为下一个研究机会。</h1>
-      <p>跨领域知识发现 · 持续选题演化 · 可追溯科研 Agent</p>
-      <div className="login-lines"><span/><span/><span/></div>
-    </div>
-    <div className="login-panel"><div className="login-card">
-      <div className="lock"><LockKeyhole size={21}/></div>
-      <h2>登录科研工作台</h2><p>{teamMode?"使用团队成员邮箱和密码登录，共享科研知识库。":"请输入工作台访问密码。"}</p>
+  if(!auth)return <div className="atlas-login-page">
+    <div className="atlas-login-mark">RA</div>
+    <div className="atlas-login-form">
+      <div className="atlas-kicker">RESEARCH ATLAS · SECURE ACCESS</div>
+      <h1>登录 Research Atlas</h1>
+      <p className="atlas-muted">{teamMode?"使用团队成员账户登录。":"输入工作台访问密码。"}</p>
       <form onSubmit={e=>{e.preventDefault();void login();}}>
         {teamMode&&<><label htmlFor="email">团队成员邮箱</label>
-        <input id="email" type="email" autoComplete="username" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="name@university.edu"/></>}
+          <input id="email" type="email" autoComplete="username" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="name@university.edu"/></>}
         <label htmlFor="pw">访问密码</label>
-        <input id="pw" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="输入工作台密码"/>
-        {error&&<p className="error">{error}</p>}
-        <button className="btn btn-primary wide" disabled={loginBusy} type="submit">
-          {loginBusy?<Spinner/>:<ArrowRight size={16}/>}进入工作台
-        </button>
-      </form><p className="login-help">密码由部署方在环境变量中设置，前端不保存 API Key。</p>
-    </div></div>
+        <input id="pw" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="输入密码"/>
+        {error&&<p className="error" role="alert">{error}</p>}
+        <button className="atlas-login-submit" disabled={loginBusy} type="submit">{loginBusy?<Spinner/>:<ArrowRight size={16}/>}登录</button>
+      </form>
+      <p className="atlas-muted atlas-login-foot">密钥仅保存在服务端。请勿在公开页面提交敏感科研资料。</p>
+    </div>
   </div>;
 
-  const primary=primarySection(section);
-  const currentModule=moduleTabs[primary];
-  const primaryLabel=navigationGroups.flatMap(group=>group.items)
-    .find(item=>item.key===primary)?.label||(primary==="settings"?"系统管理":"科研总览");
-  const sectionLabel=currentModule?.items.find(tab=>tab.key===section)?.label||primaryLabel;
-  return <div className="shell">
-    {mobileOpen&&<div className="mobile-scrim" onClick={()=>setMobileOpen(false)}/>}
-    <aside className={"sidebar "+(mobileOpen?"sidebar-open":"")}>
-      <div className="brand"><div className="brand-mark"><BrainCircuit size={22}/></div>
-        <div><strong>Research Atlas</strong><span>INTELLIGENCE WORKSPACE</span></div>
-        <button className="close-mobile" onClick={()=>setMobileOpen(false)} aria-label="关闭导航"><X size={20}/></button>
-      </div>
-      <nav className="sidebar-nav" aria-label="科研工作台主导航">
-        {navigationGroups.map(group=><div className="nav-group" key={group.label}>
-          <div className="nav-group-title">{group.label}</div>
-          {group.items.map(item=><button type="button"
-            aria-current={primary===item.key?"page":undefined}
-            className={"nav-item "+(primary===item.key?"nav-active":"")}
-            key={item.key} onClick={()=>changeSection(item.key)}>
-            <item.icon size={18} strokeWidth={1.8}/><span>{item.label}</span>
-            {primary===item.key&&<div className="nav-dot"/>}
-          </button>)}
-        </div>)}
+  const inChat=section==="chat";
+  const researchGroup=researchGroups.find(group=>group.items.some(item=>item.key===section));
+  const sectionLabel=sectionNames[section]||"研究台";
+  const historyTasks=tasks.filter(t=>t.kind==="explore"&&(t.query||"").toLowerCase().includes(conversationSearch.trim().toLowerCase()));
+  const chatTask=selectedTask?.kind==="explore"?selectedTask:null;
+  const researchLines=profile?.research_lines||[];
+  const currentLine=researchLines.find(line=>line.id===selectedResearchLine);
+  return <div className="shell atlas-v05">
+    {mobileOpen&&<button type="button" className="atlas-mobile-scrim" aria-label="关闭侧栏" onClick={()=>setMobileOpen(false)}/>}
+    <aside className="atlas-rail" aria-label="一级工作区">
+      <div className="atlas-rail-brand" title="Research Atlas">RA</div>
+      <nav className="atlas-rail-nav">
+        <button type="button" aria-label="对话" title="对话" aria-current={inChat?"page":undefined}
+          className={"atlas-rail-item "+(inChat?"is-active":"")} onClick={()=>changeSection("chat")}><MessageCircle size={21}/></button>
+        <button type="button" aria-label="研究台" title="研究台" aria-current={!inChat?"page":undefined}
+          className={"atlas-rail-item "+(!inChat?"is-active":"")} onClick={()=>changeSection(lastResearchSection)}><Layers3 size={21}/></button>
       </nav>
-      <div className="sidebar-bottom">
-        <div className="nav-group-title">管理</div>
-        <button type="button" aria-current={section==="settings"?"page":undefined}
-          className={"nav-item sidebar-settings "+(section==="settings"?"nav-active":"")}
-          onClick={()=>changeSection("settings")}>
-          <Settings2 size={18} strokeWidth={1.8}/><span>系统管理</span>
-          {section==="settings"&&<div className="nav-dot"/>}
-        </button>
-        <div className="status-panel"><span className="online-dot"/> <span>Research Agent</span>
-          <small>服务状态取决于后端配置</small></div>
-        <button className="account" onClick={()=>void logout()}><span className="avatar">R</span>
-          <span>{member?.name||"团队共享科研空间"}<small>{member?member.role+" · 退出登录":"退出登录"}</small></span><LogOut size={16}/></button>
-      </div>
+      <div className="atlas-rail-spacer"/>
+      <button type="button" className="atlas-rail-item" title="退出登录" aria-label="退出登录" onClick={()=>void logout()}><LogOut size={19}/></button>
+      <div className="atlas-rail-account" title={member?.name||"Research Atlas"}><UserRound size={17}/></div>
     </aside>
-    <main className="main">
-      <header className="topbar">
-        <button className="menu-mobile" onClick={()=>setMobileOpen(true)} aria-label="打开导航"><Menu size={20}/></button>
-        <div className="breadcrumb">WORKSPACE <span>/</span> {primaryLabel}{sectionLabel!==primaryLabel&&<><span>/</span> {sectionLabel}</>}</div>
-        <div className="top-actions">
-          <span className="top-badge"><span className="online-dot"/> 研究数据实时关联</span>
-          <IconBtn className="icon-only" onClick={()=>void load()} disabled={loading} >
-            {loading?<Spinner/>:<RefreshCw size={17}/>}
-          </IconBtn>
+    <aside className={"atlas-context "+(mobileOpen?"atlas-context-open":"")} aria-label={inChat?"科研对话历史":"研究台子模块"}>
+      <div className="atlas-context-heading">
+        <div><span className="atlas-kicker">RESEARCH ATLAS</span><h2>{inChat?"对话":"研究台"}</h2></div>
+        <button type="button" className="atlas-close-mobile" onClick={()=>setMobileOpen(false)} aria-label="关闭侧栏"><X size={18}/></button>
+      </div>
+      {inChat?<div className="atlas-context-body">
+        <button className="atlas-new-conversation" type="button" onClick={()=>{setSelectedTaskId("");setQuestion("");changeSection("chat");}}><Plus size={16}/> 新建科研任务</button>
+        <label className="atlas-context-search"><Search size={15}/><input value={conversationSearch} onChange={e=>setConversationSearch(e.target.value)} placeholder="搜索历史任务" aria-label="搜索历史任务"/></label>
+        <div className="atlas-sidebar-label">研究任务记录</div>
+        {historyTasks.length===0?<p className="atlas-sidebar-empty">尚无与关键词匹配的研究任务。</p>:
+          historyTasks.map(task=><button type="button" key={task.id} className={"atlas-side-link atlas-task-link "+(selectedTaskId===task.id?"is-current":"")}
+            onClick={()=>{setSelectedTaskId(task.id);changeSection("chat");}}>
+            <FileText size={15}/><span>{task.query?.trim()||"未命名探索任务"}<small>{dateLabel(task.created_at)} · {task.status}</small></span>
+          </button>)}
+        <div className="atlas-sidebar-label">共享会话</div>
+        <p className="atlas-sidebar-empty">团队共同聊天与多轮上下文仍需后端支持。当前任务历史不是共享聊天。</p>
+      </div>:<nav className="atlas-context-body" aria-label="研究台二级导航">
+        {researchGroups.map(group=><div className="atlas-nav-group" key={group.label}>
+          <div className="atlas-nav-group-title"><group.icon size={17}/><strong>{group.label}</strong></div>
+          {group.items.map(item=><button type="button" className={"atlas-side-link "+(section===item.key?"is-current":"")}
+            key={item.key} aria-current={section===item.key?"page":undefined} onClick={()=>changeSection(item.key)}>{item.label}</button>)}
+        </div>)}
+      </nav>}
+      <div className="atlas-context-foot">{inChat?"Research Agent · 真实任务记录":"Research Desk · 工作区"}<span>{teamMode?"团队模式":"单用户模式"}</span></div>
+    </aside>
+    <main className="main atlas-main">
+      <header className="topbar atlas-topbar">
+        <div className="atlas-header-left">
+          <button type="button" className="atlas-mobile-menu" onClick={()=>setMobileOpen(true)} aria-label="打开侧栏"><Menu size={19}/></button>
+          <div className="atlas-breadcrumb"><span>{inChat?"对话":"研究台"}</span>{!inChat&&<><ChevronDown size={13}/><strong>{researchGroup?.label||"数据概览"}</strong></>}{!inChat&&sectionLabel!==researchGroup?.label&&<><ChevronDown size={13}/><span>{sectionLabel}</span></>}</div>
+        </div>
+        <div className="atlas-header-tools">
+          <span className="atlas-session-label">{member?.name||"研究空间"}</span>
+          <button type="button" className="atlas-refresh" onClick={()=>void load()} disabled={loading} aria-label="刷新当前数据" title="刷新数据">{loading?<Spinner/>:<RefreshCw size={17}/>}</button>
         </div>
       </header>
-      <div className="content">
-        {currentModule&&<div className="module-switcher" aria-label={currentModule.title+"子页面"}>
-          <div className="module-switcher-heading">
-            <span className="module-eyebrow">WORKSPACE MODULE</span>
-            <strong>{currentModule.title}</strong>
-          </div>
-          <nav className="module-tabs" aria-label={currentModule.title}>
-            {currentModule.items.map(tab=><button type="button" key={tab.key}
-              aria-current={section===tab.key?"page":undefined}
-              className={"module-tab "+(section===tab.key?"module-tab-active":"")}
-              onClick={()=>changeSection(tab.key)}>{tab.label}</button>)}
-          </nav>
-        </div>}
-        {error&&<div className="alert alert-error"><span>{error}</span><button onClick={()=>setError("")}><X size={15}/></button></div>}
-        {notice&&<div className="alert alert-success"><CheckCircle2 size={16}/><span>{notice}</span><button onClick={()=>setNotice("")}><X size={15}/></button></div>}
+      <div className={"content "+(inChat?"atlas-chat-content":"atlas-research-content")}>
+        {error&&<div className="alert alert-error" role="alert"><span>{error}</span><button type="button" onClick={()=>setError("")}><X size={15}/></button></div>}
+        {notice&&<div className="alert alert-success"><CheckCircle2 size={16}/><span>{notice}</span><button type="button" onClick={()=>setNotice("")}><X size={15}/></button></div>}
+        {section==="chat"&&<AtlasConversation task={chatTask} question={question} onQuestionChange={setQuestion}
+          onSubmit={()=>void submit("explore",question)} onOpenLegacy={()=>changeSection("agent")}
+          busy={busy} canEdit={canEdit} onRetry={t=>void dispatchExistingTask(t)}/>}
 
-        {section==="interest"&&<InterestWatchlist canEdit={canEdit}/>}
+                {section==="topics"&&<>
+          <PageHeading kicker="RESEARCH DESK / TOPICS" title="研究专题" subtitle="读取团队已登记的真实研究主线。独立专题创建、讨论与决策仍需新的后端支持。"/>
+          <div className="atlas-topic-toolbar"><span>{researchLines.length} 条研究主线</span><button className="btn" type="button" onClick={()=>changeSection("profile")}>管理研究画像 <ArrowRight size={15}/></button></div>
+          {researchLines.length===0?<Empty icon={FolderOpen} title="尚未登记研究方向" body="请由管理员在团队研究画像中登记研究方向。"/>:
+            <div className="atlas-topic-grid">{researchLines.map(line=><button type="button" key={line.id}
+              className={"atlas-topic-card "+(selectedResearchLine===line.id?"atlas-topic-selected":"")}
+              onClick={()=>setSelectedResearchLine(line.id)}><span className="atlas-kicker">RESEARCH LINE</span>
+              <h3>{line.name}</h3><p>{line.problem}</p>
+              <div className="atlas-topic-meta"><span>关联选题 {ideas.filter(i=>i.line_id===line.id).length}</span><ArrowRight size={16}/></div>
+            </button>)}</div>}
+          {currentLine&&<section className="panel atlas-topic-detail">
+            <div className="panel-header"><div><span className="atlas-kicker">RESEARCH LINE</span><h2>{currentLine.name}</h2></div>
+              <button className="btn" type="button" onClick={()=>{setQuestion("请围绕以下研究主线检索相关方法并提供论文证据："+currentLine.name+"；"+currentLine.problem);setSelectedTaskId("");changeSection("chat");}}>发起研究任务 <ArrowRight size={15}/></button></div>
+            <p>{currentLine.problem}</p><h3>关注问题与方法</h3>
+            <div className="atlas-tags">{[...currentLine.search_queries,...currentLine.method_queries].map((word,i)=><span key={i}>{word}</span>)}</div>
+            <div className="atlas-topic-links"><button type="button" onClick={()=>changeSection("discovery")}>文献发现 <ArrowRight size={14}/></button><button type="button" onClick={()=>changeSection("ideas")}>研究机会 <ArrowRight size={14}/></button></div>
+          </section>}
+        </>}
+        {section==="personal-profile"&&<>
+          <PageHeading kicker="RESEARCH PROFILES / PERSONAL" title="个人研究画像" subtitle="当前后端尚未提供个人画像的独立持久化与访问权限接口。"/>
+          <section className="panel atlas-personal-pending"><UserRound size={26}/><h2>个人画像尚未启用</h2>
+            <p>这里不会把个人信息误存为团队正式画像，也不会用仅浏览器保存的资料冒充安全的个人画像。</p>
+            <button type="button" className="btn" onClick={()=>changeSection("profile")}>查看团队正式画像 <ArrowRight size={15}/></button>
+          </section>
+        </>}
+{section==="interest"&&<InterestWatchlist canEdit={canEdit}/>}
         {section==="overview"&&<>
-          <div className="hero-card">
-            <div><span className="overline">RESEARCH INTELLIGENCE · WORKSPACE</span>
-              <h1>探索下一个<span>研究机会。</span></h1>
-              <p>让文献发现、方法迁移与研究选题成为一个持续演化的知识闭环。</p>
-              <button className="btn btn-white" onClick={()=>changeSection("interest")}>
-                <GitBranch size={17}/> 管理研究兴趣 <ArrowRight size={16}/>
-              </button>
-              <button className="btn btn-white" style={{marginLeft:9}} onClick={()=>changeSection("agent")}>
-                <Sparkles size={17}/> 开始科研探索 <ArrowRight size={16}/>
-              </button>
-            </div><div className="hero-art"><div className="orbit one"/><div className="orbit two"/>
-              <div className="orb orb-one"/><div className="orb orb-two"/><div className="orb orb-three"/>
-              <div className="hero-center"><BrainCircuit size={40}/></div></div>
-          </div>
+          <PageHeading kicker="RESEARCH DESK / OVERVIEW" title="科研数据概览" subtitle="查看已保存的真实论文、研究选题与研究方向统计。"/>
           <div className="stats-grid">
             {[
               {icon:BookOpen,n:overview?.papers||0,label:"已收录论文",hint:"跨学科文献资产"},
@@ -725,8 +715,8 @@ export default function Workbench(){
           </p></section>
         </>}
       </div>
-      <footer className="footer"><span>RESEARCH ATLAS · TEAM WORKBENCH V0.3</span>
-        <span>Evidence before innovation claims · © Research Atlas</span></footer>
+      <footer className="footer atlas-footer"><span>Research Atlas · V0.5 前端结构</span>
+        <span>以实际后端和权限配置为准</span></footer>
     </main>
   </div>;
 }
