@@ -1398,7 +1398,7 @@ _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
 # Email-verified single-team Owner, invitations and password recovery.
 from backend.account_onboarding import mount as _mount_account_onboarding
 _mount_account_onboarding(
-    app, get_db=get_db, require_actor=require_actor,
+    app, get_db=get_db, authenticate=authenticate, require_actor=require_actor,
     require_admin=require_admin, team_auth_enabled=team_auth_enabled,
 )
 
