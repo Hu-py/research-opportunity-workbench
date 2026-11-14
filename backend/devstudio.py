@@ -427,7 +427,7 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
         run_status = "unverified"
         if data.kind == "github_actions":
             from backend.devstudio_github_sync import DevGithubActivity, event_to_ci_status
-            match = re.search(r"/actions/runs/(\\d+)/?$", data.external_url)
+            match = re.search(r"/actions/runs/(\d+)/?$", data.external_url)
             if match:
                 known = db.get(DevGithubActivity, "workflow_run:" + match.group(1))
                 if known:
