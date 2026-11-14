@@ -1,0 +1,320 @@
+{
+  "schema_version": "1.0.0",
+  "created_on": "2026-11-14",
+  "scope": "public_source_curation_template_no_user_id",
+  "execution_mode": "assistant_assisted_live_publisher_search",
+  "openalex_api_executed": false,
+  "llm_api_executed": false,
+  "papers_full_text_audited": 0,
+  "empirical_models_executed": false,
+  "description": "Two researcher-assisted literature research snapshots. Each set references real public publisher or conference pages, not user datasets or model experiments. Three probe classifications indicate methodological role and exact venue; cross-source supplements separate.",
+  "topics": [
+    {
+      "key": "child_health_extrapolation",
+      "title": "儿童健康空间外推",
+      "question": "如何从局部儿童健康调查与建成环境特征可靠外推其他城市区域的儿童发育健康结局？",
+      "queries": {
+        "A": [
+          "child health urban built environment systematic review Cities",
+          "child friendly streets environmental exposure Cities"
+        ],
+        "B": [
+          "urban health graph spatial cross validation Computers Environment and Urban Systems",
+          "leave one neighborhood out spatial borrowing urban reconstruction"
+        ],
+        "C": [
+          "GraphSAGE inductive representation large graphs NeurIPS",
+          "DIVE graph out of distribution generalization KDD"
+        ]
+      },
+      "probes": [
+        {
+          "id": "A",
+          "label": "规划应用",
+          "theme": "环境暴露、儿童发展结局与街道尺度的适配",
+          "statement": "不同研究分别测量儿童环境接触、街道友好与健康结果；前两者不能作为后者的真值。",
+          "papers": [
+            {
+              "id": "CH-A01",
+              "group": "A",
+              "title": "A systematic review of the impact of the urban environment on the health of school-age children and adolescents: Current landscape and future directions",
+              "venue": "Cities",
+              "year": 2026,
+              "url": "https://doi.org/10.1016/j.cities.2026.106863",
+              "doi": "10.1016/j.cities.2026.106863",
+              "why_selected": "136 项研究的儿童青少年健康环境综述，需区分学龄与学前结果",
+              "evidence_level": "publisher_abstract_checked"
+            },
+            {
+              "id": "CH-A02",
+              "group": "A",
+              "title": "Constructing child-friendly cities: Comprehensive evaluation of street-level child-friendliness using the method of empathy-based stories, street view images, and deep learning",
+              "venue": "Cities",
+              "year": 2024,
+              "url": "https://doi.org/10.1016/j.cities.2024.105385",
+              "doi": "10.1016/j.cities.2024.105385",
+              "why_selected": "道路环境表征；不能用儿童友好评分替代发育健康标签",
+              "evidence_level": "publisher_abstract_checked"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "label": "城市科学",
+          "theme": "空间外推验证与邻域借用的适用边界",
+          "statement": "图结构、局部空间借用和严格空间留出都值得比较；图模型不应被默认认为优于简单聚合。",
+          "papers": [
+            {
+              "id": "CH-B01",
+              "group": "B",
+              "title": "UST-GNN: A unified spatial–topological graph neural network framework for urban analytics demonstrated through a case study on urban health prediction",
+              "venue": "Computers, Environment and Urban Systems",
+              "year": 2026,
+              "url": "https://doi.org/10.1016/j.compenvurbsys.2026.102466",
+              "doi": "10.1016/j.compenvurbsys.2026.102466",
+              "why_selected": "最接近城市健康图模型；伦敦处方结局不是上海儿童发展结局",
+              "evidence_level": "publisher_abstract_checked"
+            },
+            {
+              "id": "CH-B02",
+              "group": "B",
+              "title": "Family specific spatial borrowing in multimodal urban reconstruction: a leave one neighborhood out study of Cincinnati",
+              "venue": "Computers, Environment and Urban Systems",
+              "year": 2026,
+              "url": "https://doi.org/10.1016/j.compenvurbsys.2026.102541",
+              "doi": "10.1016/j.compenvurbsys.2026.102541",
+              "why_selected": "不同特征类别对空间借用方法的需求不同；2027 卷期但 2026 已上线",
+              "evidence_level": "publisher_abstract_checked"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "label": "计算方法",
+          "theme": "归纳图学习与图分布外泛化",
+          "statement": "归纳式图表示不等于跨城市分布外可靠预测；图 OOD 方法仍需匹配道路节点回归的输入输出条件。",
+          "papers": [
+            {
+              "id": "CH-C01",
+              "group": "C",
+              "title": "Inductive Representation Learning on Large Graphs",
+              "venue": "NeurIPS",
+              "year": 2017,
+              "url": "https://proceedings.neurips.cc/paper/2017/hash/5dd9db5e033da9c6fb5ba83c7a7ebea9-Abstract.html",
+              "doi": "",
+              "why_selected": "GraphSAGE 基础方法；远非跨城可迁移的直接验证",
+              "evidence_level": "conference_abstract_checked"
+            },
+            {
+              "id": "CH-C02",
+              "group": "C",
+              "title": "DIVE: Subgraph Disagreement for Graph Out-of-Distribution Generalization",
+              "venue": "KDD",
+              "year": 2024,
+              "url": "https://doi.org/10.1145/3637528.3671878",
+              "doi": "10.1145/3637528.3671878",
+              "why_selected": "图 OOD 机制候选；该算法本身不能直接证明节点级健康回归增益",
+              "evidence_level": "conference_abstract_checked"
+            }
+          ]
+        }
+      ],
+      "supplementary": [
+        {
+          "id": "CH-S01",
+          "group": "supplementary",
+          "title": "Neighborhood playability and early childhood development: a population-based birth cohort study",
+          "venue": "Environmental Research",
+          "year": 2026,
+          "url": "https://doi.org/10.1016/j.envres.2026.124124",
+          "doi": "10.1016/j.envres.2026.124124",
+          "why_selected": "学前儿童发展指标更接近实际标签定义",
+          "evidence_level": "publisher_abstract_checked"
+        },
+        {
+          "id": "CH-S02",
+          "group": "supplementary",
+          "title": "Predicting into unknown space? Estimating the area of applicability of spatial prediction models",
+          "venue": "Methods in Ecology and Evolution",
+          "year": 2021,
+          "url": "https://doi.org/10.1111/2041-210X.13650",
+          "doi": "10.1111/2041-210X.13650",
+          "why_selected": "AOA/DI 适用域框架，来自主探针期刊名单之外",
+          "evidence_level": "publisher_abstract_checked"
+        }
+      ],
+      "candidate_question": "空间独立留出下，简单邻域聚合与 GraphSAGE 的外推收益是否稳定、且能否区分环境域偏移和外部标签误差？",
+      "checks": [
+        "独立城市与独立空间块留出",
+        "验证标签不得参与图传播",
+        "报告 R²/RMSE/MAE 及 AOA、标签稀疏程度",
+        "先证伪简单聚合优于 GNN 的零假设"
+      ]
+    },
+    {
+      "key": "vertical_urbanization_3d",
+      "title": "三维竖向城市化",
+      "question": "如何从二维用地转向建筑楼层的真实竖向功能、可达性与空间组织测量？",
+      "queries": {
+        "A": [
+          "vertical 15 minute city functional mix Cities",
+          "3D urban expansion Shanghai Cities"
+        ],
+        "B": [
+          "multi level connectedness functional mix Environment and Planning B",
+          "building characteristic prediction GNN CEUS"
+        ],
+        "C": [
+          "inductive graph learning NeurIPS GraphSAGE",
+          "geographic location embeddings AAAI SatCLIP"
+        ]
+      },
+      "probes": [
+        {
+          "id": "A",
+          "label": "规划应用",
+          "theme": "竖向可达性与城市空间扩展的量度",
+          "statement": "高度增长、楼层功能和竖向可达性是不同的空间过程，不能仅用建筑体量代表功能组织。",
+          "papers": [
+            {
+              "id": "VU-A01",
+              "group": "A",
+              "title": "Vertical 15-minute city: Modeling urban density and functional mix with multi-source geospatial data",
+              "venue": "Cities",
+              "year": 2026,
+              "url": "https://doi.org/10.1016/j.cities.2025.106516",
+              "doi": "10.1016/j.cities.2025.106516",
+              "why_selected": "楼层功能与垂直旅行成本，2D 近邻高估不能直接套用于其他城市",
+              "evidence_level": "publisher_abstract_checked"
+            },
+            {
+              "id": "VU-A02",
+              "group": "A",
+              "title": "Measuring three-dimension urban expansion using multi-source data and change detection algorithm: A case study of Shanghai",
+              "venue": "Cities",
+              "year": 2025,
+              "url": "https://doi.org/10.1016/j.cities.2024.105682",
+              "doi": "10.1016/j.cities.2024.105682",
+              "why_selected": "上海三维增长指标，测量对象为形态扩张而非楼层功能",
+              "evidence_level": "publisher_abstract_checked"
+            },
+            {
+              "id": "VU-A03",
+              "group": "A",
+              "title": "Three-dimensional urban space misallocation in China: Spatiotemporal patterns and driving forces",
+              "venue": "Cities",
+              "year": 2026,
+              "url": "https://doi.org/10.1016/j.cities.2025.106739",
+              "doi": "10.1016/j.cities.2025.106739",
+              "why_selected": "3D 空间错配和区域异质性，需进一步核实模型定义",
+              "evidence_level": "publisher_abstract_checked"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "label": "城市科学",
+          "theme": "多层连通、建筑属性与图结构的城市解释",
+          "statement": "空间建筑特征推断与跨层连接都能支持 3D 城市研究，但它们不是楼层 POI 的真实监督标签。",
+          "papers": [
+            {
+              "id": "VU-B01",
+              "group": "B",
+              "title": "Measuring volumetric urban design: Compression, multi-level connectedness, and functional mix in transit-oriented developments in Hong Kong",
+              "venue": "Environment and Planning B: Urban Analytics and City Science",
+              "year": 2026,
+              "url": "https://doi.org/10.1177/23998083261425731",
+              "doi": "10.1177/23998083261425731",
+              "why_selected": "多层通达与功能混合的空间指标，场景以高密度 TOD 为主",
+              "evidence_level": "publisher_abstract_checked"
+            },
+            {
+              "id": "VU-B02",
+              "group": "B",
+              "title": "Predicting building characteristics at urban scale using graph neural networks and street-level context",
+              "venue": "Computers, Environment and Urban Systems",
+              "year": 2024,
+              "url": "https://doi.org/10.1016/j.compenvurbsys.2024.102129",
+              "doi": "10.1016/j.compenvurbsys.2024.102129",
+              "why_selected": "城市建筑属性 GNN，验证建筑高程/属性，不等于恢复真实楼层功能",
+              "evidence_level": "publisher_abstract_checked"
+            },
+            {
+              "id": "VU-B03",
+              "group": "B",
+              "title": "A segmented approach to modeling building height: Delineating high-rise and low-rise buildings for enhanced height estimation",
+              "venue": "Computers, Environment and Urban Systems",
+              "year": 2025,
+              "url": "https://doi.org/10.1016/j.compenvurbsys.2025.102287",
+              "doi": "10.1016/j.compenvurbsys.2025.102287",
+              "why_selected": "高低层分组建模可用于高度估计基线与不均衡讨论",
+              "evidence_level": "publisher_abstract_checked"
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "label": "计算方法",
+          "theme": "图归纳表示与位置表征的可迁移技术",
+          "statement": "通用图归纳学习与地理表征可作为对照方法；不能仅靠方法组合声称楼层恢复新颖。",
+          "papers": [
+            {
+              "id": "VU-C01",
+              "group": "C",
+              "title": "Inductive Representation Learning on Large Graphs",
+              "venue": "NeurIPS",
+              "year": 2017,
+              "url": "https://proceedings.neurips.cc/paper/2017/hash/5dd9db5e033da9c6fb5ba83c7a7ebea9-Abstract.html",
+              "doi": "",
+              "why_selected": "GraphSAGE 归纳表示适用于异构邻域，非楼层预测验证",
+              "evidence_level": "conference_abstract_checked"
+            },
+            {
+              "id": "VU-C02",
+              "group": "C",
+              "title": "SatCLIP: Global, General-Purpose Location Embeddings with Satellite Imagery",
+              "venue": "AAAI",
+              "year": 2025,
+              "url": "https://doi.org/10.1609/aaai.v39i4.32457",
+              "doi": "10.1609/aaai.v39i4.32457",
+              "why_selected": "地理位置表征，可评估是否补充楼层推断特征；缺乏垂直标签",
+              "evidence_level": "publisher_abstract_checked"
+            }
+          ]
+        }
+      ],
+      "supplementary": [
+        {
+          "id": "VU-S01",
+          "group": "supplementary",
+          "title": "Baseline framework for inferring POI floors to enhance 3D urban vertical analytics: A comparative study in Shanghai",
+          "venue": "International Journal of Applied Earth Observation and Geoinformation",
+          "year": 2026,
+          "url": "https://doi.org/10.1016/j.jag.2026.105440",
+          "doi": "10.1016/j.jag.2026.105440",
+          "why_selected": "上海 POI 楼层恢复最直接的先例，GraphSAGE–XGBoost；需核验标注来源、建筑级分割与跨年迁移",
+          "evidence_level": "publisher_abstract_checked"
+        },
+        {
+          "id": "VU-S02",
+          "group": "supplementary",
+          "title": "Vertical Urban Functional Pattern Analysis Based on Multi-Dimensional Geo Data Cube",
+          "venue": "ISPRS International Journal of Geo-Information",
+          "year": 2026,
+          "url": "https://doi.org/10.3390/ijgi15010047",
+          "doi": "10.3390/ijgi15010047",
+          "why_selected": "首尔楼层功能 x/y/z/t/f 数据立方体方法，标签来自建筑登记而非 POI 自动生成",
+          "evidence_level": "publisher_abstract_checked"
+        }
+      ],
+      "candidate_question": "多层真实功能、建筑高度与竖向通达性应如何独立测量？仅部分 POI 有楼层标签时，是否可用异构图与建筑级留出推断并分析随时间的变化？",
+      "checks": [
+        "建立建筑级交叉验证避免同楼 POI 泄漏",
+        "先审查楼层标签偏置与来源年份",
+        "区分预测楼层与城市功能解释",
+        "以简单规则及 XGBoost 为基础对照",
+        "检查外部真值与跨年稳定性"
+      ]
+    }
+  ]
+}
