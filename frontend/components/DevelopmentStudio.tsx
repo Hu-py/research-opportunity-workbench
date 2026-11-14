@@ -22,6 +22,7 @@ type SourceResponse = {legacy_registry:Source[];source_proposals:Change[];warnin
 type Document = Row & {title:string;category:string;authoritative_url:string;revision_ref:string;status:string;owner_id:string};
 type Experiment = Row & {title:string;hypothesis:string;baseline:string;status:string;input_snapshot_ref:string;change_id:string;metrics:string[]};
 type RunRef = {id:string;experiment_id:string;kind:string;external_url:string;status:string;note:string;code_sha:string;created_at:string};
+type Evaluation = {id:string;run_id:string;rubric_version:string;scores:Record<string,number>;limitations:string;created_at:string};
 type Issue = Row & {title:string;description:string;severity:string;status:string};
 type Decision = {id:string;change_id:string;decision:string;reason:string;reviewer_id:string;created_at:string};
 type Lineage = {issues:Issue[];changes:Change[];experiments:Experiment[];runs:RunRef[];decisions:Decision[]};
@@ -91,6 +92,11 @@ export default function DevelopmentStudio(){
   const [experimentHypothesis,setExperimentHypothesis]=useState("");
   const [experimentBaseline,setExperimentBaseline]=useState("");
   const [experimentInput,setExperimentInput]=useState("");
+  const [experimentChangeId,setExperimentChangeId]=useState("");
+  const [reviewRun,setReviewRun]=useState<RunRef|null>(null);
+  const [reviewScores,setReviewScores]=useState<Evaluation[]>([]);
+  const [reviewScore,setReviewScore]=useState("3");
+  const [reviewNote,setReviewNote]=useState("");
   const [runUrl,setRunUrl]=useState("");
   const [changeTitle,setChangeTitle]=useState("");
   const [changeReason,setChangeReason]=useState("");
@@ -105,7 +111,13 @@ export default function DevelopmentStudio(){
       if(target==="overview")setOverview(await api<Overview>("devstudio/overview"));
       if(target==="sources")setSources(await api<SourceResponse>("devstudio/sources"));
       if(target==="documents")setDocuments((await api<{items:Document[]}>("devstudio/documents")).items);
-      if(target==="experiments")setExperiments((await api<{items:Experiment[]}>("devstudio/experiments")).items);
+      if(target==="experiments"){
+        const [exps,cs]=await Promise.all([
+          api<{items:Experiment[]}>("devstudio/experiments"),
+          api<{items:Change[]}>("devstudio/changes"),
+        ]);
+        setExperiments(exps.items);setChanges(cs.items);
+      }
       if(target==="changes"){
         const [c,i]=await Promise.all([
           api<{items:Change[]}>("devstudio/changes"),
@@ -125,6 +137,14 @@ export default function DevelopmentStudio(){
     void load(section);
     setSearch("");setShowForm(false);setNotice("");setError("");
   },[section,session?.authenticated,session?.team,load]);
+  useEffect(()=>{
+    if(section!=="changes"||!session?.authenticated||!session.team)return;
+    const target=new URLSearchParams(window.location.search).get("module");
+    if(target&&Object.prototype.hasOwnProperty.call(moduleNames,target)){
+      setModuleId(target);
+      void api<Lineage>("devstudio/lineage/"+target).then(setLineage).catch(e=>setError(humanError(e)));
+    }
+  },[section,session?.authenticated,session?.team]);
   const selectedName=navItems.find(x=>x.id===section)?.name || "研发总览";
 
   async function submit(work:()=>Promise<unknown>,success:string){
@@ -134,9 +154,35 @@ export default function DevelopmentStudio(){
     finally{setBusy(false);}
   }
   async function openExperiment(x:Experiment){
-    setSelectedExperiment(x);setRuns([]);setError("");
+    setSelectedExperiment(x);setRuns([]);setReviewRun(null);setReviewScores([]);setError("");
     try{setRuns((await api<{items:RunRef[]}>("devstudio/experiments/"+x.id+"/runs")).items);}
     catch(e){setError(humanError(e));}
+  }
+  async function requestDocumentRevision(d:Document){
+    const reason=window.prompt("请说明需要修改什么、为什么修改（仅登记申请，不修改原 Page）：","");
+    if(!reason || reason.trim().length<10)return;
+    await submit(()=>api("devstudio/changes",{method:"POST",body:JSON.stringify({
+      module_id:d.module_id,kind:"document",title:"修订文档 · "+d.title,
+      reason,proposed:{document_id:d.id,authoritative_url:d.authoritative_url},
+    })}),"文档修订申请已提交，原文保持不变。");
+  }
+  async function openReview(run:RunRef){
+    setReviewRun(run);setReviewScores([]);
+    try{setReviewScores((await api<{items:Evaluation[]}>("devstudio/runs/"+run.id+"/evaluations")).items);}
+    catch(e){setError(humanError(e));}
+  }
+  async function saveReview(){
+    if(!reviewRun)return;
+    const n=Number(reviewScore);
+    if(!Number.isFinite(n)||n<0||n>5){setError("评分必须在 0 到 5 之间");return;}
+    setBusy(true);setError("");
+    try{
+      await api("devstudio/runs/"+reviewRun.id+"/evaluations",{method:"POST",body:JSON.stringify({
+        rubric_version:"manual-research-review-v1",scores:{research_quality:n},limitations:reviewNote,
+      })});
+      await openReview(reviewRun);setReviewNote("");setNotice("人工评价已保存；不代表模型或论文创新性自动通过验收。");
+    }catch(e){setError(humanError(e));}
+    finally{setBusy(false);}
   }
   async function loadLineage(id:string){
     setModuleId(id);
@@ -243,7 +289,7 @@ export default function DevelopmentStudio(){
             </div>
             <div className="ds-sectionhead"><h2>能力模块</h2><span>模块状态只反映已登记证据，不表示 CI 或科研验收通过</span></div>
             <div className="ds-modulegrid">{overview.modules.map(m=><button key={m.id} type="button" className="ds-module"
-                onClick={()=>{void loadLineage(m.id);window.location.href="/devstudio/changes";}}>
+                onClick={()=>window.location.assign("/devstudio/changes?module="+encodeURIComponent(m.id))}>
               <span className="ds-modulecode">{m.id}</span><h3>{m.name}</h3>
               <p>{m.scope}</p><span className="ds-subtle">当前正式版本：尚未登记 <ArrowRight size={14}/></span>
             </button>)}</div>
@@ -319,7 +365,10 @@ export default function DevelopmentStudio(){
               {visibleDocuments.length?visibleDocuments.map(d=><div className="ds-listrow" key={d.id}>
                 <div><span className="ds-modulecode">{d.category} / {d.module_id}</span>
                   <strong>{d.title}</strong><small>{day(d.created_at)} · 负责人：{d.owner_id.slice(0,8)}</small>
-                  <LinkExternal href={d.authoritative_url}>打开权威文档</LinkExternal></div>
+                  <LinkExternal href={d.authoritative_url}>打开权威文档</LinkExternal>
+                  {canEdit&&<button type="button" className="ds-btn" style={{marginTop:10}}
+                    disabled={busy} onClick={()=>void requestDocumentRevision(d)}>提出修订</button>}
+                </div>
                 <span className="ds-pill">{label(d.status)}</span>
               </div>):<div className="ds-empty">尚未登记文档。可以将现有的 Research Atlas Page 或 GitHub 技术规范作为权威原件加入索引。</div>}
             </div>
@@ -333,9 +382,12 @@ export default function DevelopmentStudio(){
                 <label className="full">假设与预期变化<textarea rows={3} value={experimentHypothesis} onChange={e=>setExperimentHypothesis(e.target.value)} placeholder="预期通过分页减少已知官网论文漏检。"/></label>
                 <label>基线<input value={experimentBaseline} onChange={e=>setExperimentBaseline(e.target.value)} placeholder="旧版 100 条截断采集"/></label>
                 <label>输入快照引用<input value={experimentInput} onChange={e=>setExperimentInput(e.target.value)} placeholder="experiments/.../benchmark.json"/></label>
+                <label className="full">关联变更（可选）<select value={experimentChangeId} onChange={e=>setExperimentChangeId(e.target.value)}>
+                  <option value="">暂不关联</option>{changes.filter(x=>x.module_id===moduleId).map(x=><option key={x.id} value={x.id}>{x.title}</option>)}
+                </select></label>
               </div><div className="ds-formactions"><button className="ds-btn" onClick={()=>setShowForm(false)}>取消</button>
                 <button disabled={busy} className="ds-btn ds-primary" onClick={()=>void submit(()=>api("devstudio/experiments",{method:"POST",body:JSON.stringify({
-                  module_id:moduleId,title:experimentTitle,hypothesis:experimentHypothesis,baseline:experimentBaseline,input_snapshot_ref:experimentInput,
+                  module_id:moduleId,title:experimentTitle,hypothesis:experimentHypothesis,baseline:experimentBaseline,input_snapshot_ref:experimentInput,change_id:experimentChangeId,
                 })}),"实验已登记，接下来可绑定实际 GitHub Actions 运行。")}>登记实验</button></div>
             </div>}
             <div className="ds-search"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="搜索实验、假设或模块"/></div>
@@ -357,8 +409,19 @@ export default function DevelopmentStudio(){
                     <div><strong>{label(x.status)}</strong><small>{day(x.created_at)}</small></div>
                     {x.external_url.startsWith("https://")?<LinkExternal href={x.external_url}>GitHub Run</LinkExternal>:<span className="ds-subtle">{x.external_url}</span>}
                     <small>{x.note}</small>
+                    <button className="ds-btn" type="button" onClick={()=>void openReview(x)}>人工评审</button>
                   </div>)}
                   {!runs.length&&<p className="ds-subtle">尚无绑定运行，不应推断本实验通过。</p>}
+                  {reviewRun&&<div className="ds-reviewpanel">
+                    <h3>评审运行 {reviewRun.id.slice(0,13)}</h3>
+                    <p>人工评分不是软件 CI，也不自动证明学术创新性。已登记 {reviewScores.length} 条独立评价。</p>
+                    {reviewScores.map(x=><p key={x.id}><strong>{day(x.created_at)}</strong> · 科研质量 {x.scores.research_quality??"未评分"}/5 — {x.limitations||"无备注"}</p>)}
+                    {canEdit&&<div className="ds-formgrid">
+                      <label>科研质量（0–5）<input type="number" min={0} max={5} step={1} value={reviewScore} onChange={e=>setReviewScore(e.target.value)}/></label>
+                      <label className="full">证据限制与审查说明<textarea rows={2} value={reviewNote} onChange={e=>setReviewNote(e.target.value)}/></label>
+                      <button className="ds-btn ds-primary" disabled={busy} onClick={()=>void saveReview()}>追加人工评价</button>
+                    </div>}
+                  </div>}
                   {canEdit&&<div className="ds-runform"><label>绑定真实 GitHub Actions Run<input value={runUrl} onChange={e=>setRunUrl(e.target.value)} placeholder="https://github.com/Hu-py/research-opportunity-workbench/actions/runs/…"/></label>
                     <button disabled={busy} className="ds-btn ds-primary" onClick={()=>void (async()=>{
                       setBusy(true);setError("");
