@@ -265,8 +265,17 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
 
     @router.get("/overview")
     def overview(db: Session = Depends(get_db), actor: TeamMember = Depends(read)):
+        # A run without an appended human evaluation warrants research review.
+        # This is NOT an assumption that the external GitHub job succeeded.
+        run_refs = db.scalars(select(DevRunRef)).all()
+        reviewed_run_ids = set(db.scalars(select(DevEvaluation.run_id)).all())
+        pending_review_ids = sorted({
+            run.experiment_id for run in run_refs
+            if run.id not in reviewed_run_ids
+        })
         return {
             "modules": MODULES,
+            "pending_review_experiment_ids": pending_review_ids,
             "counts": {
                 "open_issues": db.scalar(select(func.count()).select_from(DevIssue).where(DevIssue.status == "open")) or 0,
                 "pending_changes": db.scalar(select(func.count()).select_from(DevChange).where(DevChange.status == "submitted")) or 0,
