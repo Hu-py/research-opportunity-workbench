@@ -109,6 +109,13 @@ def main() -> int:
             from backend.devstudio_history_import import import_history
             result = import_history(session)
             print(json.dumps({"type": "devstudio_history_backfill", **result}))
+        # Import only public paper evidence into the isolated E2E schema.
+        # Personal copies are attached later to a verified authenticated Owner.
+        if os.getenv("PERSONAL_RESEARCH_PILOT_SEED_ENABLED") == "1":
+            from backend.personal_research import seed_public_pilots
+            import_result = seed_public_pilots(session)
+            print(json.dumps({"type": "sc02_public_research_evidence_import",
+                              **import_result}))
         # On Render instance restarts, never create another initial team.
         # Validate the previously committed E2E row instead of mutating it.
         persisted = session.execute(text(
