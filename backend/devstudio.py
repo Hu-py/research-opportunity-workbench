@@ -442,10 +442,19 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
             raise HTTPException(422, "Use a verified-format GitHub Actions Run URL from this repository")
         if data.kind == "internal" and not data.external_url.startswith("/api/tasks/"):
             raise HTTPException(422, "Internal runs must refer to a task resource")
+        # Signed CI metadata can arrive before a user links this run.
+        status_from_ci = "unverified"
+        if data.kind == "github_actions":
+            from backend.devstudio_github_sync import DevGithubActivity, event_to_ci_status
+            found = re.search(r"/actions/runs/(\d+)/?$", data.external_url)
+            if found:
+                activity = db.get(DevGithubActivity, "workflow_run:" + found.group(1))
+                if activity:
+                    status_from_ci = event_to_ci_status(activity.status)
         row = DevRunRef(id=new_id("run"), experiment_id=experiment_id, kind=data.kind,
                         external_url=data.external_url, code_sha=data.code_sha,
                         input_hash=data.input_hash, note=data.note, registered_by=actor.id,
-                        status="unverified")
+                        status=status_from_ci)
         db.add(row)
         add_audit(db, "devstudio.run_linked", actor.id, row.id, data.external_url[:170])
         db.commit()
@@ -509,3 +518,7 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
     )
 
     app.include_router(router)
+    # Import and register GitHub tables before API lifespan creates the DB.
+    from backend.devstudio_github_sync import mount as mount_github_sync
+    mount_github_sync(app, get_db=get_db, require_actor=require_actor,
+                      team_auth_enabled=team_auth_enabled)
