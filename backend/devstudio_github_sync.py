@@ -199,18 +199,22 @@ def public_activity(row: DevGithubActivity) -> dict[str, Any]:
 
 
 def mount(app, *, get_db, require_actor, team_auth_enabled):
+    # Import this model before the application lifespan initializes its DB schema.
+    from backend.devstudio_github_pull import poll as poll_public
     router = APIRouter(prefix="/api/devstudio/github", tags=["Development Studio GitHub Sync"])
 
     @router.get("/activity")
     def activity(db: Session = Depends(get_db), actor=Depends(require_actor)):
         if not team_auth_enabled() or actor is None:
             raise HTTPException(403, "Team login required")
+        public_poll = poll_public(db)  # automatic, bounded, no GitHub secret needed
         rows = db.scalars(select(DevGithubActivity)
                           .order_by(DevGithubActivity.updated_at.desc())
                           .limit(60)).all()
         return {
             "repo": REPO,
             "items": [public_activity(row) for row in rows],
+            "public_poll": public_poll,
             "integration_status": (
                 "disabled" if os.getenv(SYNC_FLAG, "").lower() not in {"1", "true", "yes"}
                 else "missing_secret" if not os.getenv(SYNC_SECRET_ENV)
