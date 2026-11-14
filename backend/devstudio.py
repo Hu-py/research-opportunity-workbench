@@ -153,6 +153,10 @@ class IssueRequest(BaseModel):
     severity: Literal["low", "medium", "high"] = "medium"
 
 
+class IssueStatusRequest(BaseModel):
+    status: Literal["open", "in_progress", "blocked", "resolved"]
+
+
 class ChangeRequest(BaseModel):
     module_id: str
     kind: Literal["source", "document", "workflow", "code", "other"]
@@ -314,6 +318,22 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
         add_audit(db, "devstudio.issue_created", actor.id, row.id, data.title)
         db.commit()
         return to_dict(row)
+
+    @router.patch("/issues/{issue_id}")
+    def update_issue_status(issue_id: str, data: IssueStatusRequest,
+                            db: Session = Depends(get_db),
+                            actor: TeamMember = Depends(write)):
+        issue = db.execute(select(DevIssue).where(
+            DevIssue.id == issue_id).with_for_update()).scalar_one_or_none()
+        if issue is None:
+            raise HTTPException(404, "Issue not found")
+        if issue.status != data.status:
+            before = issue.status
+            issue.status = data.status
+            add_audit(db, "devstudio.issue_status_changed", actor.id, issue.id,
+                      "from=" + before + ";to=" + data.status)
+            db.commit()
+        return to_dict(issue)
 
     @router.get("/changes")
     def changes(db: Session = Depends(get_db), actor: TeamMember = Depends(read)):

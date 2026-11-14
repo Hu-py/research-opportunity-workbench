@@ -185,3 +185,28 @@ def test_studio_requires_team_auth_in_legacy_mode(studio, monkeypatch):
     assert client.post("/api/devstudio/issues", headers=headers(),
                        json={"module_id": "DISCOVERY", "title": "Unsafe legacy edit",
                              "description": "Should not bypass member attribution."}).status_code == 403
+
+
+def test_issue_status_lifecycle_is_audited_and_viewer_cannot_change(studio):
+    client, admin, researcher, viewer = studio
+    created = client.post("/api/devstudio/issues", headers=headers(researcher), json={
+        "module_id": "PLATFORM",
+        "title": "P0 browser acceptance",
+        "description": "Verify browser experiment history and imported to-dos.",
+        "severity": "high",
+    })
+    assert created.status_code == 201, created.text
+    issue_id = created.json()["id"]
+    path = "/api/devstudio/issues/" + issue_id
+    assert client.patch(path, headers=headers(viewer), json={"status": "resolved"}).status_code == 403
+    assert client.patch(path, headers=headers(), json={"status": "resolved"}).status_code == 401
+    assert client.patch(path, headers=headers(admin), json={"status": "unapproved"}).status_code == 422
+    changed = client.patch(path, headers=headers(admin), json={"status": "in_progress"})
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["status"] == "in_progress"
+    assert client.patch(path, headers=headers(admin),
+                        json={"status": "resolved"}).status_code == 200
+    listing = client.get("/api/devstudio/issues", headers=headers(viewer)).json()["items"]
+    assert any(x["id"] == issue_id and x["status"] == "resolved" for x in listing)
+    audit = client.get("/api/team/audit", headers=headers(admin)).json()["items"]
+    assert any(x["action"] == "devstudio.issue_status_changed" for x in audit)

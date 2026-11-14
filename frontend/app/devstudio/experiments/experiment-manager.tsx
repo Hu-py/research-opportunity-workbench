@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import styles from "./experiments.module.css";
+import BacklogPanel from "./backlog-panel";
 
 type Experiment = {
   id: string; module_id: string; title: string; hypothesis: string;
@@ -265,6 +266,7 @@ export default function ExperimentManager({currentRole}:{currentRole:string}) {
         ["已完成",items.filter(x=>x.status==="completed").length],
       ].map(([name,count])=><div className={styles.stat} key={name}><span>{name}</span><strong>{count}</strong></div>)}
     </div>
+    <BacklogPanel/>
     <section className={styles.layout}>
       <aside className={styles.sidebar}>
         <div className={styles.heading}><strong>实验列表</strong><span>{items.length} 项</span></div>
