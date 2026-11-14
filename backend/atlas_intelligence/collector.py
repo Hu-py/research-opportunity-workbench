@@ -338,6 +338,7 @@ def collect_three_sources(
         all(not c["failed_sources"] for c in coverage.values()) and
         not author_coverage["failed"] and
         all(c["attempted_venues"] == c["configured_venues"] for c in coverage.values())
+        and not warnings
     ) else "partial"
     fingerprint = hashlib.sha256(
         json.dumps(plan, ensure_ascii=False, sort_keys=True).encode("utf-8")
