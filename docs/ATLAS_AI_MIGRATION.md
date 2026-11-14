@@ -113,6 +113,65 @@ build replacement and regression coverage, provide an output/data migration,
 disable old schedules, then remove code in a distinct PR. Do not erase
 old evidence, reviewed ideas or audit history merely to declutter code.
 
+## T1.1: independent OpenAlex source collection (second iteration)
+
+The new collector **queries OpenAlex directly** using each of the three configured
+source lists. It is not a renamed import of either legacy Radar A or Radar B.
+
+- `backend/atlas_intelligence/collector.py`: resolves registered venue names
+  to OpenAlex Source IDs by exact names/aliases, fetches recent paper metadata
+  for each group, optionally retrieves works by *verified* author OpenAlex ID
+  or ORCID, deduplicates DOI/Work IDs and retains group-level provenance.
+- `scripts/atlas_collect.py`: manual collection entry point. Records the
+  configured and attempted source counts, unresolved sources, request failures,
+  distinct paper counts, abstract availability, exact source-plan hash and
+  the complete/partial **attempt status**. Sampling is **never** a complete
+  scholarly population estimate.
+- `scripts/atlas_signal_trial.py`: accepts this new feed for an optional,
+  explicitly authorized L1 synthesis trial; limits papers per source group
+  before sending material to a model. It does not quietly force a research idea.
+- `tests/test_atlas_collector.py`: no-network fixtures for three-source
+  collection, DOI/author deduplication, abstract truncation, coverage and
+  the model-input handoff.
+- `.github/workflows/atlas-three-source-trial.yml`: **manual-only** real API
+  smoke test. Uses an existing `OPENALEX_API_KEY` secret and uploads a
+  review-only **public metadata** artifact for seven days. It does not
+  publish a report, use a private team profile, or update a database.
+
+This iteration broadens the **C methods** watchlist to include method journals
+(e.g., JAIR, TPAMI, IJCV, TNNLS, TKDE), not just seasonal CS conference
+proceedings. OpenAlex records may have no abstract; reconstructed abstracts
+may be truncated; evidence levels stay distinct. Accepted conference status,
+research gaps and method breakthroughs are **not** verified by the collector.
+
+To run on your own machine with a configured environment and the checked-out
+experimental branch:
+
+```bash
+python -m pip install -e '.[test]'
+pytest -q tests/test_atlas_intelligence.py tests/test_atlas_runner.py tests/test_atlas_collector.py
+export OPENALEX_API_KEY="<set your private key in your shell>"
+python scripts/atlas_collect.py --lookback-days 30 --max-per-source 8 --max-sources-per-group 2 --out scratch/atlas_public_sample.json
+python scripts/atlas_signal_trial.py --input scratch/atlas_public_sample.json --proposal scratch/review_proposal.json --period 2026-W46 --out scratch/atlas_preview.md
+```
+
+The `--proposal` JSON file contains a researcher/model proposal such as
+`{"signals":[]}` for an offline smoke test; without that flag, the trial
+requires an explicit `DEEPSEEK_API_KEY` and makes a paid model request.
+All proposals still require scholarly review. Local `scratch/` files must
+not be committed to a public repository if they contain personal choices
+or private team assets.
+
+### Historical audit, not a new tri-source feed
+
+The public artifacts dated **2026-11-09** are useful only as migration
+baselines: the older public OpenAlex feed includes `recent_papers` without
+abstract texts, while the old Radar B technical feed includes many arXiv
+preprints and selected technical journals. Directly relabelling old
+`planning/methods` streams as A/B/C would therefore misrepresent collection
+coverage. An independent sampling trial against the new source plan is
+required before replacing any automated source ingestion.
+
 ## Next technical increments
 
 1. Compare tri-source recall against the existing public OpenAlex feeds and
