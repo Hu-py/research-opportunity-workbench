@@ -90,11 +90,20 @@ METHOD_TRANSFER = {
 
 
 def _registry_for_fixture(papers):
-    """Register only identities actually present in the archived snapshot."""
+    """Explicit venue aliases; do not classify by topic keyword or prior Radar stream."""
+    aliases = {
+        "Cities": "Cities",
+        "Sustainable Cities and Society": "SCS",
+        "Environment and Planning B Urban Analytics and City Science": "EPB",
+        "Computers Environment and Urban Systems": "CEUS",
+        "IEEE Transactions on Knowledge and Data Engineering": "TKDE",
+        "International Journal of Computer Vision": "IJCV",
+    }
     return [
-        {"name": str(p.get("venue", "")), "abbreviation": "", "domain": ""}
-        for p in papers
-        if p.get("venue")
+        {"name": str(p.get("venue", "")),
+         "abbreviation": aliases.get(str(p.get("venue", "")), ""),
+         "domain": ""}
+        for p in papers if p.get("venue")
     ]
 
 
