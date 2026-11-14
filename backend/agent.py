@@ -55,11 +55,12 @@ TOOLS = [
 ]
 
 class ResearchAgent:
-    def __init__(self, db, log=lambda step, msg: None, openalex_client=None, model_client=None):
+    def __init__(self, db, log=lambda step, msg: None, openalex_client=None, model_client=None, skill_names=None):
         self.db = db
         self.log = log
         self.openalex_client = openalex_client
         self.model_client = model_client
+        self.skill_names = skill_names
         self.sources = {}
         self.usage = {"tool_calls":0, "model_rounds":0}
 
@@ -163,7 +164,7 @@ class ResearchAgent:
                 self.log("reasoning",f"科研智能体分析步骤 {turn+1}/4")
                 response=self.model_client.responses.create(
                     model=os.getenv("OPENAI_MODEL","gpt-4.1-mini"),
-                    instructions=SYSTEM+"\n\nResearch skills:\n"+load_skills(),tools=TOOLS,input=messages,max_output_tokens=1400
+                    instructions=SYSTEM+"\n\nResearch skills:\n"+(load_skills(self.skill_names) if self.skill_names is not None else load_skills()),tools=TOOLS,input=messages,max_output_tokens=1400
                 )
                 messages.extend(response.output)
                 calls=[item for item in response.output if getattr(item,"type","")=="function_call"]
