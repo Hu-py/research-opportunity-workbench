@@ -5,7 +5,7 @@ import {
   Activity, ArrowRight, ArrowUpRight, BookOpen, BrainCircuit, CheckCircle2,
   ChevronDown, Clock3, Database, FileText, GitBranch, KeyRound, Layers3,
   Lightbulb, Loader2, LockKeyhole, LogOut, Menu, Play, Plus, RefreshCw,
-  Search, Settings2, ShieldCheck, Sparkles, Workflow, X,
+  Search, Settings2, ShieldCheck, Sparkles, Workflow, X, MessageCircle, FolderOpen, UserRound,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import ResearchArchive from "@/components/ResearchArchive";
@@ -18,62 +18,43 @@ import ResearchProfileStudio from "@/components/ResearchProfileStudio";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import AgentGameReplay from "@/components/AgentGameReplay";
+import AtlasConversation from "@/components/AtlasConversation";
 import type {Idea, Overview, Paper, Profile, Task, TaskEvent, TeamMember, TeamAudit} from "@/lib/types";
 
-type Section = "interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings"|"sources"|"game-lab";
-type NavEntry = {key:Section;label:string;icon:typeof BookOpen};
-const navigationGroups:{label:string;items:NavEntry[]}[] = [
-  {label:"工作台",items:[
-    {key:"overview",label:"科研总览",icon:Layers3},
+type Section = "chat"|"topics"|"personal-profile"|"interest"|"profile-draft"|"profile-skill"|"overview"|"papers"|"repository"|"assets"|"discovery"|"ai-lab"|"radar"|"ideas"|"agent"|"history"|"profile"|"brief"|"settings"|"sources"|"game-lab";
+type ResearchNavGroup={label:string;icon:typeof BookOpen;items:{key:Section;label:string}[]};
+const researchGroups:ResearchNavGroup[]=[
+  {label:"研究专题",icon:FolderOpen,items:[{key:"topics",label:"专题列表"}]},
+  {label:"科研发现",icon:Search,items:[
+    {key:"discovery",label:"文献发现"},
+    {key:"radar",label:"科研雷达与评审"},
+    {key:"ideas",label:"研究机会池"},
+    {key:"brief",label:"科研周报"},
+    {key:"ai-lab",label:"AI 选题分析"},
+    {key:"history",label:"选题演化"},
+    {key:"agent",label:"传统 Agent 任务台"},
+    {key:"game-lab",label:"多智能体回放"},
   ]},
-  {label:"研究基础",items:[
-    {key:"profile",label:"团队画像",icon:ShieldCheck},
-    {key:"papers",label:"科研资源库",icon:Database},
-  ]},
-  {label:"学术基础",items:[
-    {key:"sources",label:"学术来源管理",icon:BookOpen},
-  ]},
-  {label:"研究发现",items:[
-    {key:"discovery",label:"文献发现",icon:Search},
-    {key:"ideas",label:"选题中心",icon:Lightbulb},
-  ]},
-  {label:"研究执行",items:[
-    {key:"agent",label:"Research Agent",icon:BrainCircuit},
-    {key:"game-lab",label:"多智能体博弈回放",icon:GitBranch},
-  ]},
-  {label:"研究产出",items:[
-    {key:"brief",label:"科研简报",icon:FileText},
-  ]},
-];
-
-// All original feature routes remain available as secondary navigation.
-const moduleTabs:Partial<Record<Section,{title:string;items:{key:Section;label:string}[]}>> = {
-  profile:{title:"团队画像与研究方向",items:[
-    {key:"profile",label:"正式画像"},
-    {key:"profile-draft",label:"数据画像"},
-    {key:"interest",label:"研究兴趣"},
-    {key:"profile-skill",label:"画像更新"},
-  ]},
-  papers:{title:"科研资源库",items:[
-    {key:"papers",label:"论文情报"},
+  {label:"知识资产",icon:Database,items:[
+    {key:"papers",label:"论文索引"},
     {key:"repository",label:"团队成果"},
     {key:"assets",label:"数据台账"},
+    {key:"profile",label:"团队研究画像"},
+    {key:"personal-profile",label:"个人研究画像"},
+    {key:"profile-draft",label:"数据库画像"},
+    {key:"profile-skill",label:"画像审核"},
   ]},
-  ideas:{title:"选题中心",items:[
-    {key:"ideas",label:"研究选题池"},
-    {key:"ai-lab",label:"AI 选题分析"},
-    {key:"radar",label:"科研雷达与评审"},
-    {key:"history",label:"选题演化"},
+  {label:"管理与设置",icon:Settings2,items:[
+    {key:"settings",label:"成员、模型与运行"},
+    {key:"sources",label:"学术来源管理"},
+    {key:"interest",label:"研究兴趣监测"},
+    {key:"overview",label:"数据概览"},
   ]},
+];
+const sectionNames:Partial<Record<Section,string>>={
+  chat:"科研对话",topics:"研究专题",...Object.fromEntries(researchGroups.flatMap(g=>g.items.map(i=>[i.key,i.label])))
 };
-const parentSections:Partial<Record<Section,Section>> = {
-  "profile-draft":"profile","profile-skill":"profile",interest:"profile",
-  repository:"papers",assets:"papers",
-  "ai-lab":"ideas",radar:"ideas",history:"ideas",
-};
-function primarySection(current:Section):Section {
-  return parentSections[current]||current;
-}
+
 const statuses:Record<string,string>={
   candidate:"待评估",watch:"持续关注",shortlist:"重点选题",
   experiment:"实验准备",rejected:"暂不考虑",archived:"已归档",
@@ -132,7 +113,10 @@ export default function Workbench(){
   const [inviteRole,setInviteRole]=useState<"admin"|"researcher"|"viewer">("researcher");
   const [profileVersion,setProfileVersion]=useState(0);
   const [loginBusy,setLoginBusy]=useState(false);
-  const [section,setSection]=useState<Section>("overview");
+  const [section,setSection]=useState<Section>("chat");
+  const [lastResearchSection,setLastResearchSection]=useState<Section>("topics");
+  const [conversationSearch,setConversationSearch]=useState("");
+  const [selectedResearchLine,setSelectedResearchLine]=useState("");
   const [mobileOpen,setMobileOpen]=useState(false);
   const [overview,setOverview]=useState<Overview|null>(null);
   const [papers,setPapers]=useState<Paper[]>([]);
@@ -222,7 +206,7 @@ export default function Workbench(){
     (p.title+" "+(p.abstract||"")+" "+(p.venue||"")).toLowerCase().includes(paperSearch.toLowerCase())
   ),[papers,paperSearch]);
   const filteredIdeas=useMemo(()=>ideas.filter(i=>ideaStatus==="all"||i.status===ideaStatus),[ideas,ideaStatus]);
-  const changeSection=(next:Section)=>{setSection(next);setMobileOpen(false);setNotice("");};
+  const changeSection=(next:Section)=>{setSection(next);if(next!=="chat")setLastResearchSection(next);setMobileOpen(false);setNotice("");};
 
   async function login(){
     setLoginBusy(true);setError("");
@@ -244,7 +228,7 @@ export default function Workbench(){
       const job=await api<Task>("tasks",{method:"POST",body:JSON.stringify({kind,query})});
       setSelectedTaskId(job.id);
       setTasks(prev=>[job,...prev.filter(t=>t.id!==job.id)]);
-      if(kind==="explore")changeSection("agent");
+      if(kind==="explore")changeSection("chat");
       setNotice("任务已提交："+job.id.slice(0,8)+"。工作台会持续查询进度。");
     }catch(e){setError(e instanceof Error?e.message:"提交失败");}
     finally{setBusy(false);}
