@@ -83,7 +83,6 @@ def fake_api(endpoint, params):
         return {"results": [
             work("W4", "S99", "Other Venue", doi="10.2222/example",
                  authors=["A100"], abstract={"Methods": [0], "improved": [1]}),
-            work("W8", "S99", "Other Venue", authors=["A200"]),
         ]}
     raise AssertionError("Unexpected API query " + query)
 
