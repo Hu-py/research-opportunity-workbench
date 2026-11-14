@@ -36,6 +36,12 @@ See [development studio and acceptance checklist](docs/DEVELOPMENT_STUDIO.md).
 
 **Important:** This codebase is a tested development MVP, not an already-deployed website or verified multi-agent research service. Academic novelty must be evaluated by reading primary sources.
 
+## User onboarding & permissions
+
+For a single current reference covering **Owner / Admin / Researcher / Viewer**, initial verification, invitations, passwords, member lifecycle, access to Development Studio, audit, and known implementation gaps, see [Research Atlas user onboarding and permissions policy](docs/USER_ONBOARDING_AND_PERMISSIONS.md).
+
+This policy is tracked in **Draft PR #65**; new Owner and invitation flows are not production-released until actual email delivery and browser acceptance pass. The older [team setup document](docs/TEAM_SETUP.md) is retained as a historical migration/legacy bootstrap guide.
+
 ## Shared 10-member laboratory mode
 
 **One research profile + one shared paper/idea corpus for the entire lab.** The team edition adds separate member accounts (admin, researcher and viewer), Argon2 password hashing, revocable sessions, role-checked APIs, profile revision history, member audit logs and team admin UI. Inactive members lose access immediately.
