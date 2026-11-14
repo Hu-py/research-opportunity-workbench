@@ -422,10 +422,20 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
             raise HTTPException(422, "Use a verified-format GitHub Actions Run URL from this repository")
         if data.kind == "internal" and not data.external_url.startswith("/api/tasks/"):
             raise HTTPException(422, "Internal runs must refer to a task resource")
+        # A signed CI event may precede linking the run. Only copy the
+        # engineering status, never an experiment evaluation or approval.
+        run_status = "unverified"
+        if data.kind == "github_actions":
+            from backend.devstudio_github_sync import DevGithubActivity, event_to_ci_status
+            match = re.search(r"/actions/runs/(\\d+)/?$", data.external_url)
+            if match:
+                known = db.get(DevGithubActivity, "workflow_run:" + match.group(1))
+                if known:
+                    run_status = event_to_ci_status(known.status)
         row = DevRunRef(id=new_id("run"), experiment_id=experiment_id, kind=data.kind,
                         external_url=data.external_url, code_sha=data.code_sha,
                         input_hash=data.input_hash, note=data.note, registered_by=actor.id,
-                        status="unverified")
+                        status=run_status)
         db.add(row)
         add_audit(db, "devstudio.run_linked", actor.id, row.id, data.external_url[:170])
         db.commit()
@@ -480,3 +490,7 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
         }
 
     app.include_router(router)
+    # Signed GitHub events are deliberately isolated from human approvals.
+    from backend.devstudio_github_sync import mount as mount_github_activity
+    mount_github_activity(app, get_db=get_db, require_actor=require_actor,
+                          team_auth_enabled=team_auth_enabled)
