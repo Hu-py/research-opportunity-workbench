@@ -1,0 +1,483 @@
+{
+  "schema_version": "devstudio-history-snapshot-v1",
+  "snapshot_date": "2026-11-14",
+  "scope": "Research Atlas / Research Opportunity Radar platform development only; independent paper and simulation studies excluded",
+  "disclaimer": "Historical evidence imported on 2026-11-14, not retroactively created or verified by the Owner; code CI and PREVIEW READY are not scientific validation.",
+  "experiments": [
+    {
+      "id": "exp_hist_radar_a_261114",
+      "module_id": "DISCOVERY",
+      "title": "[历史] Radar A 规划研究来源与主题采集",
+      "status": "review",
+      "objective": "coverage",
+      "scenario": "radar_a",
+      "change_object": "source",
+      "hypothesis": "验证规划研究来源能否形成可追溯的文献与主题快照。",
+      "baseline": "来源配置与公开 OpenAlex 数据。",
+      "method": "按配置的期刊来源检索、去重并输出 JSON 快照；此阶段不评价论文价值。",
+      "expected_result": "来源匹配与论文覆盖统计透明、缺失来源可追踪。",
+      "conclusion": "2026-11-09 快照：240 篇 recent_papers、16 个候选主题，warnings=[]；planning 12 配置/10 匹配，methods 9 配置/8 匹配。只是公开数据采集验证，不是论文质量评价。",
+      "next_action": "核实 Urban Studies、Habitat International 和 NeurIPS 的来源 ID；复跑快照并比对覆盖率。",
+      "metrics": [
+        "paper_count",
+        "topic_candidate_count",
+        "source_resolution"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/data/radar/openalex_latest.json",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-09",
+          "summary": "Radar A schema 2.0.0 快照；240 篇论文、16 个候选主题，3 个来源尚待唯一匹配。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/data/radar/openalex_latest.json"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_radar_b_261114",
+      "module_id": "DISCOVERY",
+      "title": "[历史] Radar B 计算方法证据采集",
+      "status": "review",
+      "objective": "coverage",
+      "scenario": "radar_b",
+      "change_object": "source",
+      "hypothesis": "方法文献源能否稳定收集可核查的摘要、PDF 与代码链接。",
+      "baseline": "计算机顶会、期刊及 arXiv 来源。",
+      "method": "使用公开接口采集、跨源去重和覆盖率统计；保留未解析来源状态。",
+      "expected_result": "至少可以核对源数量、文献数及可用证据链。",
+      "conclusion": "2026-11-09 快照：155 篇方法论文，116 篇有摘要片段、120 篇有 PDF 链接、3 篇有代码链接。多个顶会 0 样本或 unresolved；这并非方法前沿覆盖完成。",
+      "next_action": "核查顶会 OpenAlex venue 映射与 0 样本原因；增加论文来源与证据完整性验收。",
+      "metrics": [
+        "method_papers",
+        "abstract_excerpt",
+        "pdf_links",
+        "code_links"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/data/radar/radar_b_latest.json",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-09",
+          "summary": "Radar B schema 1.0.0 快照生成；155 papers, 116 abstracts, 120 PDF links, 3 code links。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/data/radar/radar_b_latest.json"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_tri_source_261114",
+      "module_id": "SIGNAL_L1",
+      "title": "[研发] A/B/C 三来源科研智能工作流",
+      "status": "running",
+      "objective": "methods",
+      "scenario": "other",
+      "change_object": "workflow",
+      "hypothesis": "将规划实践、城市科学问题重构、计算方法来源拆分，可以增强跨论文可迁移方法发现的可解释性。",
+      "baseline": "历史 Radar A/B 与科研评价分层不足以直接充当三来源划分。",
+      "method": "PR #57 引入来源精确匹配、组内平衡快照、L0/L1 证据引用及可选 DeepSeek 试验。",
+      "expected_result": "通过六个固定研究任务检查证据链、创新性和场景迁移，不破坏旧流程。",
+      "conclusion": "PR #57 是 draft/open；包含代码与测试，不代表真实来源联调、生产调度或专家核验完成。",
+      "next_action": "先完成六个固定任务的证据复核，检验分类迁移，再决定何时合并主分支。",
+      "metrics": [
+        "evidence_coverage",
+        "novelty_challenge",
+        "fixed_task_pass"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/57",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "PR #57 建立三来源工作流草案，仍为 Draft；未接生产数据库调度。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/57"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_weekly_261114",
+      "module_id": "DELIVERY",
+      "title": "[研发] 数据采集与数据库周报全链路",
+      "status": "blocked",
+      "objective": "reliability",
+      "scenario": "other",
+      "change_object": "workflow",
+      "hypothesis": "定时的客观数据采集加受控的 LLM 周报，应形成稳定的可溯源周报交付。",
+      "baseline": "单独运行的客观采集器与 database-backed weekly.yml。",
+      "method": "检查 .github/workflows 数据采集与周报两类调度，不把二者混为一个端到端流程。",
+      "expected_result": "每周采集、数据库联结、证据审查、周报产出和团队可见性均可验证。",
+      "conclusion": "openalex-radar-weekly.yml 已有 schedule；database-backed weekly.yml 当前只有 workflow_dispatch，并受 ENABLE_WEEKLY 等配置约束。端到端周报自动化未验收。",
+      "next_action": "等数据库与 V3.1 API 结果可靠后，安全开启 weekly.yml 的 schedule 并运行至少一次全链路回归。",
+      "metrics": [
+        "schedule_config",
+        "week_report_completeness"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/.github/workflows/weekly.yml",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "确认 weekly.yml 注释写明数据库周报手动触发，不能当作已自动推送。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/.github/workflows/weekly.yml"
+        },
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "独立 OpenAlex 采集 workflow 配置了周一定时，不意味着数据库报告自动执行。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/.github/workflows/openalex-radar-weekly.yml"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_model_api_261114",
+      "module_id": "PLATFORM",
+      "title": "[计划] DeepSeek API 低成本科研任务联调",
+      "status": "planned",
+      "objective": "reliability",
+      "scenario": "platform",
+      "change_object": "model",
+      "hypothesis": "先通过较低成本的 DeepSeek API 验证对话/科研任务的调用、会话存储与结果追踪，再决定 GPT 原生 API 的正式接入策略。",
+      "baseline": "用户已提出优先测试 DeepSeek；尚未在本次审计中找到可核验的完整浏览器 E2E 调用结果。",
+      "method": "记录请求/响应、失败处理、模型成本与工具调用证据；密钥仅留服务端。",
+      "expected_result": "至少一条普通聊天与一条科研任务的真实调用可回溯，且失败时无虚假成功。",
+      "conclusion": "需求已明确，但本条仅登记开发计划，不代表 DeepSeek/GPT 调用已经验收通过。",
+      "next_action": "做最小 DeepSeek 对话和科研任务联调；明确未来 GPT API + Skill 扩展并保持普通聊天/科研任务双模式。",
+      "metrics": [
+        "api_response",
+        "task_traceability",
+        "token_cost"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/FREE_AGENT_TEST.md",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "用户决定先用 DeepSeek 低成本测试，正式架构倾向 GPT 原生 API + Skills。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/ARCHITECTURE.md"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_ux_v05_261114",
+      "module_id": "PLATFORM",
+      "title": "[设计] Research Atlas V0.5 黑白极简页面基线",
+      "status": "review",
+      "objective": "usability",
+      "scenario": "platform",
+      "change_object": "frontend",
+      "hypothesis": "对话和研究台为平行一级入口，二级侧栏按工作区切换，可以减轻导航层级混乱。",
+      "baseline": "早期五模块与顶栏重复导航原型。",
+      "method": "冻结 V0.5 HTML 设计与变更记录：取消 slogan/架构总览，固定一级图标与动态二级导航。",
+      "expected_result": "页面结构通过产品评审后实现到现有 Next.js 站点。",
+      "conclusion": "2026-11-14 V0.5 设计基线已由用户确认；设计冻结不等于所有页面和多人对话功能都已开发。",
+      "next_action": "按页面清单审计哪些已进入 Next.js，补齐对话/研究台分离与多用户验证。",
+      "metrics": [
+        "design_review",
+        "route_coverage"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/02-experience/CHANGELOG.md",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "正式接受 V0.5 设计：黑白极简；对话/研究台平行一级；无 Slogan 和架构总览。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/02-experience/CHANGELOG.md"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_dev_v03_261114",
+      "module_id": "PLATFORM",
+      "title": "[研发] Development Studio V0.3 同站开发者中心",
+      "status": "review",
+      "objective": "usability",
+      "scenario": "platform",
+      "change_object": "frontend",
+      "hypothesis": "将实验、文档、期刊来源、变更审批集中于同一 Next.js 站点，能提升研发管理可追溯性。",
+      "baseline": "独立 HTML 原型和手动维护的研发信息。",
+      "method": "PR #63 集成七页、四个 KPI 卡片筛选、真实角色权限与后端存储 API。",
+      "expected_result": "预览部署通过七页与权限验收，生产发布另行审查。",
+      "conclusion": "PR #63 仍 draft/open、未合并 main；隔离预览曾成功登录和登记实验，正式七页发布验收不能代替生产发布。",
+      "next_action": "验收开发者中心全部模块、来源/文档/审批入口，决定是否以当前简化设计取代旧生产功能。",
+      "metrics": [
+        "page_navigation",
+        "kpi_filter",
+        "auth_gate"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/63",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "PR #63 建立 V0.3 同站开发者中心，生产合并仍待审批。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/63"
+        },
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "隔离浏览器曾通过管理员登录、实验创建、刷新与详情读取；仅代表隔离环境。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/DEVSTUDIO_POSTGRES_E2E_PLAN.md"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_db_e2e_261114",
+      "module_id": "PLATFORM",
+      "title": "[验证] DevStudio PostgreSQL 实验持久化 E2E",
+      "status": "review",
+      "objective": "reliability",
+      "scenario": "platform",
+      "change_object": "backend",
+      "hypothesis": "真实浏览器经过 Next.js 代理写入 Render PostgreSQL 后，刷新和重新登录仍应读取同一实验。",
+      "baseline": "早期内存或单机假数据原型。",
+      "method": "隔离数据库 Schema 内检验角色 401/403、创建 HTTP 201、读取 HTTP 200、跨 SQL 会话持久化与审计。",
+      "expected_result": "前后端链路成立，原数据保留，生产数据不变。",
+      "conclusion": "PR #64 当前 draft/open，隔离 Render 运行日志已出现 PASS_RESTART；用户曾在浏览器完成新增/刷新/详情测试。此结果不等于生产环境验收。",
+      "next_action": "保留隔离 Schema、测试日志与权限边界；在正式发布时用独立数据库重做数据迁移/备份验收。",
+      "metrics": [
+        "db_roundtrip",
+        "session_acl",
+        "persistence_on_restart"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/64",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "PR #64 建立隔离 PostgreSQL E2E 和访问控制探针。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/64"
+        },
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "用户在测试网页验证实验创建、保存、刷新与详情读取；Render PASS_RESTART。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/DEVSTUDIO_POSTGRES_E2E_PLAN.md"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_owner_261114",
+      "module_id": "PLATFORM",
+      "title": "[验证] Owner 角色、邀请与模拟测试账号",
+      "status": "blocked",
+      "objective": "reliability",
+      "scenario": "platform",
+      "change_object": "backend",
+      "hypothesis": "建立可审计、本人验证的 Owner 认领和团队邀请机制，避免长期使用共享初始密码。",
+      "baseline": "已有虚拟管理员与三角色的旧开通流程。",
+      "method": "PR #65 提供一次性邮箱验证链接与邀请管理；PR #66 仅合并到隔离分支，测试 Owner 由确定的 .invalid 测试账号升级。",
+      "expected_result": "测试 Owner 可管理实验；真实邮箱验证后方可允许正式账户。",
+      "conclusion": "Owner 模拟账户在隔离环境已记录 owner/PASS_EXISTING，邮件实际送达、真实 QQ 邮箱认领仍未进行；PR #65 仍 draft/open。",
+      "next_action": "当前先用测试 Owner 管实验；正式发布前恢复真实邮件验证、验证角色矩阵和安全恢复流程。",
+      "metrics": [
+        "role_access",
+        "invite_acl",
+        "mail_verification"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/65",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "PR #65 实现邮箱认领与邀请流程，尚未完成真实邮件验收。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/65"
+        },
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "PR #66 合并至隔离测试分支，模拟 Owner 不证明真实邮箱所有权。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/66"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_v04_261114",
+      "module_id": "PLATFORM",
+      "title": "[验证] 实验管理 V0.4 分类、历史与状态流转",
+      "status": "review",
+      "objective": "usability",
+      "scenario": "platform",
+      "change_object": "evaluation",
+      "hypothesis": "实验管理增加版本、筛选与运行/评价证据后，可替代只有创建功能的台账。",
+      "baseline": "V0.3 仅创建实验和追加人工评价。",
+      "method": "PR #67 完成分类、多条件筛选、版本冲突、归档与状态转换；部署独立 Render 后端与 Vercel Preview。",
+      "expected_result": "Owner 在浏览器逐项完成新建、编辑、状态、历史与跨刷新读取测试。",
+      "conclusion": "PR #67 已合并隔离分支；GitHub CI 通过、Render LIVE、Vercel 测试部署 READY；尚待 Owner 手动完整验收。",
+      "next_action": "执行一轮完整 Owner 浏览器验收；修复前后端权限与待办管理体验；决定下一版自动导入。",
+      "metrics": [
+        "create_edit",
+        "filter_search",
+        "history_revision",
+        "status_gate"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/67",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "PR #67 合并隔离分支，含新版可编辑实验台账。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/67"
+        },
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "隔离 Vercel Preview 与 Render 已发布同一 SHA；浏览器端待 Owner 复核。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/actions/runs/43596412780"
+        }
+      ]
+    },
+    {
+      "id": "exp_hist_group_261114",
+      "module_id": "PLATFORM",
+      "title": "[计划] 团队群聊 @GPT 与个人对话权限",
+      "status": "planned",
+      "objective": "usability",
+      "scenario": "platform",
+      "change_object": "workflow",
+      "hypothesis": "多人可以在同一群聊讨论，但只有 @GPT 或明确点击 AI 回复时才触发模型；私人聊天需保持隔离。",
+      "baseline": "现阶段主要是独立会话及团队资源，缺少可靠群聊交互验收。",
+      "method": "围绕私人/共享聊天两种空间、消息可见性、提及触发和权限做最小端到端实验。",
+      "expected_result": "成员群聊免自动刷模型费用，私聊内容不泄露；科研任务与聊天模式边界明确。",
+      "conclusion": "功能和触发规则已经确定，但本条仅记录计划，尚不能视为群聊产品已上线。",
+      "next_action": "完成多用户 WebSocket/HTTP 消息权限与 @GPT 触发实验，保留调用成本与日志。",
+      "metrics": [
+        "group_chat_acl",
+        "mention_trigger",
+        "message_visibility"
+      ],
+      "primary_evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/ARCHITECTURE.md",
+      "milestones": [
+        {
+          "occurred_on": "2026-11-14",
+          "summary": "确认群聊普通讨论不自动调用模型；仅 @GPT 或明确请求触发。",
+          "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/USER_ONBOARDING_AND_PERMISSIONS.md"
+        }
+      ]
+    }
+  ],
+  "todos": [
+    {
+      "id": "issue_hist_uiqa_261114",
+      "priority": "P0",
+      "module_id": "PLATFORM",
+      "title": "完整验收 V0.4 实验编辑与版本历史",
+      "experiment_id": "exp_hist_v04_261114",
+      "description": "Owner 登录现有测试 Preview，创建新实验、编辑分类与方法、查看版本历史、刷新并确认持久化；再测试归档/恢复。",
+      "acceptance": "实际浏览器逐项通过并记录复现证据；不能仅以 CI 成功代替。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/67"
+    },
+    {
+      "id": "issue_hist_qa_v03_261114",
+      "priority": "P0",
+      "module_id": "PLATFORM",
+      "title": "核对 DevStudio 七页、卡片筛选与审批流程",
+      "experiment_id": "exp_hist_dev_v03_261114",
+      "description": "逐页检查导航、期刊来源提案、文档索引、变更审批、状态和错误提示，记录未通过页面。",
+      "acceptance": "七页手工回归、角色授权和审批不自动发布均可复现。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/DEVSTUDIO_UNIFIED_RELEASE_CHECKLIST.md"
+    },
+    {
+      "id": "issue_hist_db_261114",
+      "priority": "P0",
+      "module_id": "PLATFORM",
+      "title": "制定测试数据库到期前的数据导出与正式迁移",
+      "experiment_id": "exp_hist_db_e2e_261114",
+      "description": "Render 免费测试 PostgreSQL 有到期风险；在正式发布前先备份已保留的开发实验数据，核对目标数据库及迁移方案。",
+      "acceptance": "核实到期日并导出可读数据；完成 PostgreSQL 正式库备份/迁移演练；不直接迁移合成凭据。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/DEVSTUDIO_POSTGRES_E2E_PLAN.md"
+    },
+    {
+      "id": "issue_hist_release_261114",
+      "priority": "P0",
+      "module_id": "PLATFORM",
+      "title": "确定 PR #63/#65 的生产发布门禁与角色交接",
+      "experiment_id": "exp_hist_dev_v03_261114",
+      "description": "DevStudio 和正式 Owner 模块仍为 Draft PR；需要数据库迁移计划、真实账号验收、安全评审和回滚方案。",
+      "acceptance": "明确生产范围和验收负责人；禁止将隔离 PR 直接整包合并 main。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/63"
+    },
+    {
+      "id": "issue_hist_rada_261114",
+      "priority": "P1",
+      "module_id": "DISCOVERY",
+      "title": "修复 Radar A 未匹配的学术来源",
+      "experiment_id": "exp_hist_radar_a_261114",
+      "description": "检查 Urban Studies、Habitat International、NeurIPS exact source-id 映射与正式期刊身份。",
+      "acceptance": "复跑快照，逐项记录来源 ID、误匹配、遗漏及覆盖度变化。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/data/radar/openalex_latest.json"
+    },
+    {
+      "id": "issue_hist_radb_261114",
+      "priority": "P1",
+      "module_id": "DISCOVERY",
+      "title": "核验 Radar B 顶会 0 样本与 unresolved 来源",
+      "experiment_id": "exp_hist_radar_b_261114",
+      "description": "不把 0 样本当作无研究。核对 NeurIPS/ICML/ICLR、CVPR/ACL/EMNLP/SIGSPATIAL 的 OpenAlex 和 arXiv 匹配逻辑。",
+      "acceptance": "留存检索测试、来源 ID 和覆盖度；解释 0 样本及是否需要替代采集。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/data/radar/radar_b_latest.json"
+    },
+    {
+      "id": "issue_hist_pr57_261114",
+      "priority": "P1",
+      "module_id": "SIGNAL_L1",
+      "title": "PR #57 三来源工作流做六个固定任务实验",
+      "experiment_id": "exp_hist_tri_source_261114",
+      "description": "逐项核验来源分类、paper_id、claim 引用、跨论文连接、创新性反审及迁移路径。",
+      "acceptance": "六个固定任务各有可回溯数据来源、失败原因和人工复核结果；再决定是否合并。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/57"
+    },
+    {
+      "id": "issue_hist_weekly_261114",
+      "priority": "P1",
+      "module_id": "DELIVERY",
+      "title": "周报生产流水线与 weekly.yml 定时验收",
+      "experiment_id": "exp_hist_weekly_261114",
+      "description": "区分已有的客观源数据定时采集与目前手动触发的 database-backed weekly.yml。",
+      "acceptance": "数据库快照、L1/L2 处理、Markdown/HTML 周报、失败通知全链路完成后再开启周调度。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/.github/workflows/weekly.yml"
+    },
+    {
+      "id": "issue_hist_api_261114",
+      "priority": "P1",
+      "module_id": "PLATFORM",
+      "title": "DeepSeek API 普通聊天和科研任务双模式联调",
+      "experiment_id": "exp_hist_model_api_261114",
+      "description": "沿用服务端模型密钥，先测试最小普通聊天和科研任务两类调用；不要在日志中写 API key。",
+      "acceptance": "有请求/响应、成本估算、失败追踪和独立结果记录，再考虑 GPT 原生 API 兼容。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/FREE_AGENT_TEST.md"
+    },
+    {
+      "id": "issue_hist_group_261114",
+      "priority": "P1",
+      "module_id": "PLATFORM",
+      "title": "多人群聊 @GPT 触发与私人对话隔离",
+      "experiment_id": "exp_hist_group_261114",
+      "description": "验证成员直接发言不触发模型；@GPT 或点击 AI 回复才调用；不同成员私聊不可交叉查看。",
+      "acceptance": "多人协作实测含权限拒绝、成功调用、成本限制、消息审计。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/USER_ONBOARDING_AND_PERMISSIONS.md"
+    },
+    {
+      "id": "issue_hist_evidence_261114",
+      "priority": "P1",
+      "module_id": "PLATFORM",
+      "title": "建立 CI 运行证据和科研评价的分级核验",
+      "experiment_id": "exp_hist_v04_261114",
+      "description": "自动同步 GitHub Run 的状态和对应 SHA，但不把 CI 通过直接记为科研结论成立。",
+      "acceptance": "可区分 code CI、服务 LIVE、浏览器 E2E、人工实验评价四级证据。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/DEVSTUDIO_EXPERIMENTS_V04.md"
+    },
+    {
+      "id": "issue_hist_sources_261114",
+      "priority": "P1",
+      "module_id": "DISCOVERY",
+      "title": "期刊来源动态维护与变更审批实测",
+      "experiment_id": "exp_hist_tri_source_261114",
+      "description": "正式 A/B/C 来源映射与 DevStudio 来源提案对接；确保申请、独立审批和实际生效分离。",
+      "acceptance": "审核记录可以追踪，不经显式发布不修改真实来源配置。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/DEVSTUDIO_UNIFIED_RELEASE_CHECKLIST.md"
+    },
+    {
+      "id": "issue_hist_mail_261114",
+      "priority": "P2",
+      "module_id": "PLATFORM",
+      "title": "真实 Owner 邮箱验证与团队邀请安全验收",
+      "experiment_id": "exp_hist_owner_261114",
+      "description": "用户当前选择无域名的测试模式；真实邮件投递暂不阻塞测试期实验使用，但正式发布前必需。",
+      "acceptance": "经过真实邮箱收信认领、邀请/撤销、密码重置、权限审计且不泄露密钥。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/pull/65"
+    },
+    {
+      "id": "issue_hist_role_261114",
+      "priority": "P2",
+      "module_id": "PLATFORM",
+      "title": "统一 DevStudio API/Web 的角色权限边界",
+      "experiment_id": "exp_hist_owner_261114",
+      "description": "当前页面只允许 Owner/Admin，部分 DevStudio API 允许 Researcher 写和 Viewer 读。需要审议是否支持研究者提交入口。",
+      "acceptance": "测试矩阵与前端一致；越权 401/403；独立 Owner 恢复计划建立。",
+      "evidence": "https://github.com/Hu-py/research-opportunity-workbench/blob/experiment/devstudio-postgres-e2e-20261114/docs/USER_ONBOARDING_AND_PERMISSIONS.md"
+    }
+  ]
+}
