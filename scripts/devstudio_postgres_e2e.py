@@ -148,4 +148,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if main() == 0:
+        # Keep PGOPTIONS in the same Python process so the server, not just
+        # the startup probe, remains pinned to the isolated test schema.
+        import uvicorn
+        uvicorn.run("backend.api:app", host="0.0.0.0", port=8000)
