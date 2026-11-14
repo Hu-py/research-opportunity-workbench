@@ -33,7 +33,11 @@ def test_personal_persistence_is_distinct_from_public_snapshot(tmp_path, monkeyp
     monkeypatch.setenv("PERSONAL_RESEARCH_OWNER_EMAIL", "seed@example.invalid")
     with factory() as db:
         owner = create_member(db, "seed@example.invalid", "Owner",
-                              "offline-test-only-placeholder", role="owner", initial=True)
+                              "offline-test-only-placeholder", role="admin", initial=True)
+        # Test-only fixture: verified-email onboarding promotes an existing admin
+        # separately; never bypass create_member's Owner restriction in product.
+        owner.role = "owner"
+        db.commit()
         other = create_member(db, "other@example.invalid", "Member",
                               "offline-test-only-placeholder2", role="researcher")
         first = seed_public_pilots(db)
