@@ -27,6 +27,8 @@ type Evaluation={id:string;run_id:string;rubric_version:string;scores:Record<str
 type Decision={id:string;change_id:string;decision:string;reason:string;reviewer_id:string;created_at:string};
 type Lineage={module_id:string;issues:Issue[];changes:Change[];experiments:Experiment[];runs:Run[];decisions:Decision[];note:string};
 type SourcesData={legacy_registry:{id:string;name:string;abbreviation:string;kind:string;domain:string;enabled:boolean;resolution_status:string}[];source_proposals:Change[];warning:string};
+type GithubActivity={event_key:string;kind:"push"|"pull_request"|"issue"|"workflow_run";title:string;url:string;status:string;actor:string;branch:string;sha:string;detail:string;source_updated_at:string;received_at:string};
+type GithubFeed={repo:string;items:GithubActivity[];integration_status:string;last_received_at:string|null;note:string};
 type Page="overview"|"sources"|"documents"|"experiments"|"changes"|"workflows"|"settings";
 type ModalType="search"|"source"|"document"|"docRevision"|"experiment"|"run"|"evaluation"|"change"|"approval"|"issue"|"info";
 type Modal={type:ModalType;id?:string;message?:string;action?:"approve"|"reject"|"request_changes"};
@@ -70,6 +72,10 @@ function PanelHeader({title,sub,action}:{title:string;sub?:string;action?:React.
 function SectionHeader({title,sub}:{title:string;sub?:string}){return <div className="dv-sectionhead"><h2>{title}</h2><span>{sub}</span></div>;}
 function Empty({children}:{children:React.ReactNode}){return <div className="dv-empty">{children}</div>;}
 const emptySources:SourcesData={legacy_registry:[],source_proposals:[],warning:""};
+const emptyGithub:GithubFeed={repo:"Hu-py/research-opportunity-workbench",items:[],integration_status:"disabled",last_received_at:null,note:""};
+const githubKind:Record<string,string>={push:"代码提交",pull_request:"PR 变更",issue:"Issue",workflow_run:"CI 运行"};
+const githubStatus:Record<string,string>={success:"CI 通过",failure:"CI 失败",ci_success:"CI 通过",ci_failure:"CI 失败",in_progress:"CI 运行中",queued:"CI 排队中",draft:"草稿",merged:"已合并",open:"开放",closed:"关闭",recorded:"已记录"};
+
 const emptyOverview:Overview={modules:Object.keys(moduleLabels).map(id=>({id,name:moduleLabels[id],scope:moduleScopes[id]})),counts:{open_issues:0,pending_changes:0,experiments:0,indexed_documents:0},pending_review_experiment_ids:[],deployment_status:"not_verified",note:""};
 
 export default function DevelopmentStudioV02(){
@@ -83,6 +89,7 @@ export default function DevelopmentStudioV02(){
   const [experiments,setExperiments]=useState<Experiment[]>([]);
   const [documents,setDocuments]=useState<Document[]>([]);
   const [sources,setSources]=useState<SourcesData>(emptySources);
+  const [githubFeed,setGithubFeed]=useState<GithubFeed>(emptyGithub);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
@@ -127,9 +134,11 @@ export default function DevelopmentStudioV02(){
         api<{items:Experiment[]}>("devstudio/experiments"),
         api<{items:Document[]}>("devstudio/documents"),
         api<SourcesData>("devstudio/sources"),
+        api<GithubFeed>("devstudio/github/activity"),
       ]);
       setOverview(result[0]);setChanges(result[1].items);setIssues(result[2].items);
       setExperiments(result[3].items);setDocuments(result[4].items);setSources(result[5]);
+      setGithubFeed(result[6]);
     }catch(e){setError(errorLabel(e));}
     finally{setLoading(false);}
   },[]);
@@ -147,6 +156,16 @@ export default function DevelopmentStudioV02(){
       .catch(()=>setSession({authenticated:false,team:false,member:null}));
   },[]);
   useEffect(()=>{if(session?.authenticated&&session.team)void refresh();else if(session)setLoading(false);},[session?.authenticated,session?.team,refresh]);
+  // Poll only the lightweight engineering feed; GitHub actions perform writes
+  // through signed server-to-server events. The browser is read-only.
+  useEffect(()=>{
+    if(!session?.authenticated||!session.team)return;
+    let active=true;
+    const poll=()=>{void api<GithubFeed>("devstudio/github/activity")
+      .then(value=>{if(active)setGithubFeed(value);}).catch(()=>{});};
+    const timer=setInterval(poll,60000);
+    return ()=>{active=false;clearInterval(timer);};
+  },[session?.authenticated,session?.team]);
   useEffect(()=>{
     if(page!=="changes"||!session?.authenticated)return;
     const target=new URLSearchParams(window.location.search).get("module");
@@ -450,6 +469,23 @@ export default function DevelopmentStudioV02(){
                   </button>)}{!shownTasks.length&&<Empty>当前筛选没有待处理记录。</Empty>}</div>
                   <div className="dv-callout"><strong>状态提醒：</strong> CI 通过不代表产品已上线；OpenAlex 采集成功也不代表科研结果已通过评审。</div>
                 </div>
+              </div>
+              <SectionHeader title="GitHub 自动同步" sub="代码、PR、Issue 与 CI 的真实工程事件 · 不等于科研审核或正式发布"/>
+              <div className="dv-panel">
+                <PanelHeader title="GitHub 研发活动" sub={githubFeed.integration_status==="ready_for_signed_events"?
+                  "已配置签名接口 · 最新记录 "+(githubFeed.last_received_at?dateLabel(githubFeed.last_received_at):"尚未接收事件"):
+                  githubFeed.integration_status==="missing_secret"?"待配置服务端签名密钥":"尚未启用自动同步"}/>
+                <div className="dv-tablewrap"><table className="dv-table">
+                  <thead><tr><th>事件</th><th>来源与内容</th><th>工程状态</th><th>时间</th></tr></thead>
+                  <tbody>{githubFeed.items.slice(0,12).map(item=><tr key={item.event_key}>
+                    <td><Badge tone={item.kind==="workflow_run"&&item.status==="failure"?"amber":"gray"}>{githubKind[item.kind]||item.kind}</Badge></td>
+                    <td><External href={item.url}>{item.title}</External><small>{item.actor||"GitHub"}{item.branch?" · "+item.branch:""}</small></td>
+                    <td><Badge tone={item.status==="success"||item.status==="merged"?"mint":item.status==="failure"?"amber":"gray"}>{githubStatus[item.status]||item.status}</Badge></td>
+                    <td>{dateLabel(item.source_updated_at||item.received_at)}</td>
+                  </tr>)}</tbody>
+                </table></div>
+                {!githubFeed.items.length&&<Empty>暂时没有已同步事件。部署后配置 GitHub Actions 的同步地址和签名密钥，新的仓库事件才会写入。</Empty>}
+                <div className="dv-callout">GitHub 工程记录自动更新；正式科研实验、人工评价、变更批准与部署验收仍由团队分别确认。</div>
               </div>
               <SectionHeader title="最近的研发演化" sub="以实际登记关系为准，不从时间相邻推断原因"/>
               <div className="dv-twocol">
