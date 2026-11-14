@@ -27,14 +27,34 @@ def main(argv=None):
     parser.add_argument("--period", default="", help="e.g. 2026-W46")
     parser.add_argument("--out", required=True, help="Output Markdown path (keep team data private)")
     parser.add_argument("--model", default="deepseek-chat", help="Model for explicitly requested paid run")
+    parser.add_argument("--max-papers-per-group", type=int, default=12,
+                        help="Cap model input from an independently collected feed")
     args = parser.parse_args(argv)
     source = json.loads(Path(args.input).read_text(encoding="utf-8"))
     if not isinstance(source, dict) or not isinstance(source.get("papers"), list):
         raise SystemExit("input must contain a list named papers")
     papers = source["papers"]
-    if source.get("registered_sources"):
+    if args.max_papers_per_group < 1:
+        raise SystemExit("--max-papers-per-group must be positive")
+    if source.get("feed_kind") == "atlas_three_source_public_evidence":
+        if any(not isinstance(p, dict) or not p.get("source_provenance")
+               for p in papers):
+            raise SystemExit("Atlas feed paper requires collector source_provenance")
+        if source.get("status") != "complete":
+            print("WARNING: input feed has partial source coverage; do not report full-field trends")
+        papers, selection = prepare_paper_snapshot(
+            papers, [], per_group_limit=args.max_papers_per_group
+        )
+        coverage = {
+            "collection": source.get("coverage") or {},
+            "selection": selection,
+            "feed_status": source.get("status"),
+            "feed_retrieved_at_utc": source.get("retrieved_at_utc"),
+            "source_plan_sha256": source.get("source_plan_sha256"),
+        }
+    elif source.get("registered_sources"):
         papers, coverage = prepare_paper_snapshot(
-            papers, source["registered_sources"], per_group_limit=24
+            papers, source["registered_sources"], per_group_limit=args.max_papers_per_group
         )
     else:
         if any(not isinstance(p, dict) or not p.get("source_groups") for p in papers):
