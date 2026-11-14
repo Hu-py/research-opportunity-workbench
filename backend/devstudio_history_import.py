@@ -8,6 +8,7 @@ original occurrence dates separately from the *actual* import timestamp.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -133,7 +134,7 @@ def import_history(db: Session) -> dict:
         # the historical event date embedded in details_json.
         for i, milestone in enumerate(e["milestones"]):
             db.add(ExperimentEvent(
-                id="evt_" + e["id"][4:] + "_" + str(i),
+                id="evt_h_" + hashlib.sha256((e["id"] + "/milestone/" + str(i)).encode()).hexdigest()[:24],
                 experiment_id=e["id"], revision=0,
                 action="historical_evidence",
                 details_json=json.dumps({
@@ -143,7 +144,7 @@ def import_history(db: Session) -> dict:
             ))
             created_events += 1
         db.add(ExperimentEvent(
-            id="evt_" + e["id"][4:] + "_import",
+            id="evt_h_" + hashlib.sha256((e["id"] + "/import").encode()).hexdigest()[:24],
             experiment_id=e["id"], revision=1,
             action="history_snapshot_imported",
             details_json=json.dumps({
