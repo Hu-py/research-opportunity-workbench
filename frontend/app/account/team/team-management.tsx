@@ -53,6 +53,18 @@ export default function TeamManagement({currentRole}:{currentRole:string}){
     finally{setSending(false);}
   }
 
+  async function revokeInvitation(item:Invitation){
+    if(!confirm("撤销发往 "+item.email+" 的邀请吗？"))return;
+    setError("");setMessage("");
+    try{
+      await request("team/invitations/"+encodeURIComponent(item.id)+"/revoke",{
+        method:"POST",body:"{}",
+      });
+      setMessage("邀请已撤销，并已记录审计日志");
+      await reload();
+    }catch(err){setError(err instanceof Error?err.message:"撤销失败");}
+  }
+
   async function updateMember(m:Member,action:"role"|"active",value:string|boolean){
     const payload=action==="role"?{role:value}:{active:value};
     const label=action==="active"?(value?"重新启用":"停用"):"变更角色";
@@ -133,12 +145,17 @@ export default function TeamManagement({currentRole}:{currentRole:string}){
         <h2 style={{fontSize:17,margin:"0 0 12px"}}>邀请记录</h2>
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr>{["邮箱","邀请角色","状态","到期"].map(x=><th key={x} style={{textAlign:"left",padding:"10px 8px",borderBottom:border}}>{x}</th>)}</tr></thead>
+            <thead><tr>{["邮箱","邀请角色","状态","到期","操作"].map(x=><th key={x} style={{textAlign:"left",padding:"10px 8px",borderBottom:border}}>{x}</th>)}</tr></thead>
             <tbody>{invitations.map(x=><tr key={x.id}>
               <td style={{padding:"10px 8px",borderBottom:border}}>{x.email}</td>
               <td style={{padding:"10px 8px",borderBottom:border}}>{x.role}</td>
               <td style={{padding:"10px 8px",borderBottom:border}}>{x.status}</td>
               <td style={{padding:"10px 8px",borderBottom:border}}>{new Date(x.expires_at*1000).toLocaleString("zh-CN")}</td>
+              <td style={{padding:"10px 8px",borderBottom:border}}>
+                {x.status==="pending" && <button type="button"
+                  style={{padding:"6px 9px",border,borderRadius:5,background:"#fff"}}
+                  onClick={()=>void revokeInvitation(x)}>撤销</button>}
+              </td>
             </tr>)}</tbody>
           </table>
         </div>
