@@ -479,4 +479,13 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
             "note": "Links are explicitly recorded. Time order alone does not prove causation or deployment.",
         }
 
+    # V0.4 experiment registry extends legacy rows without changing their columns.
+    from backend.experiment_management import mount as mount_experiment_management
+    mount_experiment_management(
+        router, get_db=get_db, read=read, write=write,
+        validate_module=validate_module, to_dict=to_dict, new_id=new_id,
+        DevExperiment=DevExperiment, DevChange=DevChange,
+        DevRunRef=DevRunRef, DevEvaluation=DevEvaluation, encode=encode,
+    )
+
     app.include_router(router)
