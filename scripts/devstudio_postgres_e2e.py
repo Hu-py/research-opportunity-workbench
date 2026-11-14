@@ -102,6 +102,13 @@ def main() -> int:
                     raise RuntimeError("Owner fixture role and claim disagree")
                 print(json.dumps({"type": "isolated_browser_owner_fixture", "result": "PASS_EXISTING",
                                   "schema": SCHEMA, "role": "owner"}))
+        # Optional evidence-labeled historical registry import. Only after the
+        # database name/schema and test Owner checks above. This is additive;
+        # pre-existing experiments and manually edited imports remain unchanged.
+        if os.getenv("DEVSTUDIO_E2E_IMPORT_HISTORY") == "1":
+            from backend.devstudio_history_import import import_history
+            result = import_history(session)
+            print(json.dumps({"type": "devstudio_history_backfill", **result}))
         # On Render instance restarts, never create another initial team.
         # Validate the previously committed E2E row instead of mutating it.
         persisted = session.execute(text(
