@@ -41,6 +41,6 @@ export async function GET():Promise<Response>{
     .replace("当前页面是独立 HTML 原型。","当前页面属于 Research Atlas 同一个网站。")
     .replace("当前 HTML 未连接","服务端研发管理功能需独立验收")
     .replace(marker,"\n"+DEV_CENTER_BRIDGE+"\nrender();\nloadDevStudio();\n</script>")
-    .replace("</body>","<a href=\"/account/team\" style=\"position:fixed;bottom:18px;right:22px;background:#111;color:#fff;padding:10px 14px;text-decoration:none;border-radius:6px;font-size:12px;z-index:100\" aria-label=\"团队与邀请管理\">团队与邀请管理</a></body>");
+    .replace("</body>","<a href=\"/devstudio/experiments\" style=\"position:fixed;bottom:18px;right:190px;background:#fff;color:#111;border:1px solid #ddd;padding:10px 14px;text-decoration:none;border-radius:6px;font-size:12px;z-index:100\" aria-label=\"完整实验管理\">完整实验管理</a><a href=\"/account/team\" style=\"position:fixed;bottom:18px;right:22px;background:#111;color:#fff;padding:10px 14px;text-decoration:none;border-radius:6px;font-size:12px;z-index:100\" aria-label=\"团队与邀请管理\">团队与邀请管理</a></body>");
   return new Response(html,{status:200,headers:HEADERS});
 }
