@@ -59,6 +59,8 @@ def redeem(client, token, password="this-is-a-good-secret-password-2026"):
 
 def test_owner_claim_rejects_unverified_and_is_single_use(provision):
     client, mailbox, factory = provision
+    assert client.post("/api/account/owner/request",
+                       json={"email": OWNER}).status_code == 401
     claim(client, mailbox, email="someone@other.test")
     assert mailbox == []
     assert login(client, OWNER, "any-password").status_code == 401
@@ -169,3 +171,23 @@ def test_fail_closed_without_real_mail_delivery(provision, monkeypatch):
                            json={"email": OWNER})
     assert response.status_code == 503
     assert login(client, OWNER, "this-is-a-good-secret-password-2026").status_code == 401
+
+
+def test_invitation_revocation_is_audited_and_token_cannot_be_used(provision):
+    client, mailbox, _ = provision
+    assert redeem(client, claim(client, mailbox)).status_code == 200
+    owner = login(client, OWNER, "this-is-a-good-secret-password-2026").json()["token"]
+    invite = client.post("/api/team/invitations", headers=auth(owner),
+                         json={"email": "to-revoke@lab.test", "name": "Revoke Me",
+                               "role": "viewer"})
+    assert invite.status_code == 202
+    invite_token = mailbox[-1]["token"]
+    invitation_id = client.get("/api/team/invitations", headers=auth(owner)).json()["items"][0]["id"]
+    revoke = client.post("/api/team/invitations/" + invitation_id + "/revoke",
+                         headers=auth(owner))
+    assert revoke.status_code == 200
+    assert redeem(client, invite_token).status_code == 410
+    rows = client.get("/api/team/invitations", headers=auth(owner)).json()["items"]
+    assert rows[0]["status"] == "revoked"
+    audit = client.get("/api/team/audit", headers=auth(owner)).json()["items"]
+    assert any(x["action"] == "member.invitation.revoked" for x in audit)
