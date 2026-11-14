@@ -60,10 +60,11 @@
     "out_of_watchlist_context_count": 4,
     "search_exhaustive": false,
     "papers_read_full_text": 0,
-    "abstracts_or_highlights_checked": 16,
+    "abstracts_or_highlights_checked": null,
     "eligibility_rule": "Exact source venue match by documented A/B/C source plan; named supplemental sources excluded from primary counts",
     "time_window": "Selected mostly 2024-2026; 2017 foundation and 2021 AOA exceptions",
-    "population_note": "Some outcomes are health proxies, child safety perception, or youth rather than five developmental outcomes; do not equate labels"
+    "population_note": "Some outcomes are health proxies, child safety perception, or youth rather than five developmental outcomes; do not equate labels",
+    "abstracts_or_highlights_checked_note": "Mixed publisher/abstract evidence inspected; no comprehensive abstract audit or count asserted."
   },
   "papers": [
     {
@@ -231,7 +232,7 @@
       "year": 2021,
       "doi": "10.1111/2041-210X.13650",
       "url": "https://doi.org/10.1111/2041-210X.13650",
-      "evidence_level": "publisher_full_article",
+      "evidence_level": "publisher_abstract_or_page_checked_not_fulltext_review",
       "probe_reason": "AOA/DI transferability audit and validation-design constraint; outside A/B/C source watchlists",
       "paper_scope": "research_abstract_not_verified_full_text"
     },
@@ -243,7 +244,7 @@
       "year": 2025,
       "doi": "10.1007/s10109-024-00455-y",
       "url": "https://doi.org/10.1007/s10109-024-00455-y",
-      "evidence_level": "publisher_full_article",
+      "evidence_level": "publisher_abstract_or_page_checked_not_fulltext_review",
       "probe_reason": "SpTrans small-target-sample process/transfer approach tested on land prices; outside A/B/C watchlists",
       "paper_scope": "research_abstract_not_verified_full_text"
     },
