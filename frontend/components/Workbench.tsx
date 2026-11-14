@@ -311,27 +311,22 @@ export default function Workbench(){
     URL.revokeObjectURL(url);
   }
   if(auth===null)return <div className="screen-center"><Spinner/><span>正在加载科研工作台…</span></div>;
-  if(!auth)return <div className="login-page">
-    <div className="login-visual"><div className="login-emblem"><BrainCircuit size={34}/></div>
-      <span className="overline">TEAM RESEARCH INTELLIGENCE</span>
-      <h1>让每一篇论文，<br/>成为下一个研究机会。</h1>
-      <p>跨领域知识发现 · 持续选题演化 · 可追溯科研 Agent</p>
-      <div className="login-lines"><span/><span/><span/></div>
-    </div>
-    <div className="login-panel"><div className="login-card">
-      <div className="lock"><LockKeyhole size={21}/></div>
-      <h2>登录科研工作台</h2><p>{teamMode?"使用团队成员邮箱和密码登录，共享科研知识库。":"请输入工作台访问密码。"}</p>
+  if(!auth)return <div className="atlas-login-page">
+    <div className="atlas-login-mark">RA</div>
+    <div className="atlas-login-form">
+      <div className="atlas-kicker">RESEARCH ATLAS · SECURE ACCESS</div>
+      <h1>登录 Research Atlas</h1>
+      <p className="atlas-muted">{teamMode?"使用团队成员账户登录。":"输入工作台访问密码。"}</p>
       <form onSubmit={e=>{e.preventDefault();void login();}}>
         {teamMode&&<><label htmlFor="email">团队成员邮箱</label>
-        <input id="email" type="email" autoComplete="username" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="name@university.edu"/></>}
+          <input id="email" type="email" autoComplete="username" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="name@university.edu"/></>}
         <label htmlFor="pw">访问密码</label>
-        <input id="pw" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="输入工作台密码"/>
-        {error&&<p className="error">{error}</p>}
-        <button className="btn btn-primary wide" disabled={loginBusy} type="submit">
-          {loginBusy?<Spinner/>:<ArrowRight size={16}/>}进入工作台
-        </button>
-      </form><p className="login-help">密码由部署方在环境变量中设置，前端不保存 API Key。</p>
-    </div></div>
+        <input id="pw" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="输入密码"/>
+        {error&&<p className="error" role="alert">{error}</p>}
+        <button className="atlas-login-submit" disabled={loginBusy} type="submit">{loginBusy?<Spinner/>:<ArrowRight size={16}/>}登录</button>
+      </form>
+      <p className="atlas-muted atlas-login-foot">密钥仅保存在服务端。请勿在公开页面提交敏感科研资料。</p>
+    </div>
   </div>;
 
   const primary=primarySection(section);
