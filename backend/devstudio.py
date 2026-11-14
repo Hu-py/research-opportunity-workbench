@@ -238,7 +238,9 @@ def validate_proposal(data: ChangeRequest) -> None:
         if not str(data.proposed.get("name") or "").strip():
             raise HTTPException(422, "Source proposals require a source name")
         groups = data.proposed.get("source_groups")
-        if not isinstance(groups, list) or not groups or not set(groups) <= SOURCE_GROUPS:
+        if (not isinstance(groups, list) or not groups
+                or any(not isinstance(group, str) or group not in SOURCE_GROUPS
+                       for group in groups)):
             raise HTTPException(422, "Source proposals require valid A/B/C groups")
     if data.kind == "workflow" and not data.proposed:
         raise HTTPException(422, "Workflow changes require a description of the proposed configuration")
