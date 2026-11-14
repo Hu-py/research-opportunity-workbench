@@ -45,3 +45,21 @@ Review the branch's GitHub CI results for full regression status. CI does not pr
 - Back-end generated scientific conclusions; current evaluation is recorded human feedback, not automatic claim validation.
 
 The existing SQLAlchemy database is reused; no database migration to another engine is needed for this prototype. In production, take a backup and review schema migration before deploying: creating missing tables does not safely alter existing columns. No live weekly reports are modified by this branch.
+
+
+## Approved UI V0.2 implementation (2026-11-14)
+
+**Visual source of truth:** the reviewed standalone Research Atlas Development Studio UI Prototype V0.2 HTML, not the earlier five-page P0 wireframe. The official Next.js route now uses DevelopmentStudioV02 through the stable DevelopmentStudio component import.
+
+- Preserves the reviewed dark navy left rail, white top bar, purple accents, overview cards, module table with adjacent task list, document three-column layout, experiment tabs, change approval timeline, source catalogue and detail drawers.
+- Seven functional navigation views: overview, sources, documents, experiments, changes, workflows, settings. Workflows and settings clearly distinguish approved design structure from real runtime settings.
+- **Newly confirmed behavior:** all four overview KPI cards are clickable. Selecting pending changes, research review or open issues filters BOTH the module table and the right-side tasks; selecting the active card again resets to all modules. Counts are derived from authenticated backend data rather than hardcoded prototype samples.
+- Backend GET /api/devstudio/overview now includes pending_review_experiment_ids, derived from runs with no appended manual evaluations. It is not an external GitHub verification or a claim of scientific validity.
+- Global command palette opens via the search bar or Cmd/Ctrl+K; searches real registered modules, changes, documents and experiments plus separately labeled reference sources.
+- The seven source reference rows from the approved HTML remain explicitly marked as **design recommendations, not production watchlist entries**. Source change proposals are real backend records and their approval does not activate the source.
+- Research documents used in the prototype are shown as suggested **reference links** until a team member registers them. Registering a link does not alter its source Page or GitHub file.
+- Experiment Run and human evaluation are persistent backend objects, not static browser demos. Run is labeled "unverified" until a future GitHub evidence sync is implemented.
+- The UI review drawer can export Markdown design feedback; that particular review feedback remains **client-session only** and is not written to the research audit table.
+
+**Release gate:** Frontend compile/build and backend tests must pass; an authorized member must also visually review all seven pages on the deployed preview and verify researcher/admin approval separation. The full seven-screen design is not evidence that the separate A/B/C source registry migration, live CI monitoring, real-time model configuration or production rollout has occurred.
+
