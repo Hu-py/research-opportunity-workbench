@@ -491,7 +491,7 @@ def team_update_member(member_id:str,data:MemberUpdateRequest,
     if not m:raise HTTPException(404,"Member not found")
     if data.role == "admin" and (actor is None or actor.role != "owner"):
         raise HTTPException(403, "只有 Owner 可以授予管理员角色")
-    if m.role == "admin" and actor is not None and actor.role != "owner" and (
+    if m.role == "admin" and actor is not None and actor.role != "owner" and actor.id != m.id and (
         data.active is False or data.role not in (None, "admin")
     ):
         raise HTTPException(403, "只有 Owner 可以修改其他管理员")
