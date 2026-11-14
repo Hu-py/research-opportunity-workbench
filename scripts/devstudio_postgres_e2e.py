@@ -66,6 +66,42 @@ def main() -> int:
                     raise RuntimeError("Refusing browser fixture: initial team not provisioned")
                 create_member(session, browser_email, "Preview E2E Administrator",
                               browser_password, role="admin", initial=False)
+        # This is a one-time TEST-fixture promotion, not a user-facing Owner grant.
+        # It is scoped to the exact known synthetic browser admin on the
+        # pre-approved PostgreSQL test database/schema checked above.
+        if os.getenv("DEVSTUDIO_E2E_PROMOTE_BROWSER_OWNER") == "1":
+            from sqlalchemy import select
+            from backend.account_onboarding import OwnerClaim
+            from backend.team import TeamMember, add_audit
+            expected_fixture = "devstudio-web-e2e-20261114@example.invalid"
+            if browser_email != expected_fixture or not browser_password:
+                raise RuntimeError("Refusing isolated Owner fixture: unexpected browser account")
+            member = session.scalar(
+                select(TeamMember).where(TeamMember.email == expected_fixture).with_for_update()
+            )
+            if member is None or not member.active or member.role not in ("admin", "owner"):
+                raise RuntimeError("Refusing isolated Owner fixture: missing active test admin")
+            claim = session.get(OwnerClaim, 1)
+            if claim is not None and claim.member_id not in ("", member.id):
+                raise RuntimeError("Refusing isolated Owner fixture: Owner already assigned")
+            if claim is None:
+                claim = OwnerClaim(id=1, member_id=member.id, claimed_at=0)
+                session.add(claim)
+            if member.role != "owner":
+                from time import time
+                member.role = "owner"
+                claim.member_id = member.id
+                claim.claimed_at = int(time())
+                add_audit(session, "devstudio.e2e_owner_promoted", member.id,
+                          member.id, "synthetic administrator only; no real mailbox proof")
+                session.commit()
+                print(json.dumps({"type": "isolated_browser_owner_fixture", "result": "PASS",
+                                  "schema": SCHEMA, "role": "owner"}))
+            else:
+                if claim.member_id != member.id:
+                    raise RuntimeError("Owner fixture role and claim disagree")
+                print(json.dumps({"type": "isolated_browser_owner_fixture", "result": "PASS_EXISTING",
+                                  "schema": SCHEMA, "role": "owner"}))
         # On Render instance restarts, never create another initial team.
         # Validate the previously committed E2E row instead of mutating it.
         persisted = session.execute(text(
