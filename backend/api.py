@@ -1409,3 +1409,9 @@ _mount_devstudio_routes(
     require_editor=require_editor, require_admin=require_admin,
     team_auth_enabled=team_auth_enabled,
 )
+
+# Authenticated personal research profile/results, separate from team portrait
+# and the shared Development Studio experiment registry. Import registers ORM.
+from backend.personal_research import mount as _mount_personal_research
+_mount_personal_research(app, get_db=get_db, require_actor=require_actor,
+                         team_auth_enabled=team_auth_enabled)
