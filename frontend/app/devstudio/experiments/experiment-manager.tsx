@@ -15,7 +15,7 @@ type Run = {id:string; kind:string; external_url:string; status:string; code_sha
 type Review = {id:string; run_id:string; rubric_version:string; scores:Record<string,number>; limitations:string; created_at:string};
 type ChangeEvent = {id:string; revision:number; action:string; actor_id:string; created_at:string; details:Record<string,unknown>};
 type Draft = Omit<Experiment,"id"|"revision"|"created_by"|"created_at"|"updated_by"|"updated_at">;
-type Filter = {search:string; module_id:string; objective:string; scenario:string; status:string; include_archived:boolean};
+type Filter = {search:string; module_id:string; objective:string; scenario:string; change_object:string; status:string; include_archived:boolean};
 const modules = [
   ["DISCOVERY","文献发现与来源核验"],["PAPER_KNOWLEDGE","论文知识与证据抽取"],
   ["SIGNAL_L1","跨论文科研信号"],["DEEP_READ_L2","代表论文深读"],
@@ -54,7 +54,7 @@ const baseDraft:Draft={
   objective:"other",scenario:"platform",change_object:"other",
   method:"",expected_result:"",conclusion:"",next_action:"",status:"planned",
 };
-const initialFilters:Filter={search:"",module_id:"",objective:"",scenario:"",status:"",include_archived:false};
+const initialFilters:Filter={search:"",module_id:"",objective:"",scenario:"",change_object:"",status:"",include_archived:false};
 const label=(arr:readonly (readonly [string,string])[], key:string)=>
   arr.find(v=>v[0]===key)?.[1]||key;
 const shortDate=(v:string)=>v?new Date(v).toLocaleString("zh-CN"):"—";
@@ -104,6 +104,7 @@ export default function ExperimentManager({currentRole}:{currentRole:string}) {
       if(f.module_id)params.set("module_id",f.module_id);
       if(f.objective)params.set("objective",f.objective);
       if(f.scenario)params.set("scenario",f.scenario);
+      if(f.change_object)params.set("change_object",f.change_object);
       if(f.status)params.set("status",f.status);
       if(f.include_archived)params.set("include_archived","true");
       const result=await api<{items:Experiment[]}>("experiment-management?"+params.toString());
@@ -166,7 +167,9 @@ export default function ExperimentManager({currentRole}:{currentRole:string}) {
         });
         setCreating(false);setSelected(data.id);
         setMessage("实验已创建，可继续关联运行与评测");
-        await refresh(data.id);
+        setFilter(initialFilters);
+        await loadList(initialFilters,data.id);
+        await loadDetails(data.id);
       }else{
         if(!selected)throw new Error("请先选择一个实验");
         const data=await api<Experiment>("experiment-management/"+encodeURIComponent(selected),
@@ -253,6 +256,15 @@ export default function ExperimentManager({currentRole}:{currentRole:string}) {
     </header>
     {error&&<div role="alert" className={styles.error}>{error}</div>}
     {message&&<div role="status" className={styles.message}>{message}</div>}
+    <div className={styles.stats} aria-label="当前筛选的实验统计">
+      {[
+        ["当前实验",items.length],
+        ["待执行",items.filter(x=>x.status==="planned").length],
+        ["进行中",items.filter(x=>x.status==="running").length],
+        ["待复核",items.filter(x=>x.status==="review").length],
+        ["已完成",items.filter(x=>x.status==="completed").length],
+      ].map(([name,count])=><div className={styles.stat} key={name}><span>{name}</span><strong>{count}</strong></div>)}
+    </div>
     <section className={styles.layout}>
       <aside className={styles.sidebar}>
         <div className={styles.heading}><strong>实验列表</strong><span>{items.length} 项</span></div>
@@ -276,6 +288,12 @@ export default function ExperimentManager({currentRole}:{currentRole:string}) {
               {scenarios.map(([id,name])=><option key={id} value={id}>{name}</option>)}
             </select></label>
           </div>
+          <label className={styles.field}>变更对象
+            <select value={filter.change_object} onChange={e=>setFilter(f=>({...f,change_object:e.target.value}))}>
+              <option value="">全部变更对象</option>
+              {targets.map(([id,name])=><option key={id} value={id}>{name}</option>)}
+            </select>
+          </label>
           <label className={styles.field}>状态
             <select value={filter.status} onChange={e=>setFilter(f=>({...f,status:e.target.value}))}>
               <option value="">所有进行中</option>
@@ -295,7 +313,7 @@ export default function ExperimentManager({currentRole}:{currentRole:string}) {
               onClick={()=>choose(x.id)}>
               <strong>{x.title}</strong>
               <span>{label(modules,x.module_id)} · {label(states,x.status)}</span>
-              <small>{label(objectives,x.objective)} / {label(scenarios,x.scenario)}</small>
+              <small>{label(objectives,x.objective)} / {label(scenarios,x.scenario)} / {label(targets,x.change_object)}</small>
               <small>修订 {x.revision} · {shortDate(x.updated_at)}</small>
             </button>)}
           </div>
