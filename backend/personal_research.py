@@ -27,6 +27,12 @@ PROFILE_VERSION = "0.1.0"
 SEED_EMAIL_ENV = "PERSONAL_RESEARCH_OWNER_EMAIL"
 REQUIRED_KEYS = ("child_health_extrapolation", "vertical_urbanization_3d")
 EVIDENCE_LEVEL = "publisher_abstract_or_conference_abstract_checked"
+SOURCE_VENUES = {
+    "A": {"Cities", "Sustainable Cities and Society"},
+    "B": {"Computers, Environment and Urban Systems",
+          "Environment and Planning B: Urban Analytics and City Science"},
+    "C": {"NeurIPS", "AAAI", "KDD", "ICML", "ICLR", "IJCAI"},
+}
 
 
 def now():
@@ -92,6 +98,8 @@ def source_file() -> dict:
             if len(probe.get("papers", [])) < 2:
                 raise ValueError("Probe evidence too thin")
             for paper in probe["papers"]:
+                if paper.get("venue") not in SOURCE_VENUES[probe["id"]]:
+                    raise ValueError("Source venue is outside the configured A/B/C probe")
                 if not str(paper.get("url", "")).startswith("https://"):
                     raise ValueError("Original paper URL missing")
     return data
