@@ -6,6 +6,7 @@ responses or stores plaintext tokens. Mail transport is fail-closed.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import secrets
 import smtplib
@@ -14,6 +15,8 @@ import time
 import uuid
 from email.message import EmailMessage
 from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -81,23 +84,46 @@ def _app_url() -> str:
 
 
 def _send_email(to_address: str, title: str, token: str, kind: str) -> None:
-    """SMTP TLS transport; mail is sent only to the prevalidated recipient."""
-    host = os.getenv("SMTP_HOST", "").strip()
-    sender = os.getenv("SMTP_FROM", "").strip()
-    if not host or not sender:
-        raise RuntimeError("SMTP provider not configured")
-    # Fragment prevents browsers and reverse proxies from logging setup tokens in URLs.
+    """Use Resend HTTPS on Render Free, or SMTP when available. No tokens in logs."""
     href = _app_url() + "/account/setup#token=" + token
     label = {"owner": "Owner 初始化", "invite": "团队邀请", "reset": "密码重置"}[kind]
-    msg = EmailMessage()
-    msg["Subject"] = "Research Atlas - " + title
-    msg["From"] = sender
-    msg["To"] = to_address
-    msg.set_content(
+    body = (
         "Research Atlas " + label + "\n\n"
         "请在有效期内使用下方链接设置密码：\n" + href +
         "\n\n如果不是你本人发起，请忽略此邮件。"
     )
+    resend_key = os.getenv("RESEND_API_KEY", "").strip()
+    if resend_key:
+        sender = os.getenv("EMAIL_FROM", "").strip()
+        if not sender:
+            raise RuntimeError("EMAIL_FROM is not configured")
+        req = Request(
+            "https://api.resend.com/emails",
+            data=json.dumps({"from": sender, "to": [to_address],
+                             "subject": "Research Atlas - " + title,
+                             "text": body}, ensure_ascii=False).encode("utf-8"),
+            headers={"Authorization": "Bearer " + resend_key,
+                     "Content-Type": "application/json",
+                     "User-Agent": "ResearchAtlas/1.0"},
+            method="POST",
+        )
+        try:
+            with urlopen(req, timeout=15) as response:
+                if response.status not in (200, 201, 202):
+                    raise RuntimeError("Email HTTPS provider rejected delivery")
+        except (HTTPError, URLError) as exc:
+            raise RuntimeError("Email HTTPS provider failed") from exc
+        return
+
+    host = os.getenv("SMTP_HOST", "").strip()
+    sender = os.getenv("SMTP_FROM", "").strip()
+    if not host or not sender:
+        raise RuntimeError("Email provider not configured")
+    msg = EmailMessage()
+    msg["Subject"] = "Research Atlas - " + title
+    msg["From"] = sender
+    msg["To"] = to_address
+    msg.set_content(body)
     port = int(os.getenv("SMTP_PORT", "465"))
     user = os.getenv("SMTP_USER", "")
     password = os.getenv("SMTP_PASSWORD", "")
@@ -134,7 +160,8 @@ def _issue(
     if most_recent is not None and now - most_recent < COOLDOWN:
         return False
     # Validate the provider and app URL before persisting the ticket.
-    if not os.getenv("SMTP_HOST") or not os.getenv("SMTP_FROM"):
+    if not ((os.getenv("RESEND_API_KEY") and os.getenv("EMAIL_FROM")) or
+            (os.getenv("SMTP_HOST") and os.getenv("SMTP_FROM"))):
         raise HTTPException(503, "邮件发送尚未配置，请联系平台管理员")
     try:
         _app_url()
