@@ -393,22 +393,34 @@ export default function Workbench(){
           onSubmit={()=>void submit("explore",question)} onOpenLegacy={()=>changeSection("agent")}
           busy={busy} canEdit={canEdit} onRetry={t=>void dispatchExistingTask(t)}/>}
 
-        {section==="interest"&&<InterestWatchlist canEdit={canEdit}/>}
+                {section==="topics"&&<>
+          <PageHeading kicker="RESEARCH DESK / TOPICS" title="研究专题" subtitle="读取团队已登记的真实研究主线。独立专题创建、讨论与决策仍需新的后端支持。"/>
+          <div className="atlas-topic-toolbar"><span>{researchLines.length} 条研究主线</span><button className="btn" type="button" onClick={()=>changeSection("profile")}>管理研究画像 <ArrowRight size={15}/></button></div>
+          {researchLines.length===0?<Empty icon={FolderOpen} title="尚未登记研究方向" body="请由管理员在团队研究画像中登记研究方向。"/>:
+            <div className="atlas-topic-grid">{researchLines.map(line=><button type="button" key={line.id}
+              className={"atlas-topic-card "+(selectedResearchLine===line.id?"atlas-topic-selected":"")}
+              onClick={()=>setSelectedResearchLine(line.id)}><span className="atlas-kicker">RESEARCH LINE</span>
+              <h3>{line.name}</h3><p>{line.problem}</p>
+              <div className="atlas-topic-meta"><span>关联选题 {ideas.filter(i=>i.line_id===line.id).length}</span><ArrowRight size={16}/></div>
+            </button>)}</div>}
+          {currentLine&&<section className="panel atlas-topic-detail">
+            <div className="panel-header"><div><span className="atlas-kicker">RESEARCH LINE</span><h2>{currentLine.name}</h2></div>
+              <button className="btn" type="button" onClick={()=>{setQuestion("请围绕以下研究主线检索相关方法并提供论文证据："+currentLine.name+"；"+currentLine.problem);setSelectedTaskId("");changeSection("chat");}}>发起研究任务 <ArrowRight size={15}/></button></div>
+            <p>{currentLine.problem}</p><h3>关注问题与方法</h3>
+            <div className="atlas-tags">{[...currentLine.search_queries,...currentLine.method_queries].map((word,i)=><span key={i}>{word}</span>)}</div>
+            <div className="atlas-topic-links"><button type="button" onClick={()=>changeSection("discovery")}>文献发现 <ArrowRight size={14}/></button><button type="button" onClick={()=>changeSection("ideas")}>研究机会 <ArrowRight size={14}/></button></div>
+          </section>}
+        </>}
+        {section==="personal-profile"&&<>
+          <PageHeading kicker="RESEARCH PROFILES / PERSONAL" title="个人研究画像" subtitle="当前后端尚未提供个人画像的独立持久化与访问权限接口。"/>
+          <section className="panel atlas-personal-pending"><UserRound size={26}/><h2>个人画像尚未启用</h2>
+            <p>这里不会把个人信息误存为团队正式画像，也不会用仅浏览器保存的资料冒充安全的个人画像。</p>
+            <button type="button" className="btn" onClick={()=>changeSection("profile")}>查看团队正式画像 <ArrowRight size={15}/></button>
+          </section>
+        </>}
+{section==="interest"&&<InterestWatchlist canEdit={canEdit}/>}
         {section==="overview"&&<>
-          <div className="hero-card">
-            <div><span className="overline">RESEARCH INTELLIGENCE · WORKSPACE</span>
-              <h1>探索下一个<span>研究机会。</span></h1>
-              <p>让文献发现、方法迁移与研究选题成为一个持续演化的知识闭环。</p>
-              <button className="btn btn-white" onClick={()=>changeSection("interest")}>
-                <GitBranch size={17}/> 管理研究兴趣 <ArrowRight size={16}/>
-              </button>
-              <button className="btn btn-white" style={{marginLeft:9}} onClick={()=>changeSection("agent")}>
-                <Sparkles size={17}/> 开始科研探索 <ArrowRight size={16}/>
-              </button>
-            </div><div className="hero-art"><div className="orbit one"/><div className="orbit two"/>
-              <div className="orb orb-one"/><div className="orb orb-two"/><div className="orb orb-three"/>
-              <div className="hero-center"><BrainCircuit size={40}/></div></div>
-          </div>
+          <PageHeading kicker="RESEARCH DESK / OVERVIEW" title="科研数据概览" subtitle="查看已保存的真实论文、研究选题与研究方向统计。"/>
           <div className="stats-grid">
             {[
               {icon:BookOpen,n:overview?.papers||0,label:"已收录论文",hint:"跨学科文献资产"},
@@ -703,8 +715,8 @@ export default function Workbench(){
           </p></section>
         </>}
       </div>
-      <footer className="footer"><span>RESEARCH ATLAS · TEAM WORKBENCH V0.3</span>
-        <span>Evidence before innovation claims · © Research Atlas</span></footer>
+      <footer className="footer atlas-footer"><span>Research Atlas · V0.5 前端结构</span>
+        <span>以实际后端和权限配置为准</span></footer>
     </main>
   </div>;
 }
