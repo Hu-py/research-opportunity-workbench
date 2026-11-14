@@ -50,25 +50,19 @@ def main() -> int:
         actual_schema = session.execute(text("SELECT current_schema()")).scalar_one()
         if actual_schema != SCHEMA:
             raise RuntimeError("Refusing test: PostgreSQL search_path is not isolated")
-        admin_email = "devstudio-e2e-admin@example.invalid"
-        member_email = "devstudio-e2e-editor@example.invalid"
-        viewer_email = "devstudio-e2e-viewer@example.invalid"
+        run_suffix = secrets.token_hex(7)
+        admin_email = "devstudio-e2e-admin-" + run_suffix + "@example.invalid"
+        member_email = "devstudio-e2e-editor-" + run_suffix + "@example.invalid"
+        viewer_email = "devstudio-e2e-viewer-" + run_suffix + "@example.invalid"
         # Persist credentials only as hashes; plaintext passwords stay in process memory.
         admin_password = secrets.token_urlsafe(30)
         member_password = secrets.token_urlsafe(30)
         viewer_password = secrets.token_urlsafe(30)
-        from sqlalchemy import select
-        from backend.team import TeamMember
-        existing = set(session.scalars(select(TeamMember.email)).all())
         for email, display, password, role in (
             (admin_email, "E2E Admin", admin_password, "admin"),
             (member_email, "E2E Editor", member_password, "researcher"),
             (viewer_email, "E2E Viewer", viewer_password, "viewer"),
         ):
-            if email in existing:
-                # Avoid auth against previously generated ephemeral passwords.
-                # Use a new address when rerunning a deployment.
-                raise RuntimeError("Refusing test: existing ephemeral user needs a fresh test schema")
             create_member(session, email, display, password, role=role, initial=(role=="admin"))
 
     def headers(token=""):
