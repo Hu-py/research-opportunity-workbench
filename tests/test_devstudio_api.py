@@ -148,6 +148,10 @@ def test_document_experiment_runs_and_lineage(studio):
                       })
     assert run.status_code == 201, run.text
     assert run.json()["status"] == "unverified"
+    # KPI filtering uses only explicitly recorded, still-unreviewed run refs.
+    overview_before_review = client.get("/api/devstudio/overview",
+                                        headers=headers(viewer)).json()
+    assert exp.json()["id"] in overview_before_review["pending_review_experiment_ids"]
     bad = client.post("/api/devstudio/experiments/" + exp.json()["id"] + "/runs",
                       headers=headers(researcher), json={
                           "kind": "github_actions",
@@ -160,6 +164,9 @@ def test_document_experiment_runs_and_lineage(studio):
                                  "limitations": "Not a full journal census",
                              })
     assert evaluation.status_code == 201, evaluation.text
+    overview_after_review = client.get("/api/devstudio/overview",
+                                       headers=headers(viewer)).json()
+    assert exp.json()["id"] not in overview_after_review["pending_review_experiment_ids"]
     lineage = client.get("/api/devstudio/lineage/DISCOVERY",
                          headers=headers(viewer)).json()
     assert len(lineage["issues"]) == 1
