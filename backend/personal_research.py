@@ -157,9 +157,9 @@ def _private_id(member_id: str, key: str) -> str:
     return "pr_" + hashlib.sha256((member_id + ":" + key).encode()).hexdigest()[:38]
 
 
-def ensure_personal(db: Session, actor: TeamMember) -> bool:
+def ensure_personal(db: Session, actor: TeamMember, *, explicit: bool = False) -> bool:
     """Only seed for real authenticated owner with explicit target email."""
-    if not _verified_owner_seed(actor):
+    if not explicit and not _verified_owner_seed(actor):
         return False
     profile = db.get(PersonalResearchProfile, actor.id)
     created = profile is None
@@ -226,6 +226,13 @@ def mount(app, *, get_db, require_actor, team_auth_enabled):
     def me(db: Session = Depends(get_db), actor: TeamMember = Depends(member)):
         ensure_personal(db, actor)
         return private_profile(db, actor)
+
+    @router.post("/me/initialize")
+    def initialize(db: Session = Depends(get_db),
+                   actor: TeamMember = Depends(member)):
+        ensure_personal(db, actor, explicit=True)
+        return {"profile": private_profile(db, actor),
+                "results": [private_result(db, actor, key) for key in REQUIRED_KEYS]}
 
     @router.put("/me")
     def update(data: ProfileUpdate, db: Session = Depends(get_db),
