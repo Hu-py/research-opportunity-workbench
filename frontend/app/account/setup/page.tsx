@@ -111,6 +111,7 @@ export default function AccountSetup() {
         </p>}
         <div style={{display:"flex",gap:16,flexWrap:"wrap",marginTop:24,fontSize:12}}>
           <a href="/devstudio" style={{color:"#555"}}>返回登录</a>
+          <a href="/account/test-inbox" style={{color:"#555"}}>模拟收件箱（仅测试环境）</a>
           {mode!=="redeem" && <button type="button" onClick={()=>{setMode(mode==="reset"?"owner":"reset");setMessage("");}}
              style={{background:"none",border:0,padding:0,cursor:"pointer",color:"#555"}}>
             {mode==="reset"?"首次 Owner 开通":"忘记密码"}
