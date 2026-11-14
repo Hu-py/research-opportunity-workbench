@@ -151,12 +151,12 @@ def require_actor(request:Request,db:Session=Depends(get_db)):
     return member
 
 def require_editor(actor:TeamMember|None=Depends(require_actor)):
-    if team_auth_enabled() and (actor is None or actor.role not in ("admin","researcher")):
+    if team_auth_enabled() and (actor is None or actor.role not in ("owner","admin","researcher")):
         raise HTTPException(403,"Editor or admin role required")
     return actor
 
 def require_admin(actor:TeamMember|None=Depends(require_actor)):
-    if team_auth_enabled() and (actor is None or actor.role!="admin"):
+    if team_auth_enabled() and (actor is None or actor.role not in ("owner","admin")):
         raise HTTPException(403,"Administrator role required")
     return actor
 
@@ -466,6 +466,17 @@ def team_members(db:Session=Depends(get_db)):
 def team_add_member(data:MemberRequest,actor:TeamMember|None=Depends(require_admin),
                     db:Session=Depends(get_db)):
     if not team_auth_enabled():raise HTTPException(404,"Team member management is disabled")
+    # Legacy direct-password creation remains available in development only;
+    # production onboarding must send a verified invite instead.
+    if os.getenv("APP_ENV", "development").lower() == "production" and (
+        os.getenv("TEAM_LEGACY_DIRECT_CREATE_ENABLED", "false").lower() not in ("1","true","yes")
+    ):
+        raise HTTPException(410, "请使用邮箱邀请流程创建成员")
+    if data.role == "admin" and (actor is None or actor.role != "owner"):
+        # In development, old bootstrap admins may create other admins only
+        # before the Owner claim is enabled.
+        if os.getenv("TEAM_OWNER_SETUP_ENABLED", "false").lower() in ("1","true","yes"):
+            raise HTTPException(403, "只有 Owner 可以创建管理员")
     try:
         m=create_member(db,data.email,data.name,data.temporary_password,data.role,
                         actor_id=actor.id if actor else None)
@@ -478,6 +489,12 @@ def team_update_member(member_id:str,data:MemberUpdateRequest,
     if not team_auth_enabled():raise HTTPException(404,"Team member management is disabled")
     m=db.get(TeamMember,member_id)
     if not m:raise HTTPException(404,"Member not found")
+    if data.role == "admin" and (actor is None or actor.role != "owner"):
+        raise HTTPException(403, "只有 Owner 可以授予管理员角色")
+    if m.role == "admin" and actor is not None and actor.role != "owner" and actor.id != m.id and (
+        data.active is False or data.role not in (None, "admin")
+    ):
+        raise HTTPException(403, "只有 Owner 可以修改其他管理员")
     try:set_member_status(db,m,active=data.active,role=data.role,actor_id=actor.id if actor else "")
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
     return public_member(m)
@@ -1377,6 +1394,13 @@ _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
                        require_actor=require_actor, require_editor=require_editor,
                        team_auth_enabled=team_auth_enabled)
 
+
+# Email-verified single-team Owner, invitations and password recovery.
+from backend.account_onboarding import mount as _mount_account_onboarding
+_mount_account_onboarding(
+    app, get_db=get_db, authenticate=authenticate, require_actor=require_actor,
+    require_admin=require_admin, team_auth_enabled=team_auth_enabled,
+)
 
 # Research Atlas unified, team-authenticated developer governance.
 from backend.devstudio import mount as _mount_devstudio_routes
