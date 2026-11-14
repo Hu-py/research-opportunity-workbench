@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from .sources import SOURCE_GROUPS
 
-ALLOWED_EVIDENCE = {"metadata", "abstract", "full_text"}
+ALLOWED_EVIDENCE = {"metadata", "abstract_excerpt", "abstract", "full_text"}
 ALLOWED_CLAIM_KINDS = {"paper_statement", "author_claim", "cross_paper_synthesis", "hypothesis"}
 ALLOWED_GAP_STATES = {"not_assessed", "author_claim_only", "compared_to_prior_art"}
 ALLOWED_TREND_STATES = {"single_paper", "multi_paper_observation", "historically_compared"}
