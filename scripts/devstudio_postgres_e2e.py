@@ -44,6 +44,11 @@ def main() -> int:
     from research_workbench.core import session_factory
     from backend.team import create_member
     import backend.api as api
+    # Only the E2E runner may install the simulated mail transport.
+    # The regular FastAPI backend never imports this sandbox.
+    if os.getenv("ACCOUNT_EMAIL_MODE") == "preview_inbox":
+        from backend.account_preview_sandbox import install
+        install(api)
 
     factory = session_factory()
     with factory() as session:
