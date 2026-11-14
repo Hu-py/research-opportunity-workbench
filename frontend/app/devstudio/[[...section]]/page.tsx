@@ -1,4 +1,4 @@
-import DevelopmentStudio from "@/components/DevelopmentStudioV02";
+import DevelopmentStudio from "@/components/DevelopmentStudio";
 
 export const metadata = {
   title: "Development Studio | Research Atlas",
