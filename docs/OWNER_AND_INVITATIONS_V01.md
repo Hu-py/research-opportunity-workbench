@@ -1,5 +1,7 @@
 # Research Atlas - Owner and Invitation Onboarding V0.1
 
+> **统一用户角色、权限矩阵、开通/停用 SOP**：参阅 [用户开通、使用与权限管理规范](USER_ONBOARDING_AND_PERMISSIONS.md)。本文件仅保留 Owner/邀请模块的技术部署与接口细节。
+
 Status: feature branch only. This is not a production release.
 
 ## Scope
