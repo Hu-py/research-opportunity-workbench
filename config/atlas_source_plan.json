@@ -1,0 +1,20 @@
+{
+  "schema_version": "0.1",
+  "description": "Research Atlas source priorities, independent of old Radar A/B or idea grades",
+  "source_groups": {
+    "planning_application": {
+      "label": "A 规划应用实践",
+      "venues": ["Cities", "SCS", "LUP", "JAPA", "JPER", "Urban Studies", "Urban Climate", "Habitat International"]
+    },
+    "urban_science": {
+      "label": "B 城市科学视角与问题重构",
+      "venues": ["EPB", "CEUS", "IJGIS", "GeoInformatica", "TGIS", "SIGSPATIAL", "COSIT"]
+    },
+    "computational_methods": {
+      "label": "C 计算机科学与技术方法",
+      "venues": ["NeurIPS", "ICML", "ICLR", "AAAI", "IJCAI", "JMLR", "KDD", "CVPR", "ICCV", "ACL"]
+    }
+  },
+  "authors": [],
+  "notes": "Priorities, not a fixed whitelist; stable IDs required for watched authors."
+}
