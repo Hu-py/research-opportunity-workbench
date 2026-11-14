@@ -28,7 +28,7 @@ type Decision={id:string;change_id:string;decision:string;reason:string;reviewer
 type Lineage={module_id:string;issues:Issue[];changes:Change[];experiments:Experiment[];runs:Run[];decisions:Decision[];note:string};
 type SourcesData={legacy_registry:{id:string;name:string;abbreviation:string;kind:string;domain:string;enabled:boolean;resolution_status:string}[];source_proposals:Change[];warning:string};
 type Page="overview"|"sources"|"documents"|"experiments"|"changes"|"workflows"|"settings";
-type ModalType="source"|"document"|"docRevision"|"experiment"|"run"|"evaluation"|"change"|"approval"|"issue"|"info";
+type ModalType="search"|"source"|"document"|"docRevision"|"experiment"|"run"|"evaluation"|"change"|"approval"|"issue"|"info";
 type Modal={type:ModalType;id?:string;message?:string;action?:"approve"|"reject"|"request_changes"};
 type Detail={kind:"source"|"document"|"change"|"module";id:string};
 type Feedback="认可"|"需修改"|"待讨论";
@@ -108,6 +108,7 @@ export default function DevelopmentStudioV02(){
   const [modal,setModal]=useState<Modal|null>(null);
   const [form,setForm]=useState<Record<string,string>>({});
   const [reviewOpen,setReviewOpen]=useState(false);
+  const [commandQuery,setCommandQuery]=useState("");
   const [pageFeedback,setPageFeedback]=useState<Record<string,{status:Feedback;note:string}>>({});
   const [feedbackStatus,setFeedbackStatus]=useState<Feedback>("待讨论");
   const [feedbackNote,setFeedbackNote]=useState("");
@@ -131,6 +132,15 @@ export default function DevelopmentStudioV02(){
       setExperiments(result[3].items);setDocuments(result[4].items);setSources(result[5]);
     }catch(e){setError(errorLabel(e));}
     finally{setLoading(false);}
+  },[]);
+  useEffect(()=>{
+    const onKey=(event:KeyboardEvent)=>{
+      if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==="k"){
+        event.preventDefault();setCommandQuery("");setModal({type:"search"});
+      }
+      if(event.key==="Escape"){setModal(null);setDetail(null);setReviewOpen(false);}
+    };
+    window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);
   },[]);
   useEffect(()=>{
     fetch("/api/session",{cache:"no-store"}).then(r=>r.json()).then((x:Session)=>setSession(x))
@@ -195,6 +205,15 @@ export default function DevelopmentStudioV02(){
     &&(x.title+" "+x.reason+" "+x.module_id).toLowerCase().includes(changeSearch.toLowerCase())
   );
   const activeExperiment=experiments.find(x=>x.id===selectedExperiment)||experiments[0];
+  const searchItems=[
+    ...Object.entries(moduleLabels).map(([id,title])=>({id,kind:"module",title,sub:"研发模块"})),
+    ...designSources.map(x=>({id:x.id,kind:"source",title:x.name,sub:"学术关注来源 · 参考"})),
+    ...documents.map(x=>({id:x.id,kind:"document",title:x.title,sub:"已登记文档"})),
+    ...experiments.map(x=>({id:x.id,kind:"experiment",title:x.title,sub:"实验"})),
+    ...changes.map(x=>({id:x.id,kind:"change",title:x.title,sub:"变更审批"}))
+  ].filter(x=>!commandQuery.trim()||(
+    x.title+" "+x.sub+" "+x.id
+  ).toLowerCase().includes(commandQuery.toLowerCase())).slice(0,25);
 
   function openModal(type:ModalType,id?:string,message?:string,action?:Modal["action"],preset:Record<string,string>={}){
     setForm(preset);setModal({type,id,message,action});setDetail(null);setError("");
@@ -231,11 +250,30 @@ export default function DevelopmentStudioV02(){
   function openDetail(kind:Detail["kind"],id:string){
     setDetail({kind,id});setDetailTab(kind==="source"?"基本资料":kind==="document"?"基本信息":"为什么修改");
   }
+  function openSearchResult(kind:string,id:string){
+    setModal(null);setCommandQuery("");
+    if(kind==="module")window.location.assign("/devstudio/changes?module="+encodeURIComponent(id));
+    if(kind==="source")window.location.assign("/devstudio/sources?source="+encodeURIComponent(id));
+    if(kind==="document")window.location.assign("/devstudio/documents?doc="+encodeURIComponent(id));
+    if(kind==="experiment")window.location.assign("/devstudio/experiments?selected="+encodeURIComponent(id));
+    if(kind==="change")window.location.assign("/devstudio/changes?change="+encodeURIComponent(id));
+  }
   function taskAction(t:Task){
     if(t.kind==="review"){window.location.assign("/devstudio/experiments?selected="+encodeURIComponent(t.ref));return;}
     if(t.kind==="change"){window.location.assign("/devstudio/changes?change="+encodeURIComponent(t.ref));return;}
     window.location.assign("/devstudio/changes?module="+encodeURIComponent(t.module_id));
   }
+  useEffect(()=>{
+    if(page==="sources"){
+      const target=new URLSearchParams(window.location.search).get("source");
+      if(target&&designSources.some(x=>x.id===target))openDetail("source",target);
+    }
+    if(page==="documents"){
+      const target=new URLSearchParams(window.location.search).get("doc");
+      if(target&&documents.some(x=>x.id===target))openDetail("document",target);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[page,documents.length]);
   useEffect(()=>{
     if(page!=="experiments"||!experiments.length)return;
     const target=new URLSearchParams(window.location.search).get("selected");
@@ -344,7 +382,7 @@ export default function DevelopmentStudioV02(){
       <header className="dv-topbar">
         <div className="dv-crumb"><span>Research Atlas</span><ChevronRight size={14}/><strong>{titles.title}</strong></div>
         <div className="dv-topactions">
-          <button className="dv-topsearch" type="button" onClick={()=>openModal("info",undefined,"在各页面的筛选栏搜索文献来源、实验、文档和变更。全局搜索将在 P1 接入。")}><Search size={14}/> 搜索模块、期刊、文档 <kbd>⌘ K</kbd></button>
+          <button className="dv-topsearch" type="button" onClick={()=>{setCommandQuery("");openModal("search");}}><Search size={14}/> 搜索模块、期刊、文档 <kbd>⌘ K</kbd></button>
           <span className="dv-headpill">P0 · 待部署</span>
           <button type="button" title="刷新真实数据" aria-label="刷新真实数据" className="dv-topicon" onClick={()=>void refresh()}><RefreshCw size={16}/></button>
           <span className="dv-avatar" title={session?.member?.role||"未登录"}>{session?.member?.name?.slice(0,1)||"研"}</span>
@@ -618,11 +656,19 @@ export default function DevelopmentStudioV02(){
     </aside></div>}
     {modal&&<div className="dv-backdrop" onClick={closePopups}><div className="dv-dialog" role="dialog" aria-modal="true" aria-label="研发管理操作" onClick={e=>e.stopPropagation()}>
       <div className="dv-dialoghead"><div><span className="dv-eyebrow">DEVELOPMENT STUDIO · ACTION</span><h2>{{
-        source:"提出学术来源变更",document:"登记权威文档",docRevision:"提出文档修订",
+        search:"跨模块搜索",source:"提出学术来源变更",document:"登记权威文档",docRevision:"提出文档修订",
         experiment:"创建科研实验",run:"关联实际运行",evaluation:"追加人工评审",
         change:"提交技术变更",approval:"独立审核变更",issue:"登记研发问题",info:"设计和权限说明"
       }[modal.type]}</h2></div><button type="button" className="dv-xbtn" onClick={closePopups}><X size={20}/></button></div>
-      {modal.type==="info"?<p>{modal.message}</p>:<div className="dv-formgrid">
+      {modal.type==="search"?<div className="dv-command">
+        <label className="dv-search"><Search size={16}/><input autoFocus value={commandQuery} onChange={e=>setCommandQuery(e.target.value)}
+          placeholder="搜索能力模块、期刊、实验、文档或变更编号"/></label>
+        <div className="dv-commanditems">{searchItems.map(x=><button type="button" key={x.kind+"-"+x.id}
+          onClick={()=>openSearchResult(x.kind,x.id)}><span><strong>{x.title}</strong><small>{x.sub} · {x.id}</small></span><ArrowRight size={15}/></button>)}
+          {!searchItems.length&&<Empty>没有匹配记录。</Empty>}
+        </div>
+        <p className="dv-muted">搜索范围包括已登记的研发数据与明确标注的来源设计参考。</p>
+      </div>:modal.type==="info"?<p>{modal.message}</p>:<div className="dv-formgrid">
         {modal.type==="source"&&<>
           <label>变更方式<select value={form.operation||"add"} onChange={e=>setValue("operation",e.target.value)}><option value="add">新增关注来源</option><option value="pause">暂停</option><option value="reclassify">重分类</option><option value="update">更新信息</option></select></label>
           <label>关注类别<select value={form.group||"urban_science"} onChange={e=>setValue("group",e.target.value)}><option value="planning_application">A · 规划应用</option><option value="urban_science">B · 城市科学</option><option value="computational_methods">C · 计算方法</option></select></label>
@@ -673,7 +719,7 @@ export default function DevelopmentStudioV02(){
           <label className="dv-full">审核依据与理由<textarea rows={5} value={form.reason||""} onChange={e=>setValue("reason",e.target.value)}/></label>
         </>}
       </div>}
-      <div className="dv-dialogactions"><button type="button" className="dv-btn" onClick={closePopups}>关闭</button>{modal.type!=="info"&&<button type="button" disabled={busy||!canWrite} className="dv-btn dv-primary" onClick={()=>void submitModal()}>{busy?"提交中…":"确认提交"}</button>}</div>
+      <div className="dv-dialogactions"><button type="button" className="dv-btn" onClick={closePopups}>关闭</button>{modal.type!=="info"&&modal.type!=="search"&&<button type="button" disabled={busy||!canWrite} className="dv-btn dv-primary" onClick={()=>void submitModal()}>{busy?"提交中…":"确认提交"}</button>}</div>
       <p className="dv-muted dv-dialognote">所有变更以真实后端成功响应为准；审批不会自动发布。</p>
     </div></div>}
     {reviewOpen&&<div className="dv-backdrop" onClick={()=>setReviewOpen(false)}><aside className="dv-drawer" role="dialog" aria-modal="true" aria-label="界面逐页评审" onClick={e=>e.stopPropagation()}>
