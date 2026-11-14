@@ -36,3 +36,9 @@
 .json{font:12px/1.5 ui-monospace,SFMono-Regular,monospace;overflow-x:auto;background:#f6f6f6;border-radius:5px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:850px){.page{padding:16px}.top{flex-direction:column}.headerActions{margin-top:0}.layout{grid-template-columns:1fr}.sidebar,.detail{min-height:0}.detail{padding:19px}.experimentList{max-height:340px}}
 @media(max-width:520px){.formGrid,.filterGrid{grid-template-columns:1fr}.detailTop{flex-direction:column}.role{display:none}}
+
+.stats{max-width:1480px;margin:0 auto 20px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.stat{border:1px solid #e4e4e4;background:#fff;padding:15px 17px;border-radius:7px;display:flex;flex-direction:column;gap:8px}
+.stat span{font-size:11px;color:#888}.stat strong{font-size:23px;font-weight:650;font-variant-numeric:tabular-nums}
+@media(max-width:850px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
