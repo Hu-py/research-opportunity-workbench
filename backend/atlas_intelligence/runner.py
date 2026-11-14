@@ -42,8 +42,24 @@ def prepare_paper_snapshot(
     unresolved = 0
     for candidate in candidates:
         venue = str(candidate.get("venue") or "")
-        groups = match_venue_groups(venue, registered_sources, plan=plan,
-                                     author_ids=candidate.get("author_ids") or [])
+        # Collector provenance explicitly records why a paper belongs to a group.
+        # This matters for watched authors publishing outside the venue watchlist.
+        provenance = candidate.get("source_provenance") or []
+        if provenance:
+            groups = tuple(
+                group for group in SOURCE_GROUPS
+                if group in candidate.get("source_groups", [])
+                and any(
+                    isinstance(p, dict) and p.get("group") == group
+                    and p.get("kind") in ("venue", "author")
+                    for p in provenance
+                )
+            )
+        else:
+            groups = match_venue_groups(
+                venue, registered_sources, plan=plan,
+                author_ids=candidate.get("author_ids") or []
+            )
         if not groups:
             unresolved += 1
             continue
@@ -56,7 +72,12 @@ def prepare_paper_snapshot(
             "published": str(candidate.get("published") or "")[:40],
             "abstract": str(candidate.get("abstract") or "")[:2200],
             "source_groups": list(groups),
-            "evidence_level": "abstract" if candidate.get("abstract") else "metadata",
+            "source_provenance": provenance,
+            "evidence_level": (
+                candidate.get("evidence_level")
+                if candidate.get("evidence_level") in ("metadata", "abstract", "abstract_excerpt")
+                else ("abstract_excerpt" if candidate.get("abstract") else "metadata")
+            ),
         }
         if not record["paper_id"] or not record["title"]:
             continue
