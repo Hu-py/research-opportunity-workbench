@@ -153,6 +153,8 @@ def _issue(
         .where(
             EnrollmentTicket.email == email,
             EnrollmentTicket.kind == kind,
+            EnrollmentTicket.used_at == 0,
+            EnrollmentTicket.revoked_at == 0,
         )
         .order_by(EnrollmentTicket.created_at.desc())
         .limit(1)
