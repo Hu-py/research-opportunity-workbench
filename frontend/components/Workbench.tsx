@@ -376,6 +376,9 @@ export default function Workbench(){
       </nav>
       <div className="sidebar-bottom">
         <div className="nav-group-title">管理</div>
+        <a className="nav-item" href="/devstudio" style={{textDecoration:"none"}}>
+          <GitBranch size={18} strokeWidth={1.8}/><span>研发与实验管理台</span><ArrowUpRight size={13}/>
+        </a>
         <button type="button" aria-current={section==="settings"?"page":undefined}
           className={"nav-item sidebar-settings "+(section==="settings"?"nav-active":"")}
           onClick={()=>changeSection("settings")}>
