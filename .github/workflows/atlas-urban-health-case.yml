@@ -1,0 +1,45 @@
+name: Atlas Urban Health Graph Case (offline evidence)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - experiment/urban-health-graph-closed-loop-20261114
+    paths:
+      - "backend/atlas_intelligence/**"
+      - "config/atlas_source_plan.json"
+      - "scripts/atlas_urban_health_trial.py"
+      - "experiments/urban_health_graph_2026_11_14/**"
+      - "tests/test_atlas_urban_health_case.py"
+      - ".github/workflows/atlas-urban-health-case.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-case:
+    name: Reproduce public-metadata research case
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Generate traceable research case without network or model calls
+        run: |
+          python scripts/atlas_urban_health_trial.py --out outputs/urban-health
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("outputs/urban-health/research_case.json").read_text(encoding="utf-8"))
+          assert report["paper_count"] == 10
+          assert report["signal_count"] == 3
+          assert report["scientific_review_status"] == "needs_review"
+          assert report["has_paid_model_calls"] is False
+          assert report["has_empirical_health_model_run"] is False
+          print("Public-metadata case replayed; no model inference or empirical study claimed.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: research-atlas-urban-health-offline-case
+          path: outputs/urban-health/
+          retention-days: 30

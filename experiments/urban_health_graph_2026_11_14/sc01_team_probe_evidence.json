@@ -1,0 +1,265 @@
+{
+  "schema_version": "0.2.0",
+  "scenario_id": "SC01",
+  "trial_id": "SC01_CHILD_HEALTH_EXTRAPOLATION_2026_11_14",
+  "status": "researcher_assisted_probe_draft",
+  "topic": "儿童健康与城市环境的区域外推",
+  "trigger": "User-specified dry-run SC01 topic; not an automated scheduled team scan",
+  "trial_date": "2026-11-14",
+  "visibility": "review_draft_in_public_repo_no_private_data",
+  "access_control_tested": false,
+  "live_method": "assistant_performed_web_queries_against_primary_publisher/conference/PubMed pages",
+  "gpt_api_used": false,
+  "openalex_api_directly_called": false,
+  "user_health_data_accessed": false,
+  "source_config": "config/atlas_source_plan.json (PR #57 draft, imported into PR #70)",
+  "source_group_semantics": {
+    "planning_application": "A 规划应用",
+    "urban_science": "B 城市科学",
+    "computational_methods": "C 计算方法",
+    "supplementary_out_of_watchlist": "跨刊主题补充，单列，不计三源主探针"
+  },
+  "queries": [
+    {
+      "probe": "planning_application",
+      "terms": [
+        "child urban built environment health systematic review Cities 2024-2026",
+        "child-friendly street view development Cities 2024",
+        "children accessibility visit patterns urban park Cities 2026"
+      ]
+    },
+    {
+      "probe": "urban_science",
+      "terms": [
+        "urban health GNN spatial validation CEUS 2026",
+        "neighborhood leave-one-out spatial borrowing graph urban reconstruction 2026",
+        "youth street network graph neural health safety CEUS 2026"
+      ]
+    },
+    {
+      "probe": "computational_methods",
+      "terms": [
+        "GraphSAGE NeurIPS inductive",
+        "SatCLIP AAAI geography generalization",
+        "DIVE KDD graph OOD",
+        "noisy label IJCV 2026"
+      ]
+    },
+    {
+      "probe": "supplementary",
+      "terms": [
+        "early childhood neighborhood playability population birth cohort 2026",
+        "area of applicability spatial prediction Meyer Pebesma",
+        "SpTrans spatial process transfer low labels 2025"
+      ]
+    }
+  ],
+  "sampling": {
+    "selected_primary_per_probe": 4,
+    "primary_total": 12,
+    "out_of_watchlist_context_count": 4,
+    "search_exhaustive": false,
+    "papers_read_full_text": 0,
+    "abstracts_or_highlights_checked": null,
+    "eligibility_rule": "Exact source venue match by documented A/B/C source plan; named supplemental sources excluded from primary counts",
+    "time_window": "Selected mostly 2024-2026; 2017 foundation and 2021 AOA exceptions",
+    "population_note": "Some outcomes are health proxies, child safety perception, or youth rather than five developmental outcomes; do not equate labels",
+    "abstracts_or_highlights_checked_note": "Mixed publisher/abstract evidence inspected; no comprehensive abstract audit or count asserted."
+  },
+  "papers": [
+    {
+      "paper_id": "A01",
+      "source_group": "planning_application",
+      "title": "A systematic review of the impact of the urban environment on the health of school-age children and adolescents: Current landscape and future directions",
+      "venue": "Cities",
+      "year": 2026,
+      "doi": "10.1016/j.cities.2026.106863",
+      "url": "https://doi.org/10.1016/j.cities.2026.106863",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "136 studies; 263 reported associations across child/youth outcomes; map plausible exposure and outcome dimensions",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "A02",
+      "source_group": "planning_application",
+      "title": "Constructing child-friendly cities: Comprehensive evaluation of street-level child-friendliness using the method of empathy-based stories, street view images, and deep learning",
+      "venue": "Cities",
+      "year": 2024,
+      "doi": "10.1016/j.cities.2024.105385",
+      "url": "https://doi.org/10.1016/j.cities.2024.105385",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "Street-level indicators can capture child-specific perceptions, but child-friendliness is not an observed health outcome",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "A03",
+      "source_group": "planning_application",
+      "title": "Availability and accessibility of public open spaces and sports facilities and children's visit patterns: Evidence from smartwatch signaling data",
+      "venue": "Cities",
+      "year": 2026,
+      "doi": "10.1016/j.cities.2026.106971",
+      "url": "https://doi.org/10.1016/j.cities.2026.106971",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "Differentiates accessibility/availability and children’s behavior; behavior is not clinical/developmental outcome",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "A04",
+      "source_group": "planning_application",
+      "title": "The smarter the city develops, the healthier the child grows? Evidence from China",
+      "venue": "Cities",
+      "year": 2024,
+      "doi": "10.1016/j.cities.2024.105195",
+      "url": "https://doi.org/10.1016/j.cities.2024.105195",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "County-scale child growth outcomes and regional heterogeneous policy effects; not evidence of road-scale extrapolation",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "B01",
+      "source_group": "urban_science",
+      "title": "UST-GNN: A unified spatial–topological graph neural network framework for urban analytics demonstrated through a case study on urban health prediction",
+      "venue": "Computers, Environment and Urban Systems",
+      "year": 2026,
+      "doi": "10.1016/j.compenvurbsys.2026.102466",
+      "url": "https://doi.org/10.1016/j.compenvurbsys.2026.102466",
+      "evidence_level": "publisher_abstract_and_searchable_methods",
+      "probe_reason": "Closest urban-health GNN; London spatial CV and held-out borough tests; prescription outcomes, not child development",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "B02",
+      "source_group": "urban_science",
+      "title": "Family specific spatial borrowing in multimodal urban reconstruction: a leave one neighborhood out study of Cincinnati",
+      "venue": "Computers, Environment and Urban Systems",
+      "year": 2026,
+      "doi": "10.1016/j.compenvurbsys.2026.102541",
+      "url": "https://doi.org/10.1016/j.compenvurbsys.2026.102541",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "Negative counterexample: local nonlinear features can match or exceed graph models depending on feature family",
+      "paper_scope": "research_abstract_not_verified_full_text",
+      "publication_note": "Article available online in 2026; volume issue dated March 2027."
+    },
+    {
+      "paper_id": "B03",
+      "source_group": "urban_science",
+      "title": "Modeling adolescents’ perception of cycling safety: A new approach using graph neural networks and street view imagery",
+      "venue": "Computers, Environment and Urban Systems",
+      "year": 2026,
+      "doi": "10.1016/j.compenvurbsys.2026.102454",
+      "url": "https://doi.org/10.1016/j.compenvurbsys.2026.102454",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "Child/adolescent-oriented road network GNN; outcome is cycling safety perception, not health",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "B04",
+      "source_group": "urban_science",
+      "title": "Quantifying uncertainty in deep learning models for urban safety perception: An MC Dropout approach",
+      "venue": "Environment and Planning B: Urban Analytics and City Science",
+      "year": 2026,
+      "doi": "10.1177/23998083261504070",
+      "url": "https://doi.org/10.1177/23998083261504070",
+      "evidence_level": "publisher_highlights",
+      "probe_reason": "Uncertainty-aware urban perception prediction; indirect relevance to reliability of extrapolated health surfaces",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "C01",
+      "source_group": "computational_methods",
+      "title": "Inductive Representation Learning on Large Graphs",
+      "venue": "NeurIPS",
+      "year": 2017,
+      "doi": null,
+      "url": "https://proceedings.neurips.cc/paper/2017/hash/5dd9db5e033da9c6fb5ba83c7a7ebea9-Abstract.html",
+      "evidence_level": "conference_abstract",
+      "probe_reason": "GraphSAGE neighbor sampling and inductive embeddings; unseen nodes/graphs do not guarantee child-health distribution-shift robustness",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "C02",
+      "source_group": "computational_methods",
+      "title": "SatCLIP: Global, General-Purpose Location Embeddings with Satellite Imagery",
+      "venue": "AAAI",
+      "year": 2025,
+      "doi": "10.1609/aaai.v39i4.32457",
+      "url": "https://doi.org/10.1609/aaai.v39i4.32457",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "Reusable geographic location embedding; potential baseline/feature source subject to coverage, cost and leakage",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "C03",
+      "source_group": "computational_methods",
+      "title": "DIVE: Subgraph Disagreement for Graph Out-of-Distribution Generalization",
+      "venue": "KDD",
+      "year": 2024,
+      "doi": "10.1145/3637528.3671878",
+      "url": "https://doi.org/10.1145/3637528.3671878",
+      "evidence_level": "conference_abstract",
+      "probe_reason": "Graph OOD method; paper evaluates graph-level datasets, not guaranteed transferable to road-node regression",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "C04",
+      "source_group": "computational_methods",
+      "title": "Learning Complex Scene Segmentation from Noisy Label",
+      "venue": "International Journal of Computer Vision",
+      "year": 2026,
+      "doi": "10.1007/s11263-026-03067-9",
+      "url": "https://doi.org/10.1007/s11263-026-03067-9",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "Negative transfer/control: noisy image segmentation labels differ materially from child-to-road aggregation noise",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "S01",
+      "source_group": "supplementary_out_of_watchlist",
+      "title": "Neighborhood playability and early childhood development: a population-based birth cohort study",
+      "venue": "Environmental Research",
+      "year": 2026,
+      "doi": "10.1016/j.envres.2026.124124",
+      "url": "https://doi.org/10.1016/j.envres.2026.124124",
+      "evidence_level": "pubmed_and_publisher_abstract",
+      "probe_reason": "Most endpoint-specific study: 30126-child cohort, Early Development Instrument; out of A venue list so separately marked",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "S02",
+      "source_group": "supplementary_out_of_watchlist",
+      "title": "Predicting into unknown space? Estimating the area of applicability of spatial prediction models",
+      "venue": "Methods in Ecology and Evolution",
+      "year": 2021,
+      "doi": "10.1111/2041-210X.13650",
+      "url": "https://doi.org/10.1111/2041-210X.13650",
+      "evidence_level": "publisher_abstract_or_page_checked_not_fulltext_review",
+      "probe_reason": "AOA/DI transferability audit and validation-design constraint; outside A/B/C source watchlists",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "S03",
+      "source_group": "supplementary_out_of_watchlist",
+      "title": "Spatial process-based transfer learning for prediction problems",
+      "venue": "Journal of Geographical Systems",
+      "year": 2025,
+      "doi": "10.1007/s10109-024-00455-y",
+      "url": "https://doi.org/10.1007/s10109-024-00455-y",
+      "evidence_level": "publisher_abstract_or_page_checked_not_fulltext_review",
+      "probe_reason": "SpTrans small-target-sample process/transfer approach tested on land prices; outside A/B/C watchlists",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    },
+    {
+      "paper_id": "S04",
+      "source_group": "supplementary_out_of_watchlist",
+      "title": "A Survey of Deep Graph Learning under Distribution Shifts: From Graph Out-of-Distribution Generalization to Adaptation",
+      "venue": "ACM Transactions on Knowledge Discovery from Data",
+      "year": 2026,
+      "doi": "10.1145/3785475",
+      "url": "https://doi.org/10.1145/3785475",
+      "evidence_level": "publisher_abstract",
+      "probe_reason": "Technical context taxonomy of OOD generalization versus domain adaptation; outside explicit C watchlist",
+      "paper_scope": "research_abstract_not_verified_full_text"
+    }
+  ],
+  "sources_limitation": "Live search is an exploratory manually reviewed pilot; not complete journal coverage, OpenAlex collector execution, GPT API autonomous discovery, a randomized sample, or a team backend production invocation."
+}

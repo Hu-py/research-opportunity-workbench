@@ -1,0 +1,201 @@
+{
+  "schema_version": "1.0.0",
+  "scenario": "urban_health_graph_method_transfer",
+  "origin": {
+    "repository_path": "data/radar/openalex_latest.json",
+    "retrieved_at_utc": "2026-11-09T01:30:14.982535+00:00",
+    "original_feed_kind": "public_scholarly_evidence_only",
+    "record_type": "OpenAlex public metadata, no abstracts or full text"
+  },
+  "selection_method": "Fixed ten source-traceable examples selected by title-level relevance to health, spatial nonstationarity, uncertain labels or graph learning; curated diagnostic set, not comprehensive review or retrieval recall",
+  "limitations": [
+    "Original snapshot pools are legacy planning/method streams, not all three Research Atlas sources. Venue classes are recomputed with the PR #57 A/B/C source plan.",
+    "No abstract or full-text source supplied; research statements must be title-level hypotheses only.",
+    "All cross-source bridges are proposed experiments, not validated literature conclusions."
+  ],
+  "papers": [
+    {
+      "paper_id": "W7225271958",
+      "title": "Designing preventive cities: Quantifying the health and economic benefits of green infrastructure",
+      "url": "https://doi.org/10.1016/j.cities.2026.107726",
+      "doi": "https://doi.org/10.1016/j.cities.2026.107726",
+      "venue": "Cities",
+      "published": "2026-11-05",
+      "authors": [
+        "Min-Hsuan Yen",
+        "Chia-Pei Hsu",
+        "Dongying Li",
+        "Yen-Cheng Chiang"
+      ],
+      "original_openalex_id": "https://openalex.org/W7225271958",
+      "original_stream": "planning",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7225236930",
+      "title": "Temporal non-stationarity limits urban heat model transferability: Evidence from interpretable spatial machine learning across ten highly urbanized bay areas (1990–2022)",
+      "url": "https://doi.org/10.1016/j.scs.2026.108077",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108077",
+      "venue": "Sustainable Cities and Society",
+      "published": "2026-11-01",
+      "authors": [
+        "Qing Liu",
+        "Binwei Gao",
+        "Guangbin Wang",
+        "Jieru Miao"
+      ],
+      "original_openalex_id": "https://openalex.org/W7225236930",
+      "original_stream": "planning",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7225460501",
+      "title": "Urban green space and health equity: Nonlinear thresholds and heterogeneous associations across population groups—A cross-sectional study in Beijing, China",
+      "url": "https://doi.org/10.1016/j.scs.2026.108089",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108089",
+      "venue": "Sustainable Cities and Society",
+      "published": "2026-11-01",
+      "authors": [
+        "Yanan Wang",
+        "Qing Chang"
+      ],
+      "original_openalex_id": "https://openalex.org/W7225460501",
+      "original_stream": "planning",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7224775604",
+      "title": "Forecasting Urban Heat Island hotspots using spatially aware machine learning: Explainable multi-model prediction with spatial validation and uncertainty analysis",
+      "url": "https://doi.org/10.1016/j.scs.2026.108025",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108025",
+      "venue": "Sustainable Cities and Society",
+      "published": "2026-10-31",
+      "authors": [
+        "Richa Golash",
+        "Dimple Sethi",
+        "Kushagra Golash"
+      ],
+      "original_openalex_id": "https://openalex.org/W7224775604",
+      "original_stream": "planning",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7225335274",
+      "title": "Quantifying uncertainty in deep learning models for urban safety perception: An MC Dropout approach",
+      "url": "https://doi.org/10.1177/23998083261504070",
+      "doi": "https://doi.org/10.1177/23998083261504070",
+      "venue": "Environment and Planning B Urban Analytics and City Science",
+      "published": "2026-11-05",
+      "authors": [
+        "Vicente Larraín",
+        "Billy Peralta",
+        "Hans Löbel"
+      ],
+      "original_openalex_id": "https://openalex.org/W7225335274",
+      "original_stream": "planning",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7225455390",
+      "title": "A label-efficient semi-supervised framework for high-resolution informal settlement mapping across Global South cities",
+      "url": "https://doi.org/10.1016/j.compenvurbsys.2026.102556",
+      "doi": "https://doi.org/10.1016/j.compenvurbsys.2026.102556",
+      "venue": "Computers Environment and Urban Systems",
+      "published": "2026-11-07",
+      "authors": [
+        "Zhenglong He",
+        "Guangdong Li",
+        "Xiaoting Li",
+        "Yue Cao",
+        "Luhan Li"
+      ],
+      "original_openalex_id": "https://openalex.org/W7225455390",
+      "original_stream": "planning",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7223030539",
+      "title": "Family specific spatial borrowing in multimodal urban reconstruction: a leave one neighborhood out study of Cincinnati",
+      "url": "https://doi.org/10.1016/j.compenvurbsys.2026.102541",
+      "doi": "https://doi.org/10.1016/j.compenvurbsys.2026.102541",
+      "venue": "Computers Environment and Urban Systems",
+      "published": "2026-10-20",
+      "authors": [
+        "Ogutu B. Osoro",
+        "Jingjing Li",
+        "Ming Tang",
+        "Xi Chen",
+        "Kelly Merrill",
+        "Lauren W. Forbes"
+      ],
+      "original_openalex_id": "https://openalex.org/W7223030539",
+      "original_stream": "planning",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7220974393",
+      "title": "Toward Practical Large-Scale Dynamic Heterogeneous Graph Embedding: Cold-Start Resilient Recommendation",
+      "url": "https://doi.org/10.1109/tkde.2026.3728237",
+      "doi": "https://doi.org/10.1109/tkde.2026.3728237",
+      "venue": "IEEE Transactions on Knowledge and Data Engineering",
+      "published": "2026-10-08",
+      "authors": [
+        "Mabiao Long",
+        "Jiaxi Liu",
+        "YuFeng LI",
+        "Kefan Wang",
+        "Yi Cao",
+        "Jiandong Ding"
+      ],
+      "original_openalex_id": "https://openalex.org/W7220974393",
+      "original_stream": "methods",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7223085329",
+      "title": "Learning Complex Scene Segmentation from Noisy Label",
+      "url": "https://doi.org/10.1007/s11263-026-03067-9",
+      "doi": "https://doi.org/10.1007/s11263-026-03067-9",
+      "venue": "International Journal of Computer Vision",
+      "published": "2026-10-21",
+      "authors": [
+        "Jin Zhang",
+        "Ruiheng Zhang",
+        "Zhe Cao",
+        "Lixin Xu",
+        "Nian Liu",
+        "Rao Muhammad Anwer"
+      ],
+      "original_openalex_id": "https://openalex.org/W7223085329",
+      "original_stream": "methods",
+      "evidence_level": "metadata",
+      "abstract": ""
+    },
+    {
+      "paper_id": "W7223225359",
+      "title": "Zero-Shot Domain Generalization via Domain Prompt Learning",
+      "url": "https://doi.org/10.1007/s11263-026-03088-4",
+      "doi": "https://doi.org/10.1007/s11263-026-03088-4",
+      "venue": "International Journal of Computer Vision",
+      "published": "2026-10-22",
+      "authors": [
+        "Shiming Chen",
+        "Salman Khan",
+        "Salman Khan",
+        "Fahad Shahbaz Khan"
+      ],
+      "original_openalex_id": "https://openalex.org/W7223225359",
+      "original_stream": "methods",
+      "evidence_level": "metadata",
+      "abstract": ""
+    }
+  ]
+}
