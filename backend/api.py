@@ -1437,3 +1437,10 @@ _mount_sc05_eval(
     app, get_db=get_db, require_actor=require_actor,
     team_auth_enabled=team_auth_enabled, get_factory=lambda: get_factory(),
 )
+
+
+# OAuth-protected ChatGPT MCP bridge. Registers its tables without changing
+# SC05's source-pinned pipeline or existing Owner route semantics. Disabled
+# unless SC05_MCP_ENABLED=true on the explicitly intended staging deployment.
+from backend.sc05_agent_bridge import mount as _mount_sc05_agent_bridge
+_mount_sc05_agent_bridge(app, get_db=get_db, get_factory=get_factory)

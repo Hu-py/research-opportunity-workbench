@@ -1,0 +1,35 @@
+name: SC05 MCP isolated security smoke
+on:
+  push:
+    branches: [feature/sc05-chatgpt-mcp-delegated-20261115]
+    paths:
+      - backend/sc05_agent_bridge.py
+      - backend/api.py
+      - tests/test_sc05_agent_bridge.py
+      - .github/workflows/sc05-mcp-security.yml
+  pull_request:
+    paths:
+      - backend/sc05_agent_bridge.py
+      - backend/api.py
+      - tests/test_sc05_agent_bridge.py
+      - .github/workflows/sc05-mcp-security.yml
+permissions:
+  contents: read
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install only test dependencies
+        run: python -m pip install -e '.[test,ai,paper]'
+      - name: Check MCP Owner/OAuth/queue offline
+        env:
+          SC05_MCP_ENABLED: "false"
+          SC05_MCP_PAID_ENABLED: "false"
+        run: python -m pytest -q tests/test_sc05_agent_bridge.py -x -vv
