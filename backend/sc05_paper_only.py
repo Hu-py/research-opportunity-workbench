@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from backend.model_gateway import request_json
+from backend.sc05_quality import inspect_report
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
     required, text_items, validate_diagnosis,
@@ -593,7 +594,17 @@ def _markdown(result: dict) -> str:
         "；外部文献数："+str(len(papers)),
         "用户未提供独立原始数据或代码，所有数量与结果均来自原文作者报告。",
         "本报告不能证明任何候选路线已经具有可发表的新颖性或真实干预效益。",
+        "",
+        "## 9. 报告结构质量与需要人工检查之处", "",
+        "状态："+result["quality"]["structural_status"],
+        "可定位事实："+str(result["quality"]["source_facts"])+
+        "；公式/数据链："+str(result["quality"]["method_links"])+
+        "；已核验摘要："+str(result["quality"]["abstract_checked_papers"]),
     ]
+    if result["quality"]["warnings"]:
+        buf += ["**需要复核**："+"；".join(result["quality"]["warnings"])]
+    else:
+        buf += ["结构性证据检查已通过，但尚未经过独立科学评审。"]
     return "\n".join(buf)+"\n"
 
 
@@ -681,4 +692,5 @@ def run_paper(
         "independent_raw_data_validation":False,
         "novelty_proved":False,
     }
+    output["quality"]=inspect_report(output)
     return _markdown(output),output
