@@ -62,7 +62,7 @@ export default function Workbench(){
  const [scores,setScores]=useState<Record<string,number>>({
    paper_accuracy:3,method_fit:3,novelty_caution:3,experiment_feasibility:3,usefulness:3,
  });
- const [focus,setFocus]=useState("paper_reader");
+ const [focus,setFocus]=useState("reader");
  const [decision,setDecision]=useState("revise");
  const [comment,setComment]=useState("");
  const refresh=useCallback(async()=>{
