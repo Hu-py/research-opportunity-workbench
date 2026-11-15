@@ -241,7 +241,7 @@ def test_owner_schema_repair_replays_exact_first_paid_stage_without_new_charge(w
         seen.append({"model":model,"system":system,"payload":payload,
                      "max_tokens":max_tokens})
         return response,usage
-    extract_ledger({"page_01":PAGE},"dummy-key",recorded_response,[],max_calls=8)
+    extract_ledger({"page_01":PAGE,"page_02":METH},"dummy-key",recorded_response,[],max_calls=8)
     assert len(seen)==1
     prompt_sha=hashlib.sha256(ev.dump(seen[0]).encode()).hexdigest()
     with factory() as db:
@@ -269,7 +269,7 @@ def test_owner_schema_repair_replays_exact_first_paid_stage_without_new_charge(w
         raise AssertionError("First completed paid request must not be called twice")
     def replay_only_run(pdf,key,*,model_call,pages_override,source_sha,
                         frozen_snapshot,scientific_value_gate,**kwargs):
-        info=extract_ledger({"page_01":PAGE},key,model_call,[],max_calls=8)
+        info=extract_ledger({"page_01":PAGE,"page_02":METH},key,model_call,[],max_calls=8)
         assert info["snapshot"]["observations"][0]["fact_type"]=="other"
         return "# checkpoint recovered",{
             "snapshot":info["snapshot"],"usage":[],"quality":{"warnings":[]},
