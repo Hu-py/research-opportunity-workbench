@@ -66,6 +66,16 @@ ROUTE_SCHEMA = {"routes": [{
     "negative_result": "A result that would reject or substantially weaken this idea",
     "unknowns": ["Missing evidence"],
 }]}
+LITERATURE_SCHEMA = {"assessments": [{
+    "paper_id": "doi:10.xxxx/yyyy",
+    "diagnosis_ids": ["D01"],
+    "tested_problem": "What this actual abstract says was investigated",
+    "method": "Reported methods only, otherwise not reported",
+    "relevance": "close|partial|counterexample|low",
+    "conditional_transfer": "Which evidence assumptions need to hold",
+    "unresolved": "What the abstract does not establish",
+    "abstract_excerpt": "An exact contiguous 12-150 character excerpt if abstract exists",
+}]}
 CRITIC_SCHEMA = {"reviews": [{
     "route_id": "R01",
     "verdict": "test|hold|reject",
@@ -184,7 +194,7 @@ def extract_ledger(
     used: set[tuple[str, str]] = set()
     notes: list[str] = []
     batches = _chunks(pages)
-    if len(batches) > max_calls - 5:
+    if len(batches) > max_calls - 6:
         raise EvidenceError("Paper exceeds safe analysis budget; split input or raise the opted-in max-calls")
     for chunk in batches:
         response = _run(call, api_key, "evidence_extraction",
@@ -326,6 +336,44 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None) ->
     return papers[:35], errors
 
 
+def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: dict) -> list[dict]:
+    """Do not allow fabricated nearest-paper details or invented abstracts."""
+    rows=raw.get("assessments")
+    if not isinstance(rows,list) or len(rows)>25:
+        raise EvidenceError("Invalid literature assessment batch")
+    allowed={p["id"]:p for p in external_papers}
+    diag_ids={d["id"] for d in diagnosis["diagnoses"]}
+    result=[];seen=set()
+    for item in rows:
+        if not isinstance(item,dict):raise EvidenceError("Invalid literature assessment")
+        pid=item.get("paper_id")
+        if pid not in allowed or pid in seen:
+            raise EvidenceError("Literature assessment cites unknown/duplicate paper")
+        seen.add(pid)
+        if item.get("relevance") not in ("close","partial","counterexample","low"):
+            raise EvidenceError("Invalid paper relevance")
+        excerpt=item.get("abstract_excerpt")
+        abstract=allowed[pid]["abstract"]
+        if abstract:
+            if not isinstance(excerpt,str) or not 12<=len(excerpt)<=150 or excerpt not in abstract:
+                raise EvidenceError("Literature evidence quote does not match OpenAlex abstract")
+        elif excerpt not in ("",None):
+            raise EvidenceError("No abstract available for claimed evidence quote")
+        result.append({
+            "paper_id":pid,
+            "diagnosis_ids":_references(item.get("diagnosis_ids"),diag_ids,
+                "literature diagnosis",allow_empty=not diag_ids),
+            "tested_problem":_limited(item.get("tested_problem"),"tested_problem"),
+            "method":_limited(item.get("method"),"paper method"),
+            "relevance":item["relevance"],
+            "conditional_transfer":_limited(item.get("conditional_transfer"),"transfer"),
+            "unresolved":_limited(item.get("unresolved"),"literature scope"),
+            "abstract_excerpt":excerpt or "",
+            "level":"OpenAlex abstract only" if abstract else "metadata only",
+        })
+    return result
+
+
 def research_routes(raw: dict, diagnosis: dict, external_papers: list[dict]) -> list[dict]:
     rows = raw.get("routes")
     if not isinstance(rows, list) or len(rows) > 5:
@@ -459,10 +507,18 @@ def _markdown(result: dict) -> str:
     if not papers:
         buf+=["", "未检索到可核验的外部文献；不能据此判断创新性。", ""]
     else:
-        buf+=["", "| 文献 | 来源年份 | 检索级别 |", "|---|---|---|"]
+        checked={x["paper_id"]:x for x in result["literature_assessments"]}
+        buf+=["", "| 文献 | 年份/判断 | 相近机制与适用边界 |",
+              "|---|---|---|"]
         for paper in papers.values():
+            assessment=checked.get(paper["id"])
+            status=assessment["relevance"] if assessment else "未详审"
+            assessment_summary=(assessment["tested_problem"]+"；"+
+                assessment["conditional_transfer"]+"；未确定："+assessment["unresolved"]
+                if assessment else "仅定位到摘要或元数据，未作机制比较")
             buf.append("| ["+paper["title"].replace("|","／")+"]("+paper["url"]+
-                ") | "+paper["year"]+" | 摘要/元数据，未阅读全文 |")
+                ") | "+paper["year"]+" / "+status+" | "+
+                assessment_summary.replace("|","／").replace("\n"," ")+" |")
     if result["search_errors"]:
         buf+=["", "检索限制："+"；".join(result["search_errors"])]
     buf+=["", "## 6. 候选研究路线：增量、实验与否决", ""]
@@ -522,7 +578,7 @@ def run_paper(
     if not api_key or not api_key.strip():
         raise EvidenceError("DeepSeek key unavailable; no model call initiated")
     pages,pdf_hash = page_texts_from_pdf(pdf)
-    if len(_chunks(pages)) + 5 > max_calls:
+    if len(_chunks(pages)) + 6 > max_calls:
         raise EvidenceError("PDF exceeds maximum authorized model call budget")
     log: list[dict] = []
     ledger = extract_ledger(pages, api_key, model_call, log, max_calls=max_calls)
@@ -549,6 +605,20 @@ def run_paper(
          "required_json_shape":SEARCH_SCHEMA},log,max_calls=max_calls)
     questions=search_plan(question_raw,diagnosis["diagnoses"])
     papers,search_errors=openalex_search(questions,provider=search_provider)
+    literature=[]
+    if papers:
+        assessed_raw=_run(model_call,api_key,"literature_assessment",
+            "你是独立文献查新辅助员。仅凭以下真实OpenAlex摘要，逐篇核查"
+            "其研究对象、实际方法、与诊断的关系、可转移的前提及未解问题。"
+            "严格引用paper_id，且必须逐字摘录12-150字符原始摘要。"
+            "本批最多评估20篇。不得假称阅读全文，不得宣布创新性已证实。",
+            {"diagnosis":diagnosis["diagnoses"],
+             "papers":[{k:p[k] for k in (
+                "id","title","doi","url","year","venue","abstract")}
+                for p in papers[:20]],
+             "required_json_shape":LITERATURE_SCHEMA},log,max_calls=max_calls,
+            max_tokens=4100)
+        literature=literature_assessments(assessed_raw,papers,diagnosis)
     routes_raw=_run(model_call,api_key,"research_redesign",
         "现在才允许提出研究路线。至少比较算法、数据、评价体系、"
         "研究问题重构的适用性，但无需每类各出一个。"
@@ -559,6 +629,7 @@ def run_paper(
          "papers":[{k:p[k] for k in (
              "id","title","doi","url","year","venue","abstract")}
              for p in papers[:20]],
+         "literature_assessments":literature,
          "required_json_shape":ROUTE_SCHEMA},log,max_calls=max_calls,max_tokens=4100)
     routes=research_routes(routes_raw,diagnosis,papers)
     critic_raw=_run(model_call,api_key,"independent_critic",
@@ -575,6 +646,7 @@ def run_paper(
         "snapshot":snapshot,"method_lineage":lineage,
         "diagnosis":diagnosis,"search_queries":questions,
         "external_papers":papers,"search_errors":search_errors,
+        "literature_assessments":literature,
         "routes":routes,"reviews":reviews,"usage":log,
         "is_paid_model_output":True,"independent_raw_data_validation":False,
         "novelty_proved":False,
