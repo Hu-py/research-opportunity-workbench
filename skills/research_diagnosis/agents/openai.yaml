@@ -1,0 +1,3 @@
+interface:
+  display_name: "Research Diagnosis"
+  short_description: "Reconstruct a study, detect evidence gaps and evaluate alternative research paths."
