@@ -151,3 +151,19 @@ def test_model_reported_confidence_provenance_is_explicit():
     result = validate_diagnosis(valid_response(), snapshot())
     assert result["diagnoses"][0]["confidence"] == "medium"
     assert result["diagnoses"][0]["confidence_provenance"] == "model_reported"
+
+
+@pytest.mark.parametrize(("raw_label","canonical"),[
+    ("causal_inference","identifiability"),
+    ("inference_boundary","identifiability"),
+    ("method_dependence","method"),
+    ("confounding","identifiability"),
+])
+def test_gated_diagnosis_taxonomy_aliases_preserve_raw_labels(raw_label,canonical):
+    raw=valid_response()
+    raw["diagnoses"][0]["issue_class"]=raw_label
+    result=validate_diagnosis(raw,snapshot())
+    issue=result["diagnoses"][0]
+    assert issue["issue_class"]==canonical
+    assert issue["raw_issue_class"]==raw_label
+    assert issue["issue_class_normalized"] is True
