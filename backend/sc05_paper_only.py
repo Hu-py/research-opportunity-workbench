@@ -289,7 +289,24 @@ def extract_ledger(
                 raise EvidenceError("Fact cites a page outside its source batch")
             if kind not in FACT_KINDS:
                 raise EvidenceError("Unsupported normalized fact type")
-            quote=_verified_excerpt(pages[page],quote)
+            # An LLM-generated quote is not evidence until it is recovered as
+            # a literal span of the cited PDF page. Exclude unverifiable facts,
+            # never replace the quote with a guessed or semantically similar one.
+            # A cached paid response may still contain other verified facts.
+            try:
+                quote=_verified_excerpt(pages[page],quote)
+            except EvidenceError as exc:
+                if str(exc) not in (
+                    "PDF evidence quote is not an exact source fragment",
+                    "Invalid source excerpt",
+                ):
+                    raise
+                notes.append({
+                    "page": page, "fact_index": len(used),
+                    "rule": "unverified_source_quote_rejected",
+                    "action": "excluded_from_evidence",
+                })
+                continue
             if kind_label != kind:
                 notes.append({
                     "page":page, "raw_type":kind_label,"normalized_type":kind,
@@ -811,4 +828,14 @@ def run_paper(
         "novelty_proved":False,
     }
     output["quality"]=inspect_report(output)
+    rejected=sum(
+        1 for note in output["fact_type_normalization_notes"]
+        if note.get("rule")=="unverified_source_quote_rejected"
+    )
+    if rejected:
+        output["quality"].setdefault("warnings",[]).append(
+            str(rejected)+" model-extracted paper quote(s) were not verified "
+            "against the cited PDF page and were excluded from evidence."
+        )
+        output["quality"]["unverified_quote_rejections"]=rejected
     return _markdown(output),output

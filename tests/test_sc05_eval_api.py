@@ -449,3 +449,47 @@ def test_sc05_r2_archives_source_checkpoint_and_report_privately(workspace, monk
     assert any(k.endswith("/result.json") for k in names)
     for payload in s3.objects.values():
         assert b"dummy" not in payload
+
+
+def test_cached_quote_error_rechecks_literal_evidence_without_new_paid_call(workspace):
+    """Recover a partially valid first extraction, but never accept fabricated quotes."""
+    client, factory, owner, _ = workspace
+    case_id=upload(client,owner)
+    pair=client.post(BASE+"/cases/"+case_id+"/ab",headers=auth(owner)).json()
+    run_id=pair["runs"][0]["id"]
+    from backend.sc05_paper_only import extract_ledger
+    quote="This independent paper investigates what happens to a transportation"
+    cached={"facts":[
+        {"page":"page_01","fact_type":"objective",
+         "statement":"An empirical network paper","verbatim_excerpt":quote},
+        {"page":"page_01","fact_type":"result",
+         "statement":"A fabricated model improvement",
+         "verbatim_excerpt":"The metro teleported all trains."},
+    ]}
+    seen=[]
+    def saved_provider(key,model,system,payload,max_tokens=2700):
+        seen.append({"model":model,"system":system,"payload":payload,
+                     "max_tokens":max_tokens})
+        return cached,{"input_tokens":1013,"output_tokens":476}
+    extract_ledger({"page_01":PAGE,"page_02":METH},"dummy-key",saved_provider,[],max_calls=8)
+    fingerprint=hashlib.sha256(ev.dump(seen[0]).encode()).hexdigest()
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        row.status="failed"
+        row.error="PDF evidence quote is not an exact source fragment"
+        row.pipeline_sha="a"*64
+        row.calls=1
+        row.checkpoints_json=ev.dump([{
+            "stage":"evidence_extraction","prompt_sha256":fingerprint,
+            "response":cached,"usage":{"input_tokens":1013,"output_tokens":476},
+            "model":"deepseek-flash"}])
+        db.commit()
+    review=client.get(BASE+"/runs/"+run_id+"/repair-check",headers=auth(owner))
+    assert review.status_code==200
+    j=review.json()
+    assert j["ready"] is True
+    assert j["requires_migration"] is True
+    assert j["saved_facts"]==1
+    assert j["rejected_quotes"]==1
+    with factory() as db:
+        assert db.get(SC05Run,run_id).calls==1
