@@ -223,3 +223,92 @@ def test_no_side_effect_on_reads(workspace):
             headers=auth(owner)).status_code==200
     with factory() as db:
         assert all(r.calls==0 and r.status=="prepared" for r in db.query(SC05Run).all())
+
+def test_owner_schema_repair_replays_exact_first_paid_stage_without_new_charge(workspace, monkeypatch):
+    client,factory,owner,other=workspace
+    import backend.sc05_eval_api as ev
+    from backend.sc05_paper_only import extract_ledger
+    case_id=upload(client,owner)
+    pair=client.post(BASE+"/cases/"+case_id+"/ab",headers=auth(owner)).json()
+    run_id=pair["runs"][0]["id"]
+    quote="This independent paper investigates what happens to a transportation"
+    response={"facts":[{"page":"page_01","fact_type":"novel_topic",
+        "statement":"Authors examine network disruption",
+        "verbatim_excerpt":quote}]}
+    usage={"input_tokens":1013,"output_tokens":372}
+    seen=[]
+    def recorded_response(key,model,system,payload,max_tokens=2700):
+        seen.append({"model":model,"system":system,"payload":payload,
+                     "max_tokens":max_tokens})
+        return response,usage
+    extract_ledger({"page_01":PAGE},"dummy-key",recorded_response,[],max_calls=8)
+    assert len(seen)==1
+    prompt_sha=hashlib.sha256(ev.dump(seen[0]).encode()).hexdigest()
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        row.status="failed";row.stage="failed";row.error="Unsupported fact type"
+        row.pipeline_sha="0"*64
+        row.calls=1;row.input_tokens=1013;row.output_tokens=372
+        row.checkpoints_json=ev.dump([{
+            "stage":"evidence_extraction","prompt_sha256":prompt_sha,
+            "response":response,"usage":usage,"model":"deepseek-flash"}])
+        db.commit()
+    # The repair check is read-only and has no model calls or cost.
+    status=client.get(BASE+"/runs/"+run_id+"/repair-check",headers=auth(owner))
+    assert status.status_code==200,status.text
+    check=status.json()
+    assert check["ready"] is True
+    assert check["requires_migration"] is True
+    assert check["replay_prompt_matches"] is True
+    assert check["normalized_types"][0]["normalized_type"]=="other"
+    assert client.get(BASE+"/runs/"+run_id+"/repair-check",headers=auth(other)).status_code==403
+
+    calls=[]
+    def fail_if_paid(key,model,system,payload,max_tokens=2700):
+        calls.append(payload)
+        raise AssertionError("First completed paid request must not be called twice")
+    def replay_only_run(pdf,key,*,model_call,pages_override,source_sha,
+                        frozen_snapshot,scientific_value_gate,**kwargs):
+        info=extract_ledger({"page_01":PAGE},key,model_call,[],max_calls=8)
+        assert info["snapshot"]["observations"][0]["fact_type"]=="other"
+        return "# checkpoint recovered",{
+            "snapshot":info["snapshot"],"usage":[],"quality":{"warnings":[]},
+            "version":"test"}
+    monkeypatch.setattr(ev,"request_json",fail_if_paid)
+    monkeypatch.setattr(ev,"run_paper",replay_only_run)
+    started=client.post(BASE+"/runs/"+run_id+"/start",headers=auth(owner),
+        json={"acknowledge_external_model":True})
+    assert started.status_code==202,started.text
+    assert not calls
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        assert row.status=="completed"
+        assert row.calls==1
+        assert row.pipeline_sha==ev.pipeline_sha()
+        assert len(ev.load(row.checkpoints_json,[]))==1
+
+
+def test_schema_migration_refuses_unverified_quotes_without_calling_model(workspace,monkeypatch):
+    client,factory,owner,_=workspace
+    import backend.sc05_eval_api as ev
+    case_id=upload(client,owner)
+    pair=client.post(BASE+"/cases/"+case_id+"/ab",headers=auth(owner)).json()
+    run_id=pair["runs"][0]["id"]
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        row.status="failed";row.error="Unsupported fact type"
+        row.pipeline_sha="a"*64;row.calls=1
+        row.checkpoints_json=ev.dump([{
+            "stage":"evidence_extraction","prompt_sha256":"b"*64,
+            "response":{"facts":[{"page":"page_01","fact_type":"new",
+                                   "statement":"wrong claim",
+                                   "verbatim_excerpt":"Never existed in this paper"}]},
+            "usage":{"input_tokens":10,"output_tokens":20},"model":"deepseek-flash"}])
+        db.commit()
+    checked=client.get(BASE+"/runs/"+run_id+"/repair-check",headers=auth(owner)).json()
+    assert not checked["ready"]
+    assert client.post(BASE+"/runs/"+run_id+"/start",headers=auth(owner),
+        json={"acknowledge_external_model":True}).status_code==409
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        assert row.status=="failed" and row.pipeline_sha=="a"*64
