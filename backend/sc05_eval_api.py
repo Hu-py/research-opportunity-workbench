@@ -477,6 +477,9 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
               db:Session=Depends(get_db),actor=Depends(owner)):
         if not data.acknowledge_external_model:
             raise HTTPException(422,"Explicit approval for paid model calls is required")
+        mode=os.getenv("SC05_EXECUTION_MODE","background").strip().lower()
+        if mode not in ("background","worker"):
+            raise HTTPException(503,"Unknown SC05 execution mode")
         row=owned(db,actor,SC05Run,run_id)
         if row.status not in ("prepared","failed"):
             raise HTTPException(409,"Only prepared or failed runs can start")
@@ -516,11 +519,8 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         add_audit(db,"sc05.authorized_model_run",actor.id,row.id,
                   "variant="+row.variant)
         db.commit()
-        mode=os.getenv("SC05_EXECUTION_MODE","background").strip().lower()
         if mode=="background":
             background.add_task(execute,get_factory(),row.id)
-        elif mode!="worker":
-            raise HTTPException(503,"Unknown SC05 execution mode")
         return run_view(row)
 
     @router.get("/runs/{run_id}/repair-check")
