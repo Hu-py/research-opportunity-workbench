@@ -24,7 +24,7 @@ from backend.team import TeamMember, add_audit
 from backend.model_gateway import request_json
 from backend.research_budget import reserve, record_usage, status as budget_status
 from backend.sc05_paper_only import (
-    run_paper, page_texts_from_pdf, _chunks,
+    run_paper, page_texts_from_pdf, FUTURE_HEADING,
 )
 from backend.sc05_research_diagnosis import EvidenceError
 
@@ -123,7 +123,18 @@ def safe_pages(pages):
         raise ValueError("PDF text exceeds 650k characters")
     if any(not isinstance(v,str) or not 40<=len(v)<=60000 for v in pages.values()):
         raise ValueError("Invalid PDF page text")
-    return pages
+    # Same blind-setup rule as a full PDF: do not leak the original author's
+    # Discussion/Future Work answer into the independent diagnostic prompt.
+    cleaned={}
+    for page,text in sorted(pages.items()):
+        match=FUTURE_HEADING.search(text)
+        if match:
+            if len(text[:match.start()].strip())>=40:
+                cleaned[page]=text[:match.start()]
+            break
+        cleaned[page]=text
+    if not cleaned:raise ValueError("No blind-eligible Methods or Results pages")
+    return cleaned
 
 
 def case_view(x):
