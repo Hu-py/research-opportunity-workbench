@@ -1420,4 +1420,5 @@ _mount_personal_research(app, get_db=get_db, require_actor=require_actor,
 # Separate DB tables; never mutates the global academic source registry.
 from backend.task_venue_radar import mount as _mount_task_venue_radar
 _mount_task_venue_radar(app, get_db=get_db, require_actor=require_actor,
-                       team_auth_enabled=team_auth_enabled, get_factory=get_factory)
+                       team_auth_enabled=team_auth_enabled,
+                       get_factory=lambda: get_factory())
