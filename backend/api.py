@@ -1415,3 +1415,10 @@ _mount_devstudio_routes(
 from backend.personal_research import mount as _mount_personal_research
 _mount_personal_research(app, get_db=get_db, require_actor=require_actor,
                          team_auth_enabled=team_auth_enabled)
+
+# First topic-specific academic journal discovery and human-approved extension.
+# Separate DB tables; never mutates the global academic source registry.
+from backend.task_venue_radar import mount as _mount_task_venue_radar
+_mount_task_venue_radar(app, get_db=get_db, require_actor=require_actor,
+                       team_auth_enabled=team_auth_enabled,
+                       get_factory=lambda: get_factory())
