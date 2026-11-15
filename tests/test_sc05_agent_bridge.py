@@ -161,8 +161,9 @@ def test_owner_mcp_start_enqueues_once_and_registers_in_devstudio(workspace,monk
     monkeypatch.setenv("SC05_MCP_PAID_ENABLED","true")
     routes=[(getattr(r,"path",""),sorted(getattr(r,"methods",[]) or []))
             for r in api.app.routes if "sc05" in getattr(r,"path","")]
-    assert any("/runs/{run_id}/start" in route for route,_ in routes),[
-        (getattr(r,"path",None),getattr(r,"name",None)) for r in api.app.routes]
+    assert any("/runs/{run_id}/start" in route for route,_ in routes),str([
+        (getattr(r,"path",None),type(r).__name__,getattr(r,"name",None))
+        for r in api.app.routes])
     paid=call(client,access,"tools/call",{"name":"start_experiment",
         "arguments":{"run_id":run["id"],"confirm_paid":True}})
     assert paid.json()["result"]["isError"] is False,paid.text
