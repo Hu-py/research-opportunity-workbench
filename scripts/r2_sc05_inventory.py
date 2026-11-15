@@ -60,6 +60,21 @@ def main():
                            if item.get(field) not in accepted]
                     if wrong:
                         print(f"diagnosis #{i+1} invalid labels: {wrong}")
+    b_prefix=f"sc05/{SOURCE}/{RUNS['B']}/checkpoints/"
+    b_listing=s3.list_objects_v2(Bucket=cfg.bucket,Prefix=b_prefix,MaxKeys=1000)
+    b_keys=sorted(x["Key"] for x in b_listing.get("Contents",[]) if x["Key"].endswith(".json"))
+    if b_keys:
+        b_document=json.loads(s3.get_object(Bucket=cfg.bucket,Key=b_keys[-1])["Body"].read())
+        saved=b_document.get("checkpoints",[])
+        if saved:
+            b_last=saved[-1]
+            print(f"SC05 B LATEST SAVED STAGE: {b_last.get('stage')} (count={len(saved)})")
+            if b_last.get("stage")=="diagnosis":
+                for i,item in enumerate(b_last.get("response",{}).get("diagnoses",[])[:12]):
+                    if not isinstance(item,dict):continue
+                    fields=("epistemic_status","issue_class","confidence")
+                    summary={name:safe(item.get(name)) for name in fields}
+                    print(f"SC05 B diagnosis #{i+1} labels: {summary}")
     return 0
 
 if __name__=="__main__":
