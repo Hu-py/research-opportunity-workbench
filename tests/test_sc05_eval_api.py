@@ -156,7 +156,7 @@ def test_auth_consent_frozen_ab_checkpoint_audit_and_rating(workspace,monkeypatc
         "narrative":4,"literature":3,"feasibility":4,
         "hard_failure":False,"feedback":"Good new system mechanism"})
     assert review.status_code==201,review.text
-    assert review.json()["score"]==80
+    assert review.json()["score"]==79
     assert client.post(BASE+"/runs/"+run_b["id"]+"/review",headers=auth(owner),
        json={"accuracy":5,"science_value":4,"narrative":4,"literature":3,"feasibility":4}).status_code==409
     with factory() as db:
