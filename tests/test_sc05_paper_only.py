@@ -247,8 +247,8 @@ def test_pdf_holdout_discussion_and_references(monkeypatch,tmp_path):
 
 def test_whitespace_only_pdf_quote_normalization_is_traced_to_literal_source():
     from backend.sc05_paper_only import _verified_excerpt
-    source="We observe that the model uses a data-driven\\n route allocation.\\nAny other result is unverified."
+    source="We observe that the model uses a data-driven\n route allocation.\nAny other result is unverified."
     matched=_verified_excerpt(source,"model uses a data-driven route allocation.")
-    assert matched=="model uses a data-driven\\n route allocation."
+    assert matched=="model uses a data-driven\n route allocation."
     with pytest.raises(EvidenceError,match="source fragment"):
         _verified_excerpt(source,"the model guarantees no failures")
