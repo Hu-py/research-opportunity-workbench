@@ -193,7 +193,7 @@ def test_fabricated_source_fact_is_blocked():
             "statement":"The model proves a 99% performance improvement",
             "verbatim_excerpt":"This fabricated number never occurred in the original paper.",
         }]},{"input_tokens":1,"output_tokens":1}
-    with pytest.raises(EvidenceError,match="unverified"):
+    with pytest.raises(EvidenceError,match="source fragment"):
         extract_ledger(PAGES,"fake",bad_mock,[],max_calls=10)
 
 
@@ -244,3 +244,11 @@ def test_pdf_holdout_discussion_and_references(monkeypatch,tmp_path):
     assert "Conclusion" in pages["page_02"]
     assert "exact answer blueprint" not in str(pages)
     assert len(sha)==64
+
+def test_whitespace_only_pdf_quote_normalization_is_traced_to_literal_source():
+    from backend.sc05_paper_only import _verified_excerpt
+    source="We observe that the model uses a data-driven\\n route allocation.\\nAny other result is unverified."
+    matched=_verified_excerpt(source,"model uses a data-driven route allocation.")
+    assert matched=="model uses a data-driven\\n route allocation."
+    with pytest.raises(EvidenceError,match="source fragment"):
+        _verified_excerpt(source,"the model guarantees no failures")
