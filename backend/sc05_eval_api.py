@@ -162,6 +162,7 @@ def case_view(x):
 def run_view(x,*,include_report=False):
     data={"id":x.id,"case_id":x.case_id,"pair_id":x.pair_id,
           "pipeline_sha":x.pipeline_sha,
+          "variant":x.variant,
           "status":x.status,"stage":x.stage,
           "model_calls":x.calls,
           "input_tokens":x.input_tokens,"output_tokens":x.output_tokens,
@@ -286,6 +287,27 @@ def check_fact_type_resume(row: SC05Run, doc: SC05Case) -> dict:
     parsed=extract_ledger(first,"cached-response-only",saved_call,[],max_calls=8)
     return {"facts":len(parsed["snapshot"]["observations"]),
             "types":types,"replay_prompt_matches":True}
+
+
+def eligible_unstarted_gate_migration(db:Session,row:SC05Run,doc:SC05Case,
+                                      current_sha:str)->bool:
+    """Safely re-pin an unexecuted B run after recovering its original A.
+
+    Never re-pin a paid or partially executed B run. The shared source facts
+    must have been frozen by a completed baseline on the same current pipeline.
+    """
+    if (row.variant!="science_gate_on" or row.status!="prepared" or row.calls!=0
+        or bool(load(row.checkpoints_json,[])) or not doc.shared_evidence_json):
+        return False
+    baseline=db.scalars(select(SC05Run).where(
+        SC05Run.member_id==row.member_id,
+        SC05Run.case_id==row.case_id,
+        SC05Run.pair_id==row.pair_id,
+        SC05Run.variant=="science_gate_off",
+        SC05Run.status=="completed",
+        SC05Run.pipeline_sha==current_sha,
+    ).limit(1)).first()
+    return baseline is not None
 
 
 def execute(factory,run_id):
@@ -455,18 +477,24 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         # pipeline SHA for other changes or for previously unverified evidence.
         current_sha=pipeline_sha()
         if row.pipeline_sha!=current_sha:
-            try:
-                document=db.get(SC05Case,row.case_id)
-                info=check_fact_type_resume(row,document)
-            except (EvidenceError,ValueError,TypeError) as exc:
-                raise HTTPException(
-                    409,"Saved run cannot be safely migrated: "+str(exc)[:180]
-                ) from None
+            document=db.get(SC05Case,row.case_id)
             old_sha=row.pipeline_sha
-            row.pipeline_sha=current_sha
-            add_audit(db,"sc05.verified_taxonomy_parser_repair",actor.id,row.id,
-                      "old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
-                      ";replayed_facts="+str(info["facts"]))
+            if eligible_unstarted_gate_migration(db,row,document,current_sha):
+                row.pipeline_sha=current_sha
+                add_audit(db,"sc05.unstarted_gate_repin",actor.id,row.id,
+                          "old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
+                          ";no_paid_stages=True;shared_facts=True")
+            else:
+                try:
+                    info=check_fact_type_resume(row,document)
+                except (EvidenceError,ValueError,TypeError) as exc:
+                    raise HTTPException(
+                        409,"Saved run cannot be safely migrated: "+str(exc)[:180]
+                    ) from None
+                row.pipeline_sha=current_sha
+                add_audit(db,"sc05.verified_taxonomy_parser_repair",actor.id,row.id,
+                          "old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
+                          ";replayed_facts="+str(info["facts"]))
         row.status="queued";row.error="";row.updated_at=now()
         add_audit(db,"sc05.authorized_model_run",actor.id,row.id,
                   "variant="+row.variant)
