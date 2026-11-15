@@ -20,11 +20,16 @@ class PrefixBoundaryReached(Exception):
 def verify_diagnosis_prefix(run: SC05Run, source: SC05Case) -> dict:
     if run.status != "failed" or run.error != "Invalid diagnosis classification":
         raise EvidenceError("Not the eligible saved diagnosis classification failure")
-    if run.variant != "science_gate_off":
-        raise EvidenceError("Only the baseline evidence reconstruction is eligible")
+    if run.variant not in ("science_gate_off", "science_gate_on"):
+        raise EvidenceError("Not a supported baseline or gated SC05 diagnosis")
+    gated = run.variant == "science_gate_on"
+    frozen = load(source.shared_evidence_json) if gated else None
+    if gated and not frozen:
+        raise EvidenceError("Gated diagnosis requires a verified frozen A snapshot")
     entries = load(run.checkpoints_json, [])
+    minimum = 2 if gated else 3
     if (not isinstance(entries, list) or len(entries) != run.calls
-        or len(entries) < 3 or entries[-1].get("stage") != "diagnosis"):
+        or len(entries) < minimum or entries[-1].get("stage") != "diagnosis"):
         raise EvidenceError("Saved checkpoint prefix is incomplete or reordered")
     if any(not isinstance(e, dict) or
            not isinstance(e.get("response"), dict) or
@@ -52,11 +57,12 @@ def verify_diagnosis_prefix(run: SC05Run, source: SC05Case) -> dict:
         run_paper(
             None, "cached-only-not-a-provider-key", model_call=cached_only,
             source_title=source.title, pages_override=load(source.pages_json, {}),
-            source_sha=source.source_sha, frozen_snapshot=None,
-            scientific_value_gate=False, max_calls=40,
+            source_sha=source.source_sha, frozen_snapshot=frozen,
+            scientific_value_gate=gated, max_calls=40,
         )
     except PrefixBoundaryReached:
-        if cursor[0] != len(entries) or next_stage[0] != "evidence_questions":
+        expected_next = "scientific_value_triage" if gated else "evidence_questions"
+        if cursor[0] != len(entries) or next_stage[0] != expected_next:
             raise EvidenceError("Cached run did not stop at the expected diagnosis boundary")
         last = entries[-1].get("response", {})
         issues = last.get("diagnoses", [])

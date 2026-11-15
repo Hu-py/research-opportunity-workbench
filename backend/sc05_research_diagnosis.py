@@ -19,6 +19,13 @@ ISSUE_CLASSES = frozenset({
 })
 STATUSES = frozenset({"observed", "hypothesis", "unknown"})
 CONFIDENCES = frozenset({"low", "medium", "high", "not_assessed"})
+# Explicit, auditable taxonomy aliases only. The raw model label is retained.
+ISSUE_CLASS_ALIASES = {
+    "causal_inference": "identifiability",
+    "inference_boundary": "identifiability",
+    "confounding": "identifiability",
+    "method_dependence": "method",
+}
 
 SYSTEM_PROMPT = """你是独立科研问题诊断审查员。仅根据输入的原始研究目标、方法、
 数据说明和已核验实验记录，找出研究结论与证据之间的缺口，审查可能的失败机制。
@@ -181,7 +188,8 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
         if not isinstance(refs, list) or not set(refs) <= allowed:
             raise EvidenceError("Invented diagnosis fact reference")
         status = issue.get("epistemic_status")
-        category = issue.get("issue_class")
+        raw_category = issue.get("issue_class")
+        category = ISSUE_CLASS_ALIASES.get(raw_category, raw_category) if isinstance(raw_category, str) else raw_category
         raw_confidence = issue.get("confidence")
         # Never invent a probability/subjective confidence omitted by a model.
         # Keep the absence explicit instead of attributing "low"/"medium".
@@ -196,6 +204,8 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
             raise EvidenceError("Untested mechanism must give rival hypotheses and checks")
         clean_issues.append({
             "id": issue_id, "issue_class": category,
+            "raw_issue_class": raw_category,
+            "issue_class_normalized": raw_category != category,
             "problem": required(issue.get("problem"), "problem"),
             "fact_ids": list(dict.fromkeys(refs)),
             "epistemic_status": status,
