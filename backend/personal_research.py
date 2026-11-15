@@ -238,9 +238,19 @@ def mount(app, *, get_db, require_actor, team_auth_enabled):
     @router.post("/me/initialize")
     def initialize(db: Session = Depends(get_db),
                    actor: TeamMember = Depends(member)):
+        # A profile can already exist even when its run copies have not yet
+        # been associated with this member. Keep edits intact; attach only
+        # missing public-preview results to this authenticated account.
+        public_keys = set(db.scalars(select(PublicPilotEvidence.key).where(
+            PublicPilotEvidence.key.in_(REQUIRED_KEYS))).all())
+        if not set(REQUIRED_KEYS).issubset(public_keys):
+            raise HTTPException(503, "两份公开文献快照尚未导入测试数据库")
         ensure_personal(db, actor, explicit=True)
+        linked = [private_result(db, actor, key) for key in REQUIRED_KEYS]
+        if any(value is None for value in linked):
+            raise HTTPException(503, "个人结果关联尚未完成，请稍后重试")
         return {"profile": private_profile(db, actor),
-                "results": [private_result(db, actor, key) for key in REQUIRED_KEYS]}
+                "results": linked, "linked_count": len(linked)}
 
     @router.put("/me")
     def update(data: ProfileUpdate, db: Session = Depends(get_db),
@@ -271,8 +281,15 @@ def mount(app, *, get_db, require_actor, team_auth_enabled):
         rows = db.scalars(select(PersonalResearchResult).where(
             PersonalResearchResult.member_id == actor.id
         ).order_by(PersonalResearchResult.created_at.desc()).limit(20)).all()
+        public = db.scalars(select(PublicPilotEvidence.key).where(
+            PublicPilotEvidence.key.in_(REQUIRED_KEYS))).all()
+        linked = {row.topic_key for row in rows}
         return {"items": [private_result(db, actor, row.topic_key) for row in rows],
                 "scope": "personal", "count": len(rows),
+                "expected_count": len(REQUIRED_KEYS),
+                "available_public_count": len(public),
+                "missing_topic_keys": [key for key in REQUIRED_KEYS if key not in linked],
+                "requires_explicit_import": bool(set(REQUIRED_KEYS) - linked),
                 "note": "两个真实出版页检索样本由研究者辅助整理，尚非 Agent 自主推理或 SCI 原始科研实验结果。"}
 
     @router.get("/me/results/{result_id}")
