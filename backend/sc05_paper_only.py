@@ -723,7 +723,7 @@ def run_paper(
         literature=literature_assessments(assessed_raw,papers,diagnosis)
     routes_raw=_run(model_call,api_key,"research_redesign",
         "现在才允许提出研究路线。至少比较算法、数据、评价体系、"
-        "研究问题重构的适用性，但无需每类各出一个。"
+        "研究问题重构的适用性，但无需每类各出一个。"+
         ("仅能从新科学问题创建下一篇研究路线；不可将严谨性修补直接推荐为研究主题。"
           if scientific_value_gate else "基于论文证据提出新路线，但不得宣称已经证明创新性。")+
         "每条路线须指明原文证据、"
@@ -735,7 +735,9 @@ def run_paper(
              "id","title","doi","url","year","venue","abstract")}
              for p in papers[:20]],
          "literature_assessments":literature,
-         "required_json_shape":ROUTE_SCHEMA},log,max_calls=max_calls,max_tokens=4100)
+         "required_json_shape":(ROUTE_SCHEMA if scientific_value_gate
+              else {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}]})},
+         log,max_calls=max_calls,max_tokens=4100)
     routes=research_routes(routes_raw,diagnosis,papers,scientific_triage if scientific_value_gate else None)
     critic_raw=_run(model_call,api_key,"independent_critic",
         "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
