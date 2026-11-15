@@ -79,9 +79,11 @@ def test_neutral_facts_are_anchored_to_actual_source():
 
 def test_blind_model_input_never_contains_evaluator_answer_or_future_plan():
     result = snapshot()
-    result["evaluator_holdout"] = "Use continental dataset as next study"
     prompt = str(model_payload(result))
     assert "continental dataset" not in prompt
+    result["evaluator_holdout"] = "Use continental dataset as next study"
+    with pytest.raises(EvidenceError, match="Modified"):
+        model_payload(result)
     assert "new network architecture" not in prompt
     assert "D01" in prompt  # only an example JSON shape, not expected finding
 
