@@ -23,7 +23,46 @@ from backend.sc05_research_diagnosis import (
 
 VERSION = "sc05-paper-only-v0.2.0"
 MODEL = "deepseek-flash"
-FACT_KINDS = {"objective", "data", "method", "evaluation", "result", "limitation"}
+FACT_KINDS = {"objective", "data", "method", "evaluation", "result", "limitation", "other"}
+# The first real provider run showed that valid cited facts can carry
+# unexpected classification labels. Do not throw away verified excerpts or
+# spend another model call just to relabel them. This is a *taxonomy* repair,
+# not a scientific claim; unknown labels remain explicitly "other".
+FACT_KIND_ALIASES = {
+    "objective": {"objective", "goal", "aim", "purpose", "research question", "research_question",
+                  "background", "introduction", "motivation", "research objective", "研究目标", "研究问题", "背景"},
+    "data": {"data", "dataset", "data source", "data_source", "input", "sample",
+             "study area", "study_area", "dataset description", "数据", "数据来源", "研究区域", "样本"},
+    "method": {"method", "methods", "methodology", "formula", "equation", "algorithm",
+               "model", "index", "metric", "indicator", "calculation",
+               "variable", "feature", "assumption", "approach", "方法", "公式", "模型", "指标", "计算", "假设"},
+    "evaluation": {"evaluation", "validation", "experiment", "experimental design",
+                   "experiment design", "comparison", "assessment", "analysis",
+                   "verification", "baseline", "sensitivity", "评价", "验证", "实验", "对比", "评估"},
+    "result": {"result", "results", "finding", "findings", "evidence",
+               "empirical result", "empirical finding", "outcome", "conclusion",
+               "observation", "effect", "discovery", "结果", "发现", "结论", "实证结果"},
+    "limitation": {"limitation", "limitations", "constraint", "caveat", "scope",
+                   "uncertainty", "challenge", "weakness", "boundary",
+                   "限制", "局限", "不确定性", "研究边界"},
+}
+
+
+def normalize_fact_kind(value: object) -> tuple[str, str]:
+    """Normalize a known alias; otherwise keep the cited fact unclassified.
+
+    Returns (canonical_type, original_model_label). The exact paper quote is
+    separately verified before freezing the evidence snapshot.
+    """
+    if isinstance(value, str):
+        original=value[:150]
+        label=" ".join(value.strip().casefold().replace("-", " ").replace("_", " ").split())
+        for canonical, aliases in FACT_KIND_ALIASES.items():
+            if label in aliases or label.replace(" ", "_") in aliases:
+                return canonical,original
+        return "other",original
+    return "other",type(value).__name__
+
 FUTURE_HEADING = re.compile(
     r"(?im)^\s*(?:(?:\d+(?:\.\d+)*\.)\s*)?"
     r"(?:discussion|future (?:work|research|directions)|outlook|references|bibliography)"
@@ -243,13 +282,19 @@ def extract_ledger(
             if not isinstance(item, dict):
                 raise EvidenceError("Invalid extracted fact")
             page = item.get("page")
-            kind = item.get("fact_type")
+            raw_kind = item.get("fact_type")
+            kind, kind_label = normalize_fact_kind(raw_kind)
             quote = item.get("verbatim_excerpt")
             if page not in pages or page not in [x["page"] for x in chunk]:
                 raise EvidenceError("Fact cites a page outside its source batch")
             if kind not in FACT_KINDS:
-                raise EvidenceError("Unsupported fact type")
+                raise EvidenceError("Unsupported normalized fact type")
             quote=_verified_excerpt(pages[page],quote)
+            if kind_label != kind:
+                notes.append({
+                    "page":page, "raw_type":kind_label,"normalized_type":kind,
+                    "rule":"known alias" if kind!="other" else "unclassified; needs reviewer",
+                })
             statement = _limited(item.get("statement"), "fact statement", 1100)
             key = (page, quote)
             if key in used:continue
@@ -761,6 +806,7 @@ def run_paper(
         "is_paid_model_output":model_call is request_json,
         "experiment_variant":("scientific_value_gate_on" if scientific_value_gate else "scientific_value_gate_off"),
         "shared_frozen_evidence":frozen_snapshot is not None,
+        "fact_type_normalization_notes":ledger.get("source_note",[]) if not frozen_snapshot else [],
         "independent_raw_data_validation":False,
         "novelty_proved":False,
     }
