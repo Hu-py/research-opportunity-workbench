@@ -274,6 +274,7 @@ def mount(app,*,get_db,get_factory):
                 "token_endpoint_auth_methods_supported":["none"],
                 "code_challenge_methods_supported":["S256"],
                 "authorization_response_iss_parameter_supported":True,
+                "revocation_endpoint":base+"/oauth/revoke",
                 "scopes_supported":[READ,RUN],
                 "client_id_metadata_document_supported":True}
 
@@ -341,7 +342,7 @@ def mount(app,*,get_db,get_factory):
             response=token_response(db,owner,CLIENT,fields["resource"],scope)
             add_audit(db,"sc05.mcp_token_issued",member_id,"chatgpt")
             db.commit()
-            return response
+            return JSONResponse(response,headers={"Cache-Control":"no-store","Pragma":"no-cache"})
         if grant=="refresh_token":
             old=db.scalars(select(OAuthGrant).where(
                 OAuthGrant.refresh_hash==digest(fields.get("refresh_token",""))
@@ -357,8 +358,69 @@ def mount(app,*,get_db,get_factory):
             response=token_response(db,owner,old.client_id,old.resource,old.scopes)
             add_audit(db,"sc05.mcp_token_refreshed",owner.id,"chatgpt")
             db.commit()
-            return response
+            return JSONResponse(response,headers={"Cache-Control":"no-store","Pragma":"no-cache"})
         raise HTTPException(400,"unsupported_grant_type")
+
+    @router.post("/oauth/revoke")
+    async def revoke_oauth(request:Request,db:Session=Depends(get_db)):
+        enabled()
+        body=await request.body()
+        if len(body)>4096:raise HTTPException(413,"OAuth revocation payload too large")
+        fields={k:v[0] for k,v in parse_qs(body.decode("utf-8")).items()}
+        if fields.get("client_id")!=CLIENT:
+            raise HTTPException(400,"Unknown OAuth client")
+        provided=fields.get("token","")
+        for column in (OAuthGrant.access_hash,OAuthGrant.refresh_hash):
+            row=db.scalars(select(OAuthGrant).where(column==digest(provided)).limit(1)).first()
+            if row:
+                row.revoked=1
+                add_audit(db,"sc05.mcp_token_revoked",row.member_id,"chatgpt")
+                db.commit()
+                break
+        return {"revoked":True}
+
+    @router.get("/api/mcp/delegations")
+    def list_delegations(request:Request,db:Session=Depends(get_db)):
+        enabled()
+        # This management route uses regular Owner session authentication,
+        # *not* the delegated token itself, so a stolen MCP token cannot
+        # inspect or revoke other grants.
+        from backend.team import resolve_session
+        expected=os.getenv("API_BEARER_TOKEN","")
+        if not expected or not secrets.compare_digest(
+            request.headers.get("Authorization",""),"Bearer "+expected):
+            raise HTTPException(401,"Backend authorization required")
+        owner=resolve_session(db,request.headers.get("X-Research-Session"))
+        if owner is None or owner.role!="owner" or not owner.active:
+            raise HTTPException(403,"Owner login required")
+        rows=db.scalars(select(OAuthGrant).where(
+            OAuthGrant.member_id==owner.id).order_by(OAuthGrant.expires_at.desc()).limit(50)).all()
+        return {"items":[{"grant_id":r.access_hash,"scopes":r.scopes,
+                          "access_expires_at":r.expires_at,
+                          "refresh_expires_at":r.refresh_expires_at,
+                          "revoked":bool(r.revoked)} for r in rows]}
+
+    @router.post("/api/mcp/delegations/{grant_id}/revoke")
+    def revoke_delegation(grant_id:str,request:Request,db:Session=Depends(get_db)):
+        enabled()
+        from backend.team import resolve_session
+        expected=os.getenv("API_BEARER_TOKEN","")
+        if not expected or not secrets.compare_digest(
+            request.headers.get("Authorization",""),"Bearer "+expected):
+            raise HTTPException(401,"Backend authorization required")
+        owner=resolve_session(db,request.headers.get("X-Research-Session"))
+        if owner is None or owner.role!="owner" or not owner.active:
+            raise HTTPException(403,"Owner login required")
+        if not re.fullmatch(r"[a-f0-9]{64}",grant_id):
+            raise HTTPException(400,"Invalid grant ID")
+        row=db.get(OAuthGrant,grant_id)
+        if row is None or row.member_id!=owner.id:
+            raise HTTPException(404,"No such delegated access")
+        row.revoked=1
+        add_audit(db,"sc05.mcp_token_revoked",owner.id,grant_id[:16],
+                  "Owner revoked delegated ChatGPT access")
+        db.commit()
+        return {"revoked":True}
 
     @router.api_route("/mcp",methods=["GET","POST","DELETE"])
     async def mcp_endpoint(request:Request,background:BackgroundTasks,
