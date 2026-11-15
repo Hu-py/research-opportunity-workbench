@@ -1429,3 +1429,11 @@ from backend.sc04_evolution import mount as _mount_sc04_evolution
 _mount_sc04_evolution(app, get_db=get_db, require_actor=require_actor,
                       team_auth_enabled=team_auth_enabled,
                       get_factory=lambda: get_factory())
+
+# SC05: Owner-only, paper-input A/B scientific-agent evaluation.
+# Importing registers PostgreSQL tables before the API lifespan creates schema.
+from backend.sc05_eval_api import mount as _mount_sc05_eval
+_mount_sc05_eval(
+    app, get_db=get_db, require_actor=require_actor,
+    team_auth_enabled=team_auth_enabled, get_factory=lambda: get_factory(),
+)
