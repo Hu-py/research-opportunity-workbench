@@ -294,7 +294,7 @@ def build_candidates(works_by_query):
                 "year": work.get("publication_year"),
                 "work_id": wid, "query": query,
             }
-    returned = {}
+    observed = []
     for (group, sid), item in collected.items():
         count = len(item["papers"])
         if count < 2:
@@ -309,25 +309,38 @@ def build_candidates(works_by_query):
             "source_provider": "OpenAlex",
             "basis": "以六条有界检索的相关论文出现频次推荐阅读，不代表期刊质量或正式收录排名",
         }
-        returned[(group, sid)] = {
+        observed.append({
             "source_id": sid, "name": item["name"],
             "issn_l": item["issn_l"], "group": group,
             "evidence": evidence,
-        }
+        })
+    # One candidate per canonical OpenAlex source, even if relevant to
+    # multiple probes. Keep the strongest probe as its primary slot and
+    # preserve the other probe memberships as evidence, not separate votes.
+    strongest = {}
+    memberships = defaultdict(set)
+    for value in observed:
+        sid = value["source_id"]
+        memberships[sid].add(value["group"])
+        old = strongest.get(sid)
+        signal = (value["evidence"]["distinct_query_count"],
+                  value["evidence"]["observed_paper_count"])
+        old_signal = ((old["evidence"]["distinct_query_count"],
+                       old["evidence"]["observed_paper_count"])
+                      if old else (-1, -1))
+        if signal > old_signal:
+            strongest[sid] = value
+    by_group = defaultdict(list)
+    for source_id, value in strongest.items():
+        value["evidence"]["associated_probe_groups"] = sorted(memberships[source_id])
+        by_group[value["group"]].append(value)
+    result = []
     for group in BASELINE:
-        options = [v for (g, _), v in returned.items() if g == group]
-        options.sort(key=lambda x: (
-            -x["evidence"]["distinct_query_count"],
-            -x["evidence"]["observed_paper_count"], x["name"]))
-        returned.update({(group, v["source_id"]): v
-                         for v in options[:MAX_CANDIDATES_PER_GROUP]})
-    return [v for (group, sid), v in returned.items()
-            if v in sorted([x for (g, _), x in returned.items()
-                            if g == group], key=lambda x: (
-                                -x["evidence"]["distinct_query_count"],
-                                -x["evidence"]["observed_paper_count"], x["name"]
-                            ))[:MAX_CANDIDATES_PER_GROUP]]
-
+        options = sorted(by_group[group], key=lambda v: (
+            -v["evidence"]["distinct_query_count"],
+            -v["evidence"]["observed_paper_count"], v["name"]))
+        result.extend(options[:MAX_CANDIDATES_PER_GROUP])
+    return result
 
 def execute_discovery(factory, run_id, client=None):
     with factory() as db:
