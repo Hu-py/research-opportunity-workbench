@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./sc05.module.css";
 
 type CaseRow={id:string;title:string;sha256:string;source_type:string;pages:number;shared_evidence_ready:boolean;created_at:string};
-type RunRow={id:string;case_id:string;pair_id:string;status:string;stage:string;pipeline_sha:string;
+type RunRow={id:string;case_id:string;pair_id:string;variant:string;status:string;stage:string;pipeline_sha:string;
   model_calls:number;input_tokens:number;output_tokens:number;error:string;created_at:string;report_md?:string;quality?:Record<string,unknown>};
 type Budget={utc_day:string;limits:{model_calls_per_day:number;token_reservation_per_day:number};used:{
   model_calls:number;token_reservation:number;input_tokens:number;output_tokens:number}};
@@ -102,11 +102,8 @@ export default function SC05Console(){
   },[data,cases]);
   const pair=pairs.find(x=>x.id===pairId);
   const chosenCase=cases.find(x=>x.id===caseId);
-  const pairRuns=pair?.runs||[];
-  const first=pairRuns.length?pairRuns.find(r=>{
-    // This is internal control order, not shown within the blind evaluator.
-    return r.status==="failed"||r.status==="running"||r.status==="queued";
-  })||pairRuns.find(r=>r.status==="prepared")||pairRuns[0]:undefined;
+  const pairRuns=(pair?.runs||[]).slice().sort((a,b)=>
+    (a.variant==="science_gate_off"?0:1)-(b.variant==="science_gate_off"?0:1));
 
   const upload=async(e:FormEvent)=>{
     e.preventDefault();
@@ -309,11 +306,12 @@ export default function SC05Console(){
             const canStart=run.status==="prepared" ||
               (run.status==="failed"&&r?.ready===true);
             const other=pairRuns.find(x=>x.id!==run.id);
-            const needsEvidence=run.status==="prepared"&&run.model_calls===0&&
-              i===1&&other?.status!=="completed";
+            const needsEvidence=run.variant==="science_gate_on"&&
+              other?.status!=="completed";
             return <article className={styles.run} key={run.id}>
               <div className={styles.sectionHead}>
-                <div><h3>运行记录 {i+1}</h3><code>{run.id}</code></div>
+                <div><h3>{run.variant==="science_gate_off"?"配置 A · 基线推理":"配置 B · 科学价值筛选"}</h3>
+                  <code>{run.id}</code></div>
                 <span className={styles.status} data-status={run.status}>{stateName(run.status)}</span>
               </div>
               <div className={styles.meta}>
