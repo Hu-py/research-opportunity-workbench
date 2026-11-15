@@ -25,6 +25,7 @@ from backend.model_gateway import request_json
 from backend.research_budget import reserve, record_usage, status as budget_status
 from backend.sc05_paper_only import (
     run_paper, page_texts_from_pdf, FUTURE_HEADING,
+    _chunks, extract_ledger, normalize_fact_kind,
 )
 from backend.sc05_research_diagnosis import EvidenceError
 
@@ -240,6 +241,53 @@ def _checkpoint_call(factory,run_id):
     return provider
 
 
+def check_fact_type_resume(row: SC05Run, doc: SC05Case) -> dict:
+    """No-cost, exact-prompt checkpoint check for the first live-run schema bug.
+
+    This is the ONLY permitted legacy pipeline hash migration. It preserves
+    the paid response, source hash, token counters and full audit trail.
+    It does not repair fabricated quotations or alter prompts.
+    """
+    if row.status != "failed" or row.error != "Unsupported fact type":
+        raise EvidenceError("Not an eligible first-run fact classification failure")
+    if row.variant != "science_gate_off" or row.calls != 1:
+        raise EvidenceError("Only the first baseline extraction is eligible")
+    saved=load(row.checkpoints_json,[])
+    if not isinstance(saved,list) or len(saved)!=1 or saved[0].get("stage")!="evidence_extraction":
+        raise EvidenceError("Required first extraction checkpoint not found")
+    entry=saved[0]
+    response=entry.get("response")
+    values=response.get("facts") if isinstance(response,dict) else None
+    if not isinstance(values,list) or not 1<=len(values)<=6:
+        raise EvidenceError("Saved facts have invalid shape")
+    pages=load(doc.pages_json,{})
+    chunks=_chunks(pages)
+    if not chunks:
+        raise EvidenceError("Source pages missing")
+    first={part["page"]:part["text"] for part in chunks[0]}
+    types=[{"raw_type":str(x.get("fact_type"))[:120],
+            "normalized_type":normalize_fact_kind(x.get("fact_type"))[0]}
+           for x in values if isinstance(x,dict)]
+    if len(types)!=len(values):
+        raise EvidenceError("Invalid saved fact object")
+    if all(x["raw_type"]==x["normalized_type"] for x in types):
+        raise EvidenceError("No fact taxonomy mismatch present")
+    def saved_call(api_key,model,system,payload,max_tokens=2700):
+        if payload.get("sc05_stage")!="evidence_extraction":
+            raise EvidenceError("Unexpected legacy checkpoint stage")
+        fp=hashlib.sha256(dump({
+            "model":model,"system":system,"payload":payload,
+            "max_tokens":max_tokens,
+        }).encode()).hexdigest()
+        if fp!=entry.get("prompt_sha256"):
+            raise EvidenceError("Saved prompt differs; cannot replay without new paid call")
+        return response,entry.get("usage",{})
+    # Validate source provenance and type normalization with zero network calls.
+    parsed=extract_ledger(first,"cached-response-only",saved_call,[],max_calls=8)
+    return {"facts":len(parsed["snapshot"]["observations"]),
+            "types":types,"replay_prompt_matches":True}
+
+
 def execute(factory,run_id):
     """Best-effort resumable job. No GET/registration/startup side effects."""
     with factory() as db:
@@ -403,12 +451,45 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         if not (os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
                 or os.getenv("MODEL_VAULT_KEY","").strip()):
             raise HTTPException(409,"No configured DeepSeek provider credential")
+        # Resume only a vetted taxonomy parser fix. Never overwrite the pinned
+        # pipeline SHA for other changes or for previously unverified evidence.
+        current_sha=pipeline_sha()
+        if row.pipeline_sha!=current_sha:
+            try:
+                document=db.get(SC05Case,row.case_id)
+                info=check_fact_type_resume(row,document)
+            except (EvidenceError,ValueError,TypeError) as exc:
+                raise HTTPException(
+                    409,"Saved run cannot be safely migrated: "+str(exc)[:180]
+                ) from None
+            old_sha=row.pipeline_sha
+            row.pipeline_sha=current_sha
+            add_audit(db,"sc05.verified_taxonomy_parser_repair",actor.id,row.id,
+                      "old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
+                      ";replayed_facts="+str(info["facts"]))
         row.status="queued";row.error="";row.updated_at=now()
         add_audit(db,"sc05.authorized_model_run",actor.id,row.id,
                   "variant="+row.variant)
         db.commit()
         background.add_task(execute,get_factory(),row.id)
         return run_view(row)
+
+    @router.get("/runs/{run_id}/repair-check")
+    def repair_check(run_id:str,db:Session=Depends(get_db),actor=Depends(owner)):
+        """Read-only; returns only type labels, not the source or model text."""
+        row=owned(db,actor,SC05Run,run_id)
+        if row.pipeline_sha==pipeline_sha():
+            return {"ready":True,"requires_migration":False,
+                    "saved_checkpoints":len(load(row.checkpoints_json,[]))}
+        try:
+            result=check_fact_type_resume(row,db.get(SC05Case,row.case_id))
+        except (EvidenceError,ValueError,TypeError) as exc:
+            return {"ready":False,"requires_migration":True,
+                    "reason":str(exc)[:180]}
+        return {"ready":True,"requires_migration":True,
+                "replay_prompt_matches":result["replay_prompt_matches"],
+                "saved_facts":result["facts"],"normalized_types":result["types"],
+                "paid_calls_on_check":0}
 
     @router.get("/runs/{run_id}")
     def detail(run_id:str,db:Session=Depends(get_db),actor=Depends(owner)):
