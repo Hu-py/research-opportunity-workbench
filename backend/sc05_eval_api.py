@@ -1,0 +1,440 @@
+"""SC05 Owner-authenticated one-paper A/B experiments.
+
+No frontend, no automatic model calls. PDF input is parsed into page text and
+stored privately in PostgreSQL; only explicitly authorized background tasks
+invoke the existing DeepSeek adapter. Raw model stage responses and usage are
+checkpointed per attempt to make retries auditable and limit duplicate spend.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import tempfile
+import uuid
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, select, update
+from sqlalchemy.orm import Mapped, Session, mapped_column
+from research_workbench.core import Base
+from backend.team import TeamMember, add_audit
+from backend.model_gateway import request_json
+from backend.research_budget import reserve, record_usage, status as budget_status
+from backend.sc05_paper_only import (
+    run_paper, page_texts_from_pdf, _chunks,
+)
+from backend.sc05_research_diagnosis import EvidenceError
+
+MAX_TEXT=650000
+MAX_PDF_BYTES=32000000
+VERSION="sc05-eval-v0.1.0"
+
+
+def now():
+    return datetime.now(timezone.utc)
+
+
+def dump(value):
+    return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+
+
+def load(text, default=None):
+    try:return json.loads(text) if text else default
+    except (TypeError,ValueError):return default
+
+
+class SC05Case(Base):
+    __tablename__="sc05_cases"
+    id:Mapped[str]=mapped_column(String(55),primary_key=True)
+    member_id:Mapped[str]=mapped_column(String(36),ForeignKey("team_members.id"),index=True)
+    title:Mapped[str]=mapped_column(String(300))
+    pages_json:Mapped[str]=mapped_column(Text)
+    source_sha:Mapped[str]=mapped_column(String(64))
+    source_type:Mapped[str]=mapped_column(String(35))
+    shared_evidence_json:Mapped[str]=mapped_column(Text,default="")
+    created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+
+
+class SC05Run(Base):
+    __tablename__="sc05_runs"
+    id:Mapped[str]=mapped_column(String(55),primary_key=True)
+    member_id:Mapped[str]=mapped_column(String(36),ForeignKey("team_members.id"),index=True)
+    case_id:Mapped[str]=mapped_column(String(55),ForeignKey("sc05_cases.id"))
+    pair_id:Mapped[str]=mapped_column(String(55),index=True)
+    variant:Mapped[str]=mapped_column(String(25))
+    status:Mapped[str]=mapped_column(String(24),default="prepared")
+    stage:Mapped[str]=mapped_column(String(40),default="prepare")
+    checkpoints_json:Mapped[str]=mapped_column(Text,default="[]")
+    report_md:Mapped[str]=mapped_column(Text,default="")
+    result_json:Mapped[str]=mapped_column(Text,default="")
+    calls:Mapped[int]=mapped_column(Integer,default=0)
+    input_tokens:Mapped[int]=mapped_column(Integer,default=0)
+    output_tokens:Mapped[int]=mapped_column(Integer,default=0)
+    error:Mapped[str]=mapped_column(String(280),default="")
+    created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+    updated_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+
+
+class SC05Rating(Base):
+    __tablename__="sc05_ratings"
+    id:Mapped[str]=mapped_column(String(55),primary_key=True)
+    member_id:Mapped[str]=mapped_column(String(36),ForeignKey("team_members.id"),index=True)
+    run_id:Mapped[str]=mapped_column(String(55),ForeignKey("sc05_runs.id"))
+    accuracy:Mapped[int]=mapped_column(Integer)
+    science_value:Mapped[int]=mapped_column(Integer)
+    narrative:Mapped[int]=mapped_column(Integer)
+    literature:Mapped[int]=mapped_column(Integer)
+    feasibility:Mapped[int]=mapped_column(Integer)
+    hard_failure:Mapped[bool]=mapped_column(default=False)
+    feedback:Mapped[str]=mapped_column(Text,default="")
+    created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+
+
+class ExtractedPaper(BaseModel):
+    title:str=Field(min_length=8,max_length=300)
+    pages:dict[str,str]
+    source_sha:str|None=None
+
+
+class StartRequest(BaseModel):
+    acknowledge_external_model:bool=False
+
+
+class RatingRequest(BaseModel):
+    accuracy:int=Field(ge=0,le=5)
+    science_value:int=Field(ge=0,le=5)
+    narrative:int=Field(ge=0,le=5)
+    literature:int=Field(ge=0,le=5)
+    feasibility:int=Field(ge=0,le=5)
+    hard_failure:bool=False
+    feedback:str=Field(default="",max_length=3000)
+
+
+def safe_pages(pages):
+    if not isinstance(pages,dict) or not 1<=len(pages)<=120:
+        raise ValueError("Need 1-120 PDF pages")
+    import re
+    if any(not re.fullmatch(r"page_[0-9]{2,3}",k) for k in pages):
+        raise ValueError("Invalid PDF page IDs")
+    if sum(len(v) for v in pages.values())>MAX_TEXT:
+        raise ValueError("PDF text exceeds 650k characters")
+    if any(not isinstance(v,str) or not 40<=len(v)<=60000 for v in pages.values()):
+        raise ValueError("Invalid PDF page text")
+    return pages
+
+
+def case_view(x):
+    return {"id":x.id,"title":x.title,"sha256":x.source_sha,
+            "source_type":x.source_type,
+            "pages":len(load(x.pages_json,{})),
+            "shared_evidence_ready":bool(x.shared_evidence_json),
+            "created_at":x.created_at.isoformat() if x.created_at else None}
+
+
+def run_view(x,*,include_report=False):
+    data={"id":x.id,"case_id":x.case_id,"pair_id":x.pair_id,
+          "status":x.status,"stage":x.stage,
+          "model_calls":x.calls,
+          "input_tokens":x.input_tokens,"output_tokens":x.output_tokens,
+          "error":x.error,"created_at":x.created_at.isoformat() if x.created_at else None}
+    if include_report:
+        data["report_md"]=x.report_md if x.status=="completed" else ""
+        data["quality"]=load(x.result_json,{}).get("quality",{}) if x.status=="completed" else {}
+        data["feedback_needed"]=x.status=="completed"
+    return data
+
+
+def owned(db:Session,actor:TeamMember,model,pk):
+    row=db.get(model,pk)
+    if row is None or row.member_id!=actor.id:
+        raise HTTPException(404,"No such personal experiment")
+    return row
+
+
+def _model_key(factory):
+    # Prefer the existing Render-only env variable, then the encrypted vault.
+    direct=os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
+    if direct:return direct
+    from backend.model_vault import load_key
+    with factory() as db:
+        return load_key(db)
+
+
+def _checkpoint_call(factory,run_id):
+    """Replay completed exact-input LLM stages; reserve before new paid stages."""
+    def provider(api_key, model, system, payload, max_tokens=3000):
+        stage=payload.get("sc05_stage","unknown")
+        with factory() as db:
+            row=db.get(SC05Run,run_id)
+            if row is None or row.status!="running":
+                raise RuntimeError("SC05 execution is not authorized or already canceled")
+            index=len(load(row.checkpoints_json,[]))
+        fingerprint=hashlib.sha256(dump({
+            "model":model,"system":system,"payload":payload,
+            "max_tokens":max_tokens,
+        }).encode()).hexdigest()
+        # Replays are consumed in order; the runner cursor is kept per invocation.
+        if cursor[0]<index:
+            with factory() as db:
+                row=db.get(SC05Run,run_id)
+                entry=load(row.checkpoints_json,[])[cursor[0]]
+            if entry["prompt_sha256"]!=fingerprint:
+                raise EvidenceError("Previously checkpointed prompt differs; cannot silently replay a changed model")
+            cursor[0]+=1
+            return entry["response"],entry["usage"]
+        if not reserve(factory,calls=1,tokens=10000):
+            raise RuntimeError("Daily LLM budget exhausted; no extra API call was made")
+        try:
+            response,usage=request_json(api_key,model,system,payload,max_tokens=max_tokens)
+        except Exception:
+            # The reserved call is never refunded, because provider billing is unknown.
+            raise
+        if not isinstance(response,dict):
+            raise EvidenceError("Model returned non-object JSON")
+        with factory() as db:
+            row=db.get(SC05Run,run_id)
+            existing=load(row.checkpoints_json,[])
+            if len(existing)!=cursor[0]:
+                raise RuntimeError("Concurrent stage checkpoint update detected")
+            existing.append({"stage":stage,"prompt_sha256":fingerprint,
+                             "response":response,"usage":usage,"model":model})
+            row.checkpoints_json=dump(existing)
+            row.stage=stage
+            row.calls+=1
+            row.input_tokens+=max(0,int(usage.get("input_tokens",0)))
+            row.output_tokens+=max(0,int(usage.get("output_tokens",0)))
+            row.updated_at=now()
+            db.commit()
+        record_usage(factory,usage)
+        cursor[0]+=1
+        return response,usage
+    cursor=[0]
+    return provider
+
+
+def execute(factory,run_id):
+    """Best-effort resumable job. No GET/registration/startup side effects."""
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        if row is None or row.status!="queued":return
+        # Only one running experiment per Owner; A then B is deliberate.
+        other=db.scalars(select(SC05Run.id).where(
+            SC05Run.member_id==row.member_id,SC05Run.status=="running",
+            SC05Run.id!=run_id).limit(1)).first()
+        if other:
+            row.status="failed";row.error="Another personal SC05 run is running"
+            db.commit();return
+        row.status="running";row.stage="starting";row.updated_at=now()
+        doc=db.get(SC05Case,row.case_id)
+        pages=load(doc.pages_json,{})
+        snapshot=load(doc.shared_evidence_json)
+        title=doc.title
+        sha=doc.source_sha
+        variant=row.variant
+        db.commit()
+    try:
+        key=_model_key(factory)
+        if not key:raise RuntimeError("DeepSeek key is not configured")
+        if variant=="science_gate_on" and not snapshot:
+            raise RuntimeError("Run the baseline first to freeze an identical evidence snapshot")
+        callback=_checkpoint_call(factory,run_id)
+        report,result=run_paper(
+            None,key,model_call=callback,source_title=title,
+            pages_override=pages,source_sha=sha,frozen_snapshot=snapshot,
+            scientific_value_gate=(variant=="science_gate_on"),
+            max_calls=40,
+        )
+        # The first fully source-verified extraction freezes the common facts.
+        with factory() as db:
+            row=db.get(SC05Run,run_id)
+            doc=db.get(SC05Case,row.case_id)
+            if variant=="science_gate_off" and not doc.shared_evidence_json:
+                doc.shared_evidence_json=dump(result["snapshot"])
+            result["is_paid_model_output"]=True
+            result["experiment_source"]="authenticated_owner_render_deepseek"
+            row.report_md=report
+            row.result_json=dump(result)
+            row.status="completed";row.stage="complete";row.updated_at=now()
+            add_audit(db,"sc05.completed",row.member_id,run_id,
+                      "calls="+str(row.calls))
+            db.commit()
+    except Exception as exc:
+        # Messages are whitelisted to avoid logging raw provider responses.
+        safe=(str(exc) if isinstance(exc,(EvidenceError,RuntimeError)) else
+              type(exc).__name__ + ": stage failed")
+        with factory() as db:
+            row=db.get(SC05Run,run_id)
+            if row:
+                row.status="failed";row.stage="failed"
+                row.error=safe[:280];row.updated_at=now()
+                db.commit()
+
+
+def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
+    router=APIRouter(prefix="/api/personal-research/me/sc05",
+                     tags=["SC05 Authenticated Research Agent Evaluation"])
+
+    def owner(actor:TeamMember|None=Depends(require_actor)):
+        if not team_auth_enabled() or actor is None or not actor.active:
+            raise HTTPException(401,"Please log into Research Atlas")
+        if actor.role!="owner":
+            raise HTTPException(403,"SC05 experiment administration is Owner-only")
+        return actor
+
+    @router.get("")
+    def overview(db:Session=Depends(get_db),actor=Depends(owner)):
+        cases=db.scalars(select(SC05Case).where(SC05Case.member_id==actor.id)
+            .order_by(SC05Case.created_at.desc()).limit(20)).all()
+        runs=db.scalars(select(SC05Run).where(SC05Run.member_id==actor.id)
+            .order_by(SC05Run.created_at.desc()).limit(40)).all()
+        return {"version":VERSION,"cases":[case_view(c) for c in cases],
+                "runs":[run_view(r) for r in runs],
+                "budget":budget_status(db),
+                "key_available":bool(os.getenv("SC04_DEEPSEEK_API_KEY","").strip())}
+
+    @router.post("/cases",status_code=201)
+    def create_case(data:ExtractedPaper,db:Session=Depends(get_db),
+                    actor=Depends(owner)):
+        try:pages=safe_pages(data.pages)
+        except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+        sha=hashlib.sha256(dump(pages).encode()).hexdigest()
+        if data.source_sha and data.source_sha!=sha:
+            # For text intake hash the actual supplied content, never trust a
+            # client claim that it already verified an unavailable PDF file.
+            raise HTTPException(422,"Provided hash must match submitted page-text content")
+        row=SC05Case(id="sc05case_"+uuid.uuid4().hex[:28],member_id=actor.id,
+            title=data.title,pages_json=dump(pages),source_sha=sha,
+            source_type="uploaded_extracted_pages")
+        db.add(row)
+        add_audit(db,"sc05.case_created",actor.id,row.id,
+                  "source_sha="+sha[:16])
+        db.commit()
+        return case_view(row)
+
+    @router.post("/cases/pdf",status_code=201)
+    async def create_pdf_case(request:Request,db:Session=Depends(get_db),
+                              actor=Depends(owner)):
+        if request.headers.get("content-type","").split(";")[0].strip()!="application/pdf":
+            raise HTTPException(415,"Content-Type must be application/pdf")
+        size=request.headers.get("content-length")
+        if size and size.isdigit() and int(size)>MAX_PDF_BYTES:
+            raise HTTPException(413,"PDF exceeds the 32 MB upload limit")
+        data=await request.body()
+        if not data.startswith(b"%PDF") or not 100<=len(data)<=MAX_PDF_BYTES:
+            raise HTTPException(422,"Invalid or oversized PDF")
+        title=request.headers.get("x-research-paper-title","Published research paper")[:300]
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/"submitted.pdf"
+            path.write_bytes(data)
+            try: pages,original_sha=page_texts_from_pdf(path)
+            except Exception:raise HTTPException(422,"Unable to extract PDF text")
+        try:safe_pages(pages)
+        except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+        row=SC05Case(id="sc05case_"+uuid.uuid4().hex[:28],
+             member_id=actor.id,title=title,pages_json=dump(pages),
+             source_sha=original_sha,source_type="uploaded_pdf")
+        db.add(row)
+        add_audit(db,"sc05.case_created",actor.id,row.id,"pdf_sha="+original_sha[:16])
+        db.commit()
+        return case_view(row)
+
+    @router.post("/cases/{case_id}/ab",status_code=201)
+    def create_ab(case_id:str,db:Session=Depends(get_db),actor=Depends(owner)):
+        doc=owned(db,actor,SC05Case,case_id)
+        pair_id="sc05pair_"+uuid.uuid4().hex[:28]
+        # A and B differ in scientific gate; same model and frozen facts.
+        runs=[]
+        for variant in ("science_gate_off","science_gate_on"):
+            item=SC05Run(id="sc05run_"+uuid.uuid4().hex[:28],
+                member_id=actor.id,case_id=doc.id,pair_id=pair_id,
+                variant=variant)
+            db.add(item);runs.append(item)
+        add_audit(db,"sc05.ab_created",actor.id,pair_id,doc.source_sha[:16])
+        db.commit()
+        return {"pair_id":pair_id,"runs":[run_view(r) for r in runs],
+                "note":"Run the first baseline to freeze source evidence, then the gated variant. Paid calls require separate explicit Owner consent."}
+
+    @router.post("/runs/{run_id}/start",status_code=202)
+    def start(run_id:str,data:StartRequest,background:BackgroundTasks,
+              db:Session=Depends(get_db),actor=Depends(owner)):
+        if not data.acknowledge_external_model:
+            raise HTTPException(422,"Explicit approval for paid model calls is required")
+        row=owned(db,actor,SC05Run,run_id)
+        if row.status not in ("prepared","failed"):
+            raise HTTPException(409,"Only prepared or failed runs can start")
+        if row.variant=="science_gate_on" and not db.get(SC05Case,row.case_id).shared_evidence_json:
+            raise HTTPException(409,"Finish the baseline first to lock shared source facts")
+        if db.scalars(select(SC05Run.id).where(
+            SC05Run.member_id==actor.id,
+            SC05Run.status.in_(("queued","running")),
+            SC05Run.id!=run_id).limit(1)).first():
+            raise HTTPException(409,"An Owner SC05 experiment is already active")
+        if not (os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
+                or os.getenv("MODEL_VAULT_KEY","").strip()):
+            raise HTTPException(409,"No configured DeepSeek provider credential")
+        row.status="queued";row.error="";row.updated_at=now()
+        add_audit(db,"sc05.authorized_model_run",actor.id,row.id,
+                  "variant="+row.variant)
+        db.commit()
+        background.add_task(execute,get_factory(),row.id)
+        return run_view(row)
+
+    @router.get("/runs/{run_id}")
+    def detail(run_id:str,db:Session=Depends(get_db),actor=Depends(owner)):
+        return run_view(owned(db,actor,SC05Run,run_id),include_report=True)
+
+    @router.get("/runs/{run_id}/audit")
+    def audit(run_id:str,db:Session=Depends(get_db),actor=Depends(owner)):
+        row=owned(db,actor,SC05Run,run_id)
+        return {"id":row.id,"version":VERSION,
+                "source_sha":db.get(SC05Case,row.case_id).source_sha,
+                "variant":row.variant,
+                "checkpoints":load(row.checkpoints_json,[]),
+                "result":load(row.result_json,{}) if row.status=="completed" else None}
+
+    @router.get("/pairs/{pair_id}/blind")
+    def blind_pair(pair_id:str,db:Session=Depends(get_db),actor=Depends(owner)):
+        rows=db.scalars(select(SC05Run).where(SC05Run.member_id==actor.id,
+             SC05Run.pair_id==pair_id)).all()
+        if len(rows)!=2:raise HTTPException(404,"No such A/B pair")
+        if any(r.status!="completed" for r in rows):
+            return {"pair_id":pair_id,"ready":False,
+                    "statuses":[r.status for r in rows]}
+        # Fixed opaque permutation: the evaluator receives no variant labels.
+        ordered=sorted(rows,key=lambda r:hashlib.sha256(
+            (pair_id+":"+r.id).encode()).hexdigest())
+        return {"pair_id":pair_id,"ready":True,
+                "blind_reports":[
+                    {"label":chr(65+i),"run_id":r.id,"report_md":r.report_md}
+                    for i,r in enumerate(ordered)]}
+
+    @router.post("/runs/{run_id}/review",status_code=201)
+    def review(run_id:str,data:RatingRequest,db:Session=Depends(get_db),
+               actor=Depends(owner)):
+        row=owned(db,actor,SC05Run,run_id)
+        if row.status!="completed":
+            raise HTTPException(409,"Only completed runs can be reviewed")
+        existing=db.scalars(select(SC05Rating).where(
+            SC05Rating.member_id==actor.id,SC05Rating.run_id==run_id).limit(1)).first()
+        if existing:raise HTTPException(409,"Already rated; keep independent blind feedback immutable")
+        v=data.model_dump()
+        score=(v["accuracy"]*15+v["science_value"]*30+
+               v["narrative"]*25+v["literature"]*20+
+               v["feasibility"]*10)/5
+        rating=SC05Rating(id="sc05rating_"+uuid.uuid4().hex[:28],
+              member_id=actor.id,run_id=run_id,
+              accuracy=v["accuracy"],science_value=v["science_value"],
+              narrative=v["narrative"],literature=v["literature"],
+              feasibility=v["feasibility"],hard_failure=v["hard_failure"],
+              feedback=v["feedback"])
+        db.add(rating)
+        add_audit(db,"sc05.blind_review",actor.id,row.id,
+                 "score="+str(score)+";hard_failure="+str(v["hard_failure"]))
+        db.commit()
+        return {"saved":True,"score":0 if v["hard_failure"] else score,
+                "hard_failure":v["hard_failure"]}
+
+    app.include_router(router)
