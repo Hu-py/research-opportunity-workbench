@@ -59,7 +59,7 @@ ROUTE_SCHEMA = {"routes": [{
     "change_kind": "model|data|evaluation|research_question",
     "diagnosis_ids": ["D01"],
     "frontier_ids": ["Q01"],
-    "research_question": "Concrete new question"
+    "research_question": "Concrete new question",
     "new_mechanism": "Exactly what explanatory/technical link is being added",
     "why_previous_study_cannot_answer": "Evidence gap, not a vague novelty claim",
     "closest_paper_ids": ["doi:10.xxxx/yyyy"],
