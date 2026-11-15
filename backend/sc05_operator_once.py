@@ -76,6 +76,8 @@ def _inspect(factory, run_id):
             raise RuntimeError("Saved checkpoint array is invalid")
         result = {"status": row.status, "calls": row.calls,
                   "checkpoints": len(checkpoints), "variant": row.variant,
+                  "stage": row.stage,
+                  "error": (row.error or "")[:180],
                   "sha_is_current": row.pipeline_sha == pipeline_sha()}
         if row.status == "failed":
             if row.pipeline_sha == pipeline_sha():
