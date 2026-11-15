@@ -505,13 +505,13 @@ def mount(app,*,get_db,get_factory):
                         raise HTTPException(409,"Daily model budget exhausted")
                     # Reuse the EXACT existing SC05 Owner endpoint; no second
                     # implementation of checkpoint or cost authorization rules.
-                    # FastAPI can normalize route registration prefixes across
-                    # mounts. Match the validated SC05 start action by its
-                    # terminal route, method and unique handler name.
-                    endpoint=next((r.endpoint for r in app.routes
-                      if getattr(r,"path","").endswith("/runs/{run_id}/start")
-                      and "/sc05/" in getattr(r,"path","")
-                      and "POST" in getattr(r,"methods",set())),None)
+                    # FastAPI >=0.137 retains included routers lazily.
+                    # Its supported iterator resolves the effective prefixed
+                    # path (app.routes alone contains _IncludedRouter nodes).
+                    from fastapi.routing import iter_route_contexts
+                    endpoint=next((ctx.endpoint for ctx in iter_route_contexts(app.routes)
+                      if ctx.path=="/api/personal-research/me/sc05/runs/{run_id}/start"
+                      and "POST" in (ctx.methods or set())),None)
                     if endpoint is None:
                         raise HTTPException(503,"SC05 start route unavailable")
                     started=endpoint(row.id,StartRequest(acknowledge_external_model=True),
