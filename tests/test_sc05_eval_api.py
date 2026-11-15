@@ -159,8 +159,24 @@ def test_auth_consent_frozen_ab_checkpoint_audit_and_rating(workspace,monkeypatc
     assert review.json()["score"]==79
     assert client.post(BASE+"/runs/"+run_b["id"]+"/review",headers=auth(owner),
        json={"accuracy":5,"science_value":4,"narrative":4,"literature":3,"feasibility":4}).status_code==409
+    assert client.get(BASE+"/pairs/"+pair["pair_id"]+"/comparison",
+        headers=auth(owner)).status_code==409
+    assess_a=client.post(BASE+"/runs/"+run_a["id"]+"/review",
+       headers=auth(owner),json={"accuracy":5,"science_value":2,
+            "narrative":2,"literature":3,"feasibility":4,
+            "failure_tags":["science_value"],"feedback":"Only checks old paper"})
+    assert assess_a.status_code==201,assess_a.text
+    compared=client.get(BASE+"/pairs/"+pair["pair_id"]+"/comparison",
+       headers=auth(owner))
+    assert compared.status_code==200,compared.text
+    comparison=compared.json()
+    assert comparison["unblinded"] is True
+    assert comparison["scientific_value_delta"]==2
+    assert comparison["score_delta"]>0
+    assert {x["variant"] for x in comparison["runs"]}=={
+         "science_gate_off","science_gate_on"}
     with factory() as db:
-        assert db.query(SC05Rating).count()==1
+        assert db.query(SC05Rating).count()==2
 
 
 def test_blind_future_recommendations_are_stripped_at_ingestion(workspace):
