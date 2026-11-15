@@ -106,6 +106,22 @@ def model_mock(key,model,system,payload,max_tokens=2400):
          }],
          "open_questions":["Are independent disruption event logs available?"],
         },{"input_tokens":180,"output_tokens":130}
+    if stage=="scientific_value_triage":
+        return {"issue_classifications":[{
+            "diagnosis_id":"D01","lane":"quality_review",
+            "scope_status":"unknown",
+            "reason":"The original study asks about diagnostic description, not operational forecasting.",
+        }],"scientific_questions":[{
+            "id":"Q01","fact_ids":["F001","F002"],
+            "related_diagnosis_ids":[],
+            "motivating_observation":"The study separates local station load from propagated network stress.",
+            "scientific_question":"How do infrastructure systems redistribute demand across interdependent components under disruption?",
+            "mechanism_hypothesis":"Flow substitution may produce nonlinear load transfer between subsystems.",
+            "scope_change":"From descriptive network indicators to coupled system behavior and intervention decisions.",
+            "why_not_just_a_quality_fix":"The question examines feedback and system-level adaptation beyond improved validation.",
+            "discriminating_test":"Compare dynamic redistribution and static loading across intervention policies.",
+            "narrative_arc":"Localized load -> network adaptation -> new congestion -> system-level intervention tradeoff.",
+        }]},{"input_tokens":170,"output_tokens":145}
     if stage=="evidence_questions":
         return {"queries":[{
             "diagnosis_ids":["D01"],"query":"early warning network vulnerability independent labels",
@@ -126,7 +142,7 @@ def model_mock(key,model,system,payload,max_tokens=2400):
     if stage=="research_redesign":
         assert payload["literature_assessments"]
         return {"routes":[{
-            "id":"R01","title":"Validate failure warning against independent operations",
+            "id":"R01","frontier_ids":["Q01"],"title":"Dynamic load transfers between infrastructure subsystems",
             "change_kind":"evaluation","diagnosis_ids":["D01"],
             "research_question":"Does traffic-derived stress forecast externally measured shutdowns?",
             "new_mechanism":"Out-of-sample independent operational validation",
@@ -159,20 +175,23 @@ def test_paper_only_full_pipeline_and_audit(monkeypatch,tmp_path):
     import backend.sc05_paper_only as p
     monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"test-sha-123"))
     report,record=run_paper(tmp_path/"demo.pdf","not-a-real-key",
-      model_call=model_mock,search_provider=search_mock,max_calls=7)
+      model_call=model_mock,search_provider=search_mock,max_calls=8)
     assert record["version"].startswith("sc05-paper-only")
     assert record["source"]["sha256"]=="test-sha-123"
     assert len(record["snapshot"]["observations"])==4
-    assert len(record["usage"])==7
+    assert len(record["usage"])==8
     assert [x["stage"] for x in record["usage"]]==[
-      "evidence_extraction","method_lineage","diagnosis","evidence_questions",
+      "evidence_extraction","method_lineage","diagnosis","scientific_value_triage","evidence_questions",
       "literature_assessment","research_redesign","independent_critic"]
     assert record["diagnosis"]["diagnoses"][0]["epistemic_status"]=="hypothesis"
     assert len(record["literature_assessments"])==1
     assert record["reviews"][0]["verdict"]=="hold"
+    assert record["scientific_triage"]["issue_classifications"][0]["lane"]=="quality_review"
+    assert record["routes"][0]["frontier_ids"]==["Q01"]
     assert "PDF page_02" in report
     assert PAPER["url"] in report
     assert "研究结论与证据之间的缺口" in report
+    assert "严谨性审查与新科学问题分流" in report
     assert "否决条件" in report
     assert "test-sha-123" in report
     assert "not-a-real-key" not in report and "not-a-real-key" not in json.dumps(record)
@@ -222,7 +241,7 @@ def test_unsafe_cost_budget_is_refused_before_calls(monkeypatch,tmp_path):
     monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"hash"))
     with pytest.raises(EvidenceError,match="maximum authorized"):
         run_paper(tmp_path/"paper.pdf","not-a-real-key",
-                  model_call=model_mock,search_provider=search_mock,max_calls=6)
+                  model_call=model_mock,search_provider=search_mock,max_calls=7)
 
 
 def test_pdf_holdout_discussion_and_references(monkeypatch,tmp_path):
@@ -252,3 +271,40 @@ def test_whitespace_only_pdf_quote_normalization_is_traced_to_literal_source():
     assert matched=="model uses a data-driven\n route allocation."
     with pytest.raises(EvidenceError,match="source fragment"):
         _verified_excerpt(source,"the model guarantees no failures")
+
+def test_quality_only_route_is_rejected():
+    from backend.sc05_science_gate import enforce_route_frontiers, validate_scientific_triage
+    from backend.sc05_paper_only import research_routes
+    diagnoses=[{"id":"D01"}]
+    facts=[{"fact_id":"F001"}]
+    triage=validate_scientific_triage({
+      "issue_classifications":[{
+        "diagnosis_id":"D01","lane":"quality_review",
+        "scope_status":"acknowledged",
+        "reason":"This is a sensitivity review, not a scientific finding.",
+      }],"scientific_questions":[]
+    },diagnoses,facts)
+    raw={"routes":[{
+        "frontier_ids":[],"title":"Add more sensitivity analysis",
+        "change_kind":"evaluation","diagnosis_ids":["D01"],
+    }]}
+    with pytest.raises(EvidenceError,match="quality-only"):
+        research_routes(raw,{"diagnoses":diagnoses},[],triage)
+
+
+def test_scientific_question_must_cite_real_paper_and_distinct_story():
+    from backend.sc05_science_gate import validate_scientific_triage
+    with pytest.raises(EvidenceError,match="Invented"):
+        validate_scientific_triage({
+            "issue_classifications":[],
+            "scientific_questions":[{
+                "id":"Q01","fact_ids":["F999"],"related_diagnosis_ids":[],
+                "motivating_observation":"Observed effect",
+                "scientific_question":"New question",
+                "mechanism_hypothesis":"Competing process",
+                "scope_change":"Cross system",
+                "why_not_just_a_quality_fix":"New mechanism, not a test",
+                "discriminating_test":"Compare two processes",
+                "narrative_arc":"Observation to contradiction to explanation",
+            }],
+        },[],[{"fact_id":"F001"}])

@@ -4,11 +4,12 @@
 1. **Source and scope**: publication title, DOI where known, scope of materials, whether claims are from authors, LLM or outside papers, PDF SHA and analysis date.
 2. **Research reconstruction**: stated problem, actual empirical question/units, baseline, methods and observed contribution; specify what the paper does **not** test.
 3. **Method & data chain**: a table: observed input → preprocessing → metric/formula → model/simulation → evaluation output → related scientific claim, with source page IDs. Distinguish observed, derived, simulated, assumed. Explicitly analyze critical mathematical or measurement dependencies.
-4. **Evidence-gap diagnosis**: evidence-linked candidate scientific gaps, alternative explanations, minimum checks/falsification, severity and scope; no claim that inferred bias or leakage is proven.
-5. **Targeted literature review**: diagnosis-derived search queries and original papers (DOIs/links, years, method, task, evidence level, overlap, transfer assumptions). Seek negative results and close competitors. Include limitations of abstract-only reading.
-6. **Research routes**: not interchangeable model names. Each candidate needs a distinct answerable question, scientific delta versus prior paper, credible existing literature comparison, minimum data and accessible fallback, baseline, design/evaluation scheme, possible negative outcome, stop criteria, and verdict.
-7. **Practical decision**: rank or reject options conditionally; which single observation/experiment would most reduce uncertainty.
-8. **Audit and limits**: input hash, fact IDs, citations, stages/tokens, search failures, human review status, no unsupported novelty guarantee.
+4. **Two-track output**: a short quality/rigor review scoped to the original research question, and a separate scientific-frontier analysis from positive observations, emergent mechanisms and systemic contradictions. Only the frontier track is eligible for next-paper routes.
+5. **Evidence-gap diagnosis**: evidence-linked candidate scientific gaps, alternative explanations, minimum checks/falsification, severity and scope; no claim that inferred bias or leakage is proven.
+6. **Targeted literature review**: diagnosis-derived search queries and original papers (DOIs/links, years, method, task, evidence level, overlap, transfer assumptions). Seek negative results and close competitors. Include limitations of abstract-only reading.
+7. **Research routes**: not interchangeable model names. Each candidate needs a distinct answerable question, scientific delta versus prior paper, credible existing literature comparison, minimum data and accessible fallback, baseline, design/evaluation scheme, possible negative outcome, stop criteria, and verdict.
+8. **Practical decision**: rank or reject options conditionally; which single observation/experiment would most reduce uncertainty.
+9. **Audit and limits**: input hash, fact IDs, citations, stages/tokens, search failures, human review status, no unsupported novelty guarantee.
 
 ## Hard validation gates (all required)
 - Source references must point to a real page and quote verified in the uploaded PDF.
@@ -17,6 +18,8 @@
 - External paper IDs and URLs must be verified from actual search results. Abstract-derived details must match an exact abstract excerpt. No inventions to make a comparison seem comprehensive.
 - Distinguish a publication's author-reported limitations from diagnosis independently inferred by the model; original discussion's future-work remarks cannot enter an initial blind evaluation.
 - Negative evidence (method failure, adverse scenario, lack of independent tests) is as important as claimed positive result.
+- A quality assurance check is not a publishable scientific opportunity. The review must not punish a paper merely because it did not answer an *additional* question that was outside its intended scope.
+- The next-paper pool must contain an independently formulated new scientific question, an observable motivating phenomenon, an untested mechanism, a complete narrative and a discriminating experiment. Low-effort model tweaks or sensitivity-only experiments must not be recommended as stand-alone research stories.
 - Output **test / hold / reject** instead of automatically filling a fixed list of "three innovations". Rejection is a valid scientific conclusion.
 - If external literature access or data are insufficient, set an explicit limitation, not a pretend validated novelty score.
 - The final report should be substantive: evidence-specific, method-aware and decision-useful. Do not inflate word count with generic filler.
