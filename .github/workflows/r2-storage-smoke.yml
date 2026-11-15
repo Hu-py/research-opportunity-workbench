@@ -2,6 +2,12 @@ name: R2 Private Storage Smoke
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/r2-storage-smoke-20261115]
+    paths:
+      - '.github/workflows/r2-storage-smoke.yml'
+      - 'backend/r2_storage.py'
+      - 'scripts/r2_smoke.py'
 
 permissions:
   contents: read
