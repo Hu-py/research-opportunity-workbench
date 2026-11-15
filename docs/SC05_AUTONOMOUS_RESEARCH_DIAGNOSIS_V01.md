@@ -1,24 +1,24 @@
 # SC05 — Research Diagnosis: pilot intake and blind evaluation plan
 
-This branch creates the **first reusable diagnostic component**, not a completed live DeepSeek experiment. It is intentionally not mounted to the live personal Research Atlas API or scheduled to run. This avoids moving unpublished manuscript content to a cloud provider or initiating a paid model request before the research owner reviews the evidence snapshot.
+This branch creates a **reusable diagnostic component**, not a completed live DeepSeek experiment. It is intentionally not mounted to the live personal Research Atlas API or scheduled to run. This prevents accidental paid execution and avoids mixing source material from different research projects. **The first real pilot is now the publicly published Shen et al. (2026) metro-resilience paper**, documented in `SC05_TRD_FIRST_PUBLISHED_CASE.md`; the unpublished child-health project is out of scope.
 
 ## Researcher's first upload
 
-**Required:** Latest manuscript draft (DOCX / PDF / MD), even if unfinished. The paper is used for the research question, study units, data, methods, experimental claims and limitations. Do not publish its contents to a public GitHub branch unless the researcher separately approves.
+**Required:** One research document (published article or unpublished draft, in DOCX / PDF / MD). Use it for the research question, study units, data, methods, experimental claims and limitations. The current study is an uploaded published PDF. Do not commit publisher full-text PDFs or any confidential unpublished work to a public GitHub branch.
 
-**Highly recommended:** A small, anonymized spreadsheet or CSV of aggregated experiment outcomes, split definitions and data density by region (R2/RMSE/MAE, number of labeled roads, children per road, AOA coverage, distribution diagnostics). Do not upload individual children’s outcomes, IDs, addresses or identifiable records.
+**Highly recommended:** Small aggregate CSV/XLSX files with the paper's metrics, comparisons and validation outcomes; for a transport study, useful files include OD summaries, station/segment time-series aggregates, simulation intervention outputs and reliability diagnostics. Do not upload identifiable mobility trajectories or sensitive personal records.
 
-**Optional:** Reproducible notebooks or scripts for label linkage, train/test splitting, AOA calculations, environment-shift metrics, and external validation. Restrict to code and synthetic or aggregated input until repository access permissions are reviewed.
+**Optional:** Reproducible notebooks or scripts for network construction, assignment assumptions, time-lag analyses, scenario interventions and independent validation. Restrict to code and synthetic or aggregated input until repository access permissions are reviewed.
 
-Manuscript-only work can establish claims-evidence relationships and suggest diagnostics; it cannot honestly claim to recompute spatial coverage, verify leakage or estimate label reliability from the raw samples.
+Paper-only work can establish claims–evidence relationships and propose diagnostics; it cannot honestly claim to validate operational failures, re-estimate network flow, recalibrate simulation predictions or rerun scenarios without their corresponding datasets and code.
 
 ## Blind scientific evaluation
 
-The researcher already proposed a possible multi-city next study. That proposed solution and previous assistant advice are placed in an **evaluator-only holdout**, not passed into the diagnostic prompt. The original manuscript's study objective, methods and results must remain intact. Author discussion that explicitly proposes the future solution may be held out, but empirical limitations and caveats needed to interpret data remain visible.
+Any researcher-proposed next study and previous assistant advice are placed in an **evaluator-only holdout**, not passed into the diagnostic prompt. For the first published metro case, the original paper's Discussion §6.2 future-work recommendations are also withheld from the Stage-1 diagnostic prompt. The original manuscript's study objective, methods and results must remain intact. Author discussion that explicitly proposes the future solution may be held out, but empirical limitations and caveats needed to interpret data remain visible.
 
 A neutral evidence ledger is prepared with fact IDs F001..., actual source section name, literal excerpt and status as author-reported or independently computed. The ledger is manually checked before making an LLM call. The blind snapshot is immutable and content-hashed.
 
-SC05 is required to reconstruct what the study intended and what its evidence actually supports, to diagnose problems using evidence fact IDs, to offer competing explanations and falsifying tests, and to allow an empty list when no problem is supported. Only then should later rounds search literature and redesign the project. It must *not* be required to propose another city or any one particular architecture.
+SC05 is required to reconstruct what the study intended and what its evidence actually supports, to diagnose problems using evidence fact IDs, to offer competing explanations and falsifying tests, and to allow an empty list when no problem is supported. Only then should later rounds search literature and redesign the project. It must *not* be required to propose any specific number of variants or any particular method, transport mode, study region, or architecture.
 
 ## Implemented in current PR
 
@@ -27,10 +27,10 @@ SC05 is required to reconstruct what the study intended and what its evidence ac
 - Stage-0/Stage-1 input and output validation: backend/sc05_research_diagnosis.py
 - Offline tests: tests/test_sc05_research_diagnosis.py
 
-## Not yet done (requires the manuscript)
+## Status and next development steps
 
-- Parsing the actual manuscript into a factual neutral evidence ledger and validating every claim’s excerpt;
-- selecting a no-answer-leakage initial view of manuscript sections;
+- **Completed for first published case:** the 24-page PDF has been read and 19 neutral facts have been checked against exact PDF pages and frozen into a SHA256-identified source-input snapshot. The original full-text file stays in the conversation, not on GitHub.
+- **Completed:** excluded the paper's Discussion §6.2 future directions and prior assistant ideas from the initial diagnosis input.
 - running SC04 and SC05 with the **same** input and budget (not the old five-paper model prompt);
 - actual DeepSeek calls and token/cost ledger;
 - iterative search of computing methods and negative evidence driven by diagnosed uncertainties;
@@ -48,4 +48,4 @@ Run-quality checks must report whether a finding comes from a source document, a
 5. Conditional research pathways (methods / data / validation / changed research question) and their feasibility requirements.
 6. Blind A/B results (SC04 vs SC05), plus provenance, cost, critiques and next recommended minimum experiments.
 
-The first response to the researcher should request the manuscript, not another web interface or a new deployment.
+The first published-paper intake is complete. Run the diagnosis only after a truthful, permissioned model-execution path is available; do not build a new frontend for each research experiment.
