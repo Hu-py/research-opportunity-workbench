@@ -6,7 +6,7 @@ COPY research_workbench ./research_workbench
 COPY backend ./backend
 COPY skills ./skills
 COPY scripts ./scripts
-RUN pip install --no-cache-dir '.[postgres,ai,paper]'
+RUN pip install --no-cache-dir '.[postgres,ai,paper,storage]'
 RUN useradd --create-home --uid 10001 researcher
 USER researcher
 EXPOSE 8000
