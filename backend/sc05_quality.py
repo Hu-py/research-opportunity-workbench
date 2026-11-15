@@ -32,6 +32,8 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     method_links=record.get("method_lineage",{}).get("links",[])
     measured_types={x.get("measurement_status") for x in method_links}
     flags=[]
+    if "other" in kinds:
+        flags.append("部分原文事实的模型分类未识别；引文已经核验但其研究语义类别仍需人工复核")
     for needed in ("objective","method","data","result"):
         if needed not in kinds:
             flags.append("论文未恢复足够的 "+needed+" 原始事实；需回看来源页")
