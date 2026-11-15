@@ -138,7 +138,7 @@ def page_texts_from_pdf(pdf: str | Path) -> tuple[dict[str, str], str]:
 def _source_doi(pages: dict[str, str]) -> str:
     """Extract DOI only from the front matter, not the References list."""
     text="\n".join(list(pages.values())[:2])
-    match=re.search(r"(?:https?://doi.org/)?(10\\.\\d{4,9}/[^\\s<>]+)",text,re.I)
+    match=re.search(r"(?:https?://doi.org/)?(10\.\d{4,9}/[^\s<>]+)",text,re.I)
     return match.group(1).rstrip(".,;)]") if match else ""
 
 
@@ -171,7 +171,7 @@ def _verified_excerpt(original: str, proposed: str) -> str:
     tokens=proposed.split()
     if len(tokens) < 2:
         raise EvidenceError("PDF evidence quote is not an exact source fragment")
-    pattern=r"\\s+".join(re.escape(t) for t in tokens)
+    pattern=r"\s+".join(re.escape(t) for t in tokens)
     matches=list(re.finditer(pattern,original))
     if len(matches)!=1 or len(matches[0].group())>600:
         raise EvidenceError("PDF evidence quote is not an exact source fragment")
