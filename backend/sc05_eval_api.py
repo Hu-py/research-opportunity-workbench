@@ -262,8 +262,12 @@ def check_fact_type_resume(row: SC05Run, doc: SC05Case) -> dict:
     the paid response, source hash, token counters and full audit trail.
     It does not repair fabricated quotations or alter prompts.
     """
-    if row.status != "failed" or row.error != "Unsupported fact type":
-        raise EvidenceError("Not an eligible first-run fact classification failure")
+    permitted_errors = (
+        "Unsupported fact type",
+        "PDF evidence quote is not an exact source fragment",
+    )
+    if row.status != "failed" or row.error not in permitted_errors:
+        raise EvidenceError("Not an eligible cached first-stage evidence failure")
     if row.variant != "science_gate_off" or row.calls != 1:
         raise EvidenceError("Only the first baseline extraction is eligible")
     saved=load(row.checkpoints_json,[])
@@ -284,7 +288,9 @@ def check_fact_type_resume(row: SC05Run, doc: SC05Case) -> dict:
            for x in values if isinstance(x,dict)]
     if len(types)!=len(values):
         raise EvidenceError("Invalid saved fact object")
-    if all(x["raw_type"]==x["normalized_type"] for x in types):
+    if row.error == "Unsupported fact type" and all(
+        x["raw_type"]==x["normalized_type"] for x in types
+    ):
         raise EvidenceError("No fact taxonomy mismatch present")
     def saved_call(api_key,model,system,payload,max_tokens=2700):
         if payload.get("sc05_stage")!="evidence_extraction":
@@ -298,7 +304,14 @@ def check_fact_type_resume(row: SC05Run, doc: SC05Case) -> dict:
         return response,entry.get("usage",{})
     # Validate source provenance and type normalization with zero network calls.
     parsed=extract_ledger(first,"cached-response-only",saved_call,[],max_calls=8)
+    rejected_quotes = sum(
+        1 for note in parsed["source_note"]
+        if note.get("rule") == "unverified_source_quote_rejected"
+    )
+    if row.error == "PDF evidence quote is not an exact source fragment" and not rejected_quotes:
+        raise EvidenceError("No rejected quotation in cached evidence; cannot classify this repair")
     return {"facts":len(parsed["snapshot"]["observations"]),
+            "rejected_quotes":rejected_quotes,
             "types":types,"replay_prompt_matches":True}
 
 
@@ -537,7 +550,9 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
                     "reason":str(exc)[:180]}
         return {"ready":True,"requires_migration":True,
                 "replay_prompt_matches":result["replay_prompt_matches"],
-                "saved_facts":result["facts"],"normalized_types":result["types"],
+                "saved_facts":result["facts"],
+                "rejected_quotes":result["rejected_quotes"],
+                "normalized_types":result["types"],
                 "paid_calls_on_check":0}
 
     @router.get("/runs/{run_id}")
