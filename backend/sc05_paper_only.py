@@ -18,7 +18,7 @@ from backend.sc05_science_gate import FRONTIER_SCHEMA, validate_scientific_triag
 from backend.sc05_quality import inspect_report
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
-    required, text_items, validate_diagnosis,
+    required, text_items, validate_diagnosis, verify_facts,
 )
 
 VERSION = "sc05-paper-only-v0.2.0"
@@ -631,19 +631,45 @@ def _markdown(result: dict) -> str:
 
 
 def run_paper(
-    pdf: str | Path, api_key: str, *, model_call: Callable = request_json,
+    pdf: str | Path | None, api_key: str, *, model_call: Callable = request_json,
     search_provider: Callable | None = None, max_calls: int = 18,
     source_title: str | None = None,
+    pages_override: dict[str, str] | None = None,
+    source_sha: str | None = None,
+    frozen_snapshot: dict | None = None,
+    scientific_value_gate: bool = True,
 ) -> tuple[str, dict]:
-    """Run a fully paper-only report. Caller must authorize provider spend."""
+    """Run one paper with an optional shared, verified fact snapshot for A/B."""
     if not api_key or not api_key.strip():
         raise EvidenceError("DeepSeek key unavailable; no model call initiated")
-    pages,pdf_hash = page_texts_from_pdf(pdf)
-    if len(_chunks(pages)) + 7 > max_calls:
+    if pages_override is None:
+        if pdf is None:raise EvidenceError("A PDF or extracted pages are required")
+        pages,pdf_hash=page_texts_from_pdf(pdf)
+        source_kind="uploaded_pdf"
+    else:
+        if not isinstance(pages_override,dict) or not pages_override:
+            raise EvidenceError("Invalid source page set")
+        if len(pages_override)>120 or sum(len(v) for v in pages_override.values())>650000:
+            raise EvidenceError("Source pages exceed size limits")
+        for key,txt in pages_override.items():
+            if not isinstance(key,str) or not __import__("re").fullmatch(r"page_[0-9]{2,3}",key):
+                raise EvidenceError("Invalid page locator")
+            if not isinstance(txt,str) or len(txt)<40:raise EvidenceError("Invalid page text")
+        pages=dict(pages_override)
+        pdf_hash=source_sha or hashlib.sha256(
+            __import__("json").dumps(pages,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+        source_kind="extracted_pdf_text"
+    expected_calls=(0 if frozen_snapshot else len(_chunks(pages)))+(7 if scientific_value_gate else 6)
+    if expected_calls>max_calls:
         raise EvidenceError("PDF exceeds maximum authorized model call budget")
     log: list[dict] = []
-    ledger = extract_ledger(pages, api_key, model_call, log, max_calls=max_calls)
-    snapshot = ledger["snapshot"]
+    if frozen_snapshot:
+        model_payload(frozen_snapshot)
+        verify_facts(_source_index(pages),frozen_snapshot["observations"])
+        snapshot=frozen_snapshot
+    else:
+        ledger=extract_ledger(pages, api_key, model_call, log, max_calls=max_calls)
+        snapshot=ledger["snapshot"]
     facts = snapshot["observations"]
     lineage_raw = _run(model_call,api_key,"method_lineage",
         "独立整理数据→指标→模型/公式→验证/情景推演的完整依赖链。"
@@ -657,7 +683,8 @@ def run_paper(
         "验证与推断边界。不要预先猜下一篇要做什么；不强制产生诊断。",
         {**model_payload(snapshot),"method_lineage":lineage},log,max_calls=max_calls)
     diagnosis=validate_diagnosis(diagnosis_raw,snapshot)
-    triage_raw=_run(model_call,api_key,"scientific_value_triage",
+    if scientific_value_gate:
+        triage_raw=_run(model_call,api_key,"scientific_value_triage",
         "请将论文诊断划分为研究设计严谨性检查和具有独立科学价值的新问题。"
         "没有开展另一种研究不代表原论文不严谨；认可论文针对原目标的合理选择。"
         "要从真实发现的系统规律和正面结果出发，探索新的相互作用、动态反馈、"
@@ -667,7 +694,9 @@ def run_paper(
          "study_reconstruction":diagnosis["study_reconstruction"],
          "method_lineage":lineage,"required_json_shape":FRONTIER_SCHEMA},
         log,max_calls=max_calls,max_tokens=3500)
-    scientific_triage=validate_scientific_triage(triage_raw,diagnosis["diagnoses"],facts)
+        scientific_triage=validate_scientific_triage(triage_raw,diagnosis["diagnoses"],facts)
+    else:
+        scientific_triage={"issue_classifications":[],"scientific_questions":[]}
     question_raw=_run(model_call,api_key,"evidence_questions",
         "根据已有诊断及其竞争性解释提出最多7条科学检索查询，"
         "优先为可迁移理论、失败条件、已有实现和反例。"
@@ -695,7 +724,9 @@ def run_paper(
     routes_raw=_run(model_call,api_key,"research_redesign",
         "现在才允许提出研究路线。至少比较算法、数据、评价体系、"
         "研究问题重构的适用性，但无需每类各出一个。"
-        "仅能从新科学问题创建下一篇研究路线；不可将严谨性修补直接推荐为研究主题。每条路线须指明原文证据、"
+        ("仅能从新科学问题创建下一篇研究路线；不可将严谨性修补直接推荐为研究主题。"
+          if scientific_value_gate else "基于论文证据提出新路线，但不得宣称已经证明创新性。")+
+        "每条路线须指明原文证据、"
         "已有最接近研究、具体差异、最低代价的可证伪实验和终止条件。"
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
@@ -705,7 +736,7 @@ def run_paper(
              for p in papers[:20]],
          "literature_assessments":literature,
          "required_json_shape":ROUTE_SCHEMA},log,max_calls=max_calls,max_tokens=4100)
-    routes=research_routes(routes_raw,diagnosis,papers,scientific_triage)
+    routes=research_routes(routes_raw,diagnosis,papers,scientific_triage if scientific_value_gate else None)
     critic_raw=_run(model_call,api_key,"independent_critic",
         "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
         "证据不足、不可识别性、指标循环依赖与实施成本。"
@@ -716,9 +747,9 @@ def run_paper(
          "required_json_shape":CRITIC_SCHEMA},log,max_calls=max_calls,max_tokens=3000)
     reviews=critique(critic_raw,routes)
     output = {
-        "version":VERSION, "source":{"title":source_title or Path(pdf).stem,
+        "version":VERSION, "source":{"title":source_title or (Path(pdf).stem if pdf else "uploaded-paper"),
             "doi":_source_doi(pages),
-            "sha256":pdf_hash,"page_count":len(pages),"type":"uploaded_pdf"},
+            "sha256":pdf_hash,"page_count":len(pages),"type":source_kind},
         "snapshot":snapshot,"method_lineage":lineage,
         "diagnosis":diagnosis,"scientific_triage":scientific_triage,
         "search_queries":questions,
@@ -726,6 +757,8 @@ def run_paper(
         "literature_assessments":literature,
         "routes":routes,"reviews":reviews,"usage":log,
         "is_paid_model_output":model_call is request_json,
+        "experiment_variant":("scientific_value_gate_on" if scientific_value_gate else "scientific_value_gate_off"),
+        "shared_frozen_evidence":frozen_snapshot is not None,
         "independent_raw_data_validation":False,
         "novelty_proved":False,
     }
