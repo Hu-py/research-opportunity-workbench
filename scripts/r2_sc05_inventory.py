@@ -70,3 +70,5 @@ if __name__=="__main__":
 # Post-diagnosis-resume verification snapshot.
 
 # Model stage progression check, no object bodies logged.
+
+# Gate-on experiment archive verification.
