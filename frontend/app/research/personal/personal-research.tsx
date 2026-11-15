@@ -142,6 +142,7 @@ export default function PersonalResearch(){
       <strong>儿童健康外推 · 新能力测试</strong>
       <p>当前期刊目录会限制论文来源。现在可以自主发现研究相关的新期刊，并由你审批后仅加入这个任务。</p>
       <Link href="/research/personal/journals">打开期刊智能发现与审批 →</Link>
+      <p style={{marginTop:10}}><Link href="/research/personal/evolution">开始 SC04｜论文理解与研究演化实验 →</Link></p>
     </div>}
     {displayed?<div>
       <div className={styles.runhead}>
