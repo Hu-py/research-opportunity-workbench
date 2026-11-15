@@ -15,10 +15,10 @@ FACT_TYPES = frozenset({"objective", "data", "method", "evaluation", "result", "
 ORIGINS = frozenset({"author_reported", "independently_computed"})
 ISSUE_CLASSES = frozenset({
     "coverage", "measurement", "validation", "method",
-    "interpretation", "identifiability", "resource", "other",
+    "interpretation", "identifiability", "inference", "resource", "other",
 })
 STATUSES = frozenset({"observed", "hypothesis", "unknown"})
-CONFIDENCES = frozenset({"low", "medium", "high"})
+CONFIDENCES = frozenset({"low", "medium", "high", "not_assessed"})
 
 SYSTEM_PROMPT = """你是独立科研问题诊断审查员。仅根据输入的原始研究目标、方法、
 数据说明和已核验实验记录，找出研究结论与证据之间的缺口，审查可能的失败机制。
@@ -182,7 +182,10 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
             raise EvidenceError("Invented diagnosis fact reference")
         status = issue.get("epistemic_status")
         category = issue.get("issue_class")
-        confidence = issue.get("confidence")
+        raw_confidence = issue.get("confidence")
+        # Never invent a probability/subjective confidence omitted by a model.
+        # Keep the absence explicit instead of attributing "low"/"medium".
+        confidence = raw_confidence if raw_confidence is not None else "not_assessed"
         if status not in STATUSES or category not in ISSUE_CLASSES or confidence not in CONFIDENCES:
             raise EvidenceError("Invalid diagnosis classification")
         if status == "observed" and not refs:
@@ -201,6 +204,7 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
             "research_consequence": required(
                 issue.get("research_consequence"), "research_consequence"),
             "confidence": confidence,
+            "confidence_provenance": ("model_reported" if raw_confidence is not None else "not_provided"),
         })
     return {
         "schema_version": VERSION, "study_reconstruction": clean_reconstruction,

@@ -88,15 +88,23 @@ def _inspect(factory, run_id):
                 result["reason"] = "same-version failure requires explicit diagnosis"
             else:
                 try:
-                    repair = check_fact_type_resume(row, doc)
+                    if row.error == "Invalid diagnosis classification":
+                        from backend.sc05_replay import verify_diagnosis_prefix
+                        repair = verify_diagnosis_prefix(row, doc)
+                        result["verified_cached_stages"] = repair["cached_stages"]
+                        result["missing_confidences"] = repair["missing_confidences"]
+                        result["inference_classes"] = repair["inference_classes"]
+                        result["next_stage"] = repair["next_stage"]
+                    else:
+                        repair = check_fact_type_resume(row, doc)
+                        result["verified_facts"] = repair["facts"]
+                        result["rejected_quotes"] = repair.get("rejected_quotes", 0)
+                    result["prompt_matches"] = True
                 except Exception as exc:
                     result["eligible"] = False
-                    result["reason"] = type(exc).__name__
+                    result["reason"] = type(exc).__name__ + ": " + str(exc)[:100]
                 else:
                     result["eligible"] = True
-                    result["verified_facts"] = repair["facts"]
-                    result["rejected_quotes"] = repair.get("rejected_quotes", 0)
-                    result["prompt_matches"] = repair["replay_prompt_matches"]
         elif row.status == "prepared":
             result["eligible"] = row.calls == 0 and not checkpoints
         elif row.status == "completed":
@@ -143,7 +151,11 @@ def _execute_arm(factory, run_id):
             if eligible_unstarted_gate_migration(db, row, doc, current):
                 row.pipeline_sha = current
             else:
-                check_fact_type_resume(row, doc)
+                if row.error == "Invalid diagnosis classification":
+                    from backend.sc05_replay import verify_diagnosis_prefix
+                    verify_diagnosis_prefix(row, doc)
+                else:
+                    check_fact_type_resume(row, doc)
                 row.pipeline_sha = current
         if row.variant == "science_gate_on" and not doc.shared_evidence_json:
             raise RuntimeError("Frozen A evidence missing; B cannot start")

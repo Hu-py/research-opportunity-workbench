@@ -133,3 +133,21 @@ def test_no_forced_diagnoses_and_no_fictitious_results():
     modified["research_question"] = "I am replacing the facts after freezing"
     with pytest.raises(EvidenceError, match="Modified"):
         model_payload(modified)
+
+
+def test_model_omitted_confidence_is_not_invented_and_inference_is_preserved():
+    raw = valid_response()
+    row = raw["diagnoses"][0]
+    row.pop("confidence")
+    row["issue_class"] = "inference"
+    data = validate_diagnosis(raw, snapshot())
+    issue = data["diagnoses"][0]
+    assert issue["issue_class"] == "inference"
+    assert issue["confidence"] == "not_assessed"
+    assert issue["confidence_provenance"] == "not_provided"
+
+
+def test_model_reported_confidence_provenance_is_explicit():
+    result = validate_diagnosis(valid_response(), snapshot())
+    assert result["diagnoses"][0]["confidence"] == "medium"
+    assert result["diagnoses"][0]["confidence_provenance"] == "model_reported"

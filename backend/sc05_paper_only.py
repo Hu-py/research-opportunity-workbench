@@ -828,6 +828,16 @@ def run_paper(
         "novelty_proved":False,
     }
     output["quality"]=inspect_report(output)
+    unknown_confidence=sum(
+        1 for d in diagnosis["diagnoses"]
+        if d.get("confidence") == "not_assessed"
+    )
+    if unknown_confidence:
+        output["quality"].setdefault("warnings",[]).append(
+            str(unknown_confidence)+" diagnosis confidence field(s) were absent "
+            "from model output and are explicitly marked not_assessed."
+        )
+        output["quality"]["unassessed_diagnosis_confidence_count"]=unknown_confidence
     rejected=sum(
         1 for note in output["fact_type_normalization_notes"]
         if note.get("rule")=="unverified_source_quote_rejected"
