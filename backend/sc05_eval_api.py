@@ -48,6 +48,18 @@ def now():
     return datetime.now(timezone.utc)
 
 
+def archive_if_enabled(factory, run_id: str):
+    """Best-effort R2 mirror after DB commit; never repeat a paid call for R2 errors."""
+    if os.getenv("SC05_R2_ARCHIVE_ENABLED","false").strip().lower() not in ("1","true","yes"):
+        return
+    try:
+        from backend.sc05_r2_artifacts import archive_run
+        archive_run(factory, run_id)
+    except Exception as exc:
+        # No source text, account IDs, request metadata or credentials in logs.
+        print("SC05 R2 archive warning: "+type(exc).__name__,flush=True)
+
+
 def dump(value):
     return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(",",":"))
 
@@ -236,6 +248,7 @@ def _checkpoint_call(factory,run_id):
             row.updated_at=now()
             db.commit()
         record_usage(factory,usage)
+        archive_if_enabled(factory,run_id)
         cursor[0]+=1
         return response,usage
     cursor=[0]
@@ -310,11 +323,12 @@ def eligible_unstarted_gate_migration(db:Session,row:SC05Run,doc:SC05Case,
     return baseline is not None
 
 
-def execute(factory,run_id):
-    """Best-effort resumable job. No GET/registration/startup side effects."""
+def execute(factory,run_id,*,claimed_by_worker=False):
+    """Resumable job. Worker claims queued work before executing paid calls."""
     with factory() as db:
         row=db.get(SC05Run,run_id)
-        if row is None or row.status!="queued":return
+        if row is None or not (row.status=="queued" or
+            (claimed_by_worker and row.status=="claimed")):return
         # Only one running experiment per Owner; A then B is deliberate.
         other=db.scalars(select(SC05Run.id).where(
             SC05Run.member_id==row.member_id,SC05Run.status=="running",
@@ -333,6 +347,7 @@ def execute(factory,run_id):
         sha=doc.source_sha
         variant=row.variant
         db.commit()
+    archive_if_enabled(factory,run_id)
     try:
         key=_model_key(factory)
         if not key:raise RuntimeError("DeepSeek key is not configured")
@@ -359,6 +374,7 @@ def execute(factory,run_id):
             add_audit(db,"sc05.completed",row.member_id,run_id,
                       "calls="+str(row.calls))
             db.commit()
+        archive_if_enabled(factory,run_id)
     except Exception as exc:
         # Messages are whitelisted to avoid logging raw provider responses.
         safe=(str(exc) if isinstance(exc,(EvidenceError,RuntimeError)) else
@@ -369,6 +385,7 @@ def execute(factory,run_id):
                 row.status="failed";row.stage="failed"
                 row.error=safe[:280];row.updated_at=now()
                 db.commit()
+        archive_if_enabled(factory,run_id)
 
 
 def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
@@ -467,7 +484,7 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
             raise HTTPException(409,"Finish the baseline first to lock shared source facts")
         if db.scalars(select(SC05Run.id).where(
             SC05Run.member_id==actor.id,
-            SC05Run.status.in_(("queued","running")),
+            SC05Run.status.in_(("queued","claimed","running")),
             SC05Run.id!=run_id).limit(1)).first():
             raise HTTPException(409,"An Owner SC05 experiment is already active")
         if not (os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
@@ -499,7 +516,11 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         add_audit(db,"sc05.authorized_model_run",actor.id,row.id,
                   "variant="+row.variant)
         db.commit()
-        background.add_task(execute,get_factory(),row.id)
+        mode=os.getenv("SC05_EXECUTION_MODE","background").strip().lower()
+        if mode=="background":
+            background.add_task(execute,get_factory(),row.id)
+        elif mode!="worker":
+            raise HTTPException(503,"Unknown SC05 execution mode")
         return run_view(row)
 
     @router.get("/runs/{run_id}/repair-check")
