@@ -11,7 +11,7 @@ import re
 from typing import Any
 
 VERSION = "sc05-research-state-v0.1.0"
-FACT_TYPES = frozenset({"objective", "data", "method", "evaluation", "result", "limitation"})
+FACT_TYPES = frozenset({"objective", "data", "method", "evaluation", "result", "limitation", "other"})
 ORIGINS = frozenset({"author_reported", "independently_computed"})
 ISSUE_CLASSES = frozenset({
     "coverage", "measurement", "validation", "method",

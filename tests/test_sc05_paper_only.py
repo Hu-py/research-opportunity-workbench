@@ -308,3 +308,36 @@ def test_scientific_question_must_cite_real_paper_and_distinct_story():
                 "narrative_arc":"Observation to contradiction to explanation",
             }],
         },[],[{"fact_id":"F001"}])
+
+def test_unexpected_model_fact_label_preserves_verified_quote_and_records_alias():
+    from backend.sc05_paper_only import extract_ledger, normalize_fact_kind
+    page={"page_01":PAGES["page_01"]}
+    assert normalize_fact_kind("finding")[0]=="result"
+    assert normalize_fact_kind("research_question")[0]=="objective"
+    assert normalize_fact_kind("unexpected_new_science_category")[0]=="other"
+    quote="The scientific objective is to quantify network vulnerability from actual observations"
+    def cached_model(key,model,system,payload,max_tokens=2700):
+        assert payload["sc05_stage"]=="evidence_extraction"
+        return {"facts":[{"page":"page_01",
+                "fact_type":"unexpected_new_science_category",
+                "statement":"This paper assesses network vulnerability",
+                "verbatim_excerpt":quote}]},{"input_tokens":1013,"output_tokens":372}
+    log=[]
+    result=extract_ledger(page,"dummy-key",cached_model,log,max_calls=8)
+    obs=result["snapshot"]["observations"][0]
+    assert obs["fact_type"]=="other"
+    assert obs["verbatim_excerpt"]==quote
+    assert result["source_note"][0]["raw_type"]=="unexpected_new_science_category"
+    assert result["source_note"][0]["normalized_type"]=="other"
+    assert len(log)==1
+
+
+def test_unclassified_model_label_still_cannot_fabricate_quotation():
+    from backend.sc05_paper_only import extract_ledger
+    def cached_model(key,model,system,payload,max_tokens=2700):
+        return {"facts":[{"page":"page_01","fact_type":"some-new-type",
+                          "statement":"Claim",
+                          "verbatim_excerpt":"A fictitious experimental improvement of 900%"}]},{}
+    with pytest.raises(EvidenceError,match="source fragment"):
+        extract_ledger({"page_01":PAGES["page_01"]},"dummy-key",
+                       cached_model,[],max_calls=8)
