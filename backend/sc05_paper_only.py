@@ -150,6 +150,27 @@ def _chunks(pages: dict[str, str], limit: int = 9400) -> list[list[dict[str, str
     return out
 
 
+def _verified_excerpt(original: str, proposed: str) -> str:
+    """Recover the *literal source span* when PDF line-wraps differ.
+
+    Accept only uniquely matching whitespace normalization; never permit
+    fuzzy semantics, character substitution or hallucinated references.
+    Store the exact original span in the frozen evidence snapshot.
+    """
+    if not isinstance(proposed, str) or not 12 <= len(proposed) <= 400:
+        raise EvidenceError("Invalid source excerpt")
+    if proposed in original:
+        return proposed
+    tokens=proposed.split()
+    if len(tokens) < 2:
+        raise EvidenceError("PDF evidence quote is not an exact source fragment")
+    pattern=r"\\s+".join(re.escape(t) for t in tokens)
+    matches=list(re.finditer(pattern,original))
+    if len(matches)!=1 or len(matches[0].group())>600:
+        raise EvidenceError("PDF evidence quote is not an exact source fragment")
+    return matches[0].group()
+
+
 def _source_index(pages: dict[str, str]) -> dict[str, dict[str, str]]:
     return {"uploaded_paper": dict(pages)}
 
@@ -218,8 +239,7 @@ def extract_ledger(
                 raise EvidenceError("Fact cites a page outside its source batch")
             if kind not in FACT_KINDS:
                 raise EvidenceError("Unsupported fact type")
-            if not isinstance(quote, str) or not 12 <= len(quote) <= 400 or quote not in pages[page]:
-                raise EvidenceError("Model supplied an unverified PDF quote")
+            quote=_verified_excerpt(pages[page],quote)
             statement = _limited(item.get("statement"), "fact statement", 1100)
             key = (page, quote)
             if key in used:continue
