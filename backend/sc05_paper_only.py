@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from backend.model_gateway import request_json
+from backend.sc05_science_gate import FRONTIER_SCHEMA, validate_scientific_triage, enforce_route_frontiers
 from backend.sc05_quality import inspect_report
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
@@ -57,7 +58,8 @@ ROUTE_SCHEMA = {"routes": [{
     "title": "Distinct research question, not a renamed existing study",
     "change_kind": "model|data|evaluation|research_question",
     "diagnosis_ids": ["D01"],
-    "research_question": "Concrete new question",
+    "frontier_ids": ["Q01"],
+    "research_question": "Concrete new question"
     "new_mechanism": "Exactly what explanatory/technical link is being added",
     "why_previous_study_cannot_answer": "Evidence gap, not a vague novelty claim",
     "closest_paper_ids": ["doi:10.xxxx/yyyy"],
@@ -223,7 +225,7 @@ def extract_ledger(
     used: set[tuple[str, str]] = set()
     notes: list[str] = []
     batches = _chunks(pages)
-    if len(batches) > max_calls - 6:
+    if len(batches) > max_calls - 7:
         raise EvidenceError("Paper exceeds safe analysis budget; split input or raise the opted-in max-calls")
     for chunk in batches:
         response = _run(call, api_key, "evidence_extraction",
@@ -315,7 +317,7 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
             raise EvidenceError("Invalid evidence search request")
         result.append({
             "diagnosis_ids": _references(item.get("diagnosis_ids"), ids,
-                "search diagnosis", allow_empty=not ids),
+                "search diagnosis", allow_empty=True),
             "query": _limited(item.get("query"), "search query", 190),
             "need": item["need"],
             "assumption_to_test": _limited(
@@ -402,12 +404,15 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
     return result
 
 
-def research_routes(raw: dict, diagnosis: dict, external_papers: list[dict]) -> list[dict]:
+def research_routes(raw: dict, diagnosis: dict, external_papers: list[dict], triage: dict | None = None) -> list[dict]:
     rows = raw.get("routes")
     if not isinstance(rows, list) or len(rows) > 5:
         raise EvidenceError("Expected 0-5 possible research routes")
     ids = {x["id"] for x in diagnosis["diagnoses"]}
     paper_ids = {p["id"] for p in external_papers}
+    frontier_ids = {q["id"] for q in (triage or {}).get("scientific_questions", [])}
+    if triage is not None:
+        enforce_route_frontiers(raw,triage)
     result = [];seen = set()
     for i, row in enumerate(rows, 1):
         if not isinstance(row, dict) or row.get("change_kind") not in (
@@ -421,7 +426,9 @@ def research_routes(raw: dict, diagnosis: dict, external_papers: list[dict]) -> 
             "id": rid, "title": _limited(row.get("title"), "title", 190),
             "change_kind": row["change_kind"],
             "diagnosis_ids": _references(row.get("diagnosis_ids"), ids,
-                "route diagnosis", allow_empty=not ids),
+                "route diagnosis", allow_empty=True),
+            "frontier_ids": _references(row.get("frontier_ids", []), frontier_ids,
+                "route scientific question",allow_empty=triage is None),
             "research_question": _limited(row.get("research_question"), "research question"),
             "new_mechanism": _limited(row.get("new_mechanism"), "new mechanism"),
             "why_previous_study_cannot_answer": _limited(
@@ -533,6 +540,20 @@ def _markdown(result: dict) -> str:
                 "- **"+query["need"]+"**（"+",".join(query["diagnosis_ids"])+
                 "）"+query["query"]+"；待检验条件："+query["assumption_to_test"],
             ]
+    triage=result.get("scientific_triage",{})
+    buf+=["", "## 科研严谨性审查与新科学问题分流", ""]
+    for item in triage.get("issue_classifications",[]):
+        buf.append("- **"+item["diagnosis_id"]+"**："+item["lane"]+
+            "；原论文处理状态："+item["scope_status"]+"；"+item["reason"])
+    for item in triage.get("scientific_questions",[]):
+        buf+=["", "### "+item["id"]+"｜"+item["scientific_question"], "",
+              "**论文已发现现象**："+item["motivating_observation"],
+              "**论文证据**："+links(item["fact_ids"]),
+              "**新机制假说**："+item["mechanism_hypothesis"],
+              "**研究尺度/对象变化**："+item["scope_change"],
+              "**为什么不是补实验**："+item["why_not_just_a_quality_fix"],
+              "**区分不同机制的实验**："+item["discriminating_test"],
+              "**完整科学故事**："+item["narrative_arc"],""]
     if not papers:
         buf+=["", "未检索到可核验的外部文献；不能据此判断创新性。", ""]
     else:
@@ -561,7 +582,8 @@ def _markdown(result: dict) -> str:
             "**科研问题**："+route["research_question"], "",
             "**真正增加的机制**："+route["new_mechanism"], "",
             "**原论文回答不了的原因**："+route["why_previous_study_cannot_answer"], "",
-            "**相关诊断**："+", ".join(route["diagnosis_ids"]), "",
+            "**相关诊断**："+", ".join(route["diagnosis_ids"])+
+            "；**新科学问题**："+", ".join(route["frontier_ids"]), "",
             "**最近先例**："+("; ".join(
                 "["+papers[pid]["title"]+"]("+papers[pid]["url"]+")"
                 for pid in route["closest_paper_ids"] if pid in papers
@@ -617,7 +639,7 @@ def run_paper(
     if not api_key or not api_key.strip():
         raise EvidenceError("DeepSeek key unavailable; no model call initiated")
     pages,pdf_hash = page_texts_from_pdf(pdf)
-    if len(_chunks(pages)) + 6 > max_calls:
+    if len(_chunks(pages)) + 7 > max_calls:
         raise EvidenceError("PDF exceeds maximum authorized model call budget")
     log: list[dict] = []
     ledger = extract_ledger(pages, api_key, model_call, log, max_calls=max_calls)
@@ -635,11 +657,23 @@ def run_paper(
         "验证与推断边界。不要预先猜下一篇要做什么；不强制产生诊断。",
         {**model_payload(snapshot),"method_lineage":lineage},log,max_calls=max_calls)
     diagnosis=validate_diagnosis(diagnosis_raw,snapshot)
+    triage_raw=_run(model_call,api_key,"scientific_value_triage",
+        "请将论文诊断划分为研究设计严谨性检查和具有独立科学价值的新问题。"
+        "没有开展另一种研究不代表原论文不严谨；认可论文针对原目标的合理选择。"
+        "要从真实发现的系统规律和正面结果出发，探索新的相互作用、动态反馈、"
+        "跨尺度机制、边界条件和科学解释。只补验证、敏感性或替换模型不能成为下一篇的中心研究问题。"
+        "每条新科学问题必须给出原文证据、竞争机制、完整研究故事及可区分机制的实验。",
+        {"facts":facts,"diagnoses":diagnosis["diagnoses"],
+         "study_reconstruction":diagnosis["study_reconstruction"],
+         "method_lineage":lineage,"required_json_shape":FRONTIER_SCHEMA},
+        log,max_calls=max_calls,max_tokens=3500)
+    scientific_triage=validate_scientific_triage(triage_raw,diagnosis["diagnoses"],facts)
     question_raw=_run(model_call,api_key,"evidence_questions",
         "根据已有诊断及其竞争性解释提出最多7条科学检索查询，"
         "优先为可迁移理论、失败条件、已有实现和反例。"
         "不得提前宣布这些选题是创新。",
         {"diagnoses":diagnosis["diagnoses"],
+         "scientific_questions":scientific_triage["scientific_questions"],
          "open_questions":diagnosis["open_questions"],
          "required_json_shape":SEARCH_SCHEMA},log,max_calls=max_calls)
     questions=search_plan(question_raw,diagnosis["diagnoses"])
@@ -661,21 +695,23 @@ def run_paper(
     routes_raw=_run(model_call,api_key,"research_redesign",
         "现在才允许提出研究路线。至少比较算法、数据、评价体系、"
         "研究问题重构的适用性，但无需每类各出一个。"
-        "不要默认模型更复杂就是创新。每条路线须指明原文证据、"
+        "仅能从新科学问题创建下一篇研究路线；不可将严谨性修补直接推荐为研究主题。每条路线须指明原文证据、"
         "已有最接近研究、具体差异、最低代价的可证伪实验和终止条件。"
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
-        {"diagnosis":diagnosis,"method_lineage":lineage,
+        {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
+         "method_lineage":lineage,
          "papers":[{k:p[k] for k in (
              "id","title","doi","url","year","venue","abstract")}
              for p in papers[:20]],
          "literature_assessments":literature,
          "required_json_shape":ROUTE_SCHEMA},log,max_calls=max_calls,max_tokens=4100)
-    routes=research_routes(routes_raw,diagnosis,papers)
+    routes=research_routes(routes_raw,diagnosis,papers,scientific_triage)
     critic_raw=_run(model_call,api_key,"independent_critic",
         "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
         "证据不足、不可识别性、指标循环依赖与实施成本。"
         "允许全部hold或reject。必要数据未知时不得声称真实可验证。",
         {"routes":routes,"diagnoses":diagnosis["diagnoses"],
+         "scientific_triage":scientific_triage,
          "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in papers[:20]],
          "required_json_shape":CRITIC_SCHEMA},log,max_calls=max_calls,max_tokens=3000)
     reviews=critique(critic_raw,routes)
@@ -684,7 +720,8 @@ def run_paper(
             "doi":_source_doi(pages),
             "sha256":pdf_hash,"page_count":len(pages),"type":"uploaded_pdf"},
         "snapshot":snapshot,"method_lineage":lineage,
-        "diagnosis":diagnosis,"search_queries":questions,
+        "diagnosis":diagnosis,"scientific_triage":scientific_triage,
+        "search_queries":questions,
         "external_papers":papers,"search_errors":search_errors,
         "literature_assessments":literature,
         "routes":routes,"reviews":reviews,"usage":log,
