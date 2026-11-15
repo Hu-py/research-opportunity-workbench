@@ -47,7 +47,7 @@ def main():
                 allowed_conf={"low","medium","high"}
                 def safe(v):
                     txt=v if isinstance(v,str) else type(v).__name__
-                    if re.fullmatch(r"[\\w\\- ]{1,35}",txt):
+                    if 0<len(txt)<=35 and all(c.isalnum() or c in " _-" for c in txt):
                         return txt
                     return "hash-"+hashlib.sha256(txt.encode()).hexdigest()[:8]
                 for i,item in enumerate(data.get("diagnoses",[])[:12]):
