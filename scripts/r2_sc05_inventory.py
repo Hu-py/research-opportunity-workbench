@@ -68,3 +68,5 @@ if __name__=="__main__":
 # Manual verification snapshot 2 after Owner-delegated Render execution.
 
 # Post-diagnosis-resume verification snapshot.
+
+# Model stage progression check, no object bodies logged.
