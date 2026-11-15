@@ -170,7 +170,7 @@ def exploratory_source_papers(db, member_id):
     for paper in raw[:100] if isinstance(raw,list) else []:
         if not isinstance(paper,dict):continue
         group=paper.get("probe_group")
-        if group not in "ABC" or not source_ids.get(group):
+        if group not in ("A","B","C") or not source_ids.get(group):
             continue
         pid=str(paper.get("id") or "")
         url=str(paper.get("url") or "")
