@@ -9,7 +9,7 @@ type Baseline={
 };
 type Paper={id:string;title:string;group:string;venue:string;url:string;abstract?:string;published?:string};
 type Run={id:string;status:string;stage:string;paper_count:number;
- model_calls:number;input_tokens:number;output_tokens:number;error:string;
+ model_calls:number;input_tokens:number;output_tokens:number;error:string;experiment_mode?:string;baseline_confirmed?:boolean;probes_present?:string[];
  snapshot_sha:string;created_at:string;novelty_verified:boolean;
  snapshot?:{baseline:Baseline;baseline_revision:number;source_scan:string;source_ids:Record<string,string[]>;papers:Paper[]};
  readings?:{paper_id:string;problem:string;method:string;validation:string;limitations:string;
@@ -28,6 +28,7 @@ type Overview={
  papers:Paper[];warning:string};
  model:{configured:boolean;vault_ready:boolean;provider:string;fast_model:string;reason_model:string;daily_enabled:boolean};
  budget:{limits:{model_calls_per_day:number;token_reservation_per_day:number};used:{model_calls:number}};
+ exploratory?:{owner_allowed:boolean;ready:boolean;preview_count:number;probes:string[];notice:string};
  runs:Run[];
 };
 type Detail={run:Run;feedback:{id:string;ratings:Record<string,number>;target:string;decision:string;comment:string;created_at:string}[]};
@@ -56,6 +57,7 @@ export default function Workbench(){
  const [detail,setDetail]=useState<Detail|null>(null);
  const [editing,setEditing]=useState(false);
  const [consent,setConsent]=useState(false);
+ const [ackProvisional,setAckProvisional]=useState(false);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
  const [ok,setOk]=useState("");
@@ -102,6 +104,13 @@ export default function Workbench(){
    await request("/baseline","PUT",{...form,confirmed:true});
    setEditing(false);
  },"研究基准已由当前账号确认并保存，可用于独立版本实验。");
+ const exploratoryPrepare=()=>act(async()=>{
+   if(!ackProvisional)throw Error("请先确认探索性实验使用暂定基准");
+   const result=await request<Run>("/exploratory/prepare","POST",
+      {acknowledge_provisional_baseline:true});
+   setSelected(result.id);
+   setDetail(await request<Detail>("/runs/"+encodeURIComponent(result.id)));
+ },"已准备 Owner 探索性实验：真实期刊论文摘要已冻结，暂定基准未被冒充为正式确认。");
  const prep=()=>act(async()=>{
    const result=await request<Run>("/prepare","POST",{});
    setSelected(result.id);
@@ -170,10 +179,26 @@ export default function Workbench(){
      共 {data?.evidence.stats.total||0} 篇 · 有足够摘要 {data?.evidence.stats.with_abstract||0} 篇 ·
      覆盖探针 {(data?.evidence.stats.groups||[]).join("/")||"无"}</div>
    {!ready&&<div className={styles.warning}>
-      <strong>真实论文证据尚未达到实验门槛。</strong>
-      <p>请先进入「儿童健康期刊目录」，批准需要的期刊，并点击最下方的「运行目录内论文检索」。返回此页后才可以运行真实模型理解。</p>
+      <strong>正式研究证据尚未达到跨组实验门槛。</strong>
+      <p>当前严格检索的论文可能只来自 A 组。正式跨组研究仍需 B/C 来源；下方可先执行单组真实论文探索预实验。</p>
       <Link href="/research/personal/journals">进入期刊目录与严格论文检索 →</Link>
     </div>}
+   {data?.exploratory?.owner_allowed&&<div className={styles.warning}>
+     <strong>SC04-R1｜立刻试跑真实 DeepSeek（探索性）</strong>
+     <p>已核验 {data.exploratory.preview_count} 篇真实摘要，来源探针 {data.exploratory.probes.join("/")||"无"}。
+       允许先只用一个探针启动论文理解、方法迁移和反证；不等于完成跨学科验证。
+       {data.baseline.confirmed?"研究基准已确认。":"研究基准尚未由你校对，本轮仅作为未确认的探索草稿输入。"}
+     </p>
+     <label className={styles.control}><input type="checkbox" checked={ackProvisional} onChange={e=>setAckProvisional(e.target.checked)}/>
+       我了解本轮只使用已有获批来源的摘要，研究草稿/单组证据均非正式科研结论。
+     </label>
+     <div className={styles.actions}>
+       <button className={styles.primary} type="button"
+         disabled={busy||isRunning||!data.exploratory.ready||!ackProvisional}
+         onClick={exploratoryPrepare}>创建真实摘要探索预实验（暂不收费）</button>
+     </div>
+     <p className={styles.fineprint}>创建后到第 03 步勾选模型调用同意，再启动 DeepSeek；最多 3 次模型请求。模型调用将按服务商计费。</p>
+   </div>}
    <div className={styles.paperRows}>{(data?.evidence.papers||[]).map(p=><div key={p.id}>
      <span className={styles.pill}>探针 {p.group}</span>
      <div><a href={p.url} target="_blank" rel="noopener noreferrer">{p.title} ↗</a><small>{p.venue} · {p.id}</small></div>
@@ -189,7 +214,7 @@ export default function Workbench(){
      {(data?.runs||[]).map(r=><button type="button" key={r.id}
        className={selected===r.id?styles.selected:""} onClick={()=>setSelected(r.id)}>
        <span>{r.id.slice(0,19)}…</span><strong>{statusLabel[r.status]||r.status}</strong>
-       <small>{r.paper_count} 篇 · {r.model_calls} 次模型调用</small></button>)}
+       <small>{r.paper_count} 篇 · {r.model_calls} 次模型调用{r.experiment_mode==="owner_exploratory_single_scan"?" · 探索性":""}</small></button>)}
      {!(data?.runs||[]).length&&<div className={styles.empty}>暂无实验。先确认基准并准备真实论文证据。</div>}
     </div>
     {active&&<div className={styles.runState}>
@@ -197,9 +222,12 @@ export default function Workbench(){
        <span>当前阶段：{stageLabel[active.stage]||active.stage}</span>
        <small>调用 {active.model_calls} 次 · 输入 {active.input_tokens} / 输出 {active.output_tokens} tokens</small></div>
       {active.error&&<p className={styles.error}>{active.error}</p>}
+      {active.experiment_mode==="owner_exploratory_single_scan"&&<p className={styles.warning}>
+        单组或不完整来源的探索性测试；不可把输出解释为已证明的科学创新或经本人正式确认的研究成果。
+      </p>}
       {(active.status==="prepared"||active.status==="failed")&&<div className={styles.control}>
        <label><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>
-         我同意本轮将确认过的研究基准和公开论文摘要发送到平台已配置的模型服务进行分析。</label>
+         我同意本轮将{active.experiment_mode==="owner_exploratory_single_scan"?"暂定或已确认的研究基准":"已确认的研究基准"}和公开论文摘要发送给已配置的 DeepSeek 模型，并了解可能产生模型费用。</label>
        {!aiReady&&<p className={styles.warning}>当前测试后端没有可用的 DeepSeek 模型密钥或加密服务。
          请先由 Owner 在模型配置后台启用。未配置时无法执行真实的 LLM 推理。</p>}
        <button disabled={!consent||!aiReady||busy} className={styles.primary} type="button"
