@@ -40,6 +40,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PUT"="GET",payload?:unkno
 export default function PersonalResearch(){
  const [profile,setProfile]=useState<Profile|null>(null);
  const [results,setResults]=useState<Result[]>([]);
+ const [resultHealth,setResultHealth]=useState<{count:number;expected_count:number;available_public_count:number;requires_explicit_import:boolean}>({count:0,expected_count:2,available_public_count:0,requires_explicit_import:false});
  const [error,setError]=useState("");
  const [busy,setBusy]=useState(false);
  const [selected,setSelected]=useState("child_health_extrapolation");
@@ -51,9 +52,10 @@ export default function PersonalResearch(){
    setBusy(true);
    try{
     const [p,r]=await Promise.all([
-      api<Profile>("me"),api<{items:Result[]}>("me/results"),
+      api<Profile>("me"),api<{items:Result[];count:number;expected_count:number;available_public_count:number;requires_explicit_import:boolean}>("me/results"),
     ]);
     setProfile(p);setResults(r.items||[]);
+    setResultHealth({count:r.count||0,expected_count:r.expected_count||2,available_public_count:r.available_public_count||0,requires_explicit_import:r.requires_explicit_import||false});
     setInterestText((p.profile?.explicitly_declared_interests||["儿童健康空间外推","三维竖向城市化"]).join("\n"));
     setNote(p.profile?.note||"");
     setError("");
@@ -79,7 +81,7 @@ export default function PersonalResearch(){
   }catch(e){setError(e instanceof Error?e.message:"保存失败");}
   finally{setBusy(false);}
  }
- const displayed=results.find(x=>x.topic_key===selected)||results[0];
+ const displayed=results.find(x=>x.topic_key===selected);
  return <main className={styles.root}>
   <div className={styles.shell}>
    <nav className={styles.nav}>
@@ -91,6 +93,7 @@ export default function PersonalResearch(){
      <div className={styles.eyebrow}>RESEARCH ATLAS / PERSONAL RESEARCH</div>
      <h1>我的科研画像</h1>
      <p>个人科研方向与检索结果独立保存。团队科研画像可作为背景信息，但不会覆盖你的研究兴趣。</p>
+     <a className={styles.jump} href="#research-runs">直接查看两份三探针研究结果 ↓</a>
     </div>
     <button type="button" disabled={busy} onClick={()=>void reload()}>{busy?"读取中":"刷新"}</button>
    </header>
@@ -116,9 +119,21 @@ export default function PersonalResearch(){
       </div>}
     </>}
    </section>
-   <section className={styles.panel}>
-    <div className={styles.sectionhead}><h2>两次三探针研究试运行</h2><span className={styles.pill}>待科研审核</span></div>
+   <section id="research-runs" className={styles.panel}>
+    <div className={styles.sectionhead}><h2>两次三探针研究试运行</h2>
+      <span className={styles.pill}>已关联 {resultHealth.count} / {resultHealth.expected_count} 份</span></div>
     <p className={styles.hint}>本次使用实际出版页面检索资料，并整理成两个有来源记录的试运行结果。不是平台自动完成的 LLM 综合，也没有运行儿童健康或楼层预测模型。</p>
+    {resultHealth.count<resultHealth.expected_count&&<div className={styles.importState} role="status">
+      <div><strong>研究结果尚未全部关联到当前登录账号</strong>
+        <p>数据库中的公开文献快照：{resultHealth.available_public_count} / {resultHealth.expected_count} 份；
+          当前账号已关联：{resultHealth.count} 份。
+          {resultHealth.available_public_count<resultHealth.expected_count?
+            " 测试数据库尚缺公开证据，需要管理员先完成数据导入。":
+            " 你已有个人画像也可以直接加载已有结果，不会覆盖画像内容或研究偏好。"}</p></div>
+      <button type="button" disabled={busy||resultHealth.available_public_count<resultHealth.expected_count}
+        onClick={()=>void initialize()}>{busy?"正在关联…":"将两份研究结果载入我的账号"}</button>
+    </div>}
+    {resultHealth.count===resultHealth.expected_count&&<p className={styles.loaded}>已从测试数据库读取两份研究报告；点击下方主题切换具体论文、研究问题与验证清单。</p>}
     <div className={styles.tabs}>
      {Object.keys(names).map(k=><button key={k} type="button" onClick={()=>setSelected(k)}
        className={selected===k?styles.active:""}>{names[k]}</button>)}
@@ -149,7 +164,7 @@ export default function PersonalResearch(){
          <small>原始快照指纹：{displayed.source_digest.slice(0,16)}… · {stamp(displayed.run.created_on)}</small>
         </section>
       </div>
-    </div>:<p className={styles.blank}>当前账号尚未关联研究结果，请先建立个人画像。</p>}
+    </div>:<div className={styles.blank}><p>这个研究主题目前没有关联到你的账号。请使用上方的「将两份研究结果载入我的账号」，随后即可查看真实论文来源、三组探针、研究问题和核验步骤。</p></div>}
    </section>
    <section className={styles.team}>
     <div className={styles.sectionhead}><h2>团队画像 · 只读摘要</h2><span className={styles.pill}>团队共享来源</span></div>
