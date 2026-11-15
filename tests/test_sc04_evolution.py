@@ -257,3 +257,64 @@ def test_sc04_render_key_reused_securely_and_only_for_manual_member_run(workspac
     from backend.model_vault import status as legacy_model_status
     with factory() as db:
         assert legacy_model_status(db)["configured"] is False
+
+
+def test_exploratory_owner_real_a_only_abstracts_not_formal_baseline(workspace,monkeypatch):
+    import backend.sc04_evolution_runner as runner
+    from backend.team import TeamMember
+    from sqlalchemy import select
+    client,factory,admin,other=workspace
+    with factory() as db:
+        actor=db.scalar(select(TeamMember).where(TeamMember.email=="lead@example.invalid"))
+        assert actor is not None
+        actor.role="owner"
+        scan=db.get(TaskVenuePaperRun,"jpaper_test_owner")
+        scan.results_json=json.dumps([paper(n,"A") for n in range(1,5)])
+        scan.source_ids_json=json.dumps({"A":["S100"],"B":[],"C":[]})
+        db.commit()
+    overview=client.get(base(),headers=auth(admin)).json()
+    assert overview["evidence"]["ready"] is False
+    assert overview["exploratory"]["ready"] is True
+    assert overview["exploratory"]["preview_count"]==4
+    assert overview["exploratory"]["probes"]==["A"]
+    assert client.post(base()+"/prepare",headers=auth(admin)).status_code==409
+    assert client.post(base()+"/exploratory/prepare",
+                json={"acknowledge_provisional_baseline":True}).status_code==401
+    assert client.post(base()+"/exploratory/prepare",
+                headers=auth(other),
+                json={"acknowledge_provisional_baseline":True}).status_code==403
+    assert client.post(base()+"/exploratory/prepare",
+                headers=auth(admin),
+                json={"acknowledge_provisional_baseline":False}).status_code==422
+    response=client.post(base()+"/exploratory/prepare",headers=auth(admin),
+                json={"acknowledge_provisional_baseline":True})
+    assert response.status_code==201,response.text
+    trial=response.json()
+    assert trial["experiment_mode"]=="owner_exploratory_single_scan"
+    assert trial["baseline_confirmed"] is False
+    assert trial["paper_count"]==4
+    with factory() as db:
+        row=db.get(SC04Run,trial["id"])
+        snapshot=json.loads(row.snapshot_json)
+        assert snapshot["probes_requirement_waived_for_exploration"] is True
+        assert snapshot["probes_present"]==["A"]
+        assert snapshot["baseline_confirmed"] is False
+        assert db.get(SC04Baseline,(row.member_id,TASK_KEY)) is None
+    monkeypatch.setenv("SC04_DEEPSEEK_API_KEY","mock-sc04-deepseek-secret-not-real")
+    monkeypatch.setattr(runner,"request_json",fake_model)
+    without_consent=client.post(base()+"/runs/"+trial["id"]+"/start",
+           headers=auth(admin),json={"acknowledge_external_model":False})
+    assert without_consent.status_code==422
+    accepted=client.post(base()+"/runs/"+trial["id"]+"/start",
+           headers=auth(admin),json={"acknowledge_external_model":True})
+    assert accepted.status_code==202,accepted.text
+    detail=client.get(base()+"/runs/"+trial["id"],headers=auth(admin)).json()
+    run=detail["run"]
+    assert run["status"]=="completed"
+    assert run["model_calls"]==3
+    assert len(run["readings"])==4
+    assert len(run["variants"])==1
+    assert run["baseline_confirmed"] is False
+    assert run["critic"][0]["novelty_status"]=="not_systematically_verified"
+    assert client.get(base()+"/runs/"+trial["id"],headers=auth(other)).status_code==404
+    assert "mock-sc04-deepseek-secret" not in str(detail)

@@ -96,6 +96,9 @@ class BaselineRequest(BaseModel):
 class ConsentRequest(BaseModel):
     acknowledge_external_model:bool
 
+class ExploratoryRequest(BaseModel):
+    acknowledge_provisional_baseline:bool
+
 class ReviewRequest(BaseModel):
     paper_accuracy:int=Field(ge=1,le=5)
     method_fit:int=Field(ge=1,le=5)
@@ -146,6 +149,101 @@ def papers_from_strict_scan(db,member_id):
         "selected":len(selected),
         "source_ids":load(scan.source_ids_json,{}),"scan_id":scan.id}
 
+def exploratory_source_papers(db, member_id):
+    """At most 5 REAL abstracts from the latest member-owned strict source scan.
+
+    This is explicitly SINGLE-OR-MULTI PROBE exploratory evidence. The usual
+    research evolution prepare() still demands a confirmed baseline and >=2
+    academic probes; this helper never modifies that scientific gate.
+    """
+    scan=db.scalars(select(TaskVenuePaperRun).where(
+        TaskVenuePaperRun.member_id==member_id,
+        TaskVenuePaperRun.task_key==TASK_KEY,
+        TaskVenuePaperRun.status.in_(("completed","partial")),
+    ).order_by(TaskVenuePaperRun.created_at.desc()).limit(1)).first()
+    if scan is None:return None,[],{"reason":"no_strict_source_scan"}
+    source_ids=load(scan.source_ids_json,{})
+    if not isinstance(source_ids,dict) or not any(source_ids.get(g) for g in "ABC"):
+        return scan,[],{"reason":"strict_source_ids_missing"}
+    raw=load(scan.results_json,[])
+    found=[];seen=set()
+    for paper in raw[:100] if isinstance(raw,list) else []:
+        if not isinstance(paper,dict):continue
+        group=paper.get("probe_group")
+        if group not in ("A","B","C") or not source_ids.get(group):
+            continue
+        pid=str(paper.get("id") or "")
+        url=str(paper.get("url") or "")
+        title=str(paper.get("title") or "").strip()
+        abstract=re.sub(r"\s+"," ",str(paper.get("abstract") or "")).strip()
+        if not pid or pid in seen or not url.startswith("https://") or not title or len(abstract)<130:
+            continue
+        seen.add(pid)
+        found.append({
+            "id":pid[:255],"title":title[:350],"abstract":abstract[:2600],
+            "url":url[:1100],"group":group,
+            "venue":str(paper.get("venue") or "")[:200],
+            "published":str(paper.get("published") or "")[:30],
+            "evidence_level":"OpenAlex abstract, not full text",
+        })
+    terms=("child","health","built environment","neighborhood",
+           "spatial","urban","development","exposure","transfer")
+    def score(p):
+        name=p["title"].lower();body=p["abstract"].lower()
+        return (-sum(3*(term in name)+(term in body) for term in terms),
+                p["id"])
+    found.sort(key=score)
+    selected=found[:MAX_PAPERS]
+    return scan,selected,{
+        "available":len(found),"selected":len(selected),
+        "groups":sorted(set(p["group"] for p in selected)),
+        "scan_id":scan.id, "reason":"ok" if len(selected)>=3 else "few_abstracts",
+    }
+
+
+def prepare_exploratory(db,member):
+    """Owner-click only. No silent approval of baseline or additional journals."""
+    if member.role!="owner":
+        raise PermissionError("探索性真实模型实验仅允许已登录的 Owner 启动")
+    scan,papers,stats=exploratory_source_papers(db,member.id)
+    if len(papers)<3:
+        raise ValueError("已批准期刊扫描中真实摘要不足三篇")
+    busy=db.scalars(select(SC04Run.id).where(
+        SC04Run.member_id==member.id,
+        SC04Run.status.in_(("queued","running"))).limit(1)).first()
+    if busy:raise ValueError("另一个研究演化实验正在执行")
+    row=db.get(SC04Baseline,(member.id,TASK_KEY))
+    confirmed=bool(row)
+    baseline_data=load(row.payload_json,{}) if row else BASELINE_DRAFT
+    snap={
+        "task":TASK_KEY,
+        "baseline":baseline_data,
+        "baseline_revision":row.revision if row else None,
+        "baseline_confirmed":confirmed,
+        "baseline_provenance":"researcher_confirmed" if confirmed else "chat_context_unreviewed",
+        "papers":papers,
+        "source_scan":scan.id,
+        "source_ids":load(scan.source_ids_json,{}),
+        "skill_version":VERSION,
+        "evidence_level":"openalex_abstract_only",
+        "novelty_status":"unverified",
+        "experiment_mode":"owner_exploratory_single_scan",
+        "probes_present":stats["groups"],
+        "probes_requirement_waived_for_exploration":len(stats["groups"])<2,
+        "scientific_result_status":"machine_hypotheses_not_reviewed",
+    }
+    result=SC04Run(id="sc04_"+uuid.uuid4().hex[:30],
+                   member_id=member.id, task_key=TASK_KEY,
+                   snapshot_json=dump(snap),snapshot_sha=digest(snap))
+    db.add(result)
+    add_audit(db,"sc04.exploratory_prepared",member.id,result.id,
+       "owner_click;real_abstracts="+str(len(papers))+
+       ";probe_count="+str(len(stats["groups"]))+
+       ";baseline_confirmed="+str(confirmed))
+    db.commit()
+    return run_view(result,True)
+
+
 def sc04_model_status(db):
     """Safe status only: SC04 isolated Render env or encrypted DB vault.
 
@@ -176,6 +274,11 @@ def run_view(row,detailed=False):
       "error":row.error,"created_at":row.created_at.isoformat(),
       "updated_at":row.updated_at.isoformat(),
       "novelty_verified":False,"science_experiment_executed":False}
+    snap=load(row.snapshot_json,{})
+    result["experiment_mode"]=snap.get("experiment_mode","formal")
+    result["baseline_confirmed"]=snap.get("baseline_confirmed",
+                                         snap.get("baseline_revision") is not None)
+    result["probes_present"]=snap.get("probes_present",[])
     if detailed:
         result.update({"snapshot":load(row.snapshot_json,{}),
           "readings":load(row.reader_json,[]),"matches":load(row.matches_json,[]),
@@ -224,7 +327,15 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
             SC04Run.member_id==actor.id,SC04Run.task_key==TASK_KEY)
             .order_by(SC04Run.created_at.desc()).limit(20)).all()
         return {"task":TASK_KEY,"version":VERSION,"baseline":baseline(db,actor.id),
-                "evidence":evidence(db,actor.id),"model":sc04_model_status(db),
+                "evidence":evidence(db,actor.id),
+                "exploratory": {
+                    "owner_allowed":actor.role=="owner",
+                    "ready":len(exploratory_source_papers(db,actor.id)[1])>=3,
+                    "preview_count":len(exploratory_source_papers(db,actor.id)[1]),
+                    "probes":exploratory_source_papers(db,actor.id)[2].get("groups",[]),
+                    "notice":"Owner 探索预实验可以只用单组获批来源的3–5篇真实摘要；未确认基准保留草稿标签，不视作正式科研验证。",
+                },
+                "model":sc04_model_status(db),
                 "budget":budget_status(db),
                 "runs":[run_view(x) for x in rows]}
 
@@ -245,6 +356,15 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         add_audit(db,"sc04.baseline_saved",actor.id,TASK_KEY,"version="+str(row.revision))
         db.commit()
         return baseline(db,actor.id)
+
+    @router.post("/exploratory/prepare",status_code=201)
+    def exploratory_prepare(data:ExploratoryRequest,
+          db:Session=Depends(get_db),actor:TeamMember=Depends(member)):
+        if not data.acknowledge_provisional_baseline:
+            raise HTTPException(422,"请先明确同意探索性实验的暂定研究基准与单组摘要局限")
+        try:return prepare_exploratory(db,actor)
+        except PermissionError as exc:raise HTTPException(403,str(exc)) from exc
+        except ValueError as exc:raise HTTPException(409,str(exc)) from exc
 
     @router.post("/prepare",status_code=201)
     def prep(db:Session=Depends(get_db),actor:TeamMember=Depends(member)):
