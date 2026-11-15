@@ -1,45 +1,35 @@
 ---
 name: research-diagnosis
-description: Diagnose the limits of an existing scientific study and redesign its research strategy from original goals, methods, data and experimental evidence. Use when an existing paper, project, experiments or unsuccessful transfer study needs an independent, non-leading diagnosis and evidence-driven alternative research plans. Preserve exact fact provenance, test competing explanations, and distinguish unverifiable claims from model failures.
+description: Analyze one uploaded academic paper (PDF by default) to reconstruct its methods and data dependencies, independently diagnose scientific evidence gaps, search relevant theory and nearby research, and produce an auditable next-paper opportunity report with feasible tests and stop conditions. Use for paper-to-next-research, scientific idea discovery, or iterative research workbench evaluation; do not require raw datasets or source code.
 ---
 
-# Research Diagnosis · SC05
+# SC05 · Paper-only research diagnosis
 
-## Outcome and scope
-Build an auditable diagnosis of an ongoing scientific project before reading new algorithm papers or generating research variants. Do not assume continued optimization of the present architecture is the right objective. Treat a change in data, validation design, or research question as a legitimate alternative; do not force a new method or a fixed number of opportunities.
+## Interface
+**Required input: one published or authorized paper.** The normal user uploads only a PDF; ask for no additional raw data or code at intake. Additional files are optional and may be proposed as future *feasibility requirements*, never prerequisites for generating the initial report. Support other publication topics without making the Zhengzhou or child-health projects implicit baselines.
 
-## Blind evidence intake
-1. Read a provided manuscript and any available experiment files. Record each factual observation with an exact source anchor: document ID, section, quoted excerpt and claim type.
-2. Keep original goals, data descriptions, methods and results in the **diagnosis input**. Hold future-work recommendations, planned next studies, desired model architecture and known answer keys in a separate **evaluation holdout**. Do not conceal genuine empirical results or caveats necessary to interpret results.
-3. Where the study cannot share raw data, distinguish an author's reported statistic from a tool-recomputed statistic. Never claim to have recalculated it.
-4. Keep individual-level personal or health data out of prompts. Require anonymized aggregates and explicit consent for model submission.
-5. Freeze each input snapshot and its SHA256 before model invocation. Keep paper versions and file hashes; do not silently update an earlier run.
+**Output:** one readable Chinese research-diagnosis Markdown report, one source-and-model audit JSON, and a separated blind evidence snapshot. A published PDF may be analyzed for the requesting user; do not commit complete publisher text to GitHub. Explicitly distinguish model hypotheses from author findings, externally retrieved studies, and original numerical recomputation (not performed).
 
-## Five-stage workflow
-- **Stage 0 — Reconstruction:** Identify precise estimand/question, data-producing process, train/test unit, available labels, experimental comparisons, observed results and stronger claims needing support. Record missing information rather than filling gaps.
-- **Stage 1 — Autonomous diagnosis:** Produce evidence-linked contradictions, non-identifiability or validation gaps and hypotheses for failure. For each, explicitly give rival explanations, falsifiable checks, decision relevance and epistemic status. It is acceptable to find no supported bottleneck.
-- **Stage 2 — Evidence seeking:** Translate the diagnosis into narrowly scoped research questions, retrieve original theory/method/negative results, and report conditions under which each transfers. The approved task journal directory can constrain recurring monitoring, but exploratory literature search should be allowed outside it with transparent source provenance, not silent directory approval.
-- **Stage 3 — Research redesign:** Compare *model change, data change, evaluation change and question change* on equal footing; do not mandate one option per category. For each candidate, list feasibility prerequisites, expected distinguishing evidence, minimum experiment, what would falsify it, and whether the original problem remains answerable.
-- **Stage 4 — Independent critique:** Search for contradictions and prior work, challenge the feasibility of each plan and allow all proposals to be rejected or held. Never assert novel publication contribution without a separate systematic prior-art review.
+## Procedure (required order)
+1. **Freeze the paper.** Read title, abstract, Introduction, Methods (including formulas/figures), Data, Results and *empirical* limitations. Preserve original pages and actual quoted excerpts, document and PDF hash. In first-pass blind tests withhold the author's Future Work/Discussion recommendations, previous assistant proposals and expected answer key, not meaningful negative results. Read PDF captions and diagram labels where extraction permits; mark unparsed equations/figures as unverified.
+2. **Build a method/data dependency graph before proposing any method.** For each transformation record source data → observed/derived/simulated variable → formula, assumptions → evaluation → claim. Look explicitly for paths in which the proposed target is derived from candidate predictors, simulations are interpreted as observations, pre-event and post-event information are mixed, an outcome lacks independent evidence, or an intervention assumes fixed behavior. These are *diagnostic questions*, never automatic assertions of error.
+3. **Independent diagnosis.** Use only verified source fact IDs. Provide competing mechanisms and falsifiable checks. Separate actual result, author interpretation, hypothesis and unknown. Do not force any number of findings; avoid suggesting an architecture before judging whether the current question is answerable.
+4. **Plan targeted literature searches from diagnostic questions.** Seek theory, methods, independent empirical cases, negative findings and nearest competitors. Use OpenAlex or trustworthy primary publisher/preprint metadata with DOI/URL, date, abstract and clearly reported evidence level. Explore beyond the monitored journal directory, but do not silently approve a new permanent source. Do not say a method was evaluated in the source if the abstract does not say so.
+5. **Compare near papers before generating research routes.** Record each candidate's actual task, known methodology, overlap, assumptions needed to transfer, limitations and whether it is a contradiction/counterexample. Ground each abstract-derived assertion in a literal excerpt. A short methods table is worth more than ten generic paper links.
+6. **Redesign research, not just models.** Allow changes in the model, data, validation design and research question; compare routes without requiring one per type. For each route specify what *new* mechanism/question is added, what original evidence cannot answer, directly closest research, data feasibility, explicit baseline, minimum experiment, failure criterion and an alternative if data are missing. Zero good routes is a valid result.
+7. **Independent scientific critic.** Try to invalidate each proposed path; label test / hold / reject. No research opportunity is called novel or publishable before fuller near-neighbor examination and, where necessary, new data.
+8. **Deliver complete report and audit.** See `references/report-quality-gates.md`. Preserve snapshot SHA, source page IDs, citations, used external paper IDs, model stage/token usage, unresolved limitations and failed searches. If no real LLM call was made, label the output an offline workflow demonstration, not a SC05 blind experimental result.
 
-## Critical constraints
-- Do not insert the known next-paper idea, desired diagnosis, or previous assistant recommendations into the diagnostic prompt.
-- Cite the evidence package's exact fact IDs. Missing or invented IDs invalidate the diagnosis.
-- Separate [documented observation], [inference], [untested mechanism], [information missing], [independent external evidence] and [research proposal].
-- Avoid interpreting missing target-domain labels as proof of either good or bad generalization.
-- Review whether an algorithmic improvement can logically repair the observed evidence or validation failure; do not recommend architecture changes by default.
-- The model may suggest collecting data, restricting scope or postponing a publication claim.
+## Explicitly prohibited shortcuts
+- Do not ask for source code/OD/raw records merely to **understand** published formulas. Request minimal validation data only at the point of proposing a funded/reproducible experiment.
+- Never put a previous human-authored research-direction report into the initial blind diagnosis prompt or pretend an assistant-generated draft was discovered autonomously.
+- Do not give identical-looking methods as three different ideas, paste a generic "add GNN" recommendation, or claim that changing the study region alone is necessarily novel.
+- Do not claim model performance, theoretical guarantees, deployment effectiveness, causal evidence or novelty beyond what the source and separately verified literature establish.
+- Never reproduce full proprietary paper content in the report. Use short source excerpts and page anchors; do not print key values or server-only prompts to logs.
+- A failed literature search is a validation gap, not proof that the topic is unexplored.
 
-## Output
-Return a decision-oriented diagnosis report:
-1. Study reconstructed from facts (and scope of each fact).
-2. Claims–evidence gaps, bottlenecks, rival explanations and required checks.
-3. Source-traceable theory search and conditions for transfer.
-4. Ranked or rejected alternative study paths, with feasibility and stop criteria.
-5. The next minimum test that would most reduce uncertainty.
-6. Open questions and limitations of the agent's own evidence.
-
-## Evaluation discipline
-Run the previous SC04 model and SC05 on the same **blinded primary evidence**, not on a prewritten summary of answers. Keep evaluators' hidden criteria separate, including anticipated redesigns. Evaluate diagnostic validity and recall, discrimination among rival mechanisms, citation precision, feasibility, and ability to reject unsupported claims. Compare costs and failure rates alongside quality scores.
-
-Refer to `references/research-state-schema.md` when preparing an input snapshot or inspecting a structured report.
+## Implementation
+- Source + diagnosis validator: `backend/sc05_research_diagnosis.py`.
+- Single-paper end-to-end pipeline: `backend/sc05_paper_only.py`.
+- Explicitly authorized one-shot execution: `python -m scripts.sc05_paper_report --pdf paper.pdf --output ./reports --ack-model-spend`. Use the model key from the server environment, not chat.
+- Read `references/research-state-schema.md` for structured evidence; `references/report-quality-gates.md` for report-level acceptance.
