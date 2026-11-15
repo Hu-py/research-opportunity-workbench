@@ -312,3 +312,61 @@ def test_schema_migration_refuses_unverified_quotes_without_calling_model(worksp
     with factory() as db:
         row=db.get(SC05Run,run_id)
         assert row.status=="failed" and row.pipeline_sha=="a"*64
+
+
+def test_old_unstarted_gate_repin_after_baseline_with_frozen_evidence(workspace,monkeypatch):
+    """A completed recovered baseline may safely re-pin B only if B cost=0."""
+    client,factory,owner,_=workspace
+    case_id=upload(client,owner)
+    pair=client.post(BASE+"/cases/"+case_id+"/ab",headers=auth(owner)).json()
+    a,b=pair["runs"]
+    assert a["variant"]=="science_gate_off"
+    assert b["variant"]=="science_gate_on"
+    with factory() as db:
+        first=db.get(SC05Run,a["id"])
+        second=db.get(SC05Run,b["id"])
+        doc=db.get(SC05Case,case_id)
+        first.status="completed"
+        first.pipeline_sha=ev.pipeline_sha()
+        second.pipeline_sha="e"*64
+        doc.shared_evidence_json=ev.dump({"snapshot_sha256":"frozen-in-real-run"})
+        db.commit()
+    emitted=[]
+    def fake_provider(key,model,system,payload,max_tokens=2700):
+        emitted.append(payload.get("sc05_stage"))
+        return {"mock":"real schema not sent","scientific":False},{"input_tokens":21,"output_tokens":17}
+    monkeypatch.setattr(ev,"request_json",fake_provider)
+    monkeypatch.setattr(ev,"run_paper",fake_run_paper)
+    b_result=client.post(BASE+"/runs/"+b["id"]+"/start",
+        headers=auth(owner),json={"acknowledge_external_model":True})
+    assert b_result.status_code==202,b_result.text
+    with factory() as db:
+        second=db.get(SC05Run,b["id"])
+        assert second.status=="completed"
+        assert second.pipeline_sha==ev.pipeline_sha()
+        assert second.calls==1
+        assert len(ev.load(second.checkpoints_json,[]))==1
+        first=db.get(SC05Run,a["id"])
+        assert first.calls==0
+    assert emitted==["fake_validation"]
+
+
+def test_paid_prepared_gate_must_not_migrate_when_old_pipeline(workspace):
+    client,factory,owner,_=workspace
+    case_id=upload(client,owner)
+    pair=client.post(BASE+"/cases/"+case_id+"/ab",headers=auth(owner)).json()
+    first,second=pair["runs"]
+    with factory() as db:
+        a=db.get(SC05Run,first["id"])
+        b=db.get(SC05Run,second["id"])
+        doc=db.get(SC05Case,case_id)
+        a.status="completed";a.pipeline_sha=ev.pipeline_sha()
+        b.pipeline_sha="f"*64;b.calls=1
+        doc.shared_evidence_json=ev.dump({"snapshot_sha256":"frozen-in-real-run"})
+        db.commit()
+    response=client.post(BASE+"/runs/"+second["id"]+"/start",
+        headers=auth(owner),json={"acknowledge_external_model":True})
+    assert response.status_code==409
+    with factory() as db:
+        b=db.get(SC05Run,second["id"])
+        assert b.status=="prepared" and b.pipeline_sha=="f"*64

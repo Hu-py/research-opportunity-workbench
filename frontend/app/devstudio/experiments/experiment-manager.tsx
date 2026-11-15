@@ -252,6 +252,7 @@ export default function ExperimentManager({currentRole}:{currentRole:string}) {
       </div>
       <div className={styles.headerActions}>
         <span className={styles.role}>当前身份 · {currentRole.toUpperCase()}</span>
+        <a href="/devstudio/sc05" className={styles.subtle}>SC05 智能体科研测评</a>
         <button type="button" className={styles.primary} onClick={fresh}>＋ 新建实验</button>
       </div>
     </header>

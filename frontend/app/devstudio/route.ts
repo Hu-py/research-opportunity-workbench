@@ -43,5 +43,7 @@ export async function GET():Promise<Response>{
     .replace(marker,"\n"+DEV_CENTER_BRIDGE+"\nrender();\nloadDevStudio();\n</script>")
     .replace("</body>","<a href=\"/devstudio/experiments\" style=\"position:fixed;bottom:18px;right:190px;background:#fff;color:#111;border:1px solid #ddd;padding:10px 14px;text-decoration:none;border-radius:6px;font-size:12px;z-index:100\" aria-label=\"完整实验管理\">完整实验管理</a><a href=\"/account/team\" style=\"position:fixed;bottom:18px;right:22px;background:#111;color:#fff;padding:10px 14px;text-decoration:none;border-radius:6px;font-size:12px;z-index:100\" aria-label=\"团队与邀请管理\">团队与邀请管理</a></body>")
     .replace("</body>","<a href=\"/devstudio/github\" style=\"position:fixed;bottom:18px;right:365px;background:#fff;color:#111;border:1px solid #ddd;padding:10px 14px;text-decoration:none;border-radius:6px;font-size:12px;z-index:100\" aria-label=\"GitHub 自动同步\">GitHub 动态</a></body>");
-  return new Response(html,{status:200,headers:HEADERS});
+  return new Response(html.replace("</body>",
+    '<a href="/devstudio/sc05" style="position:fixed;bottom:65px;right:22px;background:#fff;color:#111;border:1px solid #ddd;padding:10px 14px;text-decoration:none;border-radius:6px;font-size:12px;z-index:100" aria-label="SC05 智能体科研测评">SC05 智能体科研测评</a></body>'),
+    {status:200,headers:HEADERS});
 }
