@@ -280,16 +280,6 @@ def main() -> int:
 
 if __name__ == "__main__":
     if main() == 0:
-        # Exact, user-requested SC04 R1 token; no automatic or recurring runs.
-        # Start in a daemon thread so public health checks remain responsive.
-        # SQL run ID is deterministic, preventing repeated paid calls after
-        # container restarts. Normal authenticated SC04 policies are unchanged.
-        if os.getenv("SC04_R1_ONE_SHOT") == "authorized-one-time-sc04-r1-20261115":
-            from threading import Thread
-            from research_workbench.core import session_factory
-            from scripts.sc04_one_shot_live_pilot import run_once
-            Thread(target=run_once, args=(session_factory(),),
-                   daemon=True, name="sc04-real-r1-one-shot").start()
         # Keep PGOPTIONS in the same Python process so the server, not just
         # the startup probe, remains pinned to the isolated test schema.
         import uvicorn
