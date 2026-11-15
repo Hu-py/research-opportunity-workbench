@@ -135,6 +135,13 @@ def page_texts_from_pdf(pdf: str | Path) -> tuple[dict[str, str], str]:
     return pages, hashlib.sha256(data).hexdigest()
 
 
+def _source_doi(pages: dict[str, str]) -> str:
+    """Extract DOI only from the front matter, not the References list."""
+    text="\n".join(list(pages.values())[:2])
+    match=re.search(r"(?:https?://doi.org/)?(10\\.\\d{4,9}/[^\\s<>]+)",text,re.I)
+    return match.group(1).rstrip(".,;)]") if match else ""
+
+
 def _chunks(pages: dict[str, str], limit: int = 9400) -> list[list[dict[str, str]]]:
     """Never cut an individual page quote; distribute pages in bounded batches."""
     out: list[list[dict[str, str]]] = []
@@ -467,6 +474,7 @@ def _markdown(result: dict) -> str:
     buf = [
         "# SC05｜单篇论文自主诊断与下一篇科研机会报告",
         "", "**研究文献**：" + source["title"],
+        "**原文 DOI**：" + (("https://doi.org/"+source["doi"]) if source.get("doi") else "PDF首页未识别到 DOI"),
         "**原文哈希**：" + source["sha256"],
         "**报告性质**：模型辅助研究假设；不含数据复算或实际新实验结果。",
         "**文献检索性质**：OpenAlex 元数据及摘要级近邻搜索，不是系统查新。",
@@ -662,13 +670,15 @@ def run_paper(
     reviews=critique(critic_raw,routes)
     output = {
         "version":VERSION, "source":{"title":source_title or Path(pdf).stem,
+            "doi":_source_doi(pages),
             "sha256":pdf_hash,"page_count":len(pages),"type":"uploaded_pdf"},
         "snapshot":snapshot,"method_lineage":lineage,
         "diagnosis":diagnosis,"search_queries":questions,
         "external_papers":papers,"search_errors":search_errors,
         "literature_assessments":literature,
         "routes":routes,"reviews":reviews,"usage":log,
-        "is_paid_model_output":True,"independent_raw_data_validation":False,
+        "is_paid_model_output":model_call is request_json,
+        "independent_raw_data_validation":False,
         "novelty_proved":False,
     }
     return _markdown(output),output
