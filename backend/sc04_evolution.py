@@ -5,7 +5,7 @@ human review. Machine analysis is in sc04_evolution_runner, never triggered on G
 No team profile, publication or health record is modified.
 """
 from __future__ import annotations
-import hashlib, json, re, uuid
+import hashlib, json, os, re, uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -146,6 +146,21 @@ def papers_from_strict_scan(db,member_id):
         "selected":len(selected),
         "source_ids":load(scan.source_ids_json,{}),"scan_id":scan.id}
 
+def sc04_model_status(db):
+    """Safe status only: SC04 isolated Render env or encrypted DB vault.
+
+    Never serialize, log, or return the environment key to clients.
+    The environment secret is *only* consumed by explicitly started SC04 jobs.
+    """
+    info = model_status(db)
+    if os.getenv("SC04_DEEPSEEK_API_KEY", "").strip():
+        return {**info, "configured": True, "vault_ready": True,
+                "fast_model": "deepseek-flash", "reason_model": "deepseek-flash",
+                "key_storage": "render-environment-sc04-only",
+                "daily_enabled": False}
+    return info
+
+
 def evidence(db,member_id):
     scan,papers,stats=papers_from_strict_scan(db,member_id)
     return {"ready":len(papers)>=3 and len({x["group"] for x in papers})>=2,
@@ -209,7 +224,7 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
             SC04Run.member_id==actor.id,SC04Run.task_key==TASK_KEY)
             .order_by(SC04Run.created_at.desc()).limit(20)).all()
         return {"task":TASK_KEY,"version":VERSION,"baseline":baseline(db,actor.id),
-                "evidence":evidence(db,actor.id),"model":model_status(db),
+                "evidence":evidence(db,actor.id),"model":sc04_model_status(db),
                 "budget":budget_status(db),
                 "runs":[run_view(x) for x in rows]}
 
@@ -253,7 +268,7 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         row=owned_run(db,actor.id,run_id)
         required="failed" if resume else "prepared"
         if row.status!=required:raise HTTPException(409,"当前状态不能启动或恢复")
-        cfg=model_status(db)
+        cfg=sc04_model_status(db)
         if not cfg["configured"] or not cfg["vault_ready"]:
             raise HTTPException(409,"DeepSeek API Key/加密服务尚未配置，模型不会被调用")
         other=db.scalars(select(SC04Run.id).where(
