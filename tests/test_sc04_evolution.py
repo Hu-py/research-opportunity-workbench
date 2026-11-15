@@ -40,6 +40,7 @@ def workspace(tmp_path,monkeypatch):
     monkeypatch.setenv("TEAM_AUTH_ENABLED","true")
     monkeypatch.setenv("API_BEARER_TOKEN",TOKEN)
     monkeypatch.delenv("MODEL_VAULT_KEY",raising=False)
+    monkeypatch.delenv("SC04_DEEPSEEK_API_KEY",raising=False)
     factory=session_factory("sqlite:///"+str(tmp_path/"sc04.db"))
     monkeypatch.setattr(api,"get_factory",lambda:factory)
     with factory() as db:
@@ -217,3 +218,42 @@ def test_fake_evidence_or_unseen_reference_is_rejected():
         "variants":[{"title":"var1","paper_ids":["paper-A"],"hypothesis":"h",
           "baseline_to_beat":"B2","minimal_test":"test",
           "data_needed":["data"],"stop_condition":"stop","risks":["risk"]}]},p)
+
+def test_sc04_render_key_reused_securely_and_only_for_manual_member_run(workspace,monkeypatch):
+    """Owner must still explicitly start; no vault, GitHub secrets or plaintext logs."""
+    import backend.sc04_evolution_runner as runner
+    client,factory,owner,other=workspace
+    example_key="sc04-mocked-provider-key-not-a-real-secret"
+    monkeypatch.setenv("SC04_DEEPSEEK_API_KEY",example_key)
+    over=client.get(base(),headers=auth(owner))
+    assert over.status_code==200
+    model=over.json()["model"]
+    assert model["configured"] is True and model["vault_ready"] is True
+    assert model["key_storage"]=="render-environment-sc04-only"
+    assert model["daily_enabled"] is False
+    assert example_key not in over.text
+    # No implied permission for other users to see the owner's papers.
+    assert client.get(base(),headers=auth(other)).json()["evidence"]["ready"] is False
+    run=prepared(client,owner)
+    with factory() as db:
+        assert db.get(SC04Run,run["id"]).model_calls == 0
+    # Opt-in is mandatory even when the server key exists.
+    denied=client.post(base()+"/runs/"+run["id"]+"/start",headers=auth(owner),
+                       json={"acknowledge_external_model":False})
+    assert denied.status_code==422
+    def fake_paid_call(key,model,system,payload,max_tokens=2500):
+        assert key==example_key
+        assert model=="deepseek-flash"
+        return fake_model(key,model,system,payload,max_tokens=max_tokens)
+    monkeypatch.setattr(runner,"request_json",fake_paid_call)
+    accepted=client.post(base()+"/runs/"+run["id"]+"/start",headers=auth(owner),
+                         json={"acknowledge_external_model":True})
+    assert accepted.status_code==202,accepted.text
+    detail=client.get(base()+"/runs/"+run["id"],headers=auth(owner))
+    assert detail.status_code==200 and detail.json()["run"]["status"]=="completed"
+    assert detail.json()["run"]["model_calls"]==3
+    assert len(detail.json()["run"]["variants"])==1
+    assert example_key not in detail.text
+    from backend.model_vault import status as legacy_model_status
+    with factory() as db:
+        assert legacy_model_status(db)["configured"] is False
