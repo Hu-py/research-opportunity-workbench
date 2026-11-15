@@ -116,6 +116,56 @@ def main() -> int:
             import_result = seed_public_pilots(session)
             print(json.dumps({"type": "sc02_public_research_evidence_import",
                               **import_result}))
+        # SC04 actual-model preflight: test-schema-only, read-only and
+        # nonsecret. No API calls or research experiments are triggered.
+        if os.getenv("SC04_REAL_PREFLIGHT_ENABLED") == "1":
+            from sqlalchemy import select
+            from backend.model_vault import status as credential_status, load_key
+            from backend.sc04_evolution import SC04Baseline, SC04Run, papers_from_strict_scan
+            from backend.team import TeamMember
+            config = credential_status(session)
+            decrypted = False
+            vault_error = ""
+            if config["configured"] and config["vault_ready"]:
+                try:
+                    decrypted = bool(load_key(session))
+                except (ValueError, TypeError):
+                    vault_error = "stored_key_not_decryptable"
+            actors = session.scalars(select(TeamMember).where(
+                TeamMember.active.is_(True))).all()
+            profiles = []
+            for actor in actors:
+                scan, prepared, stats = papers_from_strict_scan(session, actor.id)
+                baseline_row = session.get(SC04Baseline, (actor.id, "child_health_extrapolation"))
+                count = session.query(SC04Run).filter(
+                    SC04Run.member_id == actor.id).count()
+                if not scan and not baseline_row and not count:
+                    continue
+                profiles.append({
+                    "role": actor.role,
+                    "has_approved_directory_scan": scan is not None,
+                    "scan_status": scan.status if scan else None,
+                    "papers_returned": stats.get("total", 0),
+                    "papers_with_abstract": stats.get("with_abstract", 0),
+                    "selected": stats.get("selected", 0),
+                    "probes": stats.get("groups", []),
+                    "minimum_research_evidence_ready": len(prepared) >= 3
+                        and len({paper["group"] for paper in prepared}) >= 2,
+                    "baseline_confirmed": baseline_row is not None,
+                    "existing_evolution_runs": count,
+                })
+            print(json.dumps({
+                "type": "sc04_real_provider_readiness",
+                "scope": "isolated_test_db_only",
+                "provider": config["provider"],
+                "stored_model_api_key": config["configured"],
+                "vault_ready": config["vault_ready"],
+                "stored_key_decryptable": decrypted,
+                "credential_error": vault_error,
+                "eligible_accounts": profiles,
+                "external_calls_executed": 0,
+                "sc04_model_executions_triggered": 0,
+            }, ensure_ascii=False))
         # On Render instance restarts, never create another initial team.
         # Validate the previously committed E2E row instead of mutating it.
         persisted = session.execute(text(
