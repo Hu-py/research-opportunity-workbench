@@ -73,7 +73,12 @@ def main():
                 for i,item in enumerate(b_last.get("response",{}).get("diagnoses",[])[:12]):
                     if not isinstance(item,dict):continue
                     fields=("epistemic_status","issue_class","confidence")
-                    summary={name:safe(item.get(name)) for name in fields}
+                    def safe_b(value):
+                        txt=value if isinstance(value,str) else type(value).__name__
+                        if 0<len(txt)<=35 and all(ch.isalnum() or ch in " _-" for ch in txt):
+                            return txt
+                        return "masked"
+                    summary={name:safe_b(item.get(name)) for name in fields}
                     print(f"SC05 B diagnosis #{i+1} labels: {summary}")
     return 0
 
