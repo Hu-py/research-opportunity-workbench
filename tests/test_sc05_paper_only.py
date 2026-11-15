@@ -212,7 +212,7 @@ def test_fabricated_source_fact_is_blocked():
             "statement":"The model proves a 99% performance improvement",
             "verbatim_excerpt":"This fabricated number never occurred in the original paper.",
         }]},{"input_tokens":1,"output_tokens":1}
-    with pytest.raises(EvidenceError,match="source fragment"):
+    with pytest.raises(EvidenceError,match="No factual excerpts passed page verification"):
         extract_ledger(PAGES,"fake",bad_mock,[],max_calls=10)
 
 
@@ -338,6 +338,26 @@ def test_unclassified_model_label_still_cannot_fabricate_quotation():
         return {"facts":[{"page":"page_01","fact_type":"some-new-type",
                           "statement":"Claim",
                           "verbatim_excerpt":"A fictitious experimental improvement of 900%"}]},{}
-    with pytest.raises(EvidenceError,match="source fragment"):
+    with pytest.raises(EvidenceError,match="No factual excerpts passed page verification"):
         extract_ledger({"page_01":PAGES["page_01"]},"dummy-key",
                        cached_model,[],max_calls=8)
+
+
+def test_mixed_extraction_drops_non_source_quote_but_retains_verified_fact():
+    """A hallucinated quote is quarantined without discarding independently verified evidence."""
+    from backend.sc05_paper_only import extract_ledger
+    valid="The scientific objective is to quantify network vulnerability from actual observations"
+    calls=[]
+    def cached_response(key,model,system,payload,max_tokens=2700):
+        calls.append(payload["sc05_stage"])
+        return {"facts":[
+            {"page":"page_01","fact_type":"objective",
+             "statement":"Assesses vulnerability","verbatim_excerpt":valid},
+            {"page":"page_01","fact_type":"result",
+             "statement":"A fictional result","verbatim_excerpt":"The metro teleported all trains."},
+        ]},{"input_tokens":100,"output_tokens":50}
+    result=extract_ledger({"page_01":PAGES["page_01"]},"cached",cached_response,[],max_calls=8)
+    assert len(calls)==1
+    assert len(result["snapshot"]["observations"])==1
+    assert result["snapshot"]["observations"][0]["verbatim_excerpt"]==valid
+    assert any(x.get("rule")=="unverified_source_quote_rejected" for x in result["source_note"])
