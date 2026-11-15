@@ -36,3 +36,12 @@
 .actions{display:flex;gap:10px}.actions .secondary,.sectionhead .secondary{background:#fff;color:#333;border:1px solid #ddd;border-radius:5px;padding:9px 14px;font-size:12px;cursor:pointer}
 @media(max-width:850px){.probes{grid-template-columns:1fr}.probehead{min-height:auto;padding-bottom:12px}.footergrid{grid-template-columns:1fr}}
 @media(max-width:650px){.root{padding:20px 15px}.header{display:block}.header button{margin-top:12px}.panel{padding:17px}.tabs{flex-direction:column;align-items:flex-start}.tabs button{padding:9px 6px}}
+
+.jump{display:inline-block;font-size:12px;color:#242424;text-decoration:underline;text-underline-offset:4px;margin-top:10px}
+.importState{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:14px 0 22px;padding:17px 18px;background:#f7f7f7;border:1px solid #e3e3e3;border-radius:6px}
+.importState strong{font-size:13px}
+.importState p{font-size:12px;color:#666;line-height:1.8;margin:8px 0 0}
+.importState button{background:#1b1b1b;border:1px solid #1b1b1b;color:#fff;border-radius:5px;cursor:pointer;flex-shrink:0;padding:10px 13px;font-size:12px}
+.importState button:disabled{cursor:not-allowed;opacity:.48}
+.loaded{font-size:12px;color:#555;margin:12px 0 18px;padding:11px 12px;background:#f7f7f7;border-left:2px solid #222}
+@media(max-width:650px){.importState{align-items:stretch;flex-direction:column}.importState button{width:100%}}
