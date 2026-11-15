@@ -66,3 +66,5 @@ if __name__=="__main__":
     raise SystemExit(main())
 
 # Manual verification snapshot 2 after Owner-delegated Render execution.
+
+# Post-diagnosis-resume verification snapshot.
