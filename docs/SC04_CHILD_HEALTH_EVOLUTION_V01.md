@@ -30,3 +30,16 @@ Current focus: improve an existing research project, rather than build a weekly 
 ## Acceptance
 - Python integration tests use mocked model responses and real SQLite session auth. Explicitly test no-key / no-consent, fake paper IDs or fake literal excerpts, source lineage, saved checkpoints, and user isolation.
 - Frontend compiled with Next.js, linked from the child health personal study. Actual model execution remains gated by currently configured DeepSeek vault; CI tests do not imply the paid model really ran.
+
+
+## SC04-only API Key configuration (isolated Render)
+
+The first live experiment may use **one server-side environment secret** on the existing isolated Render web service; no GitHub Secret or frontend Vercel variable is required.
+
+1. Open Render Dashboard -> isolated service `research-atlas-devstudio-e2e` -> Environment.
+2. Add environment variable **`SC04_DEEPSEEK_API_KEY`** containing the actual DeepSeek API credential, not an OpenAlex token and not a GitHub token. Mark it secret if the hosting UI permits. Do not paste the key into chat, a GitHub issue, PR, markdown, frontend source, or `NEXT_PUBLIC_*` variables.
+3. Let the Render service redeploy and check `GET /api/personal-research/me/evolution` while authenticated. Expected model response: `configured=true`, `vault_ready=true`, `key_storage=render-environment-sc04-only`, `daily_enabled=false`. The response does **not** include the key.
+4. SC04 still requires a researcher-confirmed baseline, ≥3 abstracts from an approved-source scan spanning ≥2 A/B/C probes, and an explicit opt-in per run before any provider call. No scheduled job uses this scoped variable.
+5. To revoke, delete `SC04_DEEPSEEK_API_KEY` on Render and redeploy. Other platform features remain unchanged. To transition to the original encrypted database vault later, the administrator can configure `MODEL_VAULT_KEY` and use `PUT /api/ai-lab/config`.
+
+The fallback intentionally uses the already whitelisted `deepseek-flash` model in all three SC04 stages for a bounded first real run. The backend's existing model gateway validates provider responses and records token use; costs depend on provider billing. This key is scoped to the isolated TEST service only.

@@ -1,5 +1,6 @@
 """SC04 LLM runner: three checkpointed stages, strict source references and budget."""
 from __future__ import annotations
+import os
 from pathlib import Path
 from sqlalchemy import update
 from backend.model_gateway import ModelCallError, request_json
@@ -173,11 +174,19 @@ def execute(factory,run_id,model_call=None):
                 if stage=="done":
                     row.status="completed";row.updated_at=now();db.commit()
                     return True
-                cfg=db.get(ModelCredential,"deepseek")
-                if not cfg:raise ValueError("模型凭据未配置")
-                key=load_key(db)
-                if not key:raise ValueError("模型Key不可用")
-                model=cfg.fast_model if stage=="reader" else cfg.reason_model
+                # Use only the SC04-scoped Render secret when it exists.
+                # Other research agents and scheduled jobs still use their
+                # separate encrypted credentials and approval policies.
+                scoped_key=os.getenv("SC04_DEEPSEEK_API_KEY", "").strip()
+                if scoped_key:
+                    key=scoped_key
+                    model="deepseek-flash"
+                else:
+                    cfg=db.get(ModelCredential,"deepseek")
+                    if not cfg:raise ValueError("模型凭据未配置")
+                    key=load_key(db)
+                    if not key:raise ValueError("模型Key不可用")
+                    model=cfg.fast_model if stage=="reader" else cfg.reason_model
                 args,max_tokens=payload_for(stage,row)
             if not reserve(factory,tokens=16000,calls=1,
                            papers=len(args.get("papers",[])) if stage=="reader" else 0):
