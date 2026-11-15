@@ -318,3 +318,28 @@ def test_exploratory_owner_real_a_only_abstracts_not_formal_baseline(workspace,m
     assert run["critic"][0]["novelty_status"]=="not_systematically_verified"
     assert client.get(base()+"/runs/"+trial["id"],headers=auth(other)).status_code==404
     assert "mock-sc04-deepseek-secret" not in str(detail)
+
+
+def test_owner_quickstart_html_reuses_authenticated_preview_and_never_exposes_keys(workspace,monkeypatch):
+    from sqlalchemy import select
+    from backend.team import TeamMember
+    client,factory,owner,other=workspace
+    secret="deepseek-key-do-not-expose-in-html"
+    monkeypatch.setenv("SC04_DEEPSEEK_API_KEY",secret)
+    assert client.get(base()+"/quickstart").status_code==401
+    assert client.get(base()+"/quickstart",headers=auth(other)).status_code==403
+    assert client.get(base()+"/quickstart",headers=auth(owner)).status_code==403
+    with factory() as db:
+        actor=db.scalar(select(TeamMember).where(
+            TeamMember.email=="lead@example.invalid"))
+        actor.role="owner";db.commit()
+    response=client.get(base()+"/quickstart",headers=auth(owner))
+    assert response.status_code==200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "no-store" in response.headers["cache-control"]
+    assert "acknowledge_external_model" in response.text
+    assert "/api/proxy/personal-research/me/evolution" in response.text
+    assert secret not in response.text
+    assert "authorization" not in response.text.lower()
+    with factory() as db:
+        assert db.query(SC04Run).count()==0  # Read-only, never charges.

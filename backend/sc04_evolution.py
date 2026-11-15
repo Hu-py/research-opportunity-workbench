@@ -321,6 +321,13 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
             raise HTTPException(401,"请登录本人科研账号")
         return actor
 
+    @router.get("/quickstart")
+    def quickstart(actor:TeamMember=Depends(member)):
+        if actor.role!="owner":
+            raise HTTPException(403,"只有已登录 Owner 可以进入本轮真实实验")
+        from backend.sc04_exploratory_quickstart import quickstart_html
+        return quickstart_html()
+
     @router.get("")
     def overview(db:Session=Depends(get_db),actor:TeamMember=Depends(member)):
         rows=db.scalars(select(SC04Run).where(
