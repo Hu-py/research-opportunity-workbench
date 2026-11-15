@@ -282,5 +282,8 @@ if __name__ == "__main__":
     if main() == 0:
         # Keep PGOPTIONS in the same Python process so the server, not just
         # the startup probe, remains pinned to the isolated test schema.
+        # An operator request is possible only in this approved test schema.
+        from backend.sc05_operator_once import start_if_requested
+        start_if_requested()
         import uvicorn
         uvicorn.run("backend.api:app", host="0.0.0.0", port=8000)
