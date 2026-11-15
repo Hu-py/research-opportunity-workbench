@@ -370,3 +370,82 @@ def test_paid_prepared_gate_must_not_migrate_when_old_pipeline(workspace):
     with factory() as db:
         b=db.get(SC05Run,second["id"])
         assert b.status=="prepared" and b.pipeline_sha=="f"*64
+
+
+def test_owner_queue_mode_defers_paid_calls_until_worker_claim(workspace, monkeypatch):
+    """Owner consent enqueues; API request itself does not execute DeepSeek."""
+    client, factory, owner, _ = workspace
+    monkeypatch.setenv("SC05_EXECUTION_MODE", "worker")
+    calls = []
+    def fake_provider(key, model, system, payload, max_tokens=250):
+        calls.append(payload)
+        return {"mock": "real schema not sent", "scientific": False}, {
+            "input_tokens": 51, "output_tokens": 31}
+    monkeypatch.setattr(ev, "request_json", fake_provider)
+    monkeypatch.setattr(ev, "run_paper", fake_run_paper)
+    case_id = upload(client, owner)
+    pair = client.post(BASE + "/cases/" + case_id + "/ab", headers=auth(owner)).json()
+    run_id = pair["runs"][0]["id"]
+    response = client.post(BASE + "/runs/" + run_id + "/start",
+       headers=auth(owner), json={"acknowledge_external_model": True})
+    assert response.status_code == 202, response.text
+    assert response.json()["status"] == "queued"
+    assert calls == []
+    with factory() as db:
+        run = db.get(SC05Run, run_id)
+        assert run.status == "queued"
+        # Simulates a transactional Worker claim without requiring PostgreSQL
+        # in the fast unit test; integration tests must exercise real locks.
+        run.status = "claimed"
+        db.commit()
+    ev.execute(factory, run_id, claimed_by_worker=True)
+    assert len(calls) == 1
+    with factory() as db:
+        completed = db.get(SC05Run, run_id)
+        assert completed.status == "completed"
+        assert len(ev.load(completed.checkpoints_json, [])) == 1
+
+
+def test_sc05_r2_archives_source_checkpoint_and_report_privately(workspace, monkeypatch):
+    from backend import sc05_r2_artifacts as artifacts
+    client, factory, owner, _ = workspace
+    case_id = upload(client, owner)
+    pair = client.post(BASE + "/cases/" + case_id + "/ab", headers=auth(owner)).json()
+    run_id = pair["runs"][0]["id"]
+    with factory() as db:
+        run = db.get(SC05Run, run_id)
+        run.status = "completed"
+        run.checkpoints_json = ev.dump([{
+            "stage": "test_source_extraction",
+            "prompt_sha256": "a" * 64,
+            "response": {"facts": [{"fact_type": "objective"}]},
+            "usage": {"input_tokens": 1, "output_tokens": 1},
+            "model": "mock-only",
+        }])
+        run.report_md = "# Sample result"
+        run.result_json = ev.dump({"quality": {"warnings": []}})
+        db.commit()
+    class MemoryS3:
+        def __init__(self): self.objects = {}
+        def put_object(self, **kwargs):
+            self.objects[kwargs["Key"]] = kwargs["Body"]
+    s3 = MemoryS3()
+    for k, v in {
+        "R2_BUCKET": "test-private-bucket",
+        "R2_ENDPOINT": "https://example.r2.cloudflarestorage.com",
+        "R2_ACCESS_KEY_ID": "dummy",
+        "R2_SECRET_ACCESS_KEY": "dummy",
+    }.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(artifacts, "r2_client", lambda config: s3)
+    result = artifacts.archive_run(factory, run_id)
+    assert result["checkpoint_count"] == 1
+    assert result["report_saved"] is True
+    names = set(s3.objects)
+    assert any(k.endswith("/source_pages.json") for k in names)
+    assert any(k.endswith("/checkpoints/stage-001.json") for k in names)
+    assert any(k.endswith("/manifest.json") for k in names)
+    assert any(k.endswith("/report.md") for k in names)
+    assert any(k.endswith("/result.json") for k in names)
+    for payload in s3.objects.values():
+        assert b"dummy" not in payload
