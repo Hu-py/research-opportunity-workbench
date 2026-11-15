@@ -75,12 +75,19 @@ def main(argv=None):
     parser.add_argument("--interval",type=int,default=4)
     args=parser.parse_args(argv)
     factory=session_factory()
+    sc05_enabled=os.getenv("SC05_WORKER_ENABLED","false").strip().lower() in ("1","true","yes")
+    def dispatch():
+        if execute_once(factory):return True
+        if sc05_enabled:
+            from backend.sc05_worker import execute_once as execute_sc05
+            if execute_sc05(factory):return True
+        return False
     if args.once:
-        execute_once(factory)
+        dispatch()
         return
     while True:
         try:
-            if not execute_once(factory):time.sleep(max(1,args.interval))
+            if not dispatch():time.sleep(max(1,args.interval))
         except KeyboardInterrupt:break
         except Exception as exc:
             print("Worker error:",str(exc)[:250],flush=True)
