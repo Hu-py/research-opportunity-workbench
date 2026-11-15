@@ -547,9 +547,9 @@ def _markdown(result: dict) -> str:
             "**修订后的最小实验**："+rev["minimum_test_revision"], "",
         ]
     buf+=["## 7. 决策建议与不确定性边界", ""]
-    test=[r["id"] for r in result["reviews"] if r["verdict"]=="test"]
-    hold=[r["id"] for r in result["reviews"] if r["verdict"]=="hold"]
-    reject=[r["id"] for r in result["reviews"] if r["verdict"]=="reject"]
+    test=[r["route_id"] for r in result["reviews"] if r["verdict"]=="test"]
+    hold=[r["route_id"] for r in result["reviews"] if r["verdict"]=="hold"]
+    reject=[r["route_id"] for r in result["reviews"] if r["verdict"]=="reject"]
     buf+= [
         "建议优先验证："+(", ".join(test) if test else "暂无达到测试门槛的路线"),
         "暂缓："+(", ".join(hold) if hold else "无"),
