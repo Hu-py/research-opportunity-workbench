@@ -33,6 +33,16 @@ MAX_PDF_BYTES=32000000
 VERSION="sc05-eval-v0.1.0"
 
 
+def pipeline_sha():
+    """Pin source+prompts so a changed deploy cannot silently resume an old run."""
+    folder=Path(__file__).resolve().parent
+    h=hashlib.sha256()
+    for name in ("sc05_eval_api.py","sc05_paper_only.py",
+                 "sc05_science_gate.py","sc05_research_diagnosis.py"):
+        h.update((folder/name).read_bytes())
+    return h.hexdigest()
+
+
 def now():
     return datetime.now(timezone.utc)
 
@@ -65,6 +75,7 @@ class SC05Run(Base):
     case_id:Mapped[str]=mapped_column(String(55),ForeignKey("sc05_cases.id"))
     pair_id:Mapped[str]=mapped_column(String(55),index=True)
     variant:Mapped[str]=mapped_column(String(25))
+    pipeline_sha:Mapped[str]=mapped_column(String(64))
     status:Mapped[str]=mapped_column(String(24),default="prepared")
     stage:Mapped[str]=mapped_column(String(40),default="prepare")
     checkpoints_json:Mapped[str]=mapped_column(Text,default="[]")
@@ -90,6 +101,7 @@ class SC05Rating(Base):
     feasibility:Mapped[int]=mapped_column(Integer)
     hard_failure:Mapped[bool]=mapped_column(default=False)
     feedback:Mapped[str]=mapped_column(Text,default="")
+    failure_tags_json:Mapped[str]=mapped_column(Text,default="[]")
     created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
 
 
@@ -111,6 +123,7 @@ class RatingRequest(BaseModel):
     feasibility:int=Field(ge=0,le=5)
     hard_failure:bool=False
     feedback:str=Field(default="",max_length=3000)
+    failure_tags:list[str]=Field(default_factory=list,max_length=6)
 
 
 def safe_pages(pages):
@@ -147,6 +160,7 @@ def case_view(x):
 
 def run_view(x,*,include_report=False):
     data={"id":x.id,"case_id":x.case_id,"pair_id":x.pair_id,
+          "pipeline_sha":x.pipeline_sha,
           "status":x.status,"stage":x.stage,
           "model_calls":x.calls,
           "input_tokens":x.input_tokens,"output_tokens":x.output_tokens,
@@ -240,6 +254,9 @@ def execute(factory,run_id):
             db.commit();return
         row.status="running";row.stage="starting";row.updated_at=now()
         doc=db.get(SC05Case,row.case_id)
+        if row.pipeline_sha!=pipeline_sha():
+            row.status="failed";row.error="Pipeline code changed; cannot resume this frozen experiment"
+            db.commit();return
         pages=load(doc.pages_json,{})
         snapshot=load(doc.shared_evidence_json)
         title=doc.title
@@ -361,7 +378,7 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         for variant in ("science_gate_off","science_gate_on"):
             item=SC05Run(id="sc05run_"+uuid.uuid4().hex[:28],
                 member_id=actor.id,case_id=doc.id,pair_id=pair_id,
-                variant=variant)
+                variant=variant,pipeline_sha=pipeline_sha())
             db.add(item);runs.append(item)
         add_audit(db,"sc05.ab_created",actor.id,pair_id,doc.source_sha[:16])
         db.commit()
@@ -435,17 +452,61 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         score=(v["accuracy"]*15+v["science_value"]*30+
                v["narrative"]*25+v["literature"]*20+
                v["feasibility"]*10)/5
+        allowed={"paper_understanding","science_value","mechanism_narrative",
+                 "literature_depth","feasibility","citation_error"}
+        if any(t not in allowed for t in data.failure_tags):
+            raise HTTPException(422,"Unknown failure tag")
         rating=SC05Rating(id="sc05rating_"+uuid.uuid4().hex[:28],
               member_id=actor.id,run_id=run_id,
               accuracy=v["accuracy"],science_value=v["science_value"],
               narrative=v["narrative"],literature=v["literature"],
               feasibility=v["feasibility"],hard_failure=v["hard_failure"],
-              feedback=v["feedback"])
+              feedback=v["feedback"],failure_tags_json=dump(v["failure_tags"]))
         db.add(rating)
         add_audit(db,"sc05.blind_review",actor.id,row.id,
                  "score="+str(score)+";hard_failure="+str(v["hard_failure"]))
         db.commit()
         return {"saved":True,"score":0 if v["hard_failure"] else score,
                 "hard_failure":v["hard_failure"]}
+
+    @router.get("/pairs/{pair_id}/comparison")
+    def comparison(pair_id:str,db:Session=Depends(get_db),actor=Depends(owner)):
+        runs=db.scalars(select(SC05Run).where(
+            SC05Run.member_id==actor.id,SC05Run.pair_id==pair_id)).all()
+        if len(runs)!=2:raise HTTPException(404,"No such A/B pair")
+        if any(r.status!="completed" for r in runs):
+            raise HTTPException(409,"Finish both real runs first")
+        assessed=[]
+        for r in runs:
+            rating=db.scalars(select(SC05Rating).where(
+                SC05Rating.member_id==actor.id,
+                SC05Rating.run_id==r.id).limit(1)).first()
+            if not rating:raise HTTPException(409,"Both reports must be scored blindly before unblinding")
+            subtotal=(rating.accuracy*15+rating.science_value*30+
+                      rating.narrative*25+rating.literature*20+
+                      rating.feasibility*10)/5
+            result=load(r.result_json,{})
+            assessed.append({
+                "run_id":r.id,"variant":r.variant,
+                "score":0 if rating.hard_failure else subtotal,
+                "scientific_value":rating.science_value,
+                "narrative":rating.narrative,
+                "hard_failure":rating.hard_failure,
+                "failure_tags":load(rating.failure_tags_json,[]),
+                "feedback":rating.feedback,
+                "model_calls":r.calls,
+                "input_tokens":r.input_tokens,
+                "output_tokens":r.output_tokens,
+                "source_sha":db.get(SC05Case,r.case_id).source_sha,
+                "pipeline_sha":r.pipeline_sha,
+                "quality_warnings":result.get("quality",{}).get("warnings",[]),
+            })
+        baseline=next(x for x in assessed if x["variant"]=="science_gate_off")
+        gated=next(x for x in assessed if x["variant"]=="science_gate_on")
+        return {"pair_id":pair_id,"unblinded":True,
+                "runs":assessed,
+                "score_delta":gated["score"]-baseline["score"],
+                "scientific_value_delta":gated["scientific_value"]-baseline["scientific_value"],
+                "note":"These are researcher scores, not proof of scientific correctness. Test on held-out papers before claiming generality."}
 
     app.include_router(router)
