@@ -1422,3 +1422,10 @@ from backend.task_venue_radar import mount as _mount_task_venue_radar
 _mount_task_venue_radar(app, get_db=get_db, require_actor=require_actor,
                        team_auth_enabled=team_auth_enabled,
                        get_factory=lambda: get_factory())
+
+# SC04 personal study evolution is separated from the legacy team-wide
+# research_evolution engine and never changes shared team achievements.
+from backend.sc04_evolution import mount as _mount_sc04_evolution
+_mount_sc04_evolution(app, get_db=get_db, require_actor=require_actor,
+                      team_auth_enabled=team_auth_enabled,
+                      get_factory=lambda: get_factory())
