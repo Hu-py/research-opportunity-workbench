@@ -621,7 +621,8 @@ def list_owned(db,owner):
             SC05Rating.member_id==owner.id,SC05Rating.run_id==run.id
         ).limit(1)).first()
         if rated is None:
-            view.pop("id",None)
+            # Keep the opaque run ID usable for preflight/recovery, but never
+            # disclose whether it is the baseline or gated arm before blind review.
             view.pop("variant",None)
             view["arm"]="blind_pending"
         run_views.append(view)
