@@ -1233,12 +1233,16 @@ def mount(app,*,get_db,get_factory):
                         diagnosis=response.get("diagnoses",[]) if isinstance(response,dict) else []
                         raw_classes=sorted({str(d.get("issue_class")) for d in diagnosis
                                              if isinstance(d,dict) and d.get("issue_class") is not None})
+                        routes=response.get("routes") if isinstance(response,dict) else None
                         checkpoint_summary.append({
                             "stage":item.get("stage"),
                             "model":item.get("model"),
                             "input_tokens":(item.get("usage") or {}).get("input_tokens",0),
                             "output_tokens":(item.get("usage") or {}).get("output_tokens",0),
                             "diagnosis_issue_classes":raw_classes,
+                            "response_keys":sorted(response.keys()) if isinstance(response,dict) else [],
+                            "routes_type":type(routes).__name__ if routes is not None else "missing",
+                            "routes_count":len(routes) if isinstance(routes,list) else None,
                         })
                     payload=result({"run":run_view(row),"saved_checkpoints":len(checkpoints),
                                     "checkpoint_summary":checkpoint_summary,
