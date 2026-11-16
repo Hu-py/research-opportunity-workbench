@@ -553,7 +553,7 @@ def mount(app,*,get_db,get_factory):
                                             headers={"Cache-Control":"no-store"})
                     if not paid_enabled:
                         raise HTTPException(503,"Owner delegated paid starts are disabled")
-                    if worker_flag("SC05_MCP_ENFORCE_WORKER_READINESS") and not (
+                    if os.getenv("SC05_MCP_ENFORCE_WORKER_READINESS","true").lower() not in ("false","0") and not (
                         worker_flag("SC05_INLINE_WORKER_ENABLED")
                         and worker_flag("SC05_INLINE_WORKER_LIVE_ENABLED")
                         and os.getenv("SC05_EXECUTION_MODE","").lower()=="worker"
