@@ -185,6 +185,8 @@ def test_paper_only_full_pipeline_and_audit(monkeypatch,tmp_path):
       "literature_assessment","research_redesign","independent_critic"]
     assert record["diagnosis"]["diagnoses"][0]["epistemic_status"]=="hypothesis"
     assert len(record["literature_assessments"])==1
+    assert record["literature_assessments"][0]["diagnosis_link_status"]=="linked"
+    assert record["literature_assessments"][0]["relation_types"]==["direct"]
     assert record["reviews"][0]["verdict"]=="hold"
     assert record["scientific_triage"]["issue_classifications"][0]["lane"]=="quality_review"
     assert record["routes"][0]["frontier_ids"]==["Q01"]
@@ -216,7 +218,7 @@ def test_fabricated_source_fact_is_blocked():
         extract_ledger(PAGES,"fake",bad_mock,[],max_calls=10)
 
 
-def test_fake_literature_or_source_citation_is_blocked():
+def test_unverified_literature_quote_is_downgraded_not_fabricated():
     diagnosis={"diagnoses":[{"id":"D01"}]}
     raw={"assessments":[{
         "paper_id":PAPER["id"],"diagnosis_ids":["D01"],
@@ -225,8 +227,16 @@ def test_fake_literature_or_source_citation_is_blocked():
         "unresolved":"Unknown operational response",
         "abstract_excerpt":"This abstract fragment was never published",
     }]}
-    with pytest.raises(EvidenceError,match="does not match"):
-        literature_assessments(raw,[PAPER],diagnosis)
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_link_status"]=="linked"
+    assert parsed["diagnosis_links"][0]["relation_type"]=="direct"
+    assert parsed["abstract_quote_status"]=="rejected"
+    assert parsed["evidence_status"]=="quote_unverified"
+    assert parsed["abstract_excerpt"]==""
+    with pytest.raises(EvidenceError,match="unknown/duplicate paper"):
+        literature_assessments({"assessments":[{
+            **raw["assessments"][0],"paper_id":"doi:10.1000/fabricated"
+        }]},[PAPER],diagnosis)
     with pytest.raises(EvidenceError,match="Fabricated reference"):
         method_lineage({"links":[{
             "component":"Fake computation","fact_ids":["F999"],
@@ -234,6 +244,46 @@ def test_fake_literature_or_source_citation_is_blocked():
             "measurement_status":"observed","critical_assumption":"x",
             "conclusion_supported":"y",
         }],"claim_checks":[]},[{"fact_id":"F001"}])
+
+
+def test_literature_can_link_different_diagnoses_with_different_relation_types():
+    diagnosis={"diagnoses":[{"id":"D01"},{"id":"D02"},{"id":"D03"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],
+        "diagnosis_links":[
+            {"diagnosis_id":"D01","relation_type":"direct",
+             "relation_explanation":"It studies the same network stress outcome."},
+            {"diagnosis_id":"D02","relation_type":"indirect",
+             "relation_explanation":"The transfer mechanism links local route substitution to system-level load redistribution."},
+            {"diagnosis_id":"D03","relation_type":"counterexample",
+             "relation_explanation":"Its independent event records contradict the assumption that no external validation is possible."},
+        ],
+        "tested_problem":"Flow","method":"Network simulation",
+        "relevance":"partial","conditional_transfer":"Comparable network structure is required",
+        "unresolved":"Transfer to other transport systems remains unknown",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_ids"]==["D01","D02","D03"]
+    assert parsed["relation_types"]==["direct","indirect","counterexample"]
+    assert parsed["diagnosis_link_status"]=="linked"
+    assert parsed["evidence_status"]=="abstract_quote_verified"
+
+
+def test_missing_diagnosis_links_are_explicitly_unlinked():
+    diagnosis={"diagnoses":[{"id":"D01"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],"diagnosis_links":[],
+        "unlinked_reason":"The abstract concerns a different outcome and no mechanism bridge is supported.",
+        "tested_problem":"A different topic","method":"Survey",
+        "relevance":"low","conditional_transfer":"No justified transfer",
+        "unresolved":"No relation to the current diagnosis can be established",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_link_status"]=="unlinked"
+    assert parsed["diagnosis_ids"]==[]
+    assert parsed["unlinked_reason"].startswith("The abstract concerns")
 
 
 def test_unsafe_cost_budget_is_refused_before_calls(monkeypatch,tmp_path):
