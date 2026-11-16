@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, check_fact_type_resume)
+from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, check_fact_type_resume, EvidenceError)
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
     SC05DelegatedAuthorization, flag as worker_flag, worker_status
