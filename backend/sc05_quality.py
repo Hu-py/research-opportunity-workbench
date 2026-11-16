@@ -15,7 +15,21 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     routes=record.get("routes",[])
     reviews=record.get("reviews",[])
     papers={p["id"]:p for p in record.get("external_papers",[])}
-    checked={x["paper_id"] for x in record.get("literature_assessments",[])}
+    literature=record.get("literature_assessments",[])
+    checked={
+        x["paper_id"] for x in literature
+        if x.get("evidence_status")=="abstract_quote_verified"
+    }
+    unlinked=sum(1 for x in literature if x.get("diagnosis_link_status")=="unlinked")
+    unverified_quotes=sum(1 for x in literature if x.get("evidence_status")=="quote_unverified")
+    relation_counts={
+        relation:sum(
+            1 for item in literature
+            for link in item.get("diagnosis_links",[])
+            if link.get("relation_type")==relation
+        )
+        for relation in ("direct","indirect","counterexample")
+    }
     kinds={x["fact_type"] for x in facts}
     source_validated=all(
         f["fact_id"].startswith("F") and f["section"].startswith("page_")
@@ -45,6 +59,10 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         flags.append("部分诊断缺少竞争性解释或证伪检查")
     if record.get("search_errors"):
         flags.append("外部检索失败或部分失败，不能据此认定研究空白")
+    if unlinked:
+        flags.append(str(unlinked)+" 篇文献暂未关联到具体诊断；不作为诊断关联证据")
+    if unverified_quotes:
+        flags.append(str(unverified_quotes)+" 篇文献的摘要引文未通过逐字核验；不作为已核验摘要证据")
     if routes and routes_with_checked_nearest<len(routes):
         flags.append("部分研究路线缺少经过摘要核验的近邻研究")
     if routes and not record.get("external_papers"):
@@ -62,7 +80,11 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "grounded_diagnoses":grounded_issues,
         "falsifiable_diagnoses":falsifiable,
         "external_papers":len(papers),
+        "literature_assessments":len(literature),
         "abstract_checked_papers":len(checked),
+        "unlinked_literature_assessments":unlinked,
+        "unverified_literature_quotes":unverified_quotes,
+        "literature_relation_counts":relation_counts,
         "routes":len(routes),
         "routes_with_prior_papers":routes_with_nearest,
         "routes_with_assessed_prior_papers":routes_with_checked_nearest,
