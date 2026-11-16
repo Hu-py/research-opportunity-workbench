@@ -39,7 +39,7 @@ def pipeline_sha():
     """Pin source+prompts so a changed deploy cannot silently resume an old run."""
     folder=Path(__file__).resolve().parent
     h=hashlib.sha256()
-    for name in ("sc05_eval_api.py","sc05_paper_only.py",
+    for name in ("sc05_eval_api.py","sc05_paper_only.py","model_gateway.py",
                  "sc05_science_gate.py","sc05_research_diagnosis.py",
                  "sc05_quality.py"):
         h.update((folder/name).read_bytes())
