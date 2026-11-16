@@ -63,7 +63,7 @@ The baseline and gate-on arms must not run concurrently. A pipeline hash mismatc
 
 ## Paper intake limits
 
-`create_paper_case` accepts extracted page text from ChatGPT and is limited to 48,000 characters per MCP request. It uses the same page validation and blind-eligibility filtering as the authenticated PDF endpoint. Larger PDFs should be uploaded through the authenticated Research Atlas PDF page. Original PDFs and private source pages must not be committed to GitHub.
+`create_paper_case` accepts extracted page text from ChatGPT and is limited to a 48,000-byte UTF-8 JSON payload per MCP request. It uses the same page validation and blind-eligibility filtering as the authenticated PDF endpoint. Larger PDFs should be uploaded through the authenticated Research Atlas PDF page. Original PDFs and private source pages must not be committed to GitHub.
 
 ## Paid execution and worker readiness
 
