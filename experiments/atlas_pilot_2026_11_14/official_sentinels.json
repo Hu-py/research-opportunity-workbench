@@ -1,0 +1,98 @@
+{
+  "experiment_id": "atlas-discovery-pilot-2026-11-14",
+  "review_date": "2026-11-14",
+  "purpose": "Verify whether a bounded OpenAlex sample includes DOI/title-verified papers independently found on publisher or official journal pages. These sentinels are not a full journal census.",
+  "source_groups": {
+    "planning_application": {
+      "venue": "Sustainable Cities and Society",
+      "official_url": "https://www.sciencedirect.com/journal/sustainable-cities-and-society"
+    },
+    "urban_science": {
+      "venue": "Environment and Planning B: Urban Analytics and City Science",
+      "official_url": "https://journals.sagepub.com/home/epba"
+    },
+    "computational_methods": {
+      "venue": "Journal of Machine Learning Research",
+      "official_url": "https://www.jmlr.org/papers/v27/"
+    }
+  },
+  "sentinels": [
+    {
+      "group": "planning_application",
+      "title": "Smart Cities as Digital Catalysts for Energy Transition: With an Analysis of Spatial Spillover and Policy Synergy Effects",
+      "doi": "10.1016/j.scs.2026.108103",
+      "official_url": "https://www.sciencedirect.com/science/article/pii/S2210670726009789",
+      "first_online_date": "2026-11-10",
+      "date_status": "publisher_explicit"
+    },
+    {
+      "group": "planning_application",
+      "title": "Learning dependency structures of urban vitality at the census-block level using Bayesian networks and multi-source data",
+      "doi": "10.1016/j.scs.2026.108010",
+      "official_url": "https://www.sciencedirect.com/science/article/pii/S2210670726008851",
+      "first_online_date": null,
+      "date_status": "issue_date_only_2026-11-01"
+    },
+    {
+      "group": "planning_application",
+      "title": "Spatial structure associations and response-range mismatches between urban land surface temperature and urban vitality",
+      "doi": "10.1016/j.scs.2026.107957",
+      "official_url": "https://www.sciencedirect.com/science/article/abs/pii/S2210670726008413",
+      "first_online_date": null,
+      "date_status": "issue_date_only_2026-11-01"
+    },
+    {
+      "group": "urban_science",
+      "title": "Predicting economies of scale in Brazilian municipal expenditure: Panel econometrics and interpretable machine learning",
+      "doi": "10.1177/23998083261502609",
+      "official_url": "https://journals.sagepub.com/doi/10.1177/23998083261502609",
+      "first_online_date": "2026-11-07",
+      "date_status": "publisher_explicit"
+    },
+    {
+      "group": "urban_science",
+      "title": "Quantifying uncertainty in deep learning models for urban safety perception: An MC Dropout approach",
+      "doi": "10.1177/23998083261504070",
+      "official_url": "https://journals.sagepub.com/doi/10.1177/23998083261504070",
+      "first_online_date": "2026-11-05",
+      "date_status": "publisher_explicit"
+    },
+    {
+      "group": "urban_science",
+      "title": "Urban form typologies in Seoul since 1960: A framework for block-level classification and their changing prevalence over time",
+      "doi": "10.1177/23998083261502967",
+      "official_url": "https://journals.sagepub.com/doi/10.1177/23998083261502967",
+      "first_online_date": "2026-11-02",
+      "date_status": "publisher_explicit"
+    },
+    {
+      "group": "computational_methods",
+      "title": "A New Family of Poisson Non-negative Matrix Factorization Methods Using the Shifted Log Link",
+      "doi": null,
+      "official_url": "https://www.jmlr.org/papers/v27/26-0085.html",
+      "first_online_date": null,
+      "date_status": "volume_27_2026_only"
+    },
+    {
+      "group": "computational_methods",
+      "title": "Bayesian Predictive Inference Beyond Martingales",
+      "doi": null,
+      "official_url": "https://www.jmlr.org/papers/v27/26-0847.html",
+      "first_online_date": null,
+      "date_status": "volume_27_2026_only"
+    },
+    {
+      "group": "computational_methods",
+      "title": "CLASSIX: A High-Performance Library for Explainable Clustering",
+      "doi": null,
+      "official_url": "https://www.jmlr.org/papers/v27/26-1057.html",
+      "first_online_date": null,
+      "date_status": "volume_27_2026_only"
+    }
+  ],
+  "limitations": [
+    "A and B sentinels are observed official pages and selected items, not all papers appearing in the window.",
+    "JMLR listing has year 2026 without exact first-online dates, so temporal recall cannot be concluded for JMLR from a 60-day API window.",
+    "Publisher page accessibility, website crawling and OpenAlex indexing evolve over time."
+  ]
+}

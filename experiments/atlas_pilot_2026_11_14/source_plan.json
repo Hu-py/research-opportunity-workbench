@@ -1,0 +1,25 @@
+{
+  "schema_version": "0.1",
+  "source_groups": {
+    "planning_application": {
+      "label": "A 规划应用实践",
+      "venues": [
+        "SCS"
+      ]
+    },
+    "urban_science": {
+      "label": "B 城市科学视角",
+      "venues": [
+        "EPB"
+      ]
+    },
+    "computational_methods": {
+      "label": "C 计算机方法",
+      "venues": [
+        "JMLR"
+      ]
+    }
+  },
+  "authors": [],
+  "notes": "Public one-venue-per-group comparison pilot; not a revised production watchlist"
+}

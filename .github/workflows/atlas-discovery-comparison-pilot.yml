@@ -1,0 +1,60 @@
+name: Atlas one-off discovery comparison pilot
+
+on:
+  push:
+    branches:
+      - feature/atlas-three-source-ai-workflow-v01
+    paths:
+      - experiments/atlas_pilot_2026_11_14/RUN_ONCE.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: Compare one venue per A B C with official sentinels
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install collector dependencies
+        run: python -m pip install -e .
+      - name: Check existing OpenAlex repository credential
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        run: |
+          if [ -z "${OPENALEX_API_KEY:-}" ]; then
+            echo 'OpenAlex key missing. Cannot perform live API test without configuring the existing secret.' >&2
+            exit 1
+          fi
+      - name: Call OpenAlex once for three selected journals
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+        run: |
+          python scripts/atlas_collect.py \
+            --source-plan experiments/atlas_pilot_2026_11_14/source_plan.json \
+            --today 2026-11-14 --lookback-days 60 \
+            --max-per-source 100 --max-sources-per-group 1 \
+            --out scratch/atlas_pilot_feed.json
+      - name: Compare with independently checked official sentinels
+        run: |
+          python experiments/atlas_pilot_2026_11_14/evaluate.py \
+            --feed scratch/atlas_pilot_feed.json \
+            --benchmark experiments/atlas_pilot_2026_11_14/official_sentinels.json \
+            --out scratch/atlas_pilot_evaluation.json
+      - name: Preserve public scientific metadata for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-discovery-comparison-2026-11-14
+          path: |
+            scratch/atlas_pilot_feed.json
+            scratch/atlas_pilot_evaluation.json
+          retention-days: 14
+          if-no-files-found: warn
+
+# One-shot branch push fires only for the experiment marker, not other commits.

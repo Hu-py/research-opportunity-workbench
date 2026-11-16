@@ -1,0 +1,2 @@
+Research Atlas one-off public academic discovery comparison initiated 2026-11-14.
+This marker triggers only the branch-scoped A/B/C OpenAlex pilot; no production changes.
