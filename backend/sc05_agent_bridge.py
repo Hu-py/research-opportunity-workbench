@@ -1127,8 +1127,9 @@ def mount(app,*,get_db,get_factory):
                         pages=safe_pages(arguments.get("pages"))
                     except (ValueError,TypeError) as exc:
                         raise HTTPException(422,str(exc)) from exc
-                    if sum(len(value) for value in pages.values())>48000:
-                        raise HTTPException(413,"ChatGPT paper intake is limited to 48,000 extracted characters; use the authenticated PDF upload for larger papers")
+                    payload_bytes=len(dump({"title":title,"pages":pages}).encode("utf-8"))
+                    if payload_bytes>48000:
+                        raise HTTPException(413,"ChatGPT paper intake is limited to a 48,000-byte UTF-8 payload; use the authenticated PDF upload for larger papers")
                     source_sha=hashlib.sha256(dump(pages).encode()).hexdigest()
                     paper=SC05Case(
                         id="sc05case_"+uuid.uuid4().hex[:28],
