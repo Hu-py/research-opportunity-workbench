@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
+from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, now, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
 from backend.sc05_paper_only import run_paper
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
@@ -343,7 +343,17 @@ def preflight(db,owner,run_id):
     # source quotes, prompt fingerprint, model and saved usage without a provider call.
     repair_ready=False
     repair_summary=None
-    if row.status=="failed" and row.error=="Missing/invalid search query":
+    delegated=db.get(SC05DelegatedAuthorization,row.id)
+    if row.status=="queued" and delegated and delegated.status=="needs_review":
+        try:
+            literature_info=check_literature_diagnosis_resume(
+                row,paper,allow_queued=True)
+            repair_summary={"literature_diagnosis_repair":literature_info,
+                            "queued_retry_authorization":"needs_review"}
+            repair_ready=True
+        except (EvidenceError,ValueError,TypeError) as exc:
+            repair_summary={"ready":False,"reason":str(exc)[:180],"paid_calls_on_check":0}
+    elif row.status=="failed" and row.error=="Missing/invalid search query":
         try:
             query_info=diagnose_search_query_checkpoint(row,paper)
             repair_summary={"search_query_repair":query_info}
@@ -371,7 +381,11 @@ def preflight(db,owner,run_id):
         except (EvidenceError,ValueError,TypeError) as exc:
             repair_summary={"ready":False,"reason":str(exc)[:180],"paid_calls_on_check":0}
     failed_needs_review=row.status=="failed" and not repair_ready
-    safe_status=(row.status=="prepared" or (row.status=="failed" and repair_ready))
+    safe_status=(
+        row.status=="prepared"
+        or (row.status=="failed" and repair_ready)
+        or (row.status=="queued" and delegated and delegated.status=="needs_review" and repair_ready)
+    )
     return {
         "run":run_view(row),"source_sha256":paper.source_sha,
         "saved_checkpoints":len(checks),
@@ -691,37 +705,60 @@ def mount(app,*,get_db,get_factory):
                     if arguments.get("confirm_paid") is not True:
                         raise HTTPException(422,"Explicit consent required for this paid call")
                     row=own_run(db,owner,arguments.get("run_id",""))
+                    approval_before=db.get(SC05DelegatedAuthorization,row.id)
+                    queued_retry=(
+                        row.status=="queued" and approval_before is not None
+                        and approval_before.status=="needs_review"
+                    )
+                    previous_status=row.status
                     check=preflight(db,owner,row.id)
                     if not check["safe_to_submit"]:
                         raise HTTPException(409,"Run not safe to start; inspect checkpoint/preflight")
                     if budget_status(db)["used"]["model_calls"]>=budget_status(db)["limits"]["model_calls_per_day"]:
                         raise HTTPException(409,"Daily model budget exhausted")
-                    # Reuse the EXACT existing SC05 Owner endpoint; no second
-                    # implementation of checkpoint or cost authorization rules.
-                    # FastAPI >=0.137 retains included routers lazily.
-                    # Its supported iterator resolves the effective prefixed
-                    # path (app.routes alone contains _IncludedRouter nodes).
-                    from fastapi.routing import iter_route_contexts
-                    endpoint=next((ctx.endpoint for ctx in iter_route_contexts(app.routes)
-                      if ctx.path=="/api/personal-research/me/sc05/runs/{run_id}/start"
-                      and "POST" in (ctx.methods or set())),None)
-                    if endpoint is None:
-                        raise HTTPException(503,"SC05 start route unavailable")
-                    started=endpoint(row.id,StartRequest(acknowledge_external_model=True),
-                                     background,db,owner)
-                    db.refresh(row)
-                    # This approved dispatch is independent of the historic
-                    # SC05 queue. The free Render worker consumes ONLY rows
-                    # with this exact per-run Owner authorization.
-                    approval=db.get(SC05DelegatedAuthorization,row.id)
-                    if approval:
-                        raise HTTPException(409,"Delegated authorization already exists")
-                    db.add(SC05DelegatedAuthorization(
-                        run_id=row.id,member_id=owner.id,status="approved"
-                    ))
-                    add_audit(db,"sc05.mcp_paid_start",owner.id,row.id,
-                              "OAuth run scope + per-call paid consent")
-                    db.commit()
+
+                    if queued_retry:
+                        # A previous start committed the SC05 queue before its
+                        # delegated authorization was re-approved. Revalidate
+                        # the exact cached checkpoints, then re-arm this same
+                        # authorization row; never create a second grant.
+                        approval_before.status="approved"
+                        approval_before.granted_at=now()
+                        approval_before.processed_at=None
+                        add_audit(db,"sc05.mcp_paid_resume",owner.id,row.id,
+                                  "Re-approved needs_review authorization after zero-paid checkpoint validation")
+                        db.commit()
+                        started=run_view(row)
+                    else:
+                        # Reuse the EXACT existing SC05 Owner endpoint; no second
+                        # implementation of checkpoint or cost authorization rules.
+                        from fastapi.routing import iter_route_contexts
+                        endpoint=next((ctx.endpoint for ctx in iter_route_contexts(app.routes)
+                          if ctx.path=="/api/personal-research/me/sc05/runs/{run_id}/start"
+                          and "POST" in (ctx.methods or set())),None)
+                        if endpoint is None:
+                            raise HTTPException(503,"SC05 start route unavailable")
+                        started=endpoint(row.id,StartRequest(acknowledge_external_model=True),
+                                         background,db,owner)
+                        db.refresh(row)
+                        approval=db.get(SC05DelegatedAuthorization,row.id)
+                        if approval:
+                            if previous_status=="failed" and approval.status=="needs_review":
+                                approval.status="approved"
+                                approval.granted_at=now()
+                                approval.processed_at=None
+                                audit_action="sc05.mcp_paid_resume"
+                                audit_detail="Re-approved needs_review authorization after zero-paid checkpoint validation"
+                            else:
+                                raise HTTPException(409,"Delegated authorization already exists")
+                        else:
+                            db.add(SC05DelegatedAuthorization(
+                                run_id=row.id,member_id=owner.id,status="approved"
+                            ))
+                            audit_action="sc05.mcp_paid_start"
+                            audit_detail="OAuth run scope + per-call paid consent"
+                        add_audit(db,audit_action,owner.id,row.id,audit_detail)
+                        db.commit()
                     devstudio_id=register_devstudio(db,owner,row)
                     payload=result({"run":started,"devstudio_experiment_id":devstudio_id,
                                     "message":"Experiment enqueued; use get_experiment_status to follow progress."})
