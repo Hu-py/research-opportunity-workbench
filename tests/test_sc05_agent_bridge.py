@@ -118,8 +118,12 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert init.status_code==200
     assert init.json()["result"]["serverInfo"]["name"]=="research-atlas-sc05"
     names=call(client,tokens["access_token"],"tools/list").json()["result"]["tools"]
-    assert {"list_experiments","prepare_experiment","start_experiment",
+    assert {"list_experiments","create_ab_pair","prepare_experiment","start_experiment",
             "get_experiment_status","get_experiment_result","get_executor_status"}=={x["name"] for x in names}
+    create_tool=next(x for x in names if x["name"]=="create_ab_pair")
+    assert create_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
+    assert create_tool["_meta"]["securitySchemes"]==create_tool["securitySchemes"]
+    assert create_tool["annotations"]["readOnlyHint"] is False
     write_tool=next(x for x in names if x["name"]=="start_experiment")
     assert write_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
     assert write_tool["_meta"]["securitySchemes"]==write_tool["securitySchemes"]
@@ -150,6 +154,11 @@ def test_read_only_token_cannot_run_paid_and_disabled_switch(workspace):
     assert result["_meta"]["mcp/www_authenticate"]
     assert "insufficient_scope" in str(result)
     assert "experiments:run" in str(result)
+    create=call(client,tokens["access_token"],"tools/call",{
+        "name":"create_ab_pair","arguments":{"case_id":"sc05case_"+"b"*28,"confirm_create":True}})
+    assert create.status_code==200
+    assert create.json()["result"]["isError"] is True
+    assert create.json()["result"]["_meta"]["mcp/www_authenticate"]
 
 
 def test_owner_auth_required_and_activation_flag(workspace,monkeypatch):
@@ -160,6 +169,48 @@ def test_owner_auth_required_and_activation_flag(workspace,monkeypatch):
     monkeypatch.setenv("SC05_MCP_ENABLED","false")
     assert client.get("/.well-known/oauth-protected-resource").status_code==404
     assert client.get("/mcp").status_code==404
+
+
+def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert case.status_code==201,case.text
+
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    before=call(client,access,"tools/call",{
+        "name":"list_experiments","arguments":{}})
+    assert before.json()["result"]["isError"] is False
+    before_data=json.loads(before.json()["result"]["content"][0]["text"])
+    before_calls=before_data["budget"]["used"]["model_calls"]
+
+    created=call(client,access,"tools/call",{
+        "name":"create_ab_pair","arguments":{
+            "case_id":case.json()["id"],"confirm_create":True
+        }})
+    assert created.status_code==200
+    assert created.json()["result"]["isError"] is False,created.text
+    payload=json.loads(created.json()["result"]["content"][0]["text"])
+    assert payload["case"]["id"]==case.json()["id"]
+    assert payload["model_calls"]==0
+    assert [x["variant"] for x in payload["runs"]]==[
+        "science_gate_off","science_gate_on"
+    ]
+    assert all(x["status"]=="prepared" and x["model_calls"]==0
+               for x in payload["runs"])
+    assert payload["runs"][0]["pair_id"]==payload["runs"][1]["pair_id"]==payload["pair_id"]
+
+    after=call(client,access,"tools/call",{
+        "name":"list_experiments","arguments":{}})
+    after_data=json.loads(after.json()["result"]["content"][0]["text"])
+    assert after_data["budget"]["used"]["model_calls"]==before_calls
+    with factory() as db:
+        rows=[db.get(SC05Run,x["id"]) for x in payload["runs"]]
+        assert all(row is not None and row.status=="prepared" and row.calls==0 for row in rows)
+        assert rows[0].case_id==rows[1].case_id==case.json()["id"]
 
 
 def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypatch):
