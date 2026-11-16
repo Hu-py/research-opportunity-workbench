@@ -753,9 +753,20 @@ def _markdown(result: dict) -> str:
         for paper in papers.values():
             assessment=checked.get(paper["id"])
             status=assessment["relevance"] if assessment else "未详审"
-            assessment_summary=(assessment["tested_problem"]+"；"+
-                assessment["conditional_transfer"]+"；未确定："+assessment["unresolved"]
-                if assessment else "仅定位到摘要或元数据，未作机制比较")
+            if assessment:
+                if assessment["diagnosis_links"]:
+                    relation_text="；".join(
+                        link["diagnosis_id"]+"："+link["relation_type"]+
+                        "（"+link["relation_explanation"]+"）"
+                        for link in assessment["diagnosis_links"])
+                else:
+                    relation_text="未关联："+assessment["unlinked_reason"]
+                evidence_text=assessment["evidence_status"]
+                assessment_summary=(relation_text+"；"+evidence_text+"；"+
+                    assessment["tested_problem"]+"；"+assessment["conditional_transfer"]+
+                    "；未确定："+assessment["unresolved"])
+            else:
+                assessment_summary="仅定位到摘要或元数据，未作机制比较"
             buf.append("| ["+paper["title"].replace("|","／")+"]("+paper["url"]+
                 ") | "+paper["year"]+" / "+status+" | "+
                 assessment_summary.replace("|","／").replace("\n"," ")+" |")
@@ -828,6 +839,7 @@ def run_paper(
     source_sha: str | None = None,
     frozen_snapshot: dict | None = None,
     scientific_value_gate: bool = True,
+    legacy_literature_checkpoint: bool = False,
 ) -> tuple[str, dict]:
     """Run one paper with an optional shared, verified fact snapshot for A/B."""
     if not api_key or not api_key.strip():
@@ -899,16 +911,21 @@ def run_paper(
     papers,search_errors=openalex_search(questions,provider=search_provider)
     literature=[]
     if papers:
+        literature_system=(
+            LITERATURE_ASSESSMENT_SYSTEM_V1
+            if legacy_literature_checkpoint else LITERATURE_ASSESSMENT_SYSTEM
+        )
+        literature_schema=(
+            LITERATURE_SCHEMA_V1
+            if legacy_literature_checkpoint else LITERATURE_SCHEMA
+        )
         assessed_raw=_run(model_call,api_key,"literature_assessment",
-            "你是独立文献查新辅助员。仅凭以下真实OpenAlex摘要，逐篇核查"
-            "其研究对象、实际方法、与诊断的关系、可转移的前提及未解问题。"
-            "严格引用paper_id，且必须逐字摘录12-150字符原始摘要。"
-            "本批最多评估20篇。不得假称阅读全文，不得宣布创新性已证实。",
+            literature_system,
             {"diagnosis":diagnosis["diagnoses"],
              "papers":[{k:p[k] for k in (
                 "id","title","doi","url","year","venue","abstract")}
                 for p in papers[:20]],
-             "required_json_shape":LITERATURE_SCHEMA},log,max_calls=max_calls,
+             "required_json_shape":literature_schema},log,max_calls=max_calls,
             max_tokens=4100)
         literature=literature_assessments(assessed_raw,papers,diagnosis)
     routes_raw=_run(model_call,api_key,"research_redesign",
@@ -918,6 +935,9 @@ def run_paper(
           if scientific_value_gate else "基于论文证据提出新路线，但不得宣称已经证明创新性。")+
         "每条路线须指明原文证据、"
         "已有最接近研究、具体差异、最低代价的可证伪实验和终止条件。"
+        "使用literature_assessments时，只能把 evidence_status=abstract_quote_verified 的条目"
+        "作为摘要证据；quote_unverified 或 metadata_only 只能作为待核查线索，不能支持事实性论断。"
+        "对 diagnosis_links 中的 direct、indirect、counterexample 分别解释，不得把主题相似等同于直接证据。"
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
@@ -957,13 +977,20 @@ def run_paper(
     }
     output["quality"]=inspect_report(output)
     unlinked_literature=sum(1 for item in literature
-                            if not item.get("diagnosis_ids"))
+                            if item.get("diagnosis_link_status")=="unlinked")
     if unlinked_literature:
         output["quality"].setdefault("warnings",[]).append(
-            str(unlinked_literature)+" literature assessment(s) are retained as "
-            "unlinked background; no diagnosis association was inferred."
+            str(unlinked_literature)+" 篇文献暂未关联到具体诊断；未强行建立关系。"
         )
         output["quality"]["unlinked_literature_assessments"]=unlinked_literature
+    unverified_literature_quotes=sum(
+        1 for item in literature if item.get("evidence_status")=="quote_unverified")
+    if unverified_literature_quotes:
+        output["quality"].setdefault("warnings",[]).append(
+            str(unverified_literature_quotes)+" 篇文献的摘要引文未通过逐字核验；"
+            "已移除未核验引文，仅保留为待核查线索。"
+        )
+        output["quality"]["unverified_literature_quotes"]=unverified_literature_quotes
     unknown_confidence=sum(
         1 for d in diagnosis["diagnoses"]
         if d.get("confidence") == "not_assessed"
