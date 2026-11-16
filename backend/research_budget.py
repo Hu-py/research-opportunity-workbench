@@ -15,8 +15,8 @@ from research_workbench.core import Base
 
 DEFAULT_THEMES = 5
 DEFAULT_PAPERS = 80
-DEFAULT_CALLS = 30
-DEFAULT_TOKEN_ALLOWANCE = 350000
+DEFAULT_CALLS = 40
+DEFAULT_TOKEN_ALLOWANCE = 500000
 PER_THEME_PAPERS = 16
 
 class ResearchDailyBudget(Base):
@@ -42,9 +42,9 @@ def limits():
     return {
         "themes_per_run": DEFAULT_THEMES,
         "papers_per_day": _cap("RESEARCH_DAILY_PAPER_LIMIT", DEFAULT_PAPERS, 1, 80),
-        "model_calls_per_day": _cap("RESEARCH_DAILY_MODEL_CALL_LIMIT", DEFAULT_CALLS, 1, 30),
+        "model_calls_per_day": _cap("RESEARCH_DAILY_MODEL_CALL_LIMIT", DEFAULT_CALLS, 1, 40),
         "token_reservation_per_day": _cap(
-            "RESEARCH_DAILY_TOKEN_ALLOWANCE", DEFAULT_TOKEN_ALLOWANCE, 20000, 350000
+            "RESEARCH_DAILY_TOKEN_ALLOWANCE", DEFAULT_TOKEN_ALLOWANCE, 20000, 500000
         ),
         "papers_per_theme": PER_THEME_PAPERS,
     }
