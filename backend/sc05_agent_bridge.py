@@ -25,7 +25,8 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, check_fact_type_resume, EvidenceError)
+from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, check_fact_type_resume, EvidenceError)
+from backend.sc05_paper_only import run_paper
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
     SC05DelegatedAuthorization, flag as worker_flag, worker_status
@@ -232,6 +233,102 @@ def list_owned(db,owner):
             "runs":[run_view(x) for x in runs],"budget":budget_status(db)}
 
 
+
+class _SC05PrefixBoundary(Exception):
+    pass
+
+
+def diagnose_search_query_checkpoint(row, paper):
+    """Read-only replay of the four saved gated stages; never calls DeepSeek/OpenAlex."""
+    if row.status != "failed" or row.error != "Missing/invalid search query":
+        raise EvidenceError("Not a saved search-query validation failure")
+    if row.variant != "science_gate_on" or row.calls != 4:
+        raise EvidenceError("Only the four-stage gated search-query failure is supported")
+    entries = load(row.checkpoints_json, [])
+    expected = ["method_lineage", "diagnosis", "scientific_value_triage", "evidence_questions"]
+    if not isinstance(entries, list) or len(entries) != 4:
+        raise EvidenceError("Expected exactly four saved model checkpoints")
+    if [x.get("stage") for x in entries if isinstance(x, dict)] != expected:
+        raise EvidenceError("Saved checkpoint stages are incomplete or reordered")
+    pages = load(paper.pages_json, {})
+    frozen = load(paper.shared_evidence_json)
+    cursor = [0]
+    captured = {}
+
+    def cached_only(api_key, model, system, payload, max_tokens=3000):
+        if cursor[0] >= len(entries):
+            raise _SC05PrefixBoundary()
+        entry = entries[cursor[0]]
+        fingerprint = hashlib.sha256(dump({
+            "model": model, "system": system, "payload": payload,
+            "max_tokens": max_tokens,
+        }).encode()).hexdigest()
+        if (entry.get("prompt_sha256") != fingerprint
+            or entry.get("stage") != payload.get("sc05_stage")
+            or entry.get("model") != model):
+            raise EvidenceError("Saved prompt fingerprint mismatch at " + str(payload.get("sc05_stage")))
+        if payload.get("sc05_stage") == "evidence_questions":
+            captured["response"] = entry.get("response")
+        cursor[0] += 1
+        return entry.get("response"), entry.get("usage", {})
+
+    def stop_before_search(*args, **kwargs):
+        raise _SC05PrefixBoundary()
+
+    outcome = "unknown"
+    reason = ""
+    try:
+        run_paper(
+            None, "cached-response-only", model_call=cached_only,
+            search_provider=stop_before_search, source_title=paper.title,
+            pages_override=pages, source_sha=paper.source_sha,
+            frozen_snapshot=frozen, scientific_value_gate=True, max_calls=40,
+        )
+    except _SC05PrefixBoundary:
+        outcome = "parser_passed"
+    except EvidenceError as exc:
+        reason = str(exc)[:180]
+        if reason == "Missing/invalid search query":
+            outcome = "query_validation_failed"
+        else:
+            raise
+    raw = captured.get("response")
+    if not isinstance(raw, dict):
+        raise EvidenceError("Saved evidence_questions response is not an object")
+    items = raw.get("queries")
+    summaries = []
+    if isinstance(items, list):
+        for item in items[:7]:
+            if not isinstance(item, dict):
+                summaries.append({"item_type": type(item).__name__})
+                continue
+            value = item.get("query")
+            aliases = [key for key in ("search_query", "question", "text")
+                       if isinstance(item.get(key), str) and item.get(key).strip()]
+            summaries.append({
+                "keys": sorted(str(k) for k in item.keys()),
+                "need": item.get("need"),
+                "query_type": type(value).__name__,
+                "query_length": len(value) if isinstance(value, str) else None,
+                "query_blank": not value.strip() if isinstance(value, str) else None,
+                "query_alias_fields": aliases,
+                "assumption_length": (len(item.get("assumption_to_test"))
+                    if isinstance(item.get("assumption_to_test"), str) else None),
+            })
+    return {
+        "ready": outcome == "parser_passed",
+        "outcome": outcome,
+        "reason": reason,
+        "cached_stages": cursor[0],
+        "prompt_hashes_verified": cursor[0] == 4,
+        "queries_type": type(items).__name__,
+        "queries_count": len(items) if isinstance(items, list) else None,
+        "query_items": summaries,
+        "paid_calls_on_check": 0,
+        "network_searches_on_check": 0,
+    }
+
+
 def preflight(db,owner,run_id):
     row=own_run(db,owner,run_id)
     paper=db.get(SC05Case,row.case_id)
@@ -246,7 +343,12 @@ def preflight(db,owner,run_id):
     # source quotes, prompt fingerprint, model and saved usage without a provider call.
     repair_ready=False
     repair_summary=None
-    if row.status=="failed":
+    if row.status=="failed" and row.error=="Missing/invalid search query":
+        try:
+            repair_summary={"search_query_repair":diagnose_search_query_checkpoint(row,paper)}
+        except (EvidenceError,ValueError,TypeError) as exc:
+            repair_summary={"ready":False,"reason":str(exc)[:180],"paid_calls_on_check":0}
+    elif row.status=="failed":
         try:
             info=check_fact_type_resume(row,paper)
             repair_ready=True
