@@ -61,7 +61,7 @@
 3. 使用 `create_paper_case` 保存标题和 `page_01`、`page_02` 等页面文本。
 4. 工具会应用与 PDF 上传相同的盲测过滤规则，计算来源 SHA-256，并保存到 PostgreSQL。
 
-该 MCP 文本入口每次请求最多接收 **48,000 个提取字符**。更长的 PDF 使用已认证的 Research Atlas PDF 上传页面；不要把私有 PDF 提交到 GitHub。
+该 MCP 文本入口每次请求最多接收 **48,000 字节的 UTF-8 JSON 负载**（中文字符会占用多个字节）。更长的 PDF 使用已认证的 Research Atlas PDF 上传页面；不要把私有 PDF 提交到 GitHub。
 
 创建案例不调用 DeepSeek，也不产生模型费用。
 
