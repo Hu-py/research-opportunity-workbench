@@ -88,9 +88,11 @@ def execute_probe_once(factory, *, require_pg=True) -> str | None:
     return probe_id
 
 
-def execute_once(factory, *, delegated_only: bool = False) -> bool:
+def execute_once(factory, *, delegated_only: bool = False,
+                 require_pg: bool = True) -> bool:
     """Claim one paid job. Delegated mode never consumes legacy queued runs."""
-    require_postgres(factory)
+    if require_pg:
+        require_postgres(factory)
     with factory() as db:
         # A previous paid call may be in flight. Never assume it is safe to retry.
         active = db.scalar(
