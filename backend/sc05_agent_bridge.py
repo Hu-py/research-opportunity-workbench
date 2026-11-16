@@ -1151,6 +1151,138 @@ def mount(app,*,get_db,get_factory):
                     if "report_md" in data["run"]:
                         data["run"]["report_md"]=data["run"]["report_md"][:50000]
                     payload=result(data)
+                elif name=="prepare_ab_pair":
+                    payload=result(pair_preflight(db,owner,arguments.get("pair_id","")))
+                elif name=="get_ab_pair_status":
+                    state=pair_preflight(db,owner,arguments.get("pair_id",""))
+                    sync_round_from_pair(db,owner,arguments.get("pair_id",""))
+                    db.commit()
+                    payload=result(state)
+                elif name=="start_ab_pair":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
+                    pair_id=arguments.get("pair_id","")
+                    by,paper=pair_rows(db,owner,pair_id)
+                    state=pair_preflight(db,owner,pair_id)
+                    if not state["can_start_next"]:
+                        raise HTTPException(409,"A/B pair cannot start the next arm: "+state["reason"])
+                    target=by["science_gate_off"] if state["next_action"]=="start_baseline" else by["science_gate_on"]
+                    started=_start_mcp_run(app,db,owner,target,background,paid_enabled,
+                                           arguments.get("confirm_paid") is True)
+                    sync_round_from_pair(db,owner,pair_id)
+                    db.commit()
+                    payload=result({"pair_id":pair_id,"started_arm":target.variant,
+                                    "run":started["run"],"next_action":"wait_for_completion",
+                                    "message":"Only the next sequential arm was queued. Re-check pair status after completion."})
+                elif name=="get_ab_pair_result":
+                    pair_id=arguments.get("pair_id","")
+                    by,paper=pair_rows(db,owner,pair_id)
+                    if any(x.status!="completed" for x in by.values()):
+                        raise HTTPException(409,"Both A/B arms must complete before blind review")
+                    ordered=blind_order(list(by.values()),pair_id)
+                    payload=result({"pair_id":pair_id,"ready":True,"source_sha256":paper.source_sha,
+                        "reports":[{"label":chr(65+i),"report_md":row.report_md[:50000],
+                                    "quality":load(row.result_json,{}).get("quality",{}),
+                                    "model_calls":row.calls,"input_tokens":row.input_tokens,
+                                    "output_tokens":row.output_tokens}
+                                   for i,row in enumerate(ordered)],
+                        "note":"A/B labels are anonymized. Do not infer the variant from report order; use blind scoring before unblinding."})
+                elif name=="record_blind_review":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
+                    pair_id=arguments.get("pair_id","")
+                    by,paper=pair_rows(db,owner,pair_id)
+                    if any(x.status!="completed" for x in by.values()):
+                        raise HTTPException(409,"Both reports must complete before scoring")
+                    label=arguments.get("label")
+                    if label not in ("A","B"):
+                        raise HTTPException(422,"Blind label must be A or B")
+                    ordered=blind_order(list(by.values()),pair_id)
+                    target=ordered[ord(label)-65]
+                    if db.scalars(select(SC05Rating).where(
+                        SC05Rating.member_id==owner.id,SC05Rating.run_id==target.id
+                    ).limit(1)).first():
+                        raise HTTPException(409,"This blind report has already been scored")
+                    values={}
+                    for key in ("accuracy","science_value","narrative","literature","feasibility"):
+                        value=arguments.get(key)
+                        if not isinstance(value,int) or isinstance(value,bool) or not 0<=value<=5:
+                            raise HTTPException(422,"All blind scores must be integers from 0 to 5")
+                        values[key]=value
+                    tags=arguments.get("failure_tags",[])
+                    if not isinstance(tags,list) or len(tags)>6 or any(x not in FAILURE_TAGS for x in tags):
+                        raise HTTPException(422,"Invalid blind-review failure tags")
+                    feedback=str(arguments.get("feedback",""))[:3000]
+                    hard_failure=arguments.get("hard_failure",False) is True
+                    rating=SC05Rating(
+                        id="sc05rating_"+uuid.uuid4().hex[:28],member_id=owner.id,
+                        run_id=target.id,accuracy=values["accuracy"],
+                        science_value=values["science_value"],narrative=values["narrative"],
+                        literature=values["literature"],feasibility=values["feasibility"],
+                        hard_failure=hard_failure,feedback=feedback,
+                        failure_tags_json=dump(tags))
+                    db.add(rating)
+                    score=(values["accuracy"]*15+values["science_value"]*30+
+                           values["narrative"]*25+values["literature"]*20+
+                           values["feasibility"]*10)/5
+                    add_audit(db,"sc05.mcp_blind_review",owner.id,target.id,
+                              "label="+label+";score="+str(score)+";hard_failure="+str(hard_failure))
+                    db.commit()
+                    payload=result({"saved":True,"pair_id":pair_id,"label":label,
+                                    "score":0 if hard_failure else score,
+                                    "variant_revealed":False})
+                elif name=="compare_ab_pair":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
+                    pair_id=arguments.get("pair_id","")
+                    by,paper=pair_rows(db,owner,pair_id)
+                    if any(x.status!="completed" for x in by.values()):
+                        raise HTTPException(409,"Both A/B arms must complete")
+                    ratings={x.run_id:x for x in db.scalars(select(SC05Rating).where(
+                        SC05Rating.member_id==owner.id,
+                        SC05Rating.run_id.in_([r.id for r in by.values()])
+                    )).all()}
+                    if set(ratings)!=set(x.id for x in by.values()):
+                        raise HTTPException(409,"Both anonymized reports must be blindly scored before unblinding")
+                    details=[]
+                    for variant,row in by.items():
+                        rating=ratings[row.id]
+                        score=(rating.accuracy*15+rating.science_value*30+
+                               rating.narrative*25+rating.literature*20+
+                               rating.feasibility*10)/5
+                        details.append({"variant":variant,"run_id":row.id,
+                            "blind_score":0 if rating.hard_failure else score,
+                            "science_value":rating.science_value,"hard_failure":rating.hard_failure,
+                            "failure_tags":load(rating.failure_tags_json,[]),
+                            "feedback":rating.feedback,"model_calls":row.calls,
+                            "input_tokens":row.input_tokens,"output_tokens":row.output_tokens,
+                            "quality":load(row.result_json,{}).get("quality",{})})
+                    base=next(x for x in details if x["variant"]=="science_gate_off")
+                    gate=next(x for x in details if x["variant"]=="science_gate_on")
+                    sync_round_from_pair(db,owner,pair_id)
+                    add_audit(db,"sc05.ab_unblinded",owner.id,pair_id,
+                              "score_delta="+str(gate["blind_score"]-base["blind_score"]))
+                    db.commit()
+                    payload=result({"pair_id":pair_id,"unblinded":True,"runs":details,
+                        "score_delta":gate["blind_score"]-base["blind_score"],
+                        "scientific_value_delta":gate["science_value"]-base["science_value"],
+                        "note":"Researcher scores are evaluation evidence, not proof of scientific correctness."})
+                elif name=="list_experiment_rounds":
+                    rounds=db.scalars(select(SC05ExperimentRound).where(
+                        SC05ExperimentRound.member_id==owner.id
+                    ).order_by(SC05ExperimentRound.created_at.desc()).limit(100)).all()
+                    payload=result({"categories":ROUND_CATEGORIES,
+                                    "rounds":[round_view(x) for x in rounds]})
+                elif name=="record_experiment_round":
+                    row=upsert_round(db,owner,arguments)
+                    db.commit()
+                    payload=result(round_view(row))
                 elif name=="start_experiment":
                     if RUN not in scopes:
                         payload=step_up_result()
