@@ -130,6 +130,8 @@ def model_mock(key,model,system,payload,max_tokens=2400):
         }]},{"input_tokens":120,"output_tokens":80}
     if stage=="literature_assessment":
         assert payload["papers"][0]["id"]==PAPER["id"]
+        assert "diagnosis_links" in payload["required_json_shape"]["assessments"][0]
+        assert "unlinked_reason" in payload["required_json_shape"]["assessments"][0]
         return {"assessments":[{
             "paper_id":PAPER["id"],"diagnosis_ids":["D01"],
             "tested_problem":"Response of transport flow to closure",
