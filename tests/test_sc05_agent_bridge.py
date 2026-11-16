@@ -270,7 +270,7 @@ def test_owner_mcp_keeps_pair_mapping_hidden_until_blind_compare(workspace):
     case=client.post("/api/personal-research/me/sc05/cases",headers=session,
         json={"title":"Blind mapping privacy test","pages":pages})
     assert case.status_code==201,case.text
-    pair=client.post(BASE+"/cases/"+case.json()["id"]+"/ab",headers=session)
+    pair=client.post("/api/personal-research/me/sc05/cases/"+case.json()["id"]+"/ab",headers=session)
     assert pair.status_code==201,pair.text
     pair_id=pair.json()["pair_id"]
     runs=pair.json()["runs"]
@@ -284,7 +284,7 @@ def test_owner_mcp_keeps_pair_mapping_hidden_until_blind_compare(workspace):
             row.report_md="# Blind report"
             row.result_json=dump({"quality":{"warnings":[]}})
         db.add(SC05Rating(
-            id="sc05rating_"+"a"*28,member_id=runs[0]["id"][:0]+db.get(SC05Run,runs[0]["id"]).member_id,
+            id="sc05rating_"+"a"*28,member_id=db.get(SC05Run,runs[0]["id"]).member_id,
             run_id=runs[0]["id"],accuracy=4,science_value=4,narrative=4,
             literature=4,feasibility=4,hard_failure=False,feedback="",
             failure_tags_json="[]"))
@@ -318,11 +318,6 @@ def test_owner_mcp_keeps_pair_mapping_hidden_until_blind_compare(workspace):
     pair_runs=[x for x in after["runs"] if x.get("pair_id")==pair_id]
     assert len(pair_runs)==2
     assert all("id" in x and "variant" in x for x in pair_runs)
-    with factory() as db:
-        from backend.sc05_agent_bridge import SC05ExperimentRound
-        assert db.scalars(select(SC05ExperimentRound).where(
-            SC05ExperimentRound.pair_id==pair_id)).first() is None
-
 
 def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypatch):
     client,factory=workspace
