@@ -345,7 +345,9 @@ def preflight(db,owner,run_id):
     repair_summary=None
     if row.status=="failed" and row.error=="Missing/invalid search query":
         try:
-            repair_summary={"search_query_repair":diagnose_search_query_checkpoint(row,paper)}
+            query_info=diagnose_search_query_checkpoint(row,paper)
+            repair_summary={"search_query_repair":query_info}
+            repair_ready=bool(query_info.get("ready"))
         except (EvidenceError,ValueError,TypeError) as exc:
             repair_summary={"ready":False,"reason":str(exc)[:180],"paid_calls_on_check":0}
     elif row.status=="failed":
