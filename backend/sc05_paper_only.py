@@ -884,7 +884,8 @@ def run_paper(
     diagnosis_raw = _run(model_call,api_key,"diagnosis",
         SYSTEM_PROMPT + "\n必须先重建研究实际支持的结论，识别测量、"
         "验证与推断边界。不要预先猜下一篇要做什么；不强制产生诊断。",
-        {**model_payload(snapshot),"method_lineage":lineage},log,max_calls=max_calls)
+        {**model_payload(snapshot),"method_lineage":lineage},
+        log,max_calls=max_calls,max_tokens=6000)
     diagnosis=validate_diagnosis(diagnosis_raw,snapshot)
     if scientific_value_gate:
         triage_raw=_run(model_call,api_key,"scientific_value_triage",
