@@ -21,7 +21,7 @@ from backend.sc05_research_diagnosis import (
     required, text_items, validate_diagnosis, verify_facts,
 )
 
-VERSION = "sc05-paper-only-v0.2.0"
+VERSION = "sc05-paper-only-v0.3.0"
 MODEL = "deepseek-flash"
 FACT_KINDS = {"objective", "data", "method", "evaluation", "result", "limitation", "other"}
 # The first real provider run showed that valid cited facts can carry
@@ -108,7 +108,8 @@ ROUTE_SCHEMA = {"routes": [{
     "negative_result": "A result that would reject or substantially weaken this idea",
     "unknowns": ["Missing evidence"],
 }]}
-LITERATURE_SCHEMA = {"assessments": [{
+# V1 is retained solely to validate/replay already-paid legacy checkpoints.
+LITERATURE_SCHEMA_V1 = {"assessments": [{
     "paper_id": "doi:10.xxxx/yyyy",
     "diagnosis_ids": ["D01"],
     "tested_problem": "What this actual abstract says was investigated",
@@ -118,6 +119,41 @@ LITERATURE_SCHEMA = {"assessments": [{
     "unresolved": "What the abstract does not establish",
     "abstract_excerpt": "An exact contiguous 12-150 character excerpt if abstract exists",
 }]}
+LITERATURE_ASSESSMENT_SYSTEM_V1 = (
+    "你是独立文献查新辅助员。仅凭以下真实OpenAlex摘要，逐篇核查"
+    "其研究对象、实际方法、与诊断的关系、可转移的前提及未解问题。"
+    "严格引用paper_id，且必须逐字摘录12-150字符原始摘要。"
+    "本批最多评估20篇。不得假称阅读全文，不得宣布创新性已证实。"
+)
+LITERATURE_SCHEMA = {"assessments": [{
+    "paper_id": "doi:10.xxxx/yyyy",
+    "diagnosis_links": [{
+        "diagnosis_id": "D01",
+        "relation_type": "direct|indirect|counterexample",
+        "relation_explanation": "Why this paper relates to this exact diagnosis; for indirect links explain the mechanism bridge, and for counterexamples explain the conflicting result or rival explanation",
+    }],
+    "unlinked_reason": "Required only when diagnosis_links is empty; explain why no diagnosis can be confidently linked",
+    "tested_problem": "What this actual abstract says was investigated",
+    "method": "Reported methods only, otherwise not reported",
+    "relevance": "close|partial|counterexample|low",
+    "conditional_transfer": "Which evidence assumptions need to hold",
+    "unresolved": "What the abstract does not establish",
+    "abstract_excerpt": "An exact contiguous 12-150 character excerpt if abstract exists",
+}]}
+LITERATURE_ASSESSMENT_SYSTEM = (
+    "你是独立文献查新辅助员。仅凭以下真实OpenAlex摘要，逐篇核查"
+    "其研究对象、实际方法、与诊断的关系、可转移的前提及未解问题。"
+    "必须逐篇、逐个诊断建立 diagnosis_links。relation_type 只能是 direct、indirect、counterexample。"
+    "direct 表示论文直接研究该诊断所指向的问题或机制；indirect 表示存在明确的中间机制桥梁，"
+    "必须在 relation_explanation 中写清桥梁，不能只说主题相似；counterexample 表示论文结果、"
+    "边界条件或竞争机制对该诊断构成反例或实质性限定，必须说明冲突点。"
+    "一篇论文可以关联多个诊断，也可以对不同诊断使用不同关系类型。"
+    "只有无法可靠对应任何诊断时才令 diagnosis_links 为空，并填写 unlinked_reason；"
+    "不得为了填字段而强行关联。"
+    "relevance 是文献与主题的接近程度，与 relation_type 是不同维度。"
+    "严格引用 paper_id；若摘要存在，abstract_excerpt 必须是摘要中连续12-150字符原文。"
+    "本批最多评估20篇。不得假称阅读全文，不得宣布创新性已证实。"
+)
 CRITIC_SCHEMA = {"reviews": [{
     "route_id": "R01",
     "verdict": "test|hold|reject",
