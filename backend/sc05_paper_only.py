@@ -451,10 +451,13 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
                 raise EvidenceError("Literature evidence quote does not match OpenAlex abstract")
         elif excerpt not in ("",None):
             raise EvidenceError("No abstract available for claimed evidence quote")
+        raw_diagnosis_refs=item.get("diagnosis_ids")
+        diagnosis_refs=[] if raw_diagnosis_refs is None else _references(
+            raw_diagnosis_refs,diag_ids,"literature diagnosis",allow_empty=True)
         result.append({
             "paper_id":pid,
-            "diagnosis_ids":_references(item.get("diagnosis_ids"),diag_ids,
-                "literature diagnosis",allow_empty=not diag_ids),
+            "diagnosis_ids":diagnosis_refs,
+            "diagnosis_link_status":"linked" if diagnosis_refs else "unlinked",
             "tested_problem":_limited(item.get("tested_problem"),"tested_problem"),
             "method":_limited(item.get("method"),"paper method"),
             "relevance":item["relevance"],
@@ -828,6 +831,14 @@ def run_paper(
         "novelty_proved":False,
     }
     output["quality"]=inspect_report(output)
+    unlinked_literature=sum(1 for item in literature
+                            if not item.get("diagnosis_ids"))
+    if unlinked_literature:
+        output["quality"].setdefault("warnings",[]).append(
+            str(unlinked_literature)+" literature assessment(s) are retained as "
+            "unlinked background; no diagnosis association was inferred."
+        )
+        output["quality"]["unlinked_literature_assessments"]=unlinked_literature
     unknown_confidence=sum(
         1 for d in diagnosis["diagnoses"]
         if d.get("confidence") == "not_assessed"
