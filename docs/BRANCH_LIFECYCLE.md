@@ -22,7 +22,9 @@
 - URL：`https://research-atlas-devstudio-e2e-ejmh.onrender.com`
 - 代码分支：`experiment/devstudio-postgres-e2e-20261114`
 - 自动部署：关闭（`autoDeploy=no`）
+- 最新观察到的 Live deploy commit：`262f3b053bb8a3910aed85bda1665073fcfad5f1`（2026-11-16）
 - 数据库：隔离测试 PostgreSQL
+- Render 日志显示 inline worker 已启动且 `live_deepseek_enabled=True`；真实付费调用仍须在当前对话获得明确授权
 
 因此：向 staging 分支提交代码不等于 Render 已部署。每次发布都要核对 Render 的当前 live deploy commit，并在手动部署后重新做健康检查和 MCP 检查。
 
