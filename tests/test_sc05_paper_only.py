@@ -451,3 +451,15 @@ def test_mixed_extraction_drops_non_source_quote_but_retains_verified_fact():
     assert len(result["snapshot"]["observations"])==1
     assert result["snapshot"]["observations"][0]["verbatim_excerpt"]==valid
     assert any(x.get("rule")=="unverified_source_quote_rejected" for x in result["source_note"])
+
+
+def test_search_plan_caps_excess_queries_in_model_priority_order():
+    from backend.sc05_paper_only import search_plan
+    diagnoses=[{"id":"D01"}]
+    raw={"queries":[
+      {"diagnosis_ids":["D01"],"query":f"query {i}","need":"validation"}
+      for i in range(9)
+    ]}
+    result=search_plan(raw,diagnoses)
+    assert len(result)==7
+    assert [x["query"] for x in result]==[f"query {i}" for i in range(7)]
