@@ -284,7 +284,12 @@ def mount(app,*,get_db,get_factory):
         data=dict(request.query_params)
         authorize_request(data)
         return HTMLResponse(form_html(data),headers={"Cache-Control":"no-store",
-                  "Content-Security-Policy":"default-src 'none';style-src 'unsafe-inline';form-action 'self';base-uri 'none';frame-ancestors 'none'"})
+                  # Chromium/WebKit enforce form-action across the full
+                  # POST -> 303 redirect chain. 'self' alone blocked our
+                  # validated ChatGPT OAuth callback while the form appeared
+                  # unresponsive. Allow only the fixed callback origin.
+                  "Content-Security-Policy":"default-src 'none';style-src 'unsafe-inline';form-action 'self' https://chatgpt.com;base-uri 'none';frame-ancestors 'none'",
+                  "Referrer-Policy":"no-referrer"})
 
     @router.post("/oauth/authorize")
     async def authorize_submit(request:Request,db:Session=Depends(get_db)):
