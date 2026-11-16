@@ -173,8 +173,8 @@
 
 - PostgreSQL 是运行状态、检查点、审计和轮次台账的权威记录。
 - R2 是可选私有归档；R2 失败不能触发重复的付费模型请求。
-- Render free Web Service 可能休眠或重启。Inline worker 不是高可用独立 Worker。
-- 当前 Render workspace 没有已确认的独立 SC05 Background Worker 资源；在确认实际执行器状态前，不得打开付费启动。
+- Render free Web Service 可能休眠或重启。当前没有单独的 SC05 Background Worker 资源；Render 日志（2026-11-16）已观察到 inline worker 启动且 `live_deepseek_enabled=True`，所以当前部署技术上具备付费执行能力，但这不构成用户授权。
+- 在启动付费任务前仍须检查当前执行器状态、队列和预算；不得仅凭 MCP 接口可访问就启动模型。
 - `claimed` / `running` 中断任务不会自动偷取或重放，避免重复扣费；必须先检查保存检查点。
 - API Bearer Token、Owner 密码、DeepSeek Key、PostgreSQL URL、R2 密钥不得粘贴到 ChatGPT 或提交 GitHub。
 
