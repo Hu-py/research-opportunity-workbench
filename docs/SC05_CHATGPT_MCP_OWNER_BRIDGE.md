@@ -100,3 +100,25 @@ All other variables above stay unchanged. The worker only consumes rows in `sc05
 - Live DeepSeek execution is **not** proven by the synthetic zero-cost probe. Real provider and R2 integration require a separately authorized limited-cost test and successful immutable checkpoint/manifest audit.
 - Postgres is the primary persistent record. The database snapshot/backup plan must be completed before its free-instance expiration.
 - The Owner may need to disconnect/reconnect the custom ChatGPT MCP plugin to request the upgraded scopes, depending on the client.
+
+
+## 2026-11-16: superseding pair-level ChatGPT workflow
+
+This section supersedes the earlier five-tool inventory above. The earlier table describes the first bridge iteration, not the current staging branch.
+
+The current MCP registry also includes:
+- `prepare_ab_pair`: pair-level source, pipeline, evidence, status and budget preflight.
+- `get_ab_pair_status`: pair phase, checkpoint summaries and next safe action.
+- `start_ab_pair`: sequential idempotent runner; starts gate-off first, then gate-on only after the baseline has completed and frozen shared evidence.
+- `get_ab_pair_result`: anonymized A/B report retrieval.
+- `record_blind_review`: one immutable score for anonymous A or B.
+- `compare_ab_pair`: unblinds only after both anonymous reports have scores.
+- `list_experiment_rounds` and `record_experiment_round`: durable Owner-scoped experiment log with category, round code, problem, method, experiment content, status, brief result, next step and detailed record.
+
+The experiment-round table is registered in SQLAlchemy metadata and is created in the isolated staging schema during app initialization. It is separate from DevStudio's generic experiment record; DevStudio links remain a navigation/integration layer, while the SC05 round ledger is the experiment's structured research record.
+
+**Current deployment caveat:** the isolated Render service is configured with auto-deploy off. The service must be manually deployed after the latest branch commit. A successful Render deploy does not refresh an already-connected ChatGPT tool schema automatically; the Owner may need to refresh or reconnect the custom MCP connection and reauthorize `experiments:run`.
+
+**Current worker caveat:** the free Render web service's inline worker is not equivalent to a durable independent worker. The no-cost PostgreSQL probe validates only queue write/read, not live DeepSeek execution. Keep paid execution disabled until a real worker consumer, provider credential, budget enforcement and checkpoint behavior are verified. Do not treat queued status as a completed experiment.
+
+For the authoritative final gates, see [SC05 ChatGPT end-to-end acceptance](SC05_CHATGPT_ACCEPTANCE.md).
