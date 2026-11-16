@@ -19,7 +19,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, select, update
 from sqlalchemy.orm import Mapped, Session, mapped_column
-from research_workbench.core import Base
+from research_workbench.core import Base, query_openalex
 from backend.team import TeamMember, add_audit
 from backend.model_gateway import request_json
 from backend.research_budget import reserve, record_usage, status as budget_status
@@ -394,6 +394,91 @@ def check_search_query_resume(row: SC05Run, doc: SC05Case) -> dict:
     }
 
 
+class _LiteraturePrefixBoundary(Exception):
+    """Stop after validating saved literature output, before new model calls."""
+
+
+def check_literature_diagnosis_resume(row: SC05Run, doc: SC05Case) -> dict:
+    """Verify the five saved gated prompts and conservatively parse unlinked literature.
+
+    OpenAlex is queried again to reconstruct the literature-assessment prompt.
+    If its results differ from the saved prompt fingerprint, recovery is refused.
+    No DeepSeek request is made by this check.
+    """
+    if row.status != "failed" or row.error != "Missing references: literature diagnosis":
+        raise EvidenceError("Not the eligible missing literature-diagnosis reference failure")
+    if row.variant != "science_gate_on" or row.calls != 5:
+        raise EvidenceError("Only the five-stage gated literature-assessment failure is eligible")
+    entries = load(row.checkpoints_json, [])
+    expected = ["method_lineage", "diagnosis", "scientific_value_triage",
+                "evidence_questions", "literature_assessment"]
+    if not isinstance(entries, list) or len(entries) != 5:
+        raise EvidenceError("Expected exactly five saved model checkpoints")
+    if [x.get("stage") for x in entries if isinstance(x, dict)] != expected:
+        raise EvidenceError("Saved literature checkpoints are incomplete or reordered")
+    pages = load(doc.pages_json, {})
+    frozen = load(doc.shared_evidence_json)
+    if not frozen:
+        raise EvidenceError("Literature recovery requires frozen baseline facts")
+    cursor = [0]
+    captured = {}
+    openalex_queries = []
+
+    def cached_only(api_key, model, system, payload, max_tokens=3000):
+        if cursor[0] >= len(entries):
+            raise _LiteraturePrefixBoundary()
+        entry = entries[cursor[0]]
+        fingerprint = hashlib.sha256(dump({
+            "model": model, "system": system, "payload": payload,
+            "max_tokens": max_tokens,
+        }).encode()).hexdigest()
+        stage = payload.get("sc05_stage")
+        if (entry.get("prompt_sha256") != fingerprint
+            or entry.get("stage") != stage
+            or entry.get("model") != model):
+            raise EvidenceError("Saved prompt fingerprint mismatch at " + str(stage))
+        if stage == "literature_assessment":
+            captured["response"] = entry.get("response")
+        cursor[0] += 1
+        return entry.get("response"), entry.get("usage", {})
+
+    def openalex_provider(query, since, limit=7):
+        openalex_queries.append(query)
+        return query_openalex(query, since, limit=limit)
+
+    try:
+        run_paper(
+            None, "cached-response-only", model_call=cached_only,
+            search_provider=openalex_provider, source_title=doc.title,
+            pages_override=pages, source_sha=doc.source_sha,
+            frozen_snapshot=frozen, scientific_value_gate=True, max_calls=40,
+        )
+    except _LiteraturePrefixBoundary:
+        pass
+    except EvidenceError as exc:
+        raise EvidenceError(
+            "Saved literature checkpoint is not safely recoverable: " + str(exc)[:120]
+        ) from exc
+    if cursor[0] != 5:
+        raise EvidenceError("Cached replay did not verify all five saved stages")
+    raw = captured.get("response")
+    assessments = raw.get("assessments") if isinstance(raw, dict) else None
+    if not isinstance(assessments, list):
+        raise EvidenceError("Saved literature assessment response has invalid shape")
+    unlinked = sum(
+        1 for item in assessments
+        if not isinstance(item, dict) or not item.get("diagnosis_ids")
+    )
+    return {
+        "cached_stages": 5,
+        "prompt_hashes_verified": True,
+        "assessment_count": len(assessments),
+        "unlinked_assessments": unlinked,
+        "openalex_queries_replayed": len(openalex_queries),
+        "paid_calls_on_check": 0,
+    }
+
+
 def eligible_unstarted_gate_migration(db:Session,row:SC05Run,doc:SC05Case,
                                       current_sha:str)->bool:
     """Safely re-pin an unexecuted B run after recovering its original A.
@@ -606,6 +691,14 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
                                       ";validated_queries="+str(info["validated_queries"])+
                                       ";max_query_length="+str(info["max_query_length"])+
                                       ";no_paid_replay=True")
+                    elif row.error=="Missing references: literature diagnosis":
+                        info=check_literature_diagnosis_resume(row,document)
+                        audit_action="sc05.verified_unlinked_literature_repair"
+                        audit_detail=("old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
+                                      ";cached_stages="+str(info["cached_stages"])+
+                                      ";unlinked_assessments="+str(info["unlinked_assessments"])+
+                                      ";openalex_queries_replayed="+str(info["openalex_queries_replayed"])+
+                                      ";no_paid_replay=True")
                     else:
                         info=check_fact_type_resume(row,document)
                         audit_action="sc05.verified_taxonomy_parser_repair"
@@ -635,6 +728,9 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
         try:
             if row.error=="Missing/invalid search query":
                 result=check_search_query_resume(row,db.get(SC05Case,row.case_id))
+                return {"ready":True,"requires_migration":True,**result}
+            if row.error=="Missing references: literature diagnosis":
+                result=check_literature_diagnosis_resume(row,db.get(SC05Case,row.case_id))
                 return {"ready":True,"requires_migration":True,**result}
             result=check_fact_type_resume(row,db.get(SC05Case,row.case_id))
         except (EvidenceError,ValueError,TypeError) as exc:
