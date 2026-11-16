@@ -165,14 +165,15 @@ def test_optional_open_questions_accept_single_string_without_inventing_content(
 
 
 
-def test_inferred_epistemic_status_is_conservatively_normalized_and_preserved():
-    raw=valid_response()
-    raw["diagnoses"][0]["epistemic_status"]="inferred"
-    result=validate_diagnosis(raw,snapshot())
-    issue=result["diagnoses"][0]
-    assert issue["epistemic_status"]=="hypothesis"
-    assert issue["raw_epistemic_status"]=="inferred"
-    assert issue["epistemic_status_normalized"] is True
+def test_inferred_and_unknown_fact_epistemic_statuses_are_normalized_and_preserved():
+    for raw_status,expected in [("inferred","hypothesis"),("unknown_fact","unknown")]:
+        raw=valid_response()
+        raw["diagnoses"][0]["epistemic_status"]=raw_status
+        result=validate_diagnosis(raw,snapshot())
+        issue=result["diagnoses"][0]
+        assert issue["epistemic_status"]==expected
+        assert issue["raw_epistemic_status"]==raw_status
+        assert issue["epistemic_status_normalized"] is True
 
 
 
