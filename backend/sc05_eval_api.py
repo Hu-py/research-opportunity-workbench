@@ -467,6 +467,7 @@ def check_literature_diagnosis_resume(row: SC05Run, doc: SC05Case) -> dict:
             search_provider=openalex_provider, source_title=doc.title,
             pages_override=pages, source_sha=doc.source_sha,
             frozen_snapshot=frozen, scientific_value_gate=True, max_calls=40,
+            legacy_literature_checkpoint=True,
         )
     except _LiteraturePrefixBoundary:
         pass
@@ -482,7 +483,9 @@ def check_literature_diagnosis_resume(row: SC05Run, doc: SC05Case) -> dict:
         raise EvidenceError("Saved literature assessment response has invalid shape")
     unlinked = sum(
         1 for item in assessments
-        if not isinstance(item, dict) or not item.get("diagnosis_ids")
+        if not isinstance(item, dict) or not (
+            item.get("diagnosis_links") or item.get("diagnosis_ids")
+        )
     )
     return {
         "cached_stages": 5,
