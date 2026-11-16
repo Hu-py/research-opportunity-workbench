@@ -6,6 +6,7 @@ checkpoint compatibility, frozen A/B evidence and provider budgets.
 """
 from __future__ import annotations
 
+from datetime import datetime
 import base64
 import hashlib
 import html
@@ -20,7 +21,7 @@ from urllib.parse import parse_qs, urlencode
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, select
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
@@ -117,6 +118,30 @@ class OAuthGrant(Base):
     revoked:Mapped[int]=mapped_column(Integer,default=0)
 
 
+class SC05ExperimentRound(Base):
+    """Owner-scoped, durable round ledger for ChatGPT-managed SC05 work."""
+    __tablename__="sc05_experiment_rounds"
+    __table_args__=(UniqueConstraint("member_id","round_code",
+                                     name="uq_sc05_round_member_code"),)
+    id:Mapped[str]=mapped_column(String(55),primary_key=True)
+    member_id:Mapped[str]=mapped_column(String(36),ForeignKey("team_members.id"),index=True)
+    round_code:Mapped[str]=mapped_column(String(32))
+    category_code:Mapped[str]=mapped_column(String(16))
+    category_label:Mapped[str]=mapped_column(String(80))
+    problem:Mapped[str]=mapped_column(Text)
+    method:Mapped[str]=mapped_column(Text)
+    experiment_content:Mapped[str]=mapped_column(Text)
+    status:Mapped[str]=mapped_column(String(24),default="planned")
+    brief_result:Mapped[str]=mapped_column(Text,default="")
+    next_step:Mapped[str]=mapped_column(Text,default="")
+    detailed_record_json:Mapped[str]=mapped_column(Text,default="{}")
+    pair_id:Mapped[str|None]=mapped_column(String(55),nullable=True,index=True)
+    source_sha:Mapped[str]=mapped_column(String(64),default="")
+    pipeline_sha:Mapped[str]=mapped_column(String(64),default="")
+    created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+    updated_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
+
+
 def authorize_request(data):
     base=public_base()
     if data.get("response_type")!="code":
@@ -198,14 +223,53 @@ TOOLS=[
     {"name":"get_experiment_status","description":"Check an existing Owner run without making model calls. Return stage, checkpoint count, tokens and errors; also sync Development Studio run status.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}},
     {"name":"get_experiment_result","description":"Read an existing completed Owner SC05 report (limited length), quality indicators and source/pipeline hashes. Read-only. No synthetic scientific scoring.",
-     "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}}
+     "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}},
+    {"name":"prepare_ab_pair","description":"Read-only pair-level preflight. Verify the same source and current pipeline, check both arms, frozen evidence, checkpoints, active jobs and budget. No model calls.",
+     "inputSchema":{"type":"object","properties":{"pair_id":{"type":"string"}},"required":["pair_id"],"additionalProperties":False}},
+    {"name":"get_ab_pair_status","description":"Read the pair's current phase and next safe action. Use this to monitor the baseline and gated arm without exposing the blind mapping.",
+     "inputSchema":{"type":"object","properties":{"pair_id":{"type":"string"}},"required":["pair_id"],"additionalProperties":False}},
+    {"name":"start_ab_pair","description":"Paid, idempotent sequential runner. Starts only the next eligible arm: gate-off baseline first; call again after it completes to start gate-on. Never starts both concurrently or duplicates an active/completed arm. Requires explicit DeepSeek spending consent.",
+     "inputSchema":{"type":"object","properties":{
+         "pair_id":{"type":"string"},
+         "confirm_paid":{"type":"boolean","description":"Set true only after the user explicitly authorizes actual DeepSeek model spending in this conversation"}},
+         "required":["pair_id","confirm_paid"],"additionalProperties":False}},
+    {"name":"get_ab_pair_result","description":"Read completed A/B reports under anonymized labels A/B, with quality warnings and token usage. Does not reveal which arm is which. No model calls.",
+     "inputSchema":{"type":"object","properties":{"pair_id":{"type":"string"}},"required":["pair_id"],"additionalProperties":False}},
+    {"name":"record_blind_review","description":"Save a human- or assistant-produced blind score for anonymized report A or B. Requires both reports complete; does not reveal the variant mapping.",
+     "inputSchema":{"type":"object","properties":{
+         "pair_id":{"type":"string"},"label":{"type":"string","enum":["A","B"]},
+         "accuracy":{"type":"integer","minimum":0,"maximum":5},
+         "science_value":{"type":"integer","minimum":0,"maximum":5},
+         "narrative":{"type":"integer","minimum":0,"maximum":5},
+         "literature":{"type":"integer","minimum":0,"maximum":5},
+         "feasibility":{"type":"integer","minimum":0,"maximum":5},
+         "hard_failure":{"type":"boolean"},"feedback":{"type":"string"},
+         "failure_tags":{"type":"array","items":{"type":"string"}}},
+         "required":["pair_id","label","accuracy","science_value","narrative","literature","feasibility"],
+         "additionalProperties":False}},
+    {"name":"compare_ab_pair","description":"Unblind and compare the A/B pair only after both anonymized reports have blind scores. Returns score deltas, quality warnings and usage.",
+     "inputSchema":{"type":"object","properties":{"pair_id":{"type":"string"}},"required":["pair_id"],"additionalProperties":False}},
+    {"name":"list_experiment_rounds","description":"List the persistent Owner experiment-round ledger, categories, brief results, next steps and detailed records. Read-only.",
+     "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
+    {"name":"record_experiment_round","description":"Create or update one durable experiment-round row. Link it to an A/B pair so status, source hash, pipeline hash and run details can be synchronized automatically.",
+     "inputSchema":{"type":"object","properties":{
+         "round_code":{"type":"string"},"category_code":{"type":"string"},"category_label":{"type":"string"},
+         "problem":{"type":"string"},"method":{"type":"string"},"experiment_content":{"type":"string"},
+         "status":{"type":"string","enum":["planned","running","completed","needs_review","blocked","cancelled"]},
+         "brief_result":{"type":"string"},"next_step":{"type":"string"},
+         "detailed_record":{"type":"object"},"pair_id":{"type":"string"}},
+         "required":["round_code","category_code","category_label","problem","method","experiment_content"],
+         "additionalProperties":False}}
 ]
 
 
 # Publish per-tool OAuth requirements so ChatGPT can request the
 # experiments:run grant and perform step-up after an earlier read-only link.
 for _tool in TOOLS:
-    _write = _tool["name"] in {"create_ab_pair","start_experiment"}
+    _write = _tool["name"] in {
+        "create_ab_pair","start_experiment","start_ab_pair",
+        "record_blind_review","record_experiment_round"
+    }
     _scopes = [READ, RUN] if _write else [READ]
     _tool["securitySchemes"] = [{"type":"oauth2","scopes":_scopes}]
     _tool["_meta"] = {"securitySchemes":[{"type":"oauth2","scopes":_scopes}]}
@@ -230,13 +294,344 @@ def own_run(db,owner,run_id):
     return row
 
 
+ROUND_CATEGORIES=[
+    {"code":"◆01","label":"工作流完整性"},
+    {"code":"●02","label":"科学质量"},
+    {"code":"▲03","label":"证据与文献关联"},
+    {"code":"■04","label":"创新性与研究路线"},
+    {"code":"◇05","label":"执行稳定性与成本"},
+]
+ROUND_STATUSES={"planned","running","completed","needs_review","blocked","cancelled"}
+FAILURE_TAGS={"paper_understanding","science_value","mechanism_narrative",
+              "literature_depth","feasibility","citation_error"}
+
+
+def round_view(row):
+    return {
+        "id":row.id,"round_code":row.round_code,
+        "category_code":row.category_code,"category_label":row.category_label,
+        "problem":row.problem,"method":row.method,
+        "experiment_content":row.experiment_content,"status":row.status,
+        "brief_result":row.brief_result,"next_step":row.next_step,
+        "detailed_record":load(row.detailed_record_json,{}),
+        "pair_id":row.pair_id,"source_sha256":row.source_sha,
+        "pipeline_sha256":row.pipeline_sha,
+        "created_at":row.created_at.isoformat() if row.created_at else None,
+        "updated_at":row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+def pair_rows(db,owner,pair_id):
+    if not re.fullmatch(r"sc05pair_[a-f0-9]{20,32}",str(pair_id or "")):
+        raise HTTPException(400,"Invalid SC05 pair ID")
+    rows=db.scalars(select(SC05Run).where(
+        SC05Run.member_id==owner.id,SC05Run.pair_id==pair_id
+    ).order_by(SC05Run.created_at,SC05Run.id)).all()
+    by_variant={row.variant:row for row in rows}
+    if len(rows)!=2 or set(by_variant)!={"science_gate_off","science_gate_on"}:
+        raise HTTPException(404,"A complete Owner A/B pair was not found")
+    if len({row.case_id for row in rows})!=1:
+        raise HTTPException(409,"A/B pair source case mismatch")
+    paper=db.get(SC05Case,rows[0].case_id)
+    if paper is None or paper.member_id!=owner.id:
+        raise HTTPException(404,"A/B source paper not found")
+    return by_variant,paper
+
+
+def _arm_summary(row,check=None):
+    return {
+        "status":row.status,"stage":row.stage,
+        "model_calls":row.calls,"input_tokens":row.input_tokens,
+        "output_tokens":row.output_tokens,
+        "saved_checkpoints":len(load(row.checkpoints_json,[])),
+        "error":row.error,
+        "safe_to_submit":bool(check and check.get("safe_to_submit")),
+        "gate_ready":bool(check and check.get("gate_ready")),
+        "repair_check":check.get("repair_check") if check else None,
+    }
+
+
+def pair_preflight(db,owner,pair_id):
+    by,paper=pair_rows(db,owner,pair_id)
+    baseline=by["science_gate_off"]
+    gated=by["science_gate_on"]
+    baseline_check=preflight(db,owner,baseline.id)
+    gate_check=preflight(db,owner,gated.id)
+    current_sha=pipeline_sha()
+    pipeline_consistent=(baseline.pipeline_sha==gated.pipeline_sha)
+    pipeline_current=(baseline.pipeline_sha==current_sha and gated.pipeline_sha==current_sha)
+    active=any(row.status in ("queued","claimed","running") for row in (baseline,gated))
+    if not pipeline_consistent or not pipeline_current:
+        next_action="needs_review"
+        reason="A/B source-pinned pipeline hashes differ or are not current; create a clean pair rather than silently migrating both arms."
+    elif active:
+        next_action="wait_for_completion"
+        reason="One A/B arm is already queued or running; do not submit another arm concurrently."
+    elif baseline.status!="completed":
+        if baseline.status in ("prepared","failed") and baseline_check.get("safe_to_submit"):
+            next_action="start_baseline"
+            reason="The gate-off baseline is the next eligible arm."
+        else:
+            next_action="review_baseline"
+            reason="The baseline is not safe to submit; inspect its saved checkpoints and error."
+    elif not paper.shared_evidence_json:
+        next_action="needs_review"
+        reason="The baseline is marked complete but no frozen shared evidence snapshot exists."
+    elif gated.status!="completed":
+        if gated.status in ("prepared","failed") and gate_check.get("safe_to_submit"):
+            next_action="start_gate"
+            reason="The baseline has frozen shared evidence; the gate-on arm is the next eligible arm."
+        else:
+            next_action="review_gate"
+            reason="The gate-on arm is not safe to submit; inspect its saved checkpoints and error."
+    else:
+        next_action="blind_review"
+        reason="Both real A/B runs are complete. Retrieve anonymized reports, score them blindly, then unblind."
+    if baseline.status=="completed" and gated.status=="completed":
+        pair_status="completed"
+    elif any(row.status=="failed" for row in (baseline,gated)):
+        pair_status="needs_review"
+    elif active or baseline.status=="completed":
+        pair_status="running"
+    else:
+        pair_status="planned"
+    return {
+        "pair_id":pair_id,"pair_status":pair_status,
+        "source_sha256":paper.source_sha,
+        "pipeline_sha256":current_sha,
+        "pipeline_hashes_consistent":pipeline_consistent,
+        "pipeline_hashes_current":pipeline_current,
+        "shared_evidence_frozen":bool(paper.shared_evidence_json),
+        "baseline":_arm_summary(baseline,baseline_check),
+        "gate":_arm_summary(gated,gate_check),
+        "next_action":next_action,"reason":reason,
+        "can_start_next":next_action in ("start_baseline","start_gate"),
+        "budget":budget_status(db),
+        "paid_execution_enabled":os.getenv("SC05_MCP_PAID_ENABLED","").lower() in ("true","1"),
+    }
+
+
+def blind_order(rows,pair_id):
+    return sorted(rows,key=lambda row:hashlib.sha256(
+        (pair_id+":"+row.id).encode()).hexdigest())
+
+
+def sync_round_from_pair(db,owner,pair_id):
+    row=db.scalars(select(SC05ExperimentRound).where(
+        SC05ExperimentRound.member_id==owner.id,
+        SC05ExperimentRound.pair_id==pair_id
+    ).limit(1)).first()
+    if row is None:
+        return None
+    state=pair_preflight(db,owner,pair_id)
+    by,_=pair_rows(db,owner,pair_id)
+    if state["pair_status"]=="completed":
+        rating_ids=db.scalars(select(SC05Rating.run_id).where(
+            SC05Rating.member_id==owner.id,
+            SC05Rating.run_id.in_([r.id for r in by.values()])
+        )).all()
+        if len(set(rating_ids))==2:
+            row.brief_result="A/B 两组已完成并完成盲评，等待解盲比较。"
+            row.next_step="执行 A/B 解盲比较，记录质量差异与下一轮修复点。"
+        else:
+            row.brief_result="A/B 两组真实运行均已完成；尚未完成盲评，暂不形成优劣结论。"
+            row.next_step="读取匿名 A/B 报告，按统一评价标准盲评。"
+    elif state["pair_status"]=="needs_review":
+        row.brief_result="运行遇到需要人工复核的失败或版本不一致；未将失败视为实验结果。"
+        row.next_step="检查失败检查点、提示词哈希和版本一致性，必要时新建干净配对。"
+    elif state["pair_status"]=="running":
+        row.brief_result="云端 A/B 工作流正在执行，或基线已完成、门控版本等待启动。"
+        row.next_step="等待当前阶段完成，再预检并启动下一阶段。"
+    else:
+        row.brief_result="已创建 A/B 配对，尚未产生模型调用。"
+        row.next_step="完成成对预检后，先启动 gate-off 基线。"
+    row.status=state["pair_status"]
+    row.source_sha=state["source_sha256"]
+    row.pipeline_sha=state["pipeline_sha256"]
+    row.detailed_record_json=dump({
+        "pair_id":pair_id,"source_sha256":state["source_sha256"],
+        "pipeline_sha256":state["pipeline_sha256"],
+        "pipeline_hashes_consistent":state["pipeline_hashes_consistent"],
+        "pipeline_hashes_current":state["pipeline_hashes_current"],
+        "shared_evidence_frozen":state["shared_evidence_frozen"],
+        "baseline":state["baseline"],"gate":state["gate"],
+        "budget":state["budget"],"next_action":state["next_action"],
+        "updated_at":now().isoformat(),
+    })
+    row.updated_at=now()
+    return row
+
+
+def upsert_round(db,owner,arguments,pair_id_override=None):
+    round_code=str(arguments.get("round_code","")).strip()
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,32}",round_code):
+        raise HTTPException(422,"round_code must be a short stable code such as R6.2")
+    category_code=str(arguments.get("category_code","◆01")).strip()
+    category_label=str(arguments.get("category_label","工作流完整性")).strip()
+    problem=str(arguments.get("problem","")).strip()
+    method=str(arguments.get("method","")).strip()
+    experiment_content=str(arguments.get("experiment_content","")).strip()
+    if not category_code or len(category_code)>16 or not category_label or len(category_label)>80:
+        raise HTTPException(422,"Invalid experiment category")
+    if not problem or len(problem)>4000 or not method or len(method)>4000 or not experiment_content or len(experiment_content)>4000:
+        raise HTTPException(422,"Problem, method and experiment content are required (max 4000 characters each)")
+    status=str(arguments.get("status","planned")).strip()
+    if status not in ROUND_STATUSES:
+        raise HTTPException(422,"Unknown experiment-round status")
+    brief_result=str(arguments.get("brief_result","")).strip()
+    next_step=str(arguments.get("next_step","等待成对预检")).strip()
+    if len(brief_result)>3000 or len(next_step)>2000:
+        raise HTTPException(422,"Round result or next step is too long")
+    detailed=arguments.get("detailed_record",{})
+    if not isinstance(detailed,(dict,list)):
+        raise HTTPException(422,"detailed_record must be a JSON object or array")
+    detailed_json=dump(detailed)
+    if len(detailed_json)>25000:
+        raise HTTPException(422,"detailed_record exceeds 25 KB")
+    pair_id=pair_id_override or arguments.get("pair_id")
+    paper=None
+    if pair_id:
+        _,paper=pair_rows(db,owner,pair_id)
+    row=db.scalars(select(SC05ExperimentRound).where(
+        SC05ExperimentRound.member_id==owner.id,
+        SC05ExperimentRound.round_code==round_code
+    ).limit(1)).first()
+    if row is not None and row.pair_id and pair_id and row.pair_id!=pair_id:
+        raise HTTPException(409,"This round code is already linked to another A/B pair")
+    if pair_id:
+        other=db.scalars(select(SC05ExperimentRound).where(
+            SC05ExperimentRound.member_id==owner.id,
+            SC05ExperimentRound.pair_id==pair_id
+        ).limit(1)).first()
+        if other is not None and other.round_code!=round_code:
+            raise HTTPException(409,"This A/B pair is already linked to another round code")
+    if row is None:
+        row=SC05ExperimentRound(
+            id="sc05round_"+uuid.uuid4().hex[:28],
+            member_id=owner.id,round_code=round_code,
+            category_code=category_code,category_label=category_label,
+            problem=problem,method=method,experiment_content=experiment_content,
+            status=status,brief_result=brief_result,next_step=next_step,
+            detailed_record_json=detailed_json,pair_id=pair_id,
+            source_sha=paper.source_sha if paper else "",
+            pipeline_sha=pipeline_sha() if paper else "",
+        )
+        db.add(row)
+    else:
+        row.category_code=category_code
+        row.category_label=category_label
+        row.problem=problem
+        row.method=method
+        row.experiment_content=experiment_content
+        row.status=status
+        row.brief_result=brief_result
+        row.next_step=next_step
+        row.detailed_record_json=detailed_json
+        if pair_id:
+            row.pair_id=pair_id
+            row.source_sha=paper.source_sha
+            row.pipeline_sha=pipeline_sha()
+        row.updated_at=now()
+    db.flush()
+    if pair_id:
+        sync_round_from_pair(db,owner,pair_id)
+    add_audit(db,"sc05.round_recorded",owner.id,row.id,
+              "round="+round_code+";pair="+(pair_id or "none"))
+    return row
+
+
+def _start_mcp_run(app,db,owner,row,background,paid_enabled,confirm_paid):
+    if not confirm_paid:
+        raise HTTPException(422,"Explicit consent for actual DeepSeek model spending is required")
+    if not paid_enabled:
+        raise HTTPException(503,"Owner delegated paid starts are disabled")
+    if os.getenv("SC05_MCP_ENFORCE_WORKER_READINESS","true").lower() not in ("false","0") and not (
+        worker_flag("SC05_INLINE_WORKER_ENABLED")
+        and worker_flag("SC05_INLINE_WORKER_LIVE_ENABLED")
+        and os.getenv("SC05_EXECUTION_MODE","").lower()=="worker"
+    ):
+        raise HTTPException(503,"Cloud worker not ready; paid jobs cannot be queued")
+    approval_before=db.get(SC05DelegatedAuthorization,row.id)
+    queued_retry=(row.status=="queued" and approval_before is not None
+                  and approval_before.status=="needs_review")
+    previous_status=row.status
+    check=preflight(db,owner,row.id)
+    if not check["safe_to_submit"]:
+        raise HTTPException(409,"Run not safe to start; inspect checkpoint/preflight")
+    budget=budget_status(db)
+    if budget["used"]["model_calls"]>=budget["limits"]["model_calls_per_day"]:
+        raise HTTPException(409,"Daily model budget exhausted")
+    if queued_retry:
+        previous_sha=row.pipeline_sha
+        row.pipeline_sha=pipeline_sha()
+        row.updated_at=now()
+        approval_before.status="approved"
+        approval_before.granted_at=now()
+        approval_before.processed_at=None
+        add_audit(db,"sc05.mcp_paid_resume",owner.id,row.id,
+                  "Re-approved needs_review authorization after zero-paid checkpoint validation; old_sha="+
+                  previous_sha[:16]+";new_sha="+row.pipeline_sha[:16])
+        db.commit()
+        started=run_view(row)
+    else:
+        from fastapi.routing import iter_route_contexts
+        endpoint=next((ctx.endpoint for ctx in iter_route_contexts(app.routes)
+          if ctx.path=="/api/personal-research/me/sc05/runs/{run_id}/start"
+          and "POST" in (ctx.methods or set())),None)
+        if endpoint is None:
+            raise HTTPException(503,"SC05 start route unavailable")
+        started=endpoint(row.id,StartRequest(acknowledge_external_model=True),
+                         background,db,owner)
+        db.refresh(row)
+        approval=db.get(SC05DelegatedAuthorization,row.id)
+        if approval:
+            if previous_status=="failed" and approval.status=="needs_review":
+                approval.status="approved"
+                approval.granted_at=now()
+                approval.processed_at=None
+                audit_action="sc05.mcp_paid_resume"
+                audit_detail="Re-approved needs_review authorization after zero-paid checkpoint validation"
+            else:
+                raise HTTPException(409,"Delegated authorization already exists")
+        else:
+            db.add(SC05DelegatedAuthorization(
+                run_id=row.id,member_id=owner.id,status="approved"
+            ))
+            audit_action="sc05.mcp_paid_start"
+            audit_detail="OAuth run scope + per-call paid consent"
+        add_audit(db,audit_action,owner.id,row.id,audit_detail)
+        db.commit()
+    devstudio_id=register_devstudio(db,owner,row)
+    return {"run":started,"devstudio_experiment_id":devstudio_id,
+            "message":"Experiment enqueued; use get_ab_pair_status to follow progress."}
+
+
 def list_owned(db,owner):
     cases=db.scalars(select(SC05Case).where(SC05Case.member_id==owner.id)
                      .order_by(SC05Case.created_at.desc()).limit(30)).all()
     runs=db.scalars(select(SC05Run).where(SC05Run.member_id==owner.id)
                     .order_by(SC05Run.created_at.desc()).limit(70)).all()
-    return {"cases":[case_view(x) for x in cases],
-            "runs":[run_view(x) for x in runs],"budget":budget_status(db)}
+    rounds=db.scalars(select(SC05ExperimentRound).where(
+        SC05ExperimentRound.member_id==owner.id
+    ).order_by(SC05ExperimentRound.created_at.desc()).limit(100)).all()
+    run_views=[]
+    for run in runs:
+        view=run_view(run)
+        rated=db.scalars(select(SC05Rating.id).where(
+            SC05Rating.member_id==owner.id,SC05Rating.run_id==run.id
+        ).limit(1)).first()
+        if rated is None:
+            view.pop("id",None)
+            view.pop("variant",None)
+            view["arm"]="blind_pending"
+        run_views.append(view)
+    return {
+        "cases":[case_view(x) for x in cases],
+        "runs":run_views,
+        "rounds":[round_view(x) for x in rounds],
+        "round_categories":ROUND_CATEGORIES,
+        "budget":budget_status(db),
+    }
 
 
 
