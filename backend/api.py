@@ -1376,3 +1376,13 @@ from backend.research_evolution_api import mount as _mount_evolution_routes
 _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
                        require_actor=require_actor, require_editor=require_editor,
                        team_auth_enabled=team_auth_enabled)
+
+
+# Business Agent bridge: additive ORM tables are registered before database startup.
+from backend.business_memory import mount as _mount_business_agent_routes
+_mount_business_agent_routes(app, get_db=get_db, require_actor=require_actor,
+                            require_editor=require_editor, require_admin=require_admin)
+
+# Read-only migration target probe; requires a logged-in team administrator.
+from backend.migration_preflight import mount as _mount_migration_preflight_routes
+_mount_migration_preflight_routes(app, require_admin=require_admin)

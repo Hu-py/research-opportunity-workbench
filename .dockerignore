@@ -14,3 +14,10 @@ reports/
 my-profile.json
 *.sqlite
 *.db
+
+# Private PostgreSQL migration archives: NEVER commit or include in Docker build
+private-backups/
+*.pgdump
+*.dump
+*.dump.manifest.json
+*.backup
