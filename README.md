@@ -88,6 +88,17 @@ The local database defaults to \`data/research.db\` (git-ignored); it persists b
 
 Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAPI/Worker and private PostgreSQL configuration, security boundaries and secrets. The repository is public as of development; **never commit API keys, researcher CVs, unpublished manuscripts, participant data or private PDFs.**
 
+## Repository map and active / legacy components
+
+Use [Repository map and maintenance policy](docs/REPOSITORY_MAP.md) as the current source of truth for which folders are active, staging-only, compatibility/legacy or historical. Legacy files are retained until imports, deployments and tests prove they can be retired; no source files are deleted as part of this cleanup.
+
+## ChatGPT-managed SC05 experiments
+
+The isolated staging branch includes an OAuth-protected MCP bridge so ChatGPT can create, preflight, sequentially run, track, blind-review and compare SC05 A/B experiments, while maintaining a persistent experiment-round ledger in PostgreSQL.
+
+- [SC05 ChatGPT end-to-end acceptance](docs/SC05_CHATGPT_ACCEPTANCE.md) — the final acceptance criteria. The workflow is not accepted until software/security, cloud runtime and actual ChatGPT connection gates all pass.
+- [SC05 MCP Owner bridge implementation notes](docs/SC05_CHATGPT_MCP_OWNER_BRIDGE.md) — OAuth and staging security details.
+
 ## Architecture and tests
 
 - [Architecture, API and data/agent boundaries](docs/ARCHITECTURE.md)
