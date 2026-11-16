@@ -970,14 +970,19 @@ def run_paper(
          log,max_calls=max_calls,max_tokens=4100)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes=research_routes(routes_raw,diagnosis,papers,scientific_triage if scientific_value_gate else None)
-    critic_raw=_run(model_call,api_key,"independent_critic",
-        "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
-        "证据不足、不可识别性、指标循环依赖与实施成本。"
-        "允许全部hold或reject。必要数据未知时不得声称真实可验证。",
-        {"routes":routes,"diagnoses":diagnosis["diagnoses"],
-         "scientific_triage":scientific_triage,
-         "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in papers[:20]],
-         "required_json_shape":CRITIC_SCHEMA},log,max_calls=max_calls,max_tokens=3000)
+    if routes:
+        critic_raw=_run(model_call,api_key,"independent_critic",
+            "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
+            "证据不足、不可识别性、指标循环依赖与实施成本。"
+            "允许全部hold或reject。必要数据未知时不得声称真实可验证。",
+            {"routes":routes,"diagnoses":diagnosis["diagnoses"],
+             "scientific_triage":scientific_triage,
+             "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in papers[:20]],
+             "required_json_shape":CRITIC_SCHEMA},log,max_calls=max_calls,max_tokens=3000)
+    else:
+        # With no proposed routes there is no review target. Avoid a paid
+        # request that would force the model to invent one.
+        critic_raw={"reviews":[]}
     reviews=critique(critic_raw,routes)
     output = {
         "version":VERSION, "source":{"title":source_title or (Path(pdf).stem if pdf else "uploaded-paper"),
