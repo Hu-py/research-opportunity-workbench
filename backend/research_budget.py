@@ -88,6 +88,50 @@ def reserve(factory, *, tokens=0, papers=0, calls=0, day=None):
     return False
 
 
+def reserve_session(db, *, tokens=0, papers=0, calls=0, day=None):
+    """Atomic reservation using the caller's current SQLAlchemy session."""
+    day = day or datetime.now(timezone.utc).date().isoformat()
+    cfg = limits()
+    if tokens < 0 or papers < 0 or calls < 0:
+        raise ValueError("Negative budget reservation")
+    if (papers > cfg["papers_per_day"] or calls > cfg["model_calls_per_day"]
+            or tokens > cfg["token_reservation_per_day"]):
+        return False
+    if db.get(ResearchDailyBudget, day) is None:
+        try:
+            db.add(ResearchDailyBudget(day=day))
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+    statement=(update(ResearchDailyBudget)
+        .where(ResearchDailyBudget.day == day)
+        .where(ResearchDailyBudget.reserved_calls + calls <= cfg["model_calls_per_day"])
+        .where(ResearchDailyBudget.reserved_papers + papers <= cfg["papers_per_day"])
+        .where(ResearchDailyBudget.reserved_tokens + tokens <= cfg["token_reservation_per_day"])
+        .values(
+            reserved_calls=ResearchDailyBudget.reserved_calls + calls,
+            reserved_papers=ResearchDailyBudget.reserved_papers + papers,
+            reserved_tokens=ResearchDailyBudget.reserved_tokens + tokens,
+            updated_at=datetime.now(timezone.utc),
+        ))
+    changed=db.execute(statement)
+    db.commit()
+    return bool(changed.rowcount)
+
+
+def record_usage_session(db, usage, day=None):
+    """Record provider usage in the caller's database session."""
+    day = day or datetime.now(timezone.utc).date().isoformat()
+    db.execute(update(ResearchDailyBudget)
+        .where(ResearchDailyBudget.day == day)
+        .values(
+            actual_input_tokens=ResearchDailyBudget.actual_input_tokens + max(0,int(usage.get("input_tokens",0))),
+            actual_output_tokens=ResearchDailyBudget.actual_output_tokens + max(0,int(usage.get("output_tokens",0))),
+            updated_at=datetime.now(timezone.utc),
+        ))
+    db.commit()
+
+
 def record_usage(factory, usage, day=None):
     day = day or datetime.now(timezone.utc).date().isoformat()
     with factory() as db:
