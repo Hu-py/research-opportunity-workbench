@@ -7,7 +7,7 @@ import pytest
 from backend.sc05_research_diagnosis import EvidenceError
 from backend.sc05_paper_only import (
     _chunks, critique, extract_ledger, literature_assessments, method_lineage,
-    openalex_search, research_routes, run_paper,
+    limit_route_candidates, openalex_search, research_routes, run_paper,
 )
 
 PAGES = {
@@ -199,6 +199,19 @@ def test_paper_only_full_pipeline_and_audit(monkeypatch,tmp_path):
     assert "否决条件" in report
     assert "test-sha-123" in report
     assert "not-a-real-key" not in report and "not-a-real-key" not in json.dumps(record)
+
+
+
+def test_route_candidates_are_capped_and_overflow_is_audited():
+    raw={"routes":[{"id":f"R{i:02d}"} for i in range(1,7)]}
+    normalized,audit=limit_route_candidates(raw)
+    assert [x["id"] for x in normalized["routes"]]==["R01","R02","R03","R04","R05"]
+    assert audit["model_returned_route_count"]==6
+    assert audit["accepted_route_count"]==5
+    assert audit["truncated_route_count"]==1
+    with pytest.raises(EvidenceError,match="must be a list"):
+        limit_route_candidates({"routes":"not-a-list"})
+
 
 
 def test_no_llm_when_key_is_missing(monkeypatch,tmp_path):
