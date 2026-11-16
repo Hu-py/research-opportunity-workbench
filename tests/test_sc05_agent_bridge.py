@@ -161,6 +161,61 @@ def test_owner_auth_required_and_activation_flag(workspace,monkeypatch):
     assert client.get("/mcp").status_code==404
 
 
+def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypatch):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert case.status_code==201,case.text
+    pair=client.post("/api/personal-research/me/sc05/cases/"+case.json()["id"]+"/ab",
+                     headers=session)
+    assert pair.status_code==201,pair.text
+    run=next(x for x in pair.json()["runs"] if x["variant"]=="science_gate_on")
+
+    from backend.sc05_eval_api import SC05Case
+    from backend.sc05_worker import SC05DelegatedAuthorization
+    with factory() as db:
+        row=db.get(SC05Run,run["id"])
+        doc=db.get(SC05Case,row.case_id)
+        doc.shared_evidence_json='{"observations":[]}'
+        row.status="queued"
+        row.stage="queued"
+        row.error=""
+        row.calls=5
+        row.checkpoints_json='[{"stage":"method_lineage"},{"stage":"diagnosis"},{"stage":"scientific_value_triage"},{"stage":"evidence_questions"},{"stage":"literature_assessment"}]'
+        db.add(SC05DelegatedAuthorization(
+            run_id=row.id,member_id=row.member_id,status="needs_review"
+        ))
+        db.commit()
+
+    monkeypatch.setattr(
+        "backend.sc05_agent_bridge.check_literature_diagnosis_resume",
+        lambda row,paper,allow_queued=False: {
+            "cached_stages":5,"prompt_hashes_verified":True,
+            "assessment_count":13,"unlinked_assessments":6,
+            "paid_calls_on_check":0,
+        } if allow_queued else (_ for _ in ()).throw(AssertionError("queued retry must request allow_queued")),
+    )
+    monkeypatch.setenv("SC05_MCP_PAID_ENABLED","true")
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    ready=call(client,access,"tools/call",{"name":"prepare_experiment",
+        "arguments":{"run_id":run["id"]}})
+    assert ready.json()["result"]["isError"] is False
+    assert ready.json()["result"]["safe_to_submit"] is True
+    paid=call(client,access,"tools/call",{"name":"start_experiment",
+        "arguments":{"run_id":run["id"],"confirm_paid":True}})
+    assert paid.json()["result"]["isError"] is False,paid.text
+    with factory() as db:
+        row=db.get(SC05Run,run["id"])
+        auth=db.get(SC05DelegatedAuthorization,run["id"])
+        assert row.status=="queued"
+        assert row.calls==5
+        assert auth.status=="approved"
+        assert auth.processed_at is None
+
+
 def test_owner_mcp_start_enqueues_once_and_registers_in_devstudio(workspace,monkeypatch):
     client,factory=workspace
     session=api_session(client)
