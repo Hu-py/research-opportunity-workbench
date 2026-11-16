@@ -182,7 +182,8 @@ TOOLS=[
     {"name":"create_ab_pair","description":"Owner write action with zero model calls: create a fresh science_gate_off/science_gate_on run pair for an existing Owner SC05 paper case. Does not start either run or spend DeepSeek budget. Run the gate-off baseline first; gate-on requires its frozen evidence snapshot.",
      "inputSchema":{"type":"object","properties":{
          "case_id":{"type":"string","description":"Existing Owner SC05 case ID returned by list_experiments"},
-         "confirm_create":{"type":"boolean","description":"Confirm creating two prepared run records; this does not make model calls"}},
+         "fresh_copy":{"type":"boolean","description":"Clone the exact source PDF page snapshot into a new case and clear its shared evidence so the baseline re-runs extraction; preserves the original source SHA"},
+         "confirm_create":{"type":"boolean","description":"Confirm creating the case/pair records; this does not make model calls"}},
          "required":["case_id","confirm_create"],"additionalProperties":False}},
     {"name":"prepare_experiment","description":"Read-only preflight for an existing SC05 run: verify source hashes, frozen evidence, checkpoint counts, status, and budget before spending anything.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string","description":"Existing sc05run_ ID"}},
@@ -687,9 +688,29 @@ def mount(app,*,get_db,get_factory):
                     case_id=arguments.get("case_id","")
                     if not re.fullmatch(r"sc05case_[a-f0-9]{20,32}",case_id):
                         raise HTTPException(400,"Invalid SC05 case ID")
-                    paper=db.get(SC05Case,case_id)
-                    if paper is None or paper.member_id!=owner.id:
+                    source_paper=db.get(SC05Case,case_id)
+                    if source_paper is None or source_paper.member_id!=owner.id:
                         raise HTTPException(404,"Paper case not found")
+                    fresh_copy=arguments.get("fresh_copy") is True
+                    paper=source_paper
+                    if fresh_copy:
+                        # Preserve the exact already-uploaded PDF-derived page
+                        # snapshot and original PDF SHA, but clear the shared
+                        # facts snapshot so the new baseline re-runs extraction.
+                        paper=SC05Case(
+                            id="sc05case_"+uuid.uuid4().hex[:28],
+                            member_id=owner.id,title=source_paper.title,
+                            pages_json=source_paper.pages_json,
+                            source_sha=source_paper.source_sha,
+                            source_type=source_paper.source_type,
+                            shared_evidence_json=None,
+                        )
+                        db.add(paper)
+                        db.flush()
+                        add_audit(db,"sc05.case_cloned_for_fresh_pipeline",
+                                  owner.id,paper.id,
+                                  "source_case="+source_paper.id+
+                                  ";source_sha="+paper.source_sha[:16])
                     pair_id="sc05pair_"+uuid.uuid4().hex[:28]
                     created=[]
                     for variant in ("science_gate_off","science_gate_on"):
@@ -701,16 +722,22 @@ def mount(app,*,get_db,get_factory):
                         db.add(item)
                         created.append(item)
                     add_audit(db,"sc05.mcp_ab_pair_created",owner.id,pair_id,
-                              "source_sha="+paper.source_sha[:16]+";model_calls=0")
+                              "source_case="+source_paper.id+
+                              ";case="+paper.id+
+                              ";source_sha="+paper.source_sha[:16]+
+                              ";fresh_copy="+str(fresh_copy)+
+                              ";model_calls=0")
                     db.commit()
                     for item in created:
                         db.refresh(item)
                     payload=result({
                         "pair_id":pair_id,
+                        "source_case":case_view(source_paper),
                         "case":case_view(paper),
+                        "fresh_copy":fresh_copy,
                         "runs":[run_view(item) for item in created],
                         "model_calls":0,
-                        "message":"A/B pair created as prepared records. No DeepSeek calls or model spending occurred. Start science_gate_off first; science_gate_on requires the baseline's frozen evidence snapshot."
+                        "message":"A/B pair created as prepared records. No DeepSeek calls or model spending occurred. The gate-off baseline must run first and freeze the evidence snapshot before gate-on can start."
                     })
                 elif name=="prepare_experiment":
                     payload=result(preflight(db,owner,arguments.get("run_id","")))
