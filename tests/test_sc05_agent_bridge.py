@@ -133,7 +133,26 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert write_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
     assert write_tool["_meta"]["securitySchemes"]==write_tool["securitySchemes"]
     assert write_tool["annotations"]["readOnlyHint"] is False
-    assert next(x for x in names if x["name"]=="list_experiments")["annotations"]["readOnlyHint"] is True
+    write_names={
+        "create_ab_pair","start_experiment","get_ab_pair_status","start_ab_pair",
+        "record_blind_review","compare_ab_pair","record_experiment_round",
+    }
+    read_names={
+        "list_experiments","prepare_experiment","get_executor_status",
+        "get_experiment_status","get_experiment_result","prepare_ab_pair",
+        "get_ab_pair_result","list_experiment_rounds",
+    }
+    by_name={x["name"]:x for x in names}
+    for name in write_names:
+        assert by_name[name]["annotations"]["readOnlyHint"] is False
+        assert by_name[name]["securitySchemes"]==[
+            {"type":"oauth2","scopes":["experiments:read","experiments:run"]}
+        ]
+    for name in read_names:
+        assert by_name[name]["annotations"]["readOnlyHint"] is True
+        assert by_name[name]["securitySchemes"]==[
+            {"type":"oauth2","scopes":["experiments:read"]}
+        ]
     assert call(client,tokens["access_token"],"tools/call",{
         "name":"list_experiments","arguments":{}}).json()["result"]["isError"] is False
     assert call(client,tokens["access_token"],"tools/list").status_code==200
@@ -164,6 +183,16 @@ def test_read_only_token_cannot_run_paid_and_disabled_switch(workspace):
     assert create.status_code==200
     assert create.json()["result"]["isError"] is True
     assert create.json()["result"]["_meta"]["mcp/www_authenticate"]
+    pair_status=call(client,tokens["access_token"],"tools/call",{
+        "name":"get_ab_pair_status","arguments":{"pair_id":"sc05pair_"+"c"*28}})
+    assert pair_status.json()["result"]["isError"] is True
+    assert pair_status.json()["result"]["_meta"]["mcp/www_authenticate"]
+    round_write=call(client,tokens["access_token"],"tools/call",{
+        "name":"record_experiment_round","arguments":{
+            "round_code":"R6.4","category_code":"◆01","category_label":"工作流完整性",
+            "problem":"scope test","method":"scope test","experiment_content":"scope test"}})
+    assert round_write.json()["result"]["isError"] is True
+    assert round_write.json()["result"]["_meta"]["mcp/www_authenticate"]
 
 
 def test_owner_auth_required_and_activation_flag(workspace,monkeypatch):
@@ -232,6 +261,67 @@ def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
         assert not cloned.shared_evidence_json
         assert original.pages_json==cloned.pages_json
         assert original.source_sha==cloned.source_sha
+
+
+def test_owner_mcp_keeps_pair_mapping_hidden_until_blind_compare(workspace):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Blind mapping privacy test","pages":pages})
+    assert case.status_code==201,case.text
+    pair=client.post(BASE+"/cases/"+case.json()["id"]+"/ab",headers=session)
+    assert pair.status_code==201,pair.text
+    pair_id=pair.json()["pair_id"]
+    runs=pair.json()["runs"]
+    from backend.sc05_eval_api import SC05Case,SC05Rating,dump
+    with factory() as db:
+        paper=db.get(SC05Case,case.json()["id"])
+        paper.shared_evidence_json=dump({"frozen":True})
+        for item in runs:
+            row=db.get(SC05Run,item["id"])
+            row.status="completed";row.stage="complete"
+            row.report_md="# Blind report"
+            row.result_json=dump({"quality":{"warnings":[]}})
+        db.add(SC05Rating(
+            id="sc05rating_"+"a"*28,member_id=runs[0]["id"][:0]+db.get(SC05Run,runs[0]["id"]).member_id,
+            run_id=runs[0]["id"],accuracy=4,science_value=4,narrative=4,
+            literature=4,feasibility=4,hard_failure=False,feedback="",
+            failure_tags_json="[]"))
+        db.commit()
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    def listed():
+        response=call(client,access,"tools/call",{"name":"list_experiments","arguments":{}})
+        assert response.json()["result"]["isError"] is False,response.text
+        return json.loads(response.json()["result"]["content"][0]["text"])
+    before=listed()
+    pair_runs=[x for x in before["runs"] if x.get("pair_id")==pair_id]
+    assert len(pair_runs)==2
+    assert all("id" not in x and "variant" not in x and x["arm"]=="blind_pending"
+               for x in pair_runs)
+    with factory() as db:
+        db.add(SC05Rating(
+            id="sc05rating_"+"b"*28,member_id=db.get(SC05Run,runs[1]["id"]).member_id,
+            run_id=runs[1]["id"],accuracy=4,science_value=3,narrative=4,
+            literature=4,feasibility=4,hard_failure=False,feedback="",
+            failure_tags_json="[]"))
+        db.commit()
+    still_blind=listed()
+    pair_runs=[x for x in still_blind["runs"] if x.get("pair_id")==pair_id]
+    assert len(pair_runs)==2
+    assert all("id" not in x and "variant" not in x for x in pair_runs)
+    compared=call(client,access,"tools/call",{
+        "name":"compare_ab_pair","arguments":{"pair_id":pair_id}})
+    assert compared.json()["result"]["isError"] is False,compared.text
+    after=listed()
+    pair_runs=[x for x in after["runs"] if x.get("pair_id")==pair_id]
+    assert len(pair_runs)==2
+    assert all("id" in x and "variant" in x for x in pair_runs)
+    with factory() as db:
+        from backend.sc05_agent_bridge import SC05ExperimentRound
+        assert db.scalars(select(SC05ExperimentRound).where(
+            SC05ExperimentRound.pair_id==pair_id)).first() is None
 
 
 def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypatch):
