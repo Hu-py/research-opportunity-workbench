@@ -228,7 +228,7 @@ def _checkpoint_call(factory,run_id):
                 if stage=="literature_assessment":
                     legacy_payload=dict(payload)
                     legacy_payload["required_json_shape"]=LITERATURE_SCHEMA_V1
-                    legacy_system=LITERATURE_ASSESSMENT_SYSTEM_V1+"\\n输出一个 JSON 对象。"
+                    legacy_system=LITERATURE_ASSESSMENT_SYSTEM_V1+"\n输出一个 JSON 对象。"
                     legacy_fingerprint=hashlib.sha256(dump({
                         "model":model,"system":legacy_system,
                         "payload":legacy_payload,"max_tokens":max_tokens,
@@ -708,7 +708,7 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
                                       ";no_paid_replay=True")
                     elif row.error=="Missing references: literature diagnosis":
                         info=check_literature_diagnosis_resume(row,document)
-                        audit_action="sc05.verified_unlinked_literature_repair"
+                        audit_action="sc05.verified_typed_literature_repair"
                         audit_detail=("old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
                                       ";cached_stages="+str(info["cached_stages"])+
                                       ";unlinked_assessments="+str(info["unlinked_assessments"])+
