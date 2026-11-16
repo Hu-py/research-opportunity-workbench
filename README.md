@@ -1,110 +1,142 @@
 # Research Atlas — 团队共享科研智能工作台
 
-A research intelligence workbench that continuously links **urban research questions**, **computer-science methods**, **scholarly evidence** and **versioned research opportunities**.
+Research Atlas 将城市与跨学科研究问题、学术文献、计算方法、科研 Agent、实验记录和团队知识资产连接到同一个可追溯工作台。
 
-## Development studio & research interest watchlist
+## 当前工程目标
 
-Development progress tracking now lives in the **standalone development console**
-(`dev-tracker/`), deployed as a **separate Vercel project**. It tracks GitHub
-Issues, Pull Requests, commits, and CI directly, refreshing every ten minutes
-while visible. It does not require backend credentials or the research workspace
-login. Each milestone's goals, implementation notes, acceptance conditions,
-evidence and status are connected to a GitHub Issue. To update status, close a
-tracked Issue or merge a PR with `Closes #NN`; CI and commit activity reflect
-automatically. See [tracker guide](dev-tracker/README.md).
+当前优先验收的闭环是：
 
-The business-facing **研究兴趣监测** tab remains inside the research workbench,
-where it belongs. The engineering status board is no longer embedded in the
-workbench UI.
+**在 ChatGPT 中创建、运行、追踪和分析一整组真实 SC05 A/B 科研工作流评测。**
 
-Research interests are stored **independently** of the official team profile
-and verified achievements. Editors can add/pause topics or test an OpenAlex
-scan. The existing weekly CLI / GitHub Actions workflow now includes enabled
-interests, grouped separately in Markdown reports. To actually schedule weekly
-runs, the GitHub Action must be enabled and a persistent database configured.
-See [development studio and acceptance checklist](docs/DEVELOPMENT_STUDIO.md).
+这不是对论文主题开展新的实证数据分析，而是评估 Research Atlas Agent 能否完整完成论文理解、证据重建、批判诊断、独立研究问题形成、方法迁移和可行性论证。
 
-## What is implemented (v0.3 team development)
+最终验收标准不是代码提交或 CI 通过，而是 ChatGPT 实际完成一组有来源哈希、版本哈希、模型调用、检查点、盲评、解盲比较和持久化轮次记录的真实 A/B 实验。
 
-- **Next.js 16 frontend** (\`frontend/\`): Chinese research dashboard, paper library, rolling ideas, profile editor, agent console, execution traces, evolution history and weekly brief.
-- **FastAPI backend** (\`backend/api.py\`): profile, paper, ideas, feedback and durable task endpoints.
-- **Research Agent** (\`backend/agent.py\`): bounded tool calls to OpenAlex, local paper library, research profile and existing ideas. Can run with OpenAI Responses API. With no API key, deliberately offers a **bibliographic preview only**.
-- **Research Skills** (\`skills/\`): evidence-based paper reading, method transfer and idea criticism, loaded into model instructions.
-- **Task worker** (\`backend/worker.py\`): database-backed tasks with progress steps, separate worker for cloud deployments.
-- **Existing Python core** (\`research_workbench/\`): OpenAlex ingestion, DOI normalization, rolling ideas, versioned feedback, weekly Markdown and opt-in weekly schedule.
-- **CI**: backend unit/integration tests, Streamlit legacy smoke test, TypeScript checks and Next.js build.
+## 系统架构
 
-**Important:** This codebase is a tested development MVP, not an already-deployed website or verified multi-agent research service. Academic novelty must be evaluated by reading primary sources.
+| 层 | 技术 / 位置 | 职责 |
+|---|---|---|
+| ChatGPT 入口 | OAuth-protected MCP `/mcp` | 创建论文案例、A/B 配对、预检、启动、追踪、盲评和分析 |
+| Web 前端 | `frontend/` · Vercel | Research Atlas 工作界面、Owner/Admin 管理和同源 API 代理 |
+| 后端 | `backend/api.py` · Render FastAPI | 认证、科研工作流、工具接口和实验管理 |
+| 持久化 | PostgreSQL | 用户、实验、检查点、预算、审计、轮次台账 |
+| 云端执行 | `backend/sc05_worker.py` / Render Worker | 消费经 Owner 明确授权的实验队列 |
+| 长期归档 | Cloudflare R2（可选） | 私有保存来源页面、检查点和报告；不替代 PostgreSQL |
+| 版本与自动化 | GitHub / Actions | 代码、PR、CI、定时数据采集和部署记录 |
+| 开发追踪 | `dev-tracker/` · 独立 Vercel 项目 | Issue、PR、Commit 和 CI 状态 |
 
-## User onboarding & permissions
+浏览器通过 Vercel 服务端代理访问 Render。ChatGPT 通过独立 OAuth/PKCE MCP 入口访问 Render。模型密钥、数据库凭据、R2 密钥和后端 Bearer Token 都必须保留在服务端。
 
-For a single current reference covering **Owner / Admin / Researcher / Viewer**, initial verification, invitations, passwords, member lifecycle, access to Development Studio, audit, and known implementation gaps, see [Research Atlas user onboarding and permissions policy](docs/USER_ONBOARDING_AND_PERMISSIONS.md).
+## 仓库导航
 
-This policy is tracked in **Draft PR #65**; new Owner and invitation flows are not production-released until actual email delivery and browser acceptance pass. The older [team setup document](docs/TEAM_SETUP.md) is retained as a historical migration/legacy bootstrap guide.
+| 路径 | 用途 |
+|---|---|
+| `frontend/` | Next.js 页面、API 路由、会话和服务端代理 |
+| `backend/` | FastAPI、Agent、Radar、SC04/SC05、权限、预算和执行器 |
+| `research_workbench/` | 共享数据库模型、OpenAlex 与核心科研数据逻辑 |
+| `skills/` | 版本化研究方法和 Agent 行为规范 |
+| `tests/` | 后端、MCP、权限、Agent、数据和前端相关测试 |
+| `scripts/` | 部署、迁移、E2E 和维护脚本 |
+| `data/`、`config/` | 数据快照、运行配置和目录清单 |
+| `.github/workflows/` | CI、同步、Radar 和定时任务 |
+| `dev-tracker/` | 独立工程进度追踪器 |
+| `docs/` | 架构、实验、运维、权限和设计文档 |
 
-## Shared 10-member laboratory mode
+关键文档：
 
-**One research profile + one shared paper/idea corpus for the entire lab.** The team edition adds separate member accounts (admin, researcher and viewer), Argon2 password hashing, revocable sessions, role-checked APIs, profile revision history, member audit logs and team admin UI. Inactive members lose access immediately.
+- [仓库总览与系统边界](docs/REPOSITORY_MAP.md)
+- [文件在用 / 隔离 / 兼容 / 参考状态清单](docs/REPOSITORY_FILE_INVENTORY.md)
+- [Git 分支与 PR 生命周期](docs/BRANCH_LIFECYCLE.md)
+- [SC05 ChatGPT 完整工作流操作指南](docs/SC05_CHATGPT_OPERATING_GUIDE.md)
+- [SC05 MCP Owner 授权与安全边界](docs/SC05_CHATGPT_MCP_OWNER_BRIDGE.md)
+- [部署说明](DEPLOYMENT.md)
+- [用户开通与权限政策](docs/USER_ONBOARDING_AND_PERMISSIONS.md)
+- [独立开发追踪器指南](dev-tracker/README.md)
 
-This feature is **opt-in** with \`TEAM_AUTH_ENABLED=true\` on both Vercel and FastAPI; the existing personal prototype remains the compatibility default until a database and first administrator are configured. Do **not** enable team mode on Vercel before the persistent PostgreSQL backend is ready.
+## 当前界面入口
 
-Read [Team setup / migration / roles](docs/TEAM_SETUP.md) and use [Example team profile JSON](examples/team-profile.example.json). Existing papers/ideas and profile JSON are preserved; never commit actual confidential research data or passwords.
+- 首页 `/` 重定向到 `/research-atlas-v0.5.html`，由 `frontend/public/research-atlas-v0.5.html` 提供批准版主工作界面。
+- 开发者中心 `/devstudio` 使用经过认证的批准版 HTML 和真实后端交互桥。
+- 实验管理、SC05 管理、GitHub 动态、团队和个人研究页面位于各自的 Next.js 路由。
+- `dev-tracker/` 是独立 Vercel 项目，不是嵌入在 Research Atlas 主页面里的模块。
 
-## Start the full stack locally
+## SC05 ChatGPT 工作流
 
-Requires Python 3.10+ and Node.js 22.
+当前 MCP 设计提供：
 
-**Terminal 1 — FastAPI:**
+1. 读取 Owner 论文、实验、预算和执行器状态。
+2. 从 ChatGPT 提供的提取文本创建私人论文案例，或使用已认证网页上传较大的 PDF。
+3. 创建 `science_gate_off` / `science_gate_on` A/B 配对。
+4. 成对预检，验证来源、pipeline、冻结证据、检查点、并发任务和预算。
+5. 顺序启动：先 baseline，后 treatment。
+6. 读取匿名报告、分别盲评，再解盲比较。
+7. 把问题、方法、实验内容、状态、简要结果、后续和详细记录写入 PostgreSQL 轮次台账。
 
-\`\`\`bash
+查看 [SC05 ChatGPT 操作指南](docs/SC05_CHATGPT_OPERATING_GUIDE.md)。真实模型启动必须有明确用户授权，并且云端执行器已通过检查。Mock 测试、部署成功和真实科研质量是不同的验收层。
+
+## 代码状态与部署规则
+
+- `main` 是默认主线。
+- `experiment/devstudio-postgres-e2e-20261114` 是当前隔离 Render E2E / SC05 staging 分支。
+- Render 隔离服务配置为手动部署，GitHub push 不代表 Render 已部署。
+- 当前开发分支或 PR 的代码，不能直接视为线上服务已运行。
+- 生产服务、隔离测试服务和研究实验数据必须严格分开。
+
+分支与 PR 规则见 [BRANCH_LIFECYCLE.md](docs/BRANCH_LIFECYCLE.md)。
+
+## 本地开发
+
+要求 Python 3.10+、Node.js 22+。
+
+```bash
 git clone https://github.com/Hu-py/research-opportunity-workbench.git
 cd research-opportunity-workbench
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[test,ai]'
 uvicorn backend.api:app --reload --port 8000
-\`\`\`
+```
 
-**Terminal 2 — Next.js:**
+另开终端：
 
-\`\`\`bash
-cd research-opportunity-workbench/frontend
+```bash
+cd frontend
 npm install
-printf 'BACKEND_URL=http://127.0.0.1:8000\n' > .env.local
 npm run dev
-\`\`\`
+```
 
-Open **http://localhost:3000**. In local development, no login is required if \`APP_PASSWORD\` is unset, and backend auth is disabled if \`API_BEARER_TOKEN\` is unset. **Do not use this unsecured configuration on public networks.**
+本地 API 默认地址为 `http://127.0.0.1:8000`。公开网络部署不得使用无认证开发配置。
 
-1. Go to **研究者画像** and save your own research lines. The built-in profile is illustrative only.
-2. Go to **科研总览** and click **更新论文情报**.
-3. Go to **Research Agent**, enter a research question, and inspect tool traces/results.
-4. Provide \`OPENAI_API_KEY\` only in the backend environment to enable true model reasoning; without it, Agent exploration is deliberately labeled “无模型模式”.
-5. Review evidence and update idea status, then check version history and the weekly brief.
+## CI 与验收
 
-The local database defaults to \`data/research.db\` (git-ignored); it persists between restarts. The legacy Streamlit prototype remains at \`app.py\` and is **not** the new frontend.
+当前 CI 覆盖：
 
-## Production / Cloud deployment
+- Python 源码编译、后端集成测试和 Agent / API 测试；
+- Streamlit legacy UI 兼容烟测；
+- Next.js TypeScript 检查与生产构建；
+- 独立开发追踪器静态检查。
 
-Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAPI/Worker and private PostgreSQL configuration, security boundaries and secrets. The repository is public as of development; **never commit API keys, researcher CVs, unpublished manuscripts, participant data or private PDFs.**
+建议执行：
 
-## Architecture and tests
+```bash
+python -m pytest -q
+cd frontend && npm run typecheck && npm run build
+```
 
-- [Architecture, API and data/agent boundaries](docs/ARCHITECTURE.md)
-- \`python -m pytest -q\`
-- \`cd frontend && npm run typecheck && npm run build\`
-- API docs in local development: \`http://localhost:8000/docs\`
+CI 通过不代表 ChatGPT MCP 已连接，不代表 Render 已部署，也不代表真实 DeepSeek 实验已经完成。
 
-### Follow-up milestones
+## 兼容与历史文件
 
-Full-text Zotero/RAG ingestion, Semantic Scholar and venue verification, method embeddings, true novelty search against prior art, profile document upload, per-task cost logging, job recovery and secure team accounts are **not yet implemented**.
+`app.py` 是旧 Streamlit 原型，目前不是主 Web 首页，但仍被 CI 兼容烟测使用。`requirements.txt` 是旧环境依赖清单，主 Python 项目依赖以 `pyproject.toml` 为准。隔离测试脚本、历史快照和设计原型不应被误删。
 
+完整状态见 [文件使用清单](docs/REPOSITORY_FILE_INVENTORY.md)。
 
-### Multi-agent research game replay
+## 安全规则
 
-The existing Next.js workbench now includes **研究执行 → 多智能体博弈回放**:
-a protected, interactive replay of saved Research Agent Lab competitions,
-including dual-judge debates, Elo changes, scientific verification, paper
-screening and hypothesis family trees.
+不得将以下内容提交到 GitHub 或粘贴到 ChatGPT：
 
-[Configure secure server-only Supabase access and view limitations](docs/research-agent-game-replay.md).
+- API Key、DeepSeek Key、OAuth Token、Owner 密码；
+- PostgreSQL URL、R2 Secret、Vercel / Render 服务凭据；
+- 未发表论文、原始研究数据、参与者数据和私人 PDF。
+
+真实运行、数据访问、模型调用和部署变更必须遵守对应的 Owner 授权、预算、隔离和审计规则。
