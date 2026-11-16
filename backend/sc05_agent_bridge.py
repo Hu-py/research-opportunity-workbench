@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import SC05Case, SC05Run, StartRequest, run_view, case_view, load
+from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, check_fact_type_resume)
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
     SC05DelegatedAuthorization, flag as worker_flag, worker_status
@@ -241,19 +241,37 @@ def preflight(db,owner,run_id):
         SC05Run.member_id==owner.id,SC05Run.id!=row.id,
         SC05Run.status.in_(("queued","claimed","running"))).limit(1)).first()
     gate_ready=row.variant!="science_gate_on" or bool(paper.shared_evidence_json)
-    # Existing failed checkpoints may require an explicit stage-specific repair;
-    # never tell an agent to force a retry after schema errors.
-    failed_needs_review=row.status=="failed" and bool(row.error)
+    # Failed runs are eligible only after the exact saved first-stage checkpoint
+    # passes the existing Owner repair validator. This is read-only: it checks
+    # source quotes, prompt fingerprint, model and saved usage without a provider call.
+    repair_ready=False
+    repair_summary=None
+    if row.status=="failed":
+        try:
+            info=check_fact_type_resume(row,paper)
+            repair_ready=True
+            repair_summary={
+                "replay_prompt_matches":bool(info.get("replay_prompt_matches")),
+                "saved_facts":int(info.get("facts",0)),
+                "rejected_quotes":int(info.get("rejected_quotes",0)),
+                "normalized_types":info.get("types",[]),
+                "paid_calls_on_check":0,
+            }
+        except (EvidenceError,ValueError,TypeError) as exc:
+            repair_summary={"ready":False,"reason":str(exc)[:180],"paid_calls_on_check":0}
+    failed_needs_review=row.status=="failed" and not repair_ready
+    safe_status=(row.status=="prepared" or (row.status=="failed" and repair_ready))
     return {
         "run":run_view(row),"source_sha256":paper.source_sha,
         "saved_checkpoints":len(checks),
         "shared_facts_frozen":bool(paper.shared_evidence_json),
         "busy":bool(active),"gate_ready":gate_ready,
-        "safe_to_submit":row.status=="prepared" and gate_ready and not active,
+        "safe_to_submit":safe_status and gate_ready and not active,
         "failed_needs_review":failed_needs_review,
+        "repair_check":repair_summary,
         "budget":budget,
         "paid_execution_enabled":os.getenv("SC05_MCP_PAID_ENABLED","").lower() in ("true","1"),
-        "note":"Failed runs require checkpoint repair-check in the Owner dashboard; never automatically replay a failed run."
+        "note":"Failed runs are released only after exact cached-checkpoint validation; the original Owner endpoint performs the same validation again before queueing."
     }
 
 
