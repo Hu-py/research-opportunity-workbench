@@ -71,12 +71,20 @@ def validate_scientific_triage(
         seen.add(did)
         if row.get("lane") not in {"quality_review","scientific_frontier","both"}:
             raise EvidenceError("Invalid scientific lane")
-        if row.get("scope_status") not in {"acknowledged","not_reported","unknown"}:
+        raw_scope_status=row.get("scope_status")
+        if not isinstance(raw_scope_status,str) or not raw_scope_status.strip():
             raise EvidenceError("Invalid paper scope status")
+        normalized_scope_status=raw_scope_status.strip()
+        if normalized_scope_status not in {"acknowledged","not_reported","unknown"}:
+            # Conservative fallback: unfamiliar wording cannot be treated as
+            # proof that the paper acknowledged or omitted a limitation.
+            normalized_scope_status="unknown"
         classified.append({
             "diagnosis_id":did,
             "lane":row["lane"],
-            "scope_status":row["scope_status"],
+            "scope_status":normalized_scope_status,
+            "raw_scope_status":raw_scope_status,
+            "scope_status_normalized":raw_scope_status.strip()!=normalized_scope_status,
             "reason":_text(row.get("reason"),"lane reasoning"),
         })
     question_rows=[];qids=set()
