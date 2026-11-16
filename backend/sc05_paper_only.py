@@ -901,7 +901,8 @@ def run_paper(
         "区分真实观测值、代数派生指标、模拟或情景结果。"
         "每个环节必须引用已核实fact_id；不要索取用户的原始数据。"
         "若某步骤的实现未在论文披露，应标为未知。",
-        {"facts":facts,"required_json_shape":METHOD_SCHEMA},log,max_calls=max_calls)
+        {"facts":facts,"required_json_shape":METHOD_SCHEMA},
+        log,max_calls=max_calls,max_tokens=5000)
     lineage = method_lineage(lineage_raw,facts)
     diagnosis_raw = _run(model_call,api_key,"diagnosis",
         SYSTEM_PROMPT + "\n必须先重建研究实际支持的结论，识别测量、"
