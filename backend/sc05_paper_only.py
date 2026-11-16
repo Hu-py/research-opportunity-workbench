@@ -832,6 +832,24 @@ def _markdown(result: dict) -> str:
     return "\n".join(buf)+"\n"
 
 
+def limit_route_candidates(raw: dict) -> tuple[dict, dict]:
+    """Keep the highest-priority first five model proposals and audit overflow."""
+    if not isinstance(raw,dict):
+        raise EvidenceError("Research redesign output must be a JSON object")
+    routes=raw.get("routes")
+    if not isinstance(routes,list):
+        raise EvidenceError("Research redesign routes must be a list")
+    returned=len(routes)
+    accepted=min(returned,5)
+    normalized={**raw,"routes":routes[:5]}
+    return normalized,{
+        "model_returned_route_count":returned,
+        "accepted_route_count":accepted,
+        "truncated_route_count":max(0,returned-accepted),
+        "policy":"preserve first five in model order; disclose overflow",
+    }
+
+
 def run_paper(
     pdf: str | Path | None, api_key: str, *, model_call: Callable = request_json,
     search_provider: Callable | None = None, max_calls: int = 18,
@@ -950,6 +968,7 @@ def run_paper(
          "required_json_shape":(ROUTE_SCHEMA if scientific_value_gate
               else {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}]})},
          log,max_calls=max_calls,max_tokens=4100)
+    routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes=research_routes(routes_raw,diagnosis,papers,scientific_triage if scientific_value_gate else None)
     critic_raw=_run(model_call,api_key,"independent_critic",
         "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
@@ -969,7 +988,8 @@ def run_paper(
         "search_queries":questions,
         "external_papers":papers,"search_errors":search_errors,
         "literature_assessments":literature,
-        "routes":routes,"reviews":reviews,"usage":log,
+        "routes":routes,"route_generation_audit":route_generation_audit,
+        "reviews":reviews,"usage":log,
         "is_paid_model_output":model_call is request_json,
         "experiment_variant":("scientific_value_gate_on" if scientific_value_gate else "scientific_value_gate_off"),
         "shared_frozen_evidence":frozen_snapshot is not None,
@@ -980,6 +1000,12 @@ def run_paper(
     output["quality"]=inspect_report(output)
     # inspect_report owns literature-link and abstract-evidence warnings;
     # do not append duplicate warnings at the orchestration layer.
+    if route_generation_audit["truncated_route_count"]:
+        output["quality"].setdefault("warnings",[]).append(
+            str(route_generation_audit["truncated_route_count"])+
+            " model-proposed research route(s) exceeded the five-route limit; "+
+            "only the first five were retained in model order."
+        )
     unknown_confidence=sum(
         1 for d in diagnosis["diagnoses"]
         if d.get("confidence") == "not_assessed"
