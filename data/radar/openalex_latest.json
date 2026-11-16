@@ -1,8 +1,8 @@
 {
   "schema_version": "2.0.0",
   "feed_kind": "public_scholarly_evidence_only",
-  "retrieved_at_utc": "2026-11-09T01:30:14.982535+00:00",
-  "recent_window_start": "2026-09-10",
+  "retrieved_at_utc": "2026-11-16T01:38:30.945184+00:00",
+  "recent_window_start": "2026-09-17",
   "complete_publication_years": [
     2023,
     2024,
@@ -25,7 +25,7 @@
     "planning": {
       "configured": 12,
       "resolved": 10,
-      "sampled_papers": 240,
+      "sampled_papers": 238,
       "unresolved": [
         {
           "name": "Urban Studies",
@@ -40,7 +40,7 @@
     "methods": {
       "configured": 9,
       "resolved": 8,
-      "sampled_papers": 65,
+      "sampled_papers": 91,
       "unresolved": [
         {
           "name": "Advances in Neural Information Processing Systems",
@@ -54,17 +54,17 @@
       {
         "topic_id": "T10766",
         "name": "Urban Heat Island Mitigation",
-        "observed_recent_source_sample_count": 33
+        "observed_recent_source_sample_count": 30
       },
       {
         "topic_id": "T10298",
         "name": "Urban Transport and Accessibility",
-        "observed_recent_source_sample_count": 24
+        "observed_recent_source_sample_count": 23
       },
       {
         "topic_id": "T10692",
         "name": "Urban Green Space and Health",
-        "observed_recent_source_sample_count": 18
+        "observed_recent_source_sample_count": 19
       },
       {
         "topic_id": "T12325",
@@ -74,21 +74,16 @@
       {
         "topic_id": "T11014",
         "name": "Agglomeration and Urban Systems",
-        "observed_recent_source_sample_count": 9
-      },
-      {
-        "topic_id": "T10930",
-        "name": "Flood Risk Assessment and Management",
         "observed_recent_source_sample_count": 8
-      },
-      {
-        "topic_id": "T11980",
-        "name": "Human Mobility and Location-Based Analysis",
-        "observed_recent_source_sample_count": 6
       },
       {
         "topic_id": "T10226",
         "name": "Land Use and Ecosystem Services",
+        "observed_recent_source_sample_count": 7
+      },
+      {
+        "topic_id": "T10930",
+        "name": "Flood Risk Assessment and Management",
         "observed_recent_source_sample_count": 6
       },
       {
@@ -107,8 +102,13 @@
         "observed_recent_source_sample_count": 4
       },
       {
-        "topic_id": "T10768",
-        "name": "Electric Vehicles and Infrastructure",
+        "topic_id": "T11980",
+        "name": "Human Mobility and Location-Based Analysis",
+        "observed_recent_source_sample_count": 4
+      },
+      {
+        "topic_id": "T10698",
+        "name": "Transportation Planning and Optimization",
         "observed_recent_source_sample_count": 4
       },
       {
@@ -117,8 +117,13 @@
         "observed_recent_source_sample_count": 3
       },
       {
-        "topic_id": "T10574",
-        "name": "Crime Patterns and Interventions",
+        "topic_id": "T14509",
+        "name": "demographic modeling and climate adaptation",
+        "observed_recent_source_sample_count": 3
+      },
+      {
+        "topic_id": "T11119",
+        "name": "Urban Stormwater Management Solutions",
         "observed_recent_source_sample_count": 3
       },
       {
@@ -127,18 +132,38 @@
         "observed_recent_source_sample_count": 3
       },
       {
+        "topic_id": "T10005",
+        "name": "Ecology and Vegetation Dynamics Studies",
+        "observed_recent_source_sample_count": 3
+      },
+      {
+        "topic_id": "T10768",
+        "name": "Electric Vehicles and Infrastructure",
+        "observed_recent_source_sample_count": 3
+      },
+      {
         "topic_id": "T11371",
         "name": "Wind and Air Flow Studies",
         "observed_recent_source_sample_count": 3
       },
       {
-        "topic_id": "T10648",
-        "name": "Virtual Reality Applications and Impacts",
+        "topic_id": "T11817",
+        "name": "Housing, Finance, and Neoliberalism",
+        "observed_recent_source_sample_count": 3
+      },
+      {
+        "topic_id": "T12502",
+        "name": "Urbanization and City Planning",
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T14509",
-        "name": "demographic modeling and climate adaptation",
+        "topic_id": "T10574",
+        "name": "Crime Patterns and Interventions",
+        "observed_recent_source_sample_count": 2
+      },
+      {
+        "topic_id": "T10648",
+        "name": "Virtual Reality Applications and Impacts",
         "observed_recent_source_sample_count": 2
       },
       {
@@ -157,26 +182,6 @@
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T14296",
-        "name": "Climate Change and Sustainable Development",
-        "observed_recent_source_sample_count": 2
-      },
-      {
-        "topic_id": "T13801",
-        "name": "Urban Arborization and Environmental Studies",
-        "observed_recent_source_sample_count": 2
-      },
-      {
-        "topic_id": "T11119",
-        "name": "Urban Stormwater Management Solutions",
-        "observed_recent_source_sample_count": 2
-      },
-      {
-        "topic_id": "T10005",
-        "name": "Ecology and Vegetation Dynamics Studies",
-        "observed_recent_source_sample_count": 2
-      },
-      {
         "topic_id": "T10555",
         "name": "Fire effects on ecosystems",
         "observed_recent_source_sample_count": 2
@@ -187,13 +192,13 @@
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T10841",
-        "name": "Economic and Environmental Valuation",
+        "topic_id": "T10689",
+        "name": "Remote-Sensing Image Classification",
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T10121",
-        "name": "Building Energy and Comfort Optimization",
+        "topic_id": "T11942",
+        "name": "Transportation and Mobility Innovations",
         "observed_recent_source_sample_count": 2
       },
       {
@@ -202,13 +207,13 @@
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T11223",
-        "name": "Maritime Ports and Logistics",
+        "topic_id": "T10119",
+        "name": "Sustainability and Climate Change Governance",
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T10698",
-        "name": "Transportation Planning and Optimization",
+        "topic_id": "T10075",
+        "name": "Atmospheric chemistry and aerosols",
         "observed_recent_source_sample_count": 2
       },
       {
@@ -237,11 +242,6 @@
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T12502",
-        "name": "Urbanization and City Planning",
-        "observed_recent_source_sample_count": 1
-      },
-      {
         "topic_id": "T13473",
         "name": "Economic Zones and Regional Development",
         "observed_recent_source_sample_count": 1
@@ -267,6 +267,11 @@
         "observed_recent_source_sample_count": 1
       },
       {
+        "topic_id": "T14296",
+        "name": "Climate Change and Sustainable Development",
+        "observed_recent_source_sample_count": 1
+      },
+      {
         "topic_id": "T13850",
         "name": "Night-time city culture",
         "observed_recent_source_sample_count": 1
@@ -274,6 +279,16 @@
       {
         "topic_id": "T13003",
         "name": "Regional Development and Environment",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T10877",
+        "name": "Allergic Rhinitis and Sensitization",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T13909",
+        "name": "Environmental Quality and Pollution",
         "observed_recent_source_sample_count": 1
       },
       {
@@ -297,13 +312,13 @@
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T13438",
-        "name": "Environmental Conservation and Management",
+        "topic_id": "T11502",
+        "name": "Facility Location and Emergency Management",
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T10689",
-        "name": "Remote-Sensing Image Classification",
+        "topic_id": "T11045",
+        "name": "Privacy, Security, and Data Protection",
         "observed_recent_source_sample_count": 1
       },
       {
@@ -322,60 +337,65 @@
         "observed_recent_source_sample_count": 1
       },
       {
+        "topic_id": "T10121",
+        "name": "Building Energy and Comfort Optimization",
+        "observed_recent_source_sample_count": 1
+      },
+      {
         "topic_id": "T12011",
         "name": "Insurance, Mortality, Demography, Risk Management",
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T11108",
-        "name": "Municipal Solid Waste Management",
-        "observed_recent_source_sample_count": 1
-      },
-      {
-        "topic_id": "T11599",
-        "name": "Aviation Industry Analysis and Trends",
-        "observed_recent_source_sample_count": 1
-      },
-      {
-        "topic_id": "T11977",
-        "name": "Technology Use by Older Adults",
-        "observed_recent_source_sample_count": 1
-      },
-      {
-        "topic_id": "T10370",
-        "name": "Traffic and Road Safety",
-        "observed_recent_source_sample_count": 1
-      },
-      {
-        "topic_id": "T12503",
-        "name": "Social Acceptance of Renewable Energy",
+        "topic_id": "T11344",
+        "name": "Traffic Prediction and Management Techniques",
         "observed_recent_source_sample_count": 1
       }
     ],
     "methods": [
+      {
+        "topic_id": "T10203",
+        "name": "Recommender Systems and Techniques",
+        "observed_recent_source_sample_count": 7
+      },
+      {
+        "topic_id": "T11307",
+        "name": "Domain Adaptation and Few-Shot Learning",
+        "observed_recent_source_sample_count": 5
+      },
       {
         "topic_id": "T10531",
         "name": "Advanced Vision and Imaging",
         "observed_recent_source_sample_count": 4
       },
       {
-        "topic_id": "T10812",
-        "name": "Human Pose and Action Recognition",
+        "topic_id": "T11714",
+        "name": "Multimodal Machine Learning Applications",
         "observed_recent_source_sample_count": 4
       },
       {
-        "topic_id": "T11307",
-        "name": "Domain Adaptation and Few-Shot Learning",
+        "topic_id": "T10764",
+        "name": "Privacy-Preserving Technologies in Data",
+        "observed_recent_source_sample_count": 4
+      },
+      {
+        "topic_id": "T11273",
+        "name": "Advanced Graph Neural Networks",
+        "observed_recent_source_sample_count": 4
+      },
+      {
+        "topic_id": "T11099",
+        "name": "Autonomous Vehicle Technology and Safety",
         "observed_recent_source_sample_count": 3
       },
       {
-        "topic_id": "T11714",
-        "name": "Multimodal Machine Learning Applications",
+        "topic_id": "T10775",
+        "name": "Generative Adversarial Networks and Image Synthesis",
         "observed_recent_source_sample_count": 3
       },
       {
-        "topic_id": "T10719",
-        "name": "3D Shape Modeling and Analysis",
+        "topic_id": "T10812",
+        "name": "Human Pose and Action Recognition",
         "observed_recent_source_sample_count": 3
       },
       {
@@ -384,23 +404,23 @@
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T11105",
-        "name": "Advanced Image Processing Techniques",
+        "topic_id": "T10719",
+        "name": "3D Shape Modeling and Analysis",
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T10775",
-        "name": "Generative Adversarial Networks and Image Synthesis",
+        "topic_id": "T10667",
+        "name": "Emotion and Mood Recognition",
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T10331",
-        "name": "Video Surveillance and Tracking Methods",
+        "topic_id": "T10028",
+        "name": "Topic Modeling",
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T10764",
-        "name": "Privacy-Preserving Technologies in Data",
+        "topic_id": "T10637",
+        "name": "Advanced Clustering Algorithms Research",
         "observed_recent_source_sample_count": 2
       },
       {
@@ -414,18 +434,28 @@
         "observed_recent_source_sample_count": 2
       },
       {
-        "topic_id": "T10203",
-        "name": "Recommender Systems and Techniques",
-        "observed_recent_source_sample_count": 2
-      },
-      {
         "topic_id": "T12205",
         "name": "Time Series Analysis and Forecasting",
         "observed_recent_source_sample_count": 2
       },
       {
+        "topic_id": "T11550",
+        "name": "Text and Document Classification Technologies",
+        "observed_recent_source_sample_count": 2
+      },
+      {
+        "topic_id": "T12290",
+        "name": "Human Motion and Animation",
+        "observed_recent_source_sample_count": 1
+      },
+      {
         "topic_id": "T11689",
         "name": "Adversarial Robustness in Machine Learning",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T11105",
+        "name": "Advanced Image Processing Techniques",
         "observed_recent_source_sample_count": 1
       },
       {
@@ -454,13 +484,8 @@
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T11398",
-        "name": "Hand Gesture Recognition Systems",
-        "observed_recent_source_sample_count": 1
-      },
-      {
-        "topic_id": "T10653",
-        "name": "Robot Manipulation and Learning",
+        "topic_id": "T10331",
+        "name": "Video Surveillance and Tracking Methods",
         "observed_recent_source_sample_count": 1
       },
       {
@@ -469,28 +494,18 @@
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T10028",
-        "name": "Topic Modeling",
+        "topic_id": "T10927",
+        "name": "Access Control and Trust",
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T10637",
-        "name": "Advanced Clustering Algorithms Research",
-        "observed_recent_source_sample_count": 1
-      },
-      {
-        "topic_id": "T10667",
-        "name": "Emotion and Mood Recognition",
+        "topic_id": "T10215",
+        "name": "Semantic Web and Ontologies",
         "observed_recent_source_sample_count": 1
       },
       {
         "topic_id": "T10586",
         "name": "Robotic Path Planning Algorithms",
-        "observed_recent_source_sample_count": 1
-      },
-      {
-        "topic_id": "T11099",
-        "name": "Autonomous Vehicle Technology and Safety",
         "observed_recent_source_sample_count": 1
       },
       {
@@ -509,13 +524,48 @@
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T10883",
-        "name": "Ethics and Social Impacts of AI",
+        "topic_id": "T11704",
+        "name": "Mobile Crowdsensing and Crowdsourcing",
         "observed_recent_source_sample_count": 1
       },
       {
-        "topic_id": "T11273",
-        "name": "Advanced Graph Neural Networks",
+        "topic_id": "T12592",
+        "name": "Opinion Dynamics and Social Influence",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T10064",
+        "name": "Complex Network Analysis Techniques",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T11344",
+        "name": "Traffic Prediction and Management Techniques",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T11106",
+        "name": "Data Management and Algorithms",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T10317",
+        "name": "Advanced Database Systems and Queries",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T11918",
+        "name": "Forecasting Techniques and Applications",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T12292",
+        "name": "Graph Theory and Algorithms",
+        "observed_recent_source_sample_count": 1
+      },
+      {
+        "topic_id": "T12535",
+        "name": "Machine Learning and Data Classification",
         "observed_recent_source_sample_count": 1
       }
     ]
@@ -525,20 +575,20 @@
       "topic_id": "T10766",
       "name": "Urban Heat Island Mitigation",
       "observed_stream": "planning",
-      "sampled_recent_papers": 33,
+      "sampled_recent_papers": 30,
       "sample_paper_ids": [
         "https://openalex.org/W7224756212",
         "https://openalex.org/W7225232291",
         "https://openalex.org/W7223475804",
-        "https://openalex.org/W7214959782",
-        "https://openalex.org/W7214971879"
+        "https://openalex.org/W7213645293",
+        "https://openalex.org/W7152635456"
       ],
       "annual_counts": {
-        "2023": 4069,
-        "2024": 4859,
-        "2025": 6871
+        "2023": 4077,
+        "2024": 4878,
+        "2025": 6911
       },
-      "latest_full_year_growth_pct": 41.41,
+      "latest_full_year_growth_pct": 41.68,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -546,20 +596,20 @@
       "topic_id": "T10298",
       "name": "Urban Transport and Accessibility",
       "observed_stream": "planning",
-      "sampled_recent_papers": 24,
+      "sampled_recent_papers": 23,
       "sample_paper_ids": [
         "https://openalex.org/W7223174511",
         "https://openalex.org/W7220896476",
         "https://openalex.org/W7214991944",
-        "https://openalex.org/W7212425113",
-        "https://openalex.org/W4409838582"
+        "https://openalex.org/W4409838582",
+        "https://openalex.org/W7162329199"
       ],
       "annual_counts": {
-        "2023": 4025,
-        "2024": 4777,
-        "2025": 5707
+        "2023": 4000,
+        "2024": 4792,
+        "2025": 5649
       },
-      "latest_full_year_growth_pct": 19.47,
+      "latest_full_year_growth_pct": 17.88,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -567,20 +617,20 @@
       "topic_id": "T10692",
       "name": "Urban Green Space and Health",
       "observed_stream": "planning",
-      "sampled_recent_papers": 18,
+      "sampled_recent_papers": 19,
       "sample_paper_ids": [
         "https://openalex.org/W7225271958",
         "https://openalex.org/W7225224209",
         "https://openalex.org/W7224835486",
         "https://openalex.org/W7224901526",
-        "https://openalex.org/W7135230405"
+        "https://openalex.org/W7225650172"
       ],
       "annual_counts": {
-        "2023": 3051,
-        "2024": 3699,
-        "2025": 4535
+        "2023": 3024,
+        "2024": 3693,
+        "2025": 4527
       },
-      "latest_full_year_growth_pct": 22.6,
+      "latest_full_year_growth_pct": 22.58,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -597,11 +647,11 @@
         "https://openalex.org/W7213617340"
       ],
       "annual_counts": {
-        "2023": 1870,
-        "2024": 2005,
-        "2025": 2435
+        "2023": 1865,
+        "2024": 2012,
+        "2025": 2440
       },
-      "latest_full_year_growth_pct": 21.45,
+      "latest_full_year_growth_pct": 21.27,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -609,7 +659,7 @@
       "topic_id": "T11014",
       "name": "Agglomeration and Urban Systems",
       "observed_stream": "planning",
-      "sampled_recent_papers": 9,
+      "sampled_recent_papers": 8,
       "sample_paper_ids": [
         "https://openalex.org/W7223674086",
         "https://openalex.org/W7215105737",
@@ -618,53 +668,11 @@
         "https://openalex.org/W7223292357"
       ],
       "annual_counts": {
-        "2023": 2416,
-        "2024": 2523,
-        "2025": 3057
+        "2023": 2357,
+        "2024": 2510,
+        "2025": 2939
       },
-      "latest_full_year_growth_pct": 21.17,
-      "evidence_status": "measured",
-      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
-    },
-    {
-      "topic_id": "T10930",
-      "name": "Flood Risk Assessment and Management",
-      "observed_stream": "planning",
-      "sampled_recent_papers": 8,
-      "sample_paper_ids": [
-        "https://openalex.org/W7225064301",
-        "https://openalex.org/W7225094727",
-        "https://openalex.org/W7225397607",
-        "https://openalex.org/W7225467152",
-        "https://openalex.org/W7225006748"
-      ],
-      "annual_counts": {
-        "2023": 5330,
-        "2024": 6581,
-        "2025": 7980
-      },
-      "latest_full_year_growth_pct": 21.26,
-      "evidence_status": "measured",
-      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
-    },
-    {
-      "topic_id": "T11980",
-      "name": "Human Mobility and Location-Based Analysis",
-      "observed_stream": "planning",
-      "sampled_recent_papers": 6,
-      "sample_paper_ids": [
-        "https://openalex.org/W7167838021",
-        "https://openalex.org/W7213440899",
-        "https://openalex.org/W7213414458",
-        "https://openalex.org/W7212433759",
-        "https://openalex.org/W7225430253"
-      ],
-      "annual_counts": {
-        "2023": 1084,
-        "2024": 1074,
-        "2025": 1144
-      },
-      "latest_full_year_growth_pct": 6.52,
+      "latest_full_year_growth_pct": 17.09,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -672,20 +680,41 @@
       "topic_id": "T10226",
       "name": "Land Use and Ecosystem Services",
       "observed_stream": "planning",
-      "sampled_recent_papers": 6,
+      "sampled_recent_papers": 7,
       "sample_paper_ids": [
+        "https://openalex.org/W7225468434",
         "https://openalex.org/W7220732701",
         "https://openalex.org/W7219042306",
-        "https://openalex.org/W7212441671",
-        "https://openalex.org/W7225089825",
-        "https://openalex.org/W7225167106"
+        "https://openalex.org/W7172313794",
+        "https://openalex.org/W7225089825"
       ],
       "annual_counts": {
-        "2023": 5760,
-        "2024": 6512,
-        "2025": 7927
+        "2023": 5704,
+        "2024": 6505,
+        "2025": 7929
       },
-      "latest_full_year_growth_pct": 21.73,
+      "latest_full_year_growth_pct": 21.89,
+      "evidence_status": "measured",
+      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
+    },
+    {
+      "topic_id": "T10930",
+      "name": "Flood Risk Assessment and Management",
+      "observed_stream": "planning",
+      "sampled_recent_papers": 6,
+      "sample_paper_ids": [
+        "https://openalex.org/W7225064301",
+        "https://openalex.org/W7225094727",
+        "https://openalex.org/W7225397607",
+        "https://openalex.org/W7225467152",
+        "https://openalex.org/W7225086556"
+      ],
+      "annual_counts": {
+        "2023": 5330,
+        "2024": 6603,
+        "2025": 8002
+      },
+      "latest_full_year_growth_pct": 21.19,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -697,16 +726,79 @@
       "sample_paper_ids": [
         "https://openalex.org/W7225376964",
         "https://openalex.org/W4417357133",
-        "https://openalex.org/W7213439162",
         "https://openalex.org/W7225046846",
-        "https://openalex.org/W7225428422"
+        "https://openalex.org/W7225428422",
+        "https://openalex.org/W7225728058"
       ],
       "annual_counts": {
-        "2023": 4172,
-        "2024": 4499,
-        "2025": 5668
+        "2023": 4163,
+        "2024": 4532,
+        "2025": 5696
       },
-      "latest_full_year_growth_pct": 25.98,
+      "latest_full_year_growth_pct": 25.68,
+      "evidence_status": "measured",
+      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
+    },
+    {
+      "topic_id": "T10747",
+      "name": "Disaster Management and Resilience",
+      "observed_stream": "planning",
+      "sampled_recent_papers": 5,
+      "sample_paper_ids": [
+        "https://openalex.org/W7221029372",
+        "https://openalex.org/W7214438991",
+        "https://openalex.org/W7225385085",
+        "https://openalex.org/W7223690145",
+        "https://openalex.org/W7225174409"
+      ],
+      "annual_counts": {
+        "2023": 8822,
+        "2024": 9637,
+        "2025": 12362
+      },
+      "latest_full_year_growth_pct": 28.28,
+      "evidence_status": "measured",
+      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
+    },
+    {
+      "topic_id": "T10203",
+      "name": "Recommender Systems and Techniques",
+      "observed_stream": "methods",
+      "sampled_recent_papers": 7,
+      "sample_paper_ids": [
+        "https://openalex.org/W7224627924",
+        "https://openalex.org/W7220974393",
+        "https://openalex.org/W7220709340",
+        "https://openalex.org/W7214160474",
+        "https://openalex.org/W7214205133"
+      ],
+      "annual_counts": {
+        "2023": 7711,
+        "2024": 8558,
+        "2025": 10710
+      },
+      "latest_full_year_growth_pct": 25.15,
+      "evidence_status": "measured",
+      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
+    },
+    {
+      "topic_id": "T11307",
+      "name": "Domain Adaptation and Few-Shot Learning",
+      "observed_stream": "methods",
+      "sampled_recent_papers": 5,
+      "sample_paper_ids": [
+        "https://openalex.org/W7131862959",
+        "https://openalex.org/W7225984457",
+        "https://openalex.org/W7226023602",
+        "https://openalex.org/W4416050924",
+        "https://openalex.org/W7214342846"
+      ],
+      "annual_counts": {
+        "2023": 5997,
+        "2024": 6801,
+        "2025": 7844
+      },
+      "latest_full_year_growth_pct": 15.34,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -723,49 +815,10 @@
       ],
       "annual_counts": {
         "2023": 2575,
-        "2024": 2706,
-        "2025": 3017
+        "2024": 2702,
+        "2025": 3019
       },
-      "latest_full_year_growth_pct": 11.49,
-      "evidence_status": "measured",
-      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
-    },
-    {
-      "topic_id": "T10812",
-      "name": "Human Pose and Action Recognition",
-      "observed_stream": "methods",
-      "sampled_recent_papers": 4,
-      "sample_paper_ids": [
-        "https://openalex.org/W7125370837",
-        "https://openalex.org/W4414856726",
-        "https://openalex.org/W7223648337",
-        "https://openalex.org/W7154451065"
-      ],
-      "annual_counts": {
-        "2023": 4197,
-        "2024": 4876,
-        "2025": 5160
-      },
-      "latest_full_year_growth_pct": 5.82,
-      "evidence_status": "measured",
-      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
-    },
-    {
-      "topic_id": "T11307",
-      "name": "Domain Adaptation and Few-Shot Learning",
-      "observed_stream": "methods",
-      "sampled_recent_papers": 3,
-      "sample_paper_ids": [
-        "https://openalex.org/W4416050924",
-        "https://openalex.org/W7223225359",
-        "https://openalex.org/W7214342846"
-      ],
-      "annual_counts": {
-        "2023": 5998,
-        "2024": 6789,
-        "2025": 7834
-      },
-      "latest_full_year_growth_pct": 15.39,
+      "latest_full_year_growth_pct": 11.73,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
@@ -773,78 +826,788 @@
       "topic_id": "T11714",
       "name": "Multimodal Machine Learning Applications",
       "observed_stream": "methods",
-      "sampled_recent_papers": 3,
+      "sampled_recent_papers": 4,
       "sample_paper_ids": [
+        "https://openalex.org/W7125265472",
+        "https://openalex.org/W7225761035",
         "https://openalex.org/W7123903152",
-        "https://openalex.org/W4416092020",
-        "https://openalex.org/W7131431487"
+        "https://openalex.org/W4416092020"
       ],
       "annual_counts": {
-        "2023": 5174,
-        "2024": 9475,
-        "2025": 13996
+        "2023": 5189,
+        "2024": 9468,
+        "2025": 14007
       },
-      "latest_full_year_growth_pct": 47.72,
+      "latest_full_year_growth_pct": 47.94,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     },
     {
-      "topic_id": "T10719",
-      "name": "3D Shape Modeling and Analysis",
+      "topic_id": "T10764",
+      "name": "Privacy-Preserving Technologies in Data",
+      "observed_stream": "methods",
+      "sampled_recent_papers": 4,
+      "sample_paper_ids": [
+        "https://openalex.org/W7221066044",
+        "https://openalex.org/W7214148210",
+        "https://openalex.org/W7214148252",
+        "https://openalex.org/W7214046222"
+      ],
+      "annual_counts": {
+        "2023": 7677,
+        "2024": 10493,
+        "2025": 14297
+      },
+      "latest_full_year_growth_pct": 36.25,
+      "evidence_status": "measured",
+      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
+    },
+    {
+      "topic_id": "T11273",
+      "name": "Advanced Graph Neural Networks",
+      "observed_stream": "methods",
+      "sampled_recent_papers": 4,
+      "sample_paper_ids": [
+        "https://openalex.org/W7221030983",
+        "https://openalex.org/W7214163125",
+        "https://openalex.org/W7213521349",
+        "https://openalex.org/W7213524796"
+      ],
+      "annual_counts": {
+        "2023": 3846,
+        "2024": 4558,
+        "2025": 5235
+      },
+      "latest_full_year_growth_pct": 14.85,
+      "evidence_status": "measured",
+      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
+    },
+    {
+      "topic_id": "T11099",
+      "name": "Autonomous Vehicle Technology and Safety",
       "observed_stream": "methods",
       "sampled_recent_papers": 3,
       "sample_paper_ids": [
-        "https://openalex.org/W7225418816",
-        "https://openalex.org/W7223572034",
-        "https://openalex.org/W7223382679"
+        "https://openalex.org/W7164900471",
+        "https://openalex.org/W4416158811",
+        "https://openalex.org/W7220854789"
       ],
       "annual_counts": {
-        "2023": 3858,
-        "2024": 5581,
-        "2025": 6920
+        "2023": 4410,
+        "2024": 5406,
+        "2025": 6675
       },
-      "latest_full_year_growth_pct": 23.99,
-      "evidence_status": "measured",
-      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
-    },
-    {
-      "topic_id": "T10036",
-      "name": "Advanced Neural Network Applications",
-      "observed_stream": "methods",
-      "sampled_recent_papers": 2,
-      "sample_paper_ids": [
-        "https://openalex.org/W7225326025",
-        "https://openalex.org/W7223085329"
-      ],
-      "annual_counts": {
-        "2023": 20686,
-        "2024": 25993,
-        "2025": 31484
-      },
-      "latest_full_year_growth_pct": 21.12,
-      "evidence_status": "measured",
-      "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
-    },
-    {
-      "topic_id": "T11105",
-      "name": "Advanced Image Processing Techniques",
-      "observed_stream": "methods",
-      "sampled_recent_papers": 2,
-      "sample_paper_ids": [
-        "https://openalex.org/W7225466555",
-        "https://openalex.org/W7223034958"
-      ],
-      "annual_counts": {
-        "2023": 2781,
-        "2024": 3326,
-        "2025": 3666
-      },
-      "latest_full_year_growth_pct": 10.22,
+      "latest_full_year_growth_pct": 23.47,
       "evidence_status": "measured",
       "selection_basis": "recent_primary_topic_frequency_in_curated_source_sample"
     }
   ],
   "recent_papers": [
+    {
+      "openalex_id": "https://openalex.org/W7233419781",
+      "doi": "https://doi.org/10.1177/23998083261507758",
+      "title": "When does post-demolition vacancy become persistent, and how much vacant land remains? Nationwide evidence from South Korea",
+      "publication_date": "2026-11-14",
+      "work_type": "article",
+      "authors": [
+        "Sunjae Lee",
+        "Minju Shin",
+        "Bumjoon Kang"
+      ],
+      "venue": "Environment and Planning B Urban Analytics and City Science",
+      "primary_topic_id": "T12502",
+      "primary_topic": "Urbanization and City Planning",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7230185340",
+      "doi": "https://doi.org/10.1016/j.compenvurbsys.2026.102560",
+      "title": "Locating flow-intercepting facilities in urban road networks: A semantic-topological coupled CoD-PPO approach",
+      "publication_date": "2026-11-14",
+      "work_type": "article",
+      "authors": [
+        "Baoju Liu",
+        "Dexi Zhan",
+        "Yijie Lyu",
+        "Bingbing Zhao",
+        "Min Deng"
+      ],
+      "venue": "Computers Environment and Urban Systems",
+      "primary_topic_id": "T11502",
+      "primary_topic": "Facility Location and Emergency Management",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7131862959",
+      "doi": "https://doi.org/10.1007/s11263-026-03108-3",
+      "title": "WARM-CAT: Warm-Started Test-Time Comprehensive Knowledge Accumulation for Compositional Zero-Shot Learning",
+      "publication_date": "2026-11-14",
+      "work_type": "article",
+      "authors": [
+        "Xudong Yan",
+        "Jiaxin Wang",
+        "Xin Su",
+        "Songhe Feng"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T11307",
+      "primary_topic": "Domain Adaptation and Few-Shot Learning",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7164900471",
+      "doi": "https://doi.org/10.1007/s11263-026-03065-x",
+      "title": "GraphBEV++: Multi-Modal Feature Alignment for Autonomous Driving",
+      "publication_date": "2026-11-14",
+      "work_type": "article",
+      "authors": [
+        "Ziying Song",
+        "Caiyan Jia",
+        "Lin Liu",
+        "S Xu",
+        "Lei Yang",
+        "Yadan Luo"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T11099",
+      "primary_topic": "Autonomous Vehicle Technology and Safety",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225852370",
+      "doi": "https://doi.org/10.1016/s0169-2046(26)00260-4",
+      "title": "Editorial Board",
+      "publication_date": "2026-11-13",
+      "work_type": "paratext",
+      "authors": [],
+      "venue": "Landscape and Urban Planning",
+      "primary_topic_id": "",
+      "primary_topic": null,
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225999103",
+      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105831",
+      "title": "Geographical patterns and shifting drivers of non-native woody plants used in landscaping along the introduction-naturalization-invasion continuum",
+      "publication_date": "2026-11-13",
+      "work_type": "article",
+      "authors": [
+        "Wenbo Mou",
+        "Cheng Jin",
+        "Siwei Hu",
+        "Hongyuan Gan",
+        "Lihua Zhou",
+        "Min Luo"
+      ],
+      "venue": "Landscape and Urban Planning",
+      "primary_topic_id": "T10005",
+      "primary_topic": "Ecology and Vegetation Dynamics Studies",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7226040929",
+      "doi": "https://doi.org/10.1016/j.compenvurbsys.2026.102557",
+      "title": "Have we already lost it? Geoprivacy in the age of AI, uncertainty, and corporate gatekeeping",
+      "publication_date": "2026-11-13",
+      "work_type": "article",
+      "authors": [
+        "Milad Malekzadeh",
+        "Jim Thatcher",
+        "Grant McKenzie",
+        "Vanessa da Silva Brum-Bastos",
+        "Christian Kray",
+        "Kevin Michael Curtin"
+      ],
+      "venue": "Computers Environment and Urban Systems",
+      "primary_topic_id": "T11045",
+      "primary_topic": "Privacy, Security, and Data Protection",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7128922913",
+      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104903",
+      "title": "Bridging the Urban-Rural gap: Towards evaluating the impacts of regionally integrated transport strategies",
+      "publication_date": "2026-11-13",
+      "work_type": "article",
+      "authors": [
+        "Rita Prior Filipe",
+        "Andrew C. Heath",
+        "Nick McCullen"
+      ],
+      "venue": "Journal of Transport Geography",
+      "primary_topic_id": "T11942",
+      "primary_topic": "Transportation and Mobility Innovations",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7125265472",
+      "doi": "https://doi.org/10.1007/s11263-026-03112-7",
+      "title": "SpaRRTa: A Synthetic Benchmark for Evaluating Spatial Intelligence in Visual Foundation Models",
+      "publication_date": "2026-11-13",
+      "work_type": "article",
+      "authors": [
+        "Turhan Can Kargin",
+        "Wojciech Jasiński",
+        "Adam Pardyl",
+        "Bartosz Zieliński",
+        "Marcin Przewięźlikowski"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T11714",
+      "primary_topic": "Multimodal Machine Learning Applications",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225984457",
+      "doi": "https://doi.org/10.1007/s11263-026-03123-4",
+      "title": "LEAD++: Unsupervised Fine-Grained Visual Representation Learning with Multi-context Enhanced Entropy-Based Adaptive Distillation",
+      "publication_date": "2026-11-13",
+      "work_type": "article",
+      "authors": [
+        "Jianfeng Dong",
+        "Zihao Zhang",
+        "Daizong Liu",
+        "Shujie Chen",
+        "Jie Sun",
+        "Cuizhu Bao"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T11307",
+      "primary_topic": "Domain Adaptation and Few-Shot Learning",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7226023050",
+      "doi": "https://doi.org/10.1007/s11263-026-03119-0",
+      "title": "Block-Wise Variable Conditional Diffusion for High-Fidelity Text-to-4D Generation",
+      "publication_date": "2026-11-13",
+      "work_type": "article",
+      "authors": [
+        "Zhichao Zhang",
+        "Hui Chen",
+        "Jinsheng Deng",
+        "Ming Xu"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T10775",
+      "primary_topic": "Generative Adversarial Networks and Image Synthesis",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7226023602",
+      "doi": "https://doi.org/10.1007/s11263-026-03079-5",
+      "title": "Incremental Learning of Vision-Language Models via Task Subspace Projection and Dynamic LoRA",
+      "publication_date": "2026-11-13",
+      "work_type": "article",
+      "authors": [
+        "Hao Fu",
+        "Qian Feng",
+        "Hanbin Zhao",
+        "Jiahua Dong",
+        "Xu Tan",
+        "Lina Wei"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T11307",
+      "primary_topic": "Domain Adaptation and Few-Shot Learning",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225919588",
+      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105830",
+      "title": "Mapping allergenic pollen production and potential societal exposure from individual trees in New York City",
+      "publication_date": "2026-11-12",
+      "work_type": "article",
+      "authors": [
+        "Nadia V. Chasalow",
+        "John M. McGee",
+        "Ella M. Mancino",
+        "MaKayla A. DeValia",
+        "Harrison G. Paradis-Collins",
+        "Seokyun Hong"
+      ],
+      "venue": "Landscape and Urban Planning",
+      "primary_topic_id": "T10877",
+      "primary_topic": "Allergic Rhinitis and Sensitization",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225851630",
+      "doi": "https://doi.org/10.1177/0308518x261499187",
+      "title": "Safe bonds, risky debt? Covered bonds and the financialisation of housing in Sweden",
+      "publication_date": "2026-11-12",
+      "work_type": "article",
+      "authors": [
+        "Viktor Skyrman",
+        "Timothy Blackwell",
+        "Juan Barredo-Zuriarrain",
+        "Luis Buendía"
+      ],
+      "venue": "Environment and Planning A Economy and Space",
+      "primary_topic_id": "T11817",
+      "primary_topic": "Housing, Finance, and Neoliberalism",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4415333862",
+      "doi": "https://doi.org/10.1007/s11263-026-03082-w",
+      "title": "GenHOI: Generalizing Text-driven 4D Human-Object Interaction Synthesis for Unseen Objects",
+      "publication_date": "2026-11-12",
+      "work_type": "article",
+      "authors": [
+        "Shujia Li",
+        "Haiyu Zhang",
+        "Xinyuan Chen",
+        "Yaohui Wang",
+        "Yutong Ban"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T12290",
+      "primary_topic": "Human Motion and Animation",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W4416158811",
+      "doi": "https://doi.org/10.1007/s11263-026-03078-6",
+      "title": "HENet++: Hybrid Encoding and Multi-task Learning for 3D Perception and Planning in Autonomous Driving",
+      "publication_date": "2026-11-12",
+      "work_type": "article",
+      "authors": [
+        "Zhongyu Xia",
+        "Zhiwei Lin",
+        "Yongtao Wang",
+        "Ming–Hsuan Yang"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T11099",
+      "primary_topic": "Autonomous Vehicle Technology and Safety",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225788092",
+      "doi": "https://doi.org/10.1016/j.compenvurbsys.2026.102554",
+      "title": "Explainable parcel-level land-use classification with geometrically grounded multimodal reasoning",
+      "publication_date": "2026-11-11",
+      "work_type": "article",
+      "authors": [
+        "Geyuan Zhu",
+        "Yao Yao",
+        "Chenglong Yu",
+        "Xiang Zhang",
+        "Liangyang Dai",
+        "Zhihui Hu"
+      ],
+      "venue": "Computers Environment and Urban Systems",
+      "primary_topic_id": "T10689",
+      "primary_topic": "Remote-Sensing Image Classification",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225717575",
+      "doi": "https://doi.org/10.1016/j.apgeog.2026.104254",
+      "title": "Investigating individual heat exposure inequality across income groups: a job–housing mobility perspective",
+      "publication_date": "2026-11-11",
+      "work_type": "article",
+      "authors": [
+        "Ruoyang Jin",
+        "Yong Liu",
+        "Heng Wu",
+        "Yingpeng Li",
+        "Guangyu Zhang"
+      ],
+      "venue": "Applied Geography",
+      "primary_topic_id": "T12259",
+      "primary_topic": "Environmental Justice and Health Disparities",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225780263",
+      "doi": "https://doi.org/10.1016/j.apgeog.2026.104256",
+      "title": "Analyzing park co-visitation and inter-park ecological similarity using iNaturalist observations",
+      "publication_date": "2026-11-11",
+      "work_type": "article",
+      "authors": [
+        "Jiping Cao",
+        "Hartwig Henry Hochmair"
+      ],
+      "venue": "Applied Geography",
+      "primary_topic_id": "T10692",
+      "primary_topic": "Urban Green Space and Health",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225798756",
+      "doi": "https://doi.org/10.1016/j.apgeog.2026.104253",
+      "title": "Small informal green spaces for urban regeneration: Assessing their contribution to recreational ecosystem service flow in high-density urban areas",
+      "publication_date": "2026-11-11",
+      "work_type": "article",
+      "authors": [
+        "Yutong Ji",
+        "Xueying Song",
+        "Ziyan Wang",
+        "Jie Kong",
+        "Xiong Li",
+        "Fangzheng Li"
+      ],
+      "venue": "Applied Geography",
+      "primary_topic_id": "T10692",
+      "primary_topic": "Urban Green Space and Health",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225806063",
+      "doi": "https://doi.org/10.1016/j.uclim.2026.103222",
+      "title": "Urban climate vulnerability and the challenge of sustainable adaptation in Indian cities: Inequality and governance fragmentation",
+      "publication_date": "2026-11-11",
+      "work_type": "article",
+      "authors": [
+        "Rajdeep Chanda",
+        "Shri Kant Tripathi"
+      ],
+      "venue": "Urban Climate",
+      "primary_topic_id": "T10119",
+      "primary_topic": "Sustainability and Climate Change Governance",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225832684",
+      "doi": "https://doi.org/10.1016/j.uclim.2026.103201",
+      "title": "Effects of urban land use and anthropogenic heat on PM2.5 pollution under synoptic patterns in the Yangtze River Delta region",
+      "publication_date": "2026-11-11",
+      "work_type": "article",
+      "authors": [
+        "Yangzhihao Zhan",
+        "Min Xie",
+        "Bingliang Zhuang",
+        "Tijian Wang",
+        "Linlin Zheng",
+        "Lei Qian"
+      ],
+      "venue": "Urban Climate",
+      "primary_topic_id": "T10075",
+      "primary_topic": "Atmospheric chemistry and aerosols",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225772706",
+      "doi": "https://doi.org/10.1007/s11263-026-03124-3",
+      "title": "Expediting Pre-training for Vision Transformers Through Hierarchical Data Sparsity Optimization",
+      "publication_date": "2026-11-11",
+      "work_type": "article",
+      "authors": [
+        "Zhenglun Kong",
+        "Changdi Yang",
+        "Xuan Shen",
+        "Hao Tang",
+        "Geng Yuan",
+        "Ming-Ming Cheng"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T10036",
+      "primary_topic": "Advanced Neural Network Applications",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225740607",
+      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105826",
+      "title": "The olfactory city: mapping urban smellscape perceptions through social sensing and spatial context",
+      "publication_date": "2026-11-10",
+      "work_type": "article",
+      "authors": [
+        "Chun Wang",
+        "Yihui Zhao",
+        "Bingtao Gao",
+        "Zezhou Hao",
+        "Le Li",
+        "Hongxiao Liu"
+      ],
+      "venue": "Landscape and Urban Planning",
+      "primary_topic_id": "T13909",
+      "primary_topic": "Environmental Quality and Pollution",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225761035",
+      "doi": "https://doi.org/10.1007/s11263-026-03118-1",
+      "title": "Robust Reasoning Segmentation for Open-World MLLMs without Catastrophic Forgetting",
+      "publication_date": "2026-11-10",
+      "work_type": "article",
+      "authors": [
+        "Jiazhen Liu",
+        "Long Chen"
+      ],
+      "venue": "International Journal of Computer Vision",
+      "primary_topic_id": "T11714",
+      "primary_topic": "Multimodal Machine Learning Applications",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225650172",
+      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105799",
+      "title": "Intergenerational perceptions of garden concepts and values",
+      "publication_date": "2026-11-09",
+      "work_type": "article",
+      "authors": [
+        "Kyung-Sook Woo"
+      ],
+      "venue": "Landscape and Urban Planning",
+      "primary_topic_id": "T10692",
+      "primary_topic": "Urban Green Space and Health",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225652072",
+      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105814",
+      "title": "Understanding the role of rail transit in shaping urban population density models: A dual-level analysis of Chinese cities at city and station levels",
+      "publication_date": "2026-11-09",
+      "work_type": "article",
+      "authors": [
+        "Haoyu Hu",
+        "Jianfa Shen",
+        "Hengyu Gu",
+        "Jun Chu",
+        "Junwei Zhang"
+      ],
+      "venue": "Landscape and Urban Planning",
+      "primary_topic_id": "T10298",
+      "primary_topic": "Urban Transport and Accessibility",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225610181",
+      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104899",
+      "title": "Understanding long-distance bus system performance and subsidy effects through national-scale simulation",
+      "publication_date": "2026-11-09",
+      "work_type": "article",
+      "authors": [
+        "Guan Huang",
+        "Kara Maria Kockelman",
+        "Anthony G.O. Yeh"
+      ],
+      "venue": "Journal of Transport Geography",
+      "primary_topic_id": "T10698",
+      "primary_topic": "Transportation Planning and Optimization",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225644120",
+      "doi": "https://doi.org/10.1016/j.apgeog.2026.104246",
+      "title": "Accessible parks, unequal represented environmental quality? Child- and older-adult-related park-use contexts in Beijing through multimodal social media data",
+      "publication_date": "2026-11-09",
+      "work_type": "article",
+      "authors": [
+        "Jiaqi Zhang",
+        "Jin Rui",
+        "Zhiqiang Wu"
+      ],
+      "venue": "Applied Geography",
+      "primary_topic_id": "T10692",
+      "primary_topic": "Urban Green Space and Health",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225653306",
+      "doi": "https://doi.org/10.1016/j.apgeog.2026.104252",
+      "title": "Towards inclusive urban planning: Fine-scale mapping of age and education demographic diversity in Guangzhou",
+      "publication_date": "2026-11-09",
+      "work_type": "article",
+      "authors": [
+        "Feng Gao",
+        "Zhaocheng Bai",
+        "Yang Liu",
+        "Ye Wang",
+        "Yafeng Ni",
+        "Siming Liao"
+      ],
+      "venue": "Applied Geography",
+      "primary_topic_id": "T14509",
+      "primary_topic": "demographic modeling and climate adaptation",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225628270",
+      "doi": "https://doi.org/10.1016/j.uclim.2026.103216",
+      "title": "The urban dry island (UDI) effect under different PM2.5 pollution levels in Nanjing Metropolis, China",
+      "publication_date": "2026-11-09",
+      "work_type": "article",
+      "authors": [
+        "Miao Liu",
+        "Yong Wang",
+        "Yan Zeng",
+        "Meng Wang"
+      ],
+      "venue": "Urban Climate",
+      "primary_topic_id": "T10766",
+      "primary_topic": "Urban Heat Island Mitigation",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225588010",
+      "doi": "https://doi.org/10.1016/j.cities.2026.107713",
+      "title": "Comparative analysis of barriers and opportunities for implementation of blue-green infrastructure for enhancing urban flood resilience in Uganda, Rwanda, and Sweden",
+      "publication_date": "2026-11-08",
+      "work_type": "article",
+      "authors": [
+        "Erik Nilsson",
+        "Seith N. Mugume",
+        "Johanna Sörensen",
+        "Marie Leonce Murebwayire",
+        "Umaru Garba Wali"
+      ],
+      "venue": "Cities",
+      "primary_topic_id": "T11119",
+      "primary_topic": "Urban Stormwater Management Solutions",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7214363437",
+      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104901",
+      "title": "Monitoring urban traffic dynamics at high spatiotemporal resolution using distributed acoustic sensing and deep learning",
+      "publication_date": "2026-11-08",
+      "work_type": "article",
+      "authors": [
+        "Hao Tian",
+        "Heng Cai",
+        "Xiaowei Chen",
+        "Yifan Yang"
+      ],
+      "venue": "Journal of Transport Geography",
+      "primary_topic_id": "T11344",
+      "primary_topic": "Traffic Prediction and Management Techniques",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
     {
       "openalex_id": "https://openalex.org/W7225459842",
       "doi": "https://doi.org/10.1177/23998083261502609",
@@ -882,8 +1645,8 @@
         "Xi Zheng"
       ],
       "venue": "Landscape and Urban Planning",
-      "primary_topic_id": "T13801",
-      "primary_topic": "Urban Arborization and Environmental Studies",
+      "primary_topic_id": "T10226",
+      "primary_topic": "Land Use and Ecosystem Services",
       "stream": "planning",
       "evidence_level": "metadata_only",
       "streams": [
@@ -1902,6 +2665,44 @@
       ]
     },
     {
+      "openalex_id": "https://openalex.org/W7117560029",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108092",
+      "title": "Urban Form and Climate: Performance-Oriented Computational Workflow for Practical Urban Design",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Wang Pan",
+        "Wusihala Wusihala",
+        "Lingrui Li"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T12325",
+      "primary_topic": "Urban Design and Spatial Analysis",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7117879597",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108102",
+      "title": "Driver’s Licensing Laws for Undocumented Immigrants in the U.S.: The Environmental Implications and the Role of Public Transit",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Dafeng Xu"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T10698",
+      "primary_topic": "Transportation Planning and Optimization",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
       "openalex_id": "https://openalex.org/W7152635456",
       "doi": "https://doi.org/10.1016/j.scs.2026.108082",
       "title": "A statistical stability framework for bus-based mobile microclimate measurements: assessing street-scale climate risk in low aspect ratio streets",
@@ -1912,6 +2713,29 @@
         "Yan Chen",
         "Zheyu Wang",
         "Yunchen Dong"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T10766",
+      "primary_topic": "Urban Heat Island Mitigation",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7162341347",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108097",
+      "title": "Multidimensional predictive associations and causal effects of urban factors on surface urban heat island intensity across Chinese cities: A block-scale LCZ framework",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Ke Li",
+        "Jingyuan Shao",
+        "Kunyu Yao",
+        "Qi Zheng",
+        "H H Chen",
+        "Yan Yang"
       ],
       "venue": "Sustainable Cities and Society",
       "primary_topic_id": "T10766",
@@ -1935,6 +2759,25 @@
         "Yating Xiong",
         "Lin Pei",
         "Jiawei Yao"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T10766",
+      "primary_topic": "Urban Heat Island Mitigation",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7163129193",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108085",
+      "title": "Uncertainty-Aware Graph Neural Reconstruction of Urban Temperature Fields from Sparse Sensors under Deployment Constraints",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Reda Snaiki",
+        "Abdelatif Merabtine"
       ],
       "venue": "Sustainable Cities and Society",
       "primary_topic_id": "T10766",
@@ -1979,6 +2822,25 @@
       "venue": "Sustainable Cities and Society",
       "primary_topic_id": "T12503",
       "primary_topic": "Social Acceptance of Renewable Energy",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7172313794",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108127",
+      "title": "Cross-scale cascading failure and urban ecological network resilience: a multi-scale analysis of Beijing",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Xinhui DONG",
+        "Xing Gao"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T10226",
+      "primary_topic": "Land Use and Ecosystem Services",
       "stream": "planning",
       "evidence_level": "metadata_only",
       "streams": [
@@ -2298,6 +3160,110 @@
       ]
     },
     {
+      "openalex_id": "https://openalex.org/W7225614572",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108091",
+      "title": "Spatially Explicit Assessment of Rainwater Harvesting Performance under Climate Change Scenarios: A Municipal-Scale Analysis for Portugal",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Felipe Israel da Silva",
+        "Fernando Arão Bila Júnior",
+        "Luís Filipe Sanches Fernandes",
+        "Fernando António Leal Pacheco"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T11119",
+      "primary_topic": "Urban Stormwater Management Solutions",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225623662",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108096",
+      "title": "Seasonal and Interannual Dynamics of Air Pollution, Vegetation, and Land Surface Temperature in an Industrial Urban Landscape: A Six-Year Remote Sensing Assessment of Bursa, Türkiye",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Duygu ARIKAN"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T12916",
+      "primary_topic": "COVID-19 impact on air quality",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225659051",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108094",
+      "title": "Applications of Artificial Intelligence in urban regeneration: A scoping review",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Fubin Luo",
+        "Yu HU"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T13920",
+      "primary_topic": "Urban Planning and Valuation",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225721262",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108100",
+      "title": "Human-centered diagnosis of dynamic pedestrian heat exposure for targeted cooling interventions in urban walking spaces",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Huihui Zhao",
+        "Yufan Zheng",
+        "Yunfei Gao",
+        "Zhaoji Wu",
+        "Wenfang He",
+        "Yongchao Zhai"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T10766",
+      "primary_topic": "Urban Heat Island Mitigation",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225728058",
+      "doi": "https://doi.org/10.1016/j.scs.2026.108103",
+      "title": "Smart Cities as Digital Catalysts for Energy Transition: With an Analysis of Spatial Spillover and Policy Synergy Effects",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Li Chen",
+        "关维雨",
+        "Haiyang Zhang",
+        "Youyu Luo",
+        "Cheng Zhang",
+        "Yixiang Zhang"
+      ],
+      "venue": "Sustainable Cities and Society",
+      "primary_topic_id": "T11479",
+      "primary_topic": "Smart Cities and Technologies",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
       "openalex_id": "https://openalex.org/W7224689559",
       "doi": "https://doi.org/10.1016/j.apgeog.2026.104244",
       "title": "Livestreaming E-commerce and the spatial reconfiguration of urban retail functions in China: An urban value chain approach",
@@ -2349,6 +3315,24 @@
       "venue": "Applied Geography",
       "primary_topic_id": "T11556",
       "primary_topic": "Poverty, Education, and Child Welfare",
+      "stream": "planning",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "planning"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7225919321",
+      "doi": "https://doi.org/10.1177/0308518x261483258",
+      "title": "Financialization and Local Statecraft: Introduction to the book review forum",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Desiree Fields"
+      ],
+      "venue": "Environment and Planning A Economy and Space",
+      "primary_topic_id": "T11817",
+      "primary_topic": "Housing, Finance, and Neoliberalism",
       "stream": "planning",
       "evidence_level": "metadata_only",
       "streams": [
@@ -2507,6 +3491,71 @@
       ]
     },
     {
+      "openalex_id": "https://openalex.org/W7225893160",
+      "doi": "https://doi.org/10.1016/j.artint.2026.104657",
+      "title": "Controlled Query Evaluation under Epistemic Policies",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Gianluca Cima",
+        "Domenico Lembo",
+        "Lorenzo Marconi",
+        "Riccardo Rosati",
+        "Domenico Fabio Savo"
+      ],
+      "venue": "Artificial Intelligence",
+      "primary_topic_id": "T10927",
+      "primary_topic": "Access Control and Trust",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7227808199",
+      "doi": "https://doi.org/10.1016/j.artint.2026.104660",
+      "title": "STEANet: Efficiently learning spatio-temporal affective representations from videos",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Jin Zhou",
+        "Yun Yi",
+        "Hanli Wang",
+        "Tinghua Wang",
+        "Wenyu Hu",
+        "Pengjie Tang"
+      ],
+      "venue": "Artificial Intelligence",
+      "primary_topic_id": "T10667",
+      "primary_topic": "Emotion and Mood Recognition",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
+      "openalex_id": "https://openalex.org/W7229894539",
+      "doi": "https://doi.org/10.1016/j.artint.2026.104658",
+      "title": "Efficient Extraction of EL+-Ontology Deductive Modules",
+      "publication_date": "2026-11-01",
+      "work_type": "article",
+      "authors": [
+        "Hui Yang",
+        "Yue Ma",
+        "Nicole Bidoit"
+      ],
+      "venue": "Artificial Intelligence",
+      "primary_topic_id": "T10215",
+      "primary_topic": "Semantic Web and Ontologies",
+      "stream": "methods",
+      "evidence_level": "metadata_only",
+      "streams": [
+        "methods"
+      ]
+    },
+    {
       "openalex_id": "https://openalex.org/W7225239082",
       "doi": "https://doi.org/10.1109/tnnls.2026.3730587",
       "title": "IEEE Computational Intelligence Society Information",
@@ -2649,193 +3698,6 @@
       "venue": "Journal of Transport Geography",
       "primary_topic_id": "T12306",
       "primary_topic": "Urban and Freight Transport Logistics",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7155551232",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108065",
-      "title": "Nonlinear and heterogeneous effects of 2D/3D factors on global urban heat island using explainable spatial machine learning",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Zhou Zhou",
-        "Yong Liu",
-        "Wenze Yue",
-        "Yingpeng Li"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T10766",
-      "primary_topic": "Urban Heat Island Mitigation",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7224738237",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108062",
-      "title": "Unraveling extreme diurnal temperature range in Chinese cities: Spatiotemporal patterns, multidimensional drivers, and climate-zone heterogeneity",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Siying Li",
-        "Yuanyou Zhang",
-        "Tao Wu",
-        "Zeyin Chen"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T10766",
-      "primary_topic": "Urban Heat Island Mitigation",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7224775604",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108025",
-      "title": "Forecasting Urban Heat Island hotspots using spatially aware machine learning: Explainable multi-model prediction with spatial validation and uncertainty analysis",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Richa Golash",
-        "Dimple Sethi",
-        "Kushagra Golash"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T10766",
-      "primary_topic": "Urban Heat Island Mitigation",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7224836211",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108061",
-      "title": "Scenario-aware thermal discomfort assessment across heterogeneous building operation modes: Evidence from the ASHRAE Global Thermal Comfort Database II",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Yu Wang",
-        "Jing Ying Zhao",
-        "Dehan Liu",
-        "Jiewen Hou"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T10121",
-      "primary_topic": "Building Energy and Comfort Optimization",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7224994552",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108067",
-      "title": "Quantifying the nonlinear interactions between low-carbon development and urban resilience for urban renewal: An LV–ML–Vivid analysis",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Aoxiang Zhang",
-        "Ruyin Long",
-        "Hong Chen",
-        "Meifen Wu"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T14296",
-      "primary_topic": "Climate Change and Sustainable Development",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7224995577",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108068",
-      "title": "Digital inequalities and multidimensional deprivation among marginalised communities in emerging Chinese smart cities: Evidence from ICT-driven public service transformation in Jiangan District, Wuhan",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Yuan Zhuang",
-        "Dujuan Yang",
-        "Wenshu Li",
-        "Qi Han"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T10953",
-      "primary_topic": "E-Government and Public Services",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7225002857",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108064",
-      "title": "Hazardous below-ground housing in transition: environmental inequality, residential flows, and residualization in Korea",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Jong-Won Lee"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T13729",
-      "primary_topic": "Korean Urban and Social Studies",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7225006748",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108069",
-      "title": "Urban flood risk prediction based on the hybrid sampling of imbalanced data and deep learning model",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Shanlun Xu",
-        "Boya Gong",
-        "Huiliang Wang",
-        "Hongshi Xu",
-        "Xiangyang Zhang",
-        "Yihong Zhou"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T10930",
-      "primary_topic": "Flood Risk Assessment and Management",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7225015404",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108063",
-      "title": "Detection and early warning of the psychological states of departing passengers at transportation hubs",
-      "publication_date": "2026-10-31",
-      "work_type": "article",
-      "authors": [
-        "Jian Chen",
-        "Xiaotong Wu",
-        "Shuyu Yu",
-        "Jianjie Gao"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T11500",
-      "primary_topic": "Evacuation and Crowd Dynamics",
       "stream": "planning",
       "evidence_level": "metadata_only",
       "streams": [
@@ -3414,28 +4276,6 @@
       ]
     },
     {
-      "openalex_id": "https://openalex.org/W7224267759",
-      "doi": "https://doi.org/10.1016/j.scs.2026.108058",
-      "title": "Decomposition and spatial transfer of green infrastructure benefits in high-density aging urban areas using water tracer model",
-      "publication_date": "2026-10-30",
-      "work_type": "article",
-      "authors": [
-        "Huayue Li",
-        "Jun Liu",
-        "Qinghua Luan",
-        "Jiahong Liu",
-        "Weiwei Shao"
-      ],
-      "venue": "Sustainable Cities and Society",
-      "primary_topic_id": "T11119",
-      "primary_topic": "Urban Stormwater Management Solutions",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
       "openalex_id": "https://openalex.org/W7224784858",
       "doi": "https://doi.org/10.1016/j.apgeog.2026.104247",
       "title": "Economic benefits of ecological restoration in European Union rivers: a cultural ecosystem services valuation",
@@ -3491,28 +4331,6 @@
       "venue": "Environment and Planning B Urban Analytics and City Science",
       "primary_topic_id": "T10574",
       "primary_topic": "Crime Patterns and Interventions",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7135230405",
-      "doi": "https://doi.org/10.1016/j.cities.2026.107724",
-      "title": "Safe, seen, and included: Understanding ethnic minority experiences of parks in a changing Polish City",
-      "publication_date": "2026-10-29",
-      "work_type": "article",
-      "authors": [
-        "Zina Riadh Abdulla",
-        "Dima Albadra",
-        "Sophia Hatzisavvidou",
-        "Nick McCullen",
-        "Jan K. Kazak"
-      ],
-      "venue": "Cities",
-      "primary_topic_id": "T10692",
-      "primary_topic": "Urban Green Space and Health",
       "stream": "planning",
       "evidence_level": "metadata_only",
       "streams": [
@@ -4593,52 +5411,6 @@
       ]
     },
     {
-      "openalex_id": "https://openalex.org/W7223286273",
-      "doi": "https://doi.org/10.1007/s11263-026-03084-8",
-      "title": "Synergizing Disentangled Representation and Split Federated Learning to Break Centralized Bottlenecks in Gaze Estimation",
-      "publication_date": "2026-10-23",
-      "work_type": "article",
-      "authors": [
-        "Yunlong Wang",
-        "Zhengquan Luo",
-        "Kunbo Zhang",
-        "Zhenan Sun",
-        "Zhaofeng He",
-        "Dacheng Tao"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T10764",
-      "primary_topic": "Privacy-Preserving Technologies in Data",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223382679",
-      "doi": "https://doi.org/10.1007/s11263-026-03095-5",
-      "title": "Cross3DReg: A Real-world Cross-source Point Cloud Registration Benchmark",
-      "publication_date": "2026-10-23",
-      "work_type": "article",
-      "authors": [
-        "Zongyi Xu",
-        "Z. Lang",
-        "Yilong Chen",
-        "Shanshan Zhao",
-        "Xiaoshui Huang",
-        "Sean Bin Yang"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T10719",
-      "primary_topic": "3D Shape Modeling and Analysis",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
       "openalex_id": "https://openalex.org/W7223253104",
       "doi": "https://doi.org/10.1177/23998083261500938",
       "title": "Optimising resource management in data-scarce environments: A modelling approach for Greater Cairo",
@@ -4700,92 +5472,6 @@
       "evidence_level": "metadata_only",
       "streams": [
         "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223185833",
-      "doi": "https://doi.org/10.1016/j.uclim.2026.103186",
-      "title": "Seasonal surface urban heat island clustering and thermal hotspot mapping: Dual-scale spatial diagnostics and planning implications for Colombo, Sri Lanka",
-      "publication_date": "2026-10-22",
-      "work_type": "article",
-      "authors": [
-        "H.S.R. Hettikankanama",
-        "Sandun M. Dassanayake",
-        "I. Mahakalanda",
-        "T.S. De Silva"
-      ],
-      "venue": "Urban Climate",
-      "primary_topic_id": "T10766",
-      "primary_topic": "Urban Heat Island Mitigation",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223177298",
-      "doi": "https://doi.org/10.1007/s11263-026-03075-9",
-      "title": "LexSign: Learning Sign Language from Lexical Descriptions",
-      "publication_date": "2026-10-22",
-      "work_type": "article",
-      "authors": [
-        "Yuecong Min",
-        "Honggang Zou",
-        "Peiqi Jiao",
-        "Xilin Chen"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T11398",
-      "primary_topic": "Hand Gesture Recognition Systems",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223225359",
-      "doi": "https://doi.org/10.1007/s11263-026-03088-4",
-      "title": "Zero-Shot Domain Generalization via Domain Prompt Learning",
-      "publication_date": "2026-10-22",
-      "work_type": "article",
-      "authors": [
-        "Shiming Chen",
-        "Salman Khan",
-        "Salman Khan",
-        "Fahad Shahbaz Khan"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T11307",
-      "primary_topic": "Domain Adaptation and Few-Shot Learning",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223225784",
-      "doi": "https://doi.org/10.1007/s11263-026-03056-y",
-      "title": "PASG-RoboKeyBench: A Closed-Loop Automated Framework and Benchmark for Operation Primitive Extraction and Semantic Anchoring in Robotic Manipulation",
-      "publication_date": "2026-10-22",
-      "work_type": "article",
-      "authors": [
-        "Yifan Zheng",
-        "Siyu Pan",
-        "Zhihao Zhu",
-        "Yibin Liu",
-        "Yiheng Ge",
-        "Yuhao Zhang"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T10653",
-      "primary_topic": "Robot Manipulation and Learning",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
       ]
     },
     {
@@ -4895,137 +5581,6 @@
       ]
     },
     {
-      "openalex_id": "https://openalex.org/W7223104448",
-      "doi": "https://doi.org/10.1016/j.apgeog.2026.104230",
-      "title": "Interpretable vision-language reasoning for diagnosing estate-scale residential renewal urgency",
-      "publication_date": "2026-10-21",
-      "work_type": "article",
-      "authors": [
-        "Xiaoqin Yan",
-        "Leyi Su",
-        "Mengfan Tang",
-        "Shuliang Ren",
-        "Yitian Liu",
-        "Junnan Qi"
-      ],
-      "venue": "Applied Geography",
-      "primary_topic_id": "T13920",
-      "primary_topic": "Urban Planning and Valuation",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223106117",
-      "doi": "https://doi.org/10.1016/j.apgeog.2026.104215",
-      "title": "Exploring periodic and temporal association in crime incidents using time-constrained geographically weighted colocation quotient analysis",
-      "publication_date": "2026-10-21",
-      "work_type": "article",
-      "authors": [
-        "Ling Li",
-        "Jianquan Cheng",
-        "Xiongfa Mai",
-        "Lian Duan",
-        "Jon Bannister"
-      ],
-      "venue": "Applied Geography",
-      "primary_topic_id": "T10574",
-      "primary_topic": "Crime Patterns and Interventions",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223121929",
-      "doi": "https://doi.org/10.1016/j.apgeog.2026.104229",
-      "title": "A spatially explicit optimization framework for synergistic water-food-carbon management in agricultural watersheds",
-      "publication_date": "2026-10-21",
-      "work_type": "article",
-      "authors": [
-        "Xiaojie Liu",
-        "Xiaobin Jin",
-        "Yongping Wei",
-        "Xiuli Luo"
-      ],
-      "venue": "Applied Geography",
-      "primary_topic_id": "T12724",
-      "primary_topic": "Water-Energy-Food Nexus Studies",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223134763",
-      "doi": "https://doi.org/10.1016/j.apgeog.2026.104218",
-      "title": "Differentiated associations between urbanization structure and asset wealth inequality in Africa",
-      "publication_date": "2026-10-21",
-      "work_type": "article",
-      "authors": [
-        "Mengjie Wang",
-        "Xi Li"
-      ],
-      "venue": "Applied Geography",
-      "primary_topic_id": "T10446",
-      "primary_topic": "Income, Poverty, and Inequality",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223156778",
-      "doi": "https://doi.org/10.1016/j.apgeog.2026.104222",
-      "title": "Does the climate-adaptive city pilot policy exacerbate urban sprawl? Evidence from a quasi-natural experiment in China",
-      "publication_date": "2026-10-21",
-      "work_type": "article",
-      "authors": [
-        "Peixian Liu",
-        "Lei Wang",
-        "Ning Han",
-        "Fanglei Zhong",
-        "Xianyun Zhang",
-        "Yutong Jiao"
-      ],
-      "venue": "Applied Geography",
-      "primary_topic_id": "T11014",
-      "primary_topic": "Agglomeration and Urban Systems",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223085329",
-      "doi": "https://doi.org/10.1007/s11263-026-03067-9",
-      "title": "Learning Complex Scene Segmentation from Noisy Label",
-      "publication_date": "2026-10-21",
-      "work_type": "article",
-      "authors": [
-        "Jin Zhang",
-        "Ruiheng Zhang",
-        "Zhe Cao",
-        "Lixin Xu",
-        "Nian Liu",
-        "Rao Muhammad Anwer"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T10036",
-      "primary_topic": "Advanced Neural Network Applications",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
       "openalex_id": "https://openalex.org/W7223030539",
       "doi": "https://doi.org/10.1016/j.compenvurbsys.2026.102541",
       "title": "Family specific spatial borrowing in multimodal urban reconstruction: a leave one neighborhood out study of Cincinnati",
@@ -5066,74 +5621,6 @@
       "evidence_level": "metadata_only",
       "streams": [
         "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7131431487",
-      "doi": "https://doi.org/10.1007/s11263-026-03100-x",
-      "title": "Test-Time Computing for Referring Multimodal Large Language Models",
-      "publication_date": "2026-10-20",
-      "work_type": "article",
-      "authors": [
-        "Mingrui Wu",
-        "Hao Chen",
-        "Jiayi Ji",
-        "Xiaoshuai Sun",
-        "Zhiyuan Liu",
-        "Liujuan Cao"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T11714",
-      "primary_topic": "Multimodal Machine Learning Applications",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223034958",
-      "doi": "https://doi.org/10.1007/s11263-026-03057-x",
-      "title": "Event-Guided Decomposition from a Long-Exposure Nighttime Snapshot into Video Sequence",
-      "publication_date": "2026-10-20",
-      "work_type": "article",
-      "authors": [
-        "Jianbo Cao",
-        "Yuqi Han",
-        "Siming Zheng",
-        "徐桂林 Xu Guilin",
-        "Qiang Zhang",
-        "Jinli Suo"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T11105",
-      "primary_topic": "Advanced Image Processing Techniques",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7223058405",
-      "doi": "https://doi.org/10.1007/s11263-026-03093-7",
-      "title": "Multi-View Optimal Transport for Multi-View Crowd Localization and Tracking",
-      "publication_date": "2026-10-20",
-      "work_type": "article",
-      "authors": [
-        "Kaiyi Zhang",
-        "Qi Zhang",
-        "Jixuan Chen",
-        "Antoni B. Chan",
-        "Hui Huang"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T10331",
-      "primary_topic": "Video Surveillance and Tracking Methods",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
       ]
     },
     {
@@ -5230,67 +5717,6 @@
       "venue": "Journal of Transport Geography",
       "primary_topic_id": "T10298",
       "primary_topic": "Urban Transport and Accessibility",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7222984909",
-      "doi": "https://doi.org/10.1016/j.uclim.2026.103178",
-      "title": "Rain-driven floods in New York City: An investigation using text-based data products",
-      "publication_date": "2026-10-19",
-      "work_type": "article",
-      "authors": [
-        "Rachel Lo",
-        "Bernice R. Rosenzweig",
-        "Mobin Rahimi-Golkhandan",
-        "Matina Shakya",
-        "Art T. DeGaetano",
-        "Franco Andre Montalto"
-      ],
-      "venue": "Urban Climate",
-      "primary_topic_id": "T10930",
-      "primary_topic": "Flood Risk Assessment and Management",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W4414856726",
-      "doi": "https://doi.org/10.1007/s11263-026-03083-9",
-      "title": "LLM-Powered Query Expansion for Enhancing Boundary Prediction in Language-Driven Action Localization",
-      "publication_date": "2026-10-18",
-      "work_type": "article",
-      "authors": [
-        "Zirui Shang",
-        "Xinxiao Wu",
-        "Shuo Yang"
-      ],
-      "venue": "International Journal of Computer Vision",
-      "primary_topic_id": "T10812",
-      "primary_topic": "Human Pose and Action Recognition",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7222782567",
-      "doi": "https://doi.org/10.1016/j.uclim.2026.103191",
-      "title": "Corrigendum to “Analyzing the impact of urban form on land surface temperature in arid cities, using machine learning algorithms (Case: Isfahan, Iran)” [Urban Clim. 68 (2026) 103053]",
-      "publication_date": "2026-10-17",
-      "work_type": "erratum",
-      "authors": [
-        "Mahdi Suleimany"
-      ],
-      "venue": "Urban Climate",
-      "primary_topic_id": "T10766",
-      "primary_topic": "Urban Heat Island Mitigation",
       "stream": "planning",
       "evidence_level": "metadata_only",
       "streams": [
@@ -5459,384 +5885,6 @@
       "evidence_level": "metadata_only",
       "streams": [
         "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221820129",
-      "doi": "https://doi.org/10.1177/0308518x261489796",
-      "title": "Mombasa in the Second Cold War: Logistics polyalignment and the making of the gatekeeper city",
-      "publication_date": "2026-10-14",
-      "work_type": "article",
-      "authors": [
-        "Louis Cyuzuzo"
-      ],
-      "venue": "Environment and Planning A Economy and Space",
-      "primary_topic_id": "T13949",
-      "primary_topic": "Belt and Road Initiative",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221673916",
-      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104853",
-      "title": "Corrigendum to “Multidimensional accessibility analysis across transportation modes: a hybrid framework for constructing centered time cartograms” [J. Transp. Geogr. 136 (2026) 104806]",
-      "publication_date": "2026-10-13",
-      "work_type": "erratum",
-      "authors": [
-        "Tianhao Wu",
-        "Qiubo Peng",
-        "Maoxin Jiang",
-        "Zhizhen Jiang",
-        "Xu Yang",
-        "Can Li"
-      ],
-      "venue": "Journal of Transport Geography",
-      "primary_topic_id": "T10298",
-      "primary_topic": "Urban Transport and Accessibility",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221720053",
-      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104872",
-      "title": "A gendered perspective on the associations of commute duration and travel modes with commute satisfaction",
-      "publication_date": "2026-10-13",
-      "work_type": "article",
-      "authors": [
-        "Kunbo Shi",
-        "Huanfa Chen",
-        "Tanhua Jin",
-        "Hannah Hook",
-        "Frank Witlox"
-      ],
-      "venue": "Journal of Transport Geography",
-      "primary_topic_id": "T10698",
-      "primary_topic": "Transportation Planning and Optimization",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221722609",
-      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104845",
-      "title": "Public electric vehicle charging station location and equity-focused legislation in Nevada",
-      "publication_date": "2026-10-13",
-      "work_type": "article",
-      "authors": [
-        "James U. Okorocha",
-        "Scott Kelley",
-        "Seri Park",
-        "Alireza Ermagun"
-      ],
-      "venue": "Journal of Transport Geography",
-      "primary_topic_id": "T10768",
-      "primary_topic": "Electric Vehicles and Infrastructure",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221464976",
-      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105810",
-      "title": "Fuel structure controls fire spread in managed urban vegetation patches: field characterisation and FDS simulations from Shanghai",
-      "publication_date": "2026-10-12",
-      "work_type": "article",
-      "authors": [
-        "Manqing Yao",
-        "Deshun Zhang",
-        "Yingying Chen",
-        "Mohamed Elsadek"
-      ],
-      "venue": "Landscape and Urban Planning",
-      "primary_topic_id": "T10555",
-      "primary_topic": "Fire effects on ecosystems",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221553104",
-      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104852",
-      "title": "Urban form, terrain, and spatial inequality in electric vehicle charging demand: Evidence from a mountainous megacity",
-      "publication_date": "2026-10-12",
-      "work_type": "article",
-      "authors": [
-        "Xiaohong Ren",
-        "Wei Wu",
-        "Zhenhua Chen"
-      ],
-      "venue": "Journal of Transport Geography",
-      "primary_topic_id": "T10768",
-      "primary_topic": "Electric Vehicles and Infrastructure",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221322281",
-      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104870",
-      "title": "Spatial differentiation and contributing mechanisms of static resilience in the global container shipping network",
-      "publication_date": "2026-10-10",
-      "work_type": "article",
-      "authors": [
-        "Yafeng Qin",
-        "Jianke Guo"
-      ],
-      "venue": "Journal of Transport Geography",
-      "primary_topic_id": "T11223",
-      "primary_topic": "Maritime Ports and Logistics",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221359061",
-      "doi": "https://doi.org/10.1016/j.jtrangeo.2026.104871",
-      "title": "Diagnosing spatial mismatch between objective and street-view-based perceived walkability assessments: A dual-track framework for street-renewal diagnostics",
-      "publication_date": "2026-10-10",
-      "work_type": "article",
-      "authors": [
-        "Jingpeng Duan",
-        "Jiawei Chen",
-        "Tianya Shi",
-        "Lixin Wang",
-        "继红 李",
-        "Quan Qu"
-      ],
-      "venue": "Journal of Transport Geography",
-      "primary_topic_id": "T10298",
-      "primary_topic": "Urban Transport and Accessibility",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221156337",
-      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105801",
-      "title": "Associations between anthropogenic factors and cultivated plant β-diversity in tropical urban landscapes: evidence from Hainan, China",
-      "publication_date": "2026-10-09",
-      "work_type": "article",
-      "authors": [
-        "Qin Zhou",
-        "Hai-Li Zhang",
-        "Mir Muhammad Nizamani",
-        "Qian Li",
-        "Jiali Yuan",
-        "Xin Yang"
-      ],
-      "venue": "Landscape and Urban Planning",
-      "primary_topic_id": "T10005",
-      "primary_topic": "Ecology and Vegetation Dynamics Studies",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221066044",
-      "doi": "https://doi.org/10.1016/j.artint.2026.104641",
-      "title": "Mitigating data reconstruction attacks in federated learning: Conditions, bounds, and theoretical guarantees",
-      "publication_date": "2026-10-09",
-      "work_type": "article",
-      "authors": [
-        "Xiaojin Zhang",
-        "Mingcong Xu",
-        "Wei Chen",
-        "Qiang Yang"
-      ],
-      "venue": "Artificial Intelligence",
-      "primary_topic_id": "T10764",
-      "primary_topic": "Privacy-Preserving Technologies in Data",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7220896476",
-      "doi": "https://doi.org/10.1177/23998083261490631",
-      "title": "Evaluating sustainable mobility potential through geographical accessibility and individual access, skills and appropriation",
-      "publication_date": "2026-10-08",
-      "work_type": "article",
-      "authors": [
-        "Jules Grandvillemin",
-        "Florian Masse",
-        "Samuel Carpentier-Postel",
-        "Vincent Kaufmann"
-      ],
-      "venue": "Environment and Planning B Urban Analytics and City Science",
-      "primary_topic_id": "T10298",
-      "primary_topic": "Urban Transport and Accessibility",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7220909835",
-      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105811",
-      "title": "Global health benefits of urban greening across three decades (1990–2020)",
-      "publication_date": "2026-10-08",
-      "work_type": "article",
-      "authors": [
-        "Xiaoran Yan",
-        "Nemin Wu",
-        "Hui Dai",
-        "Dongjia Han",
-        "Mark J Nieuwenhuijsen",
-        "John S. Ji"
-      ],
-      "venue": "Landscape and Urban Planning",
-      "primary_topic_id": "T10692",
-      "primary_topic": "Urban Green Space and Health",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221012549",
-      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105804",
-      "title": "Nature- versus non-nature-based recreation: A comparative assessment of self-reported anxiety alleviation",
-      "publication_date": "2026-10-08",
-      "work_type": "article",
-      "authors": [
-        "Shuyao Wu",
-        "Lumeng LIU",
-        "Delong Li",
-        "Zewei He",
-        "Shijue Zhu",
-        "Jinwei Dong"
-      ],
-      "venue": "Landscape and Urban Planning",
-      "primary_topic_id": "T10692",
-      "primary_topic": "Urban Green Space and Health",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7221029372",
-      "doi": "https://doi.org/10.1016/j.landurbplan.2026.105805",
-      "title": "A network approach to mapping responsibility in wildfire risk mitigation",
-      "publication_date": "2026-10-08",
-      "work_type": "article",
-      "authors": [
-        "Minho Kim",
-        "Harrison Raine",
-        "John Radke",
-        "Marta C. González"
-      ],
-      "venue": "Landscape and Urban Planning",
-      "primary_topic_id": "T10747",
-      "primary_topic": "Disaster Management and Resilience",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7220892936",
-      "doi": "https://doi.org/10.1177/0308518x261495248",
-      "title": "Corrigendum to “From regions to neighborhoods: Algorithmic lending and the rescaling of racial inequality in U.S. mortgage markets”",
-      "publication_date": "2026-10-08",
-      "work_type": "erratum",
-      "authors": [],
-      "venue": "Environment and Planning A Economy and Space",
-      "primary_topic_id": "T11645",
-      "primary_topic": "Urban, Neighborhood, and Segregation Studies",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7220931971",
-      "doi": "https://doi.org/10.1177/0308518x261486023",
-      "title": "Self-starter or sidekick? Independent and spillover effects of Opportunity Zones on housing supply in cities",
-      "publication_date": "2026-10-08",
-      "work_type": "article",
-      "authors": [
-        "Matthew D. Wilson",
-        "Kabir Jain",
-        "Ahmed Rachid El‐Khattabi",
-        "T. William Lester"
-      ],
-      "venue": "Environment and Planning A Economy and Space",
-      "primary_topic_id": "T10632",
-      "primary_topic": "Housing Market and Economics",
-      "stream": "planning",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "planning"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7167063149",
-      "doi": "https://doi.org/10.1016/j.artint.2026.104642",
-      "title": "Optimal any-angle path planning in static and dynamic environments",
-      "publication_date": "2026-10-08",
-      "work_type": "article",
-      "authors": [
-        "Yiyuan Zou",
-        "Clark Borst"
-      ],
-      "venue": "Artificial Intelligence",
-      "primary_topic_id": "T10586",
-      "primary_topic": "Robotic Path Planning Algorithms",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
-      ]
-    },
-    {
-      "openalex_id": "https://openalex.org/W7220974393",
-      "doi": "https://doi.org/10.1109/tkde.2026.3728237",
-      "title": "Toward Practical Large-Scale Dynamic Heterogeneous Graph Embedding: Cold-Start Resilient Recommendation",
-      "publication_date": "2026-10-08",
-      "work_type": "article",
-      "authors": [
-        "Mabiao Long",
-        "Jiaxi Liu",
-        "YuFeng LI",
-        "Kefan Wang",
-        "Yi Cao",
-        "Jiandong Ding"
-      ],
-      "venue": "IEEE Transactions on Knowledge and Data Engineering",
-      "primary_topic_id": "T10203",
-      "primary_topic": "Recommender Systems and Techniques",
-      "stream": "methods",
-      "evidence_level": "metadata_only",
-      "streams": [
-        "methods"
       ]
     }
   ],
