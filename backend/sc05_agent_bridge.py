@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, now, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
+from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
 from backend.sc05_paper_only import run_paper
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
@@ -720,13 +720,18 @@ def mount(app,*,get_db,get_factory):
                     if queued_retry:
                         # A previous start committed the SC05 queue before its
                         # delegated authorization was re-approved. Revalidate
-                        # the exact cached checkpoints, then re-arm this same
-                        # authorization row; never create a second grant.
+                        # the exact cached checkpoints, repin the verified code,
+                        # then re-arm this same authorization row; never create
+                        # a second grant or replay an already-paid stage.
+                        previous_sha=row.pipeline_sha
+                        row.pipeline_sha=pipeline_sha()
+                        row.updated_at=now()
                         approval_before.status="approved"
                         approval_before.granted_at=now()
                         approval_before.processed_at=None
                         add_audit(db,"sc05.mcp_paid_resume",owner.id,row.id,
-                                  "Re-approved needs_review authorization after zero-paid checkpoint validation")
+                                  "Re-approved needs_review authorization after zero-paid checkpoint validation; old_sha="+
+                                  previous_sha[:16]+";new_sha="+row.pipeline_sha[:16])
                         db.commit()
                         started=run_view(row)
                     else:
