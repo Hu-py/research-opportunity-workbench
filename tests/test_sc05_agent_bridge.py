@@ -285,6 +285,43 @@ def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypat
         assert auth.processed_at is None
 
 
+def test_owner_mcp_pair_preflight_and_round_ledger_are_chatgpt_tools(workspace):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert case.status_code==201,case.text
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    created=call(client,access,"tools/call",{"name":"create_ab_pair","arguments":{
+        "case_id":case.json()["id"],"fresh_copy":True,"confirm_create":True}})
+    assert created.json()["result"]["isError"] is False,created.text
+    pair=json.loads(created.json()["result"]["content"][0]["text"])
+    pair_id=pair["pair_id"]
+    prepared=call(client,access,"tools/call",{"name":"prepare_ab_pair","arguments":{"pair_id":pair_id}})
+    assert prepared.json()["result"]["isError"] is False
+    state=json.loads(prepared.json()["result"]["content"][0]["text"])
+    assert state["next_action"]=="start_baseline"
+    assert state["can_start_next"] is True
+    round_result=call(client,access,"tools/call",{"name":"record_experiment_round","arguments":{
+        "round_code":"R6.3","category_code":"◆01","category_label":"工作流完整性",
+        "problem":"验证 ChatGPT 是否可以完整管理一组 A/B 实验",
+        "method":"MCP 成对预检、顺序启动、盲评和持久化记录",
+        "experiment_content":"创建 clean A/B pair，先运行 gate-off，再运行 gate-on",
+        "pair_id":pair_id,"status":"planned",
+        "detailed_record":{"acceptance":["pair preflight","round ledger"]}}})
+    assert round_result.json()["result"]["isError"] is False,round_result.text
+    rounds=call(client,access,"tools/call",{"name":"list_experiment_rounds","arguments":{}})
+    assert rounds.json()["result"]["isError"] is False
+    data=json.loads(rounds.json()["result"]["content"][0]["text"])
+    assert any(x["round_code"]=="R6.3" and x["pair_id"]==pair_id for x in data["rounds"])
+    names={x["name"] for x in call(client,access,"tools/list").json()["result"]["tools"]}
+    assert {"prepare_ab_pair","get_ab_pair_status","start_ab_pair","get_ab_pair_result",
+            "record_blind_review","compare_ab_pair","list_experiment_rounds",
+            "record_experiment_round"} <= names
+
+
 def test_owner_mcp_start_enqueues_once_and_registers_in_devstudio(workspace,monkeypatch):
     client,factory=workspace
     session=api_session(client)
