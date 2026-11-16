@@ -22,7 +22,11 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
         try:
             log("start","科研任务已启动："+task.kind)
             profile=get_profile(db)
-            if task.kind=="explore":
+            if task.kind=="research_opportunity":
+                from backend.research_opportunity_skill import execute
+                result=execute(db, task.query, log=log, openalex_client=client,
+                               model_client=model_client)
+            elif task.kind=="explore":
                 result=ResearchAgent(db,log=log,openalex_client=client,model_client=model_client).run(task.query)
             elif not profile:
                 raise ValueError("请先保存研究者画像，才能执行文献更新或周报。")

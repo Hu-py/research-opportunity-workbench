@@ -21,6 +21,7 @@ from research_workbench.core import (
     session_factory,
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
+from backend.research_opportunity_skill import catalog as opportunity_catalog, make_payload as opportunity_payload
 from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
     recent_papers as interest_papers, ingest_interests,
@@ -253,6 +254,10 @@ app=FastAPI(
 class TaskRequest(BaseModel):
     kind:Literal["explore","sync","weekly"]="explore"
     query:str=Field(default="",max_length=2000)
+
+class ResearchOpportunityRunRequest(BaseModel):
+    capability:Literal["paper_discovery","evidence_review","method_transfer","idea_review"]
+    question:str=Field(min_length=6,max_length=1500)
 
 class FeedbackRequest(BaseModel):
     status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
@@ -1269,6 +1274,41 @@ def profile_update(data:ProfileRequest,db:Session=Depends(get_db),
             version=current_profile_version(db)
     except ValueError as exc:raise HTTPException(409 if "changed by another" in str(exc) else 422,str(exc)) from exc
     return {"profile":get_profile(db),"version":version}
+
+
+def require_research_opportunity_enabled():
+    """Opt-in only; prevent shared skill in legacy no-login mode."""
+    if not team_auth_enabled():
+        raise HTTPException(503, "Research Opportunity Skill requires team authentication")
+    if os.getenv("RESEARCH_OPPORTUNITY_SKILL_ENABLED", "").lower() not in ("1", "true", "yes"):
+        raise HTTPException(503, "Research Opportunity Skill is not enabled")
+
+
+@app.get("/api/skills/research-opportunity", dependencies=[Depends(require_actor)])
+def research_opportunity_catalog():
+    require_research_opportunity_enabled()
+    return opportunity_catalog()
+
+
+@app.post("/api/skills/research-opportunity/runs", status_code=status.HTTP_202_ACCEPTED,
+          dependencies=[Depends(require_actor)])
+def research_opportunity_start(data: ResearchOpportunityRunRequest,
+                               background: BackgroundTasks,
+                               db: Session=Depends(get_db),
+                               actor: TeamMember|None=Depends(require_editor)):
+    require_research_opportunity_enabled()
+    try:
+        payload=opportunity_payload(data.capability, data.question)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    task=enqueue(db,"research_opportunity",payload)
+    add_audit(db,"skill.research_opportunity.started",actor.id,task.id,
+              "capability="+data.capability+";scope=team_shared")
+    db.commit()
+    if inline_worker_enabled():
+        background.add_task(run_task,get_factory(),task.id)
+    return as_dict(task)
+
 
 @app.get("/api/tasks",dependencies=[Depends(require_actor)])
 def tasks(db:Session=Depends(get_db)):
