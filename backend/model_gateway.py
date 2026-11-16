@@ -30,12 +30,7 @@ def _parse_json_object(content: str) -> dict:
     Only syntax-level repairs are allowed: locate the first JSON object and
     remove trailing commas outside strings. Never invent missing keys/values.
     """
-    import re
-
     text=content.strip()
-    if text.startswith("```"):
-        text=re.sub(r"^\`\`\`(?:json)?\\s*", "", text, count=1, flags=re.IGNORECASE)
-        text=re.sub(r"\\s*\`\`\`$", "", text, count=1)
     try:
         parsed=json.loads(text)
     except (ValueError,TypeError):
@@ -58,7 +53,7 @@ def _parse_json_object(content: str) -> dict:
                     cleaned.append(ch)
                     if escaped:
                         escaped=False
-                    elif ch=="\\\\": 
+                    elif ch=="\":
                         escaped=True
                     elif ch=='"':
                         in_string=False
