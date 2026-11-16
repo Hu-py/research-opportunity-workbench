@@ -147,6 +147,19 @@ def test_model_omitted_confidence_is_not_invented_and_inference_is_preserved():
     assert issue["confidence_provenance"] == "not_provided"
 
 
+
+def test_optional_open_questions_may_be_omitted_but_wrong_type_is_rejected():
+    raw=valid_response()
+    raw.pop("open_questions")
+    result=validate_diagnosis(raw,snapshot())
+    assert result["open_questions"]==[]
+    raw=valid_response()
+    raw["open_questions"]="not-a-list"
+    with pytest.raises(EvidenceError,match="Expected list open_questions"):
+        validate_diagnosis(raw,snapshot())
+
+
+
 def test_model_reported_confidence_provenance_is_explicit():
     result = validate_diagnosis(valid_response(), snapshot())
     assert result["diagnoses"][0]["confidence"] == "medium"
