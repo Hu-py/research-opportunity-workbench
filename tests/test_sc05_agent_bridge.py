@@ -28,6 +28,8 @@ def workspace(tmp_path,monkeypatch):
     monkeypatch.setenv("APP_ENV","development")
     monkeypatch.setenv("API_BEARER_TOKEN",SERVICE)
     monkeypatch.setenv("SC05_MCP_ENABLED","true")
+    monkeypatch.setenv("SC05_MCP_RUN_SCOPE_ENABLED","true")
+    monkeypatch.setenv("SC05_MCP_ENFORCE_WORKER_READINESS","false")
     monkeypatch.setenv("SC05_MCP_PUBLIC_URL",ORIGIN)
     monkeypatch.setenv("SC05_EXECUTION_MODE","worker")
     monkeypatch.setenv("SC04_DEEPSEEK_API_KEY","fake-provider-key-never-paid")
@@ -91,7 +93,9 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert resource.json()["resource"]==MCP
     assert client.get("/.well-known/oauth-authorization-server").json()[
         "code_challenge_methods_supported"]==["S256"]
-    assert client.get("/mcp").status_code==401
+    initial=client.get("/mcp")
+    assert initial.status_code==401
+    assert 'scope="experiments:read experiments:run"' in initial.headers["www-authenticate"]
     assert "resource_metadata" in client.get("/mcp").headers["www-authenticate"]
     assert client.get("/oauth/authorize",params={**oauth_form(),"redirect_uri":"https://evil.invalid"}).status_code==400
     assert client.get("/oauth/authorize",params={**oauth_form(),"code_challenge_method":"plain"}).status_code==400
@@ -114,7 +118,12 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert init.json()["result"]["serverInfo"]["name"]=="research-atlas-sc05"
     names=call(client,tokens["access_token"],"tools/list").json()["result"]["tools"]
     assert {"list_experiments","prepare_experiment","start_experiment",
-            "get_experiment_status","get_experiment_result"}=={x["name"] for x in names}
+            "get_experiment_status","get_experiment_result","get_executor_status"}=={x["name"] for x in names}
+    write_tool=next(x for x in names if x["name"]=="start_experiment")
+    assert write_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
+    assert write_tool["_meta"]["securitySchemes"]==write_tool["securitySchemes"]
+    assert write_tool["annotations"]["readOnlyHint"] is False
+    assert next(x for x in names if x["name"]=="list_experiments")["annotations"]["readOnlyHint"] is True
     assert call(client,tokens["access_token"],"tools/call",{
         "name":"list_experiments","arguments":{}}).json()["result"]["isError"] is False
     assert call(client,tokens["access_token"],"tools/list").status_code==200
@@ -135,7 +144,11 @@ def test_read_only_token_cannot_run_paid_and_disabled_switch(workspace):
         "name":"start_experiment","arguments":{"run_id":"sc05run_"+"a"*28,"confirm_paid":True}})
     assert reply.status_code==200
     assert reply.json()["result"]["isError"] is True
-    assert "disabled" in str(reply.json()["result"])
+    result=reply.json()["result"]
+    assert "authorize experiments:run" in str(result)
+    assert result["_meta"]["mcp/www_authenticate"]
+    assert "insufficient_scope" in str(result)
+    assert "experiments:run" in str(result)
 
 
 def test_owner_auth_required_and_activation_flag(workspace,monkeypatch):
@@ -176,8 +189,10 @@ def test_owner_mcp_start_enqueues_once_and_registers_in_devstudio(workspace,monk
         "arguments":{"run_id":run["id"],"confirm_paid":True}})
     assert paid.json()["result"]["isError"] is False,paid.text
     with factory() as db:
+        from backend.sc05_worker import SC05DelegatedAuthorization
         assert db.get(SC05Run,run["id"]).status=="queued"
         assert db.get(SC05Run,run["id"]).calls==0
+        assert db.get(SC05DelegatedAuthorization,run["id"]).status=="approved"
     again=call(client,access,"tools/call",{"name":"start_experiment",
         "arguments":{"run_id":run["id"],"confirm_paid":True}})
     assert again.json()["result"]["isError"] is True

@@ -58,3 +58,45 @@ This is a staging prototype, not an externally audited OAuth server. Require rem
 `pytest -q tests/test_sc05_agent_bridge.py tests/test_sc05_eval_api.py`
 
 CI tests must not make real model calls. Successful CI establishes only software function and security checks, not new-paper scientific merit.
+
+
+## 2026-11-16: Owner-delegated run scope and zero-fixed-cost executor
+
+This deployment deliberately reuses the **existing isolated Render web service**, not a new paid Render Background Worker. `experiments:run` is not enabled for an existing read-only token automatically.
+
+**OAuth / ChatGPT scope upgrade**
+
+The first unauthenticated MCP 401 advertises `scope="experiments:read experiments:run"` when `SC05_MCP_RUN_SCOPE_ENABLED=true`. Per-tool OAuth `securitySchemes` declare read-only scopes for inspection and both scopes for `start_experiment`. If an old read-only grant invokes `start_experiment`, the MCP result advertises an `insufficient_scope` reauthorization challenge. The Owner must re-consent. Both OAuth scope and paid-model consent are checked server-side.
+
+**Isolated Render rollout (stage 1; no model calls)**
+
+```env
+SC05_MCP_RUN_SCOPE_ENABLED=true
+SC05_INLINE_WORKER_ENABLED=true
+SC05_WORKER_SMOKE_ON_STARTUP=true
+SC05_WORKER_SMOKE_ID=sc05probe_isolated_staging_20261116
+SC05_EXECUTION_MODE=worker
+SC05_INLINE_WORKER_LIVE_ENABLED=false
+SC05_MCP_PAID_ENABLED=false
+SC05_MCP_ENFORCE_WORKER_READINESS=true
+```
+
+At startup a synthetic probe is inserted at most once in `sc05_worker_probes`, committed, claimed by the actual Render worker loop, and marked completed. A `SC05 WORKER PROBE: completed` log line and a `get_executor_status` response with status `completed` confirm the PostgreSQL writer/reader cycle **without** DeepSeek or R2. If it fails, do not enable paid work.
+
+**Isolated Render rollout (stage 2; availability only, not a paid test)**
+
+After verifying the zero-cost probe and confirming no unexpected in-flight SC05 rows:
+
+```env
+SC05_INLINE_WORKER_LIVE_ENABLED=true
+SC05_MCP_PAID_ENABLED=true
+```
+
+All other variables above stay unchanged. The worker only consumes rows in `sc05_delegated_worker_authorizations` marked `approved` following a new ChatGPT OAuth Owner tool invocation with `confirm_paid=true`; historical `queued`, `claimed` and `failed` SC05 runs cannot be silently restarted. Each stage still reserves from the existing global daily call/token budget, checkpoints in PostgreSQL, and optionally mirrors to R2 if the bucket credentials and `SC05_R2_ARCHIVE_ENABLED=true` are actually configured.
+
+**Important limitations**
+
+- This is not a continuously available independent Worker: Render's free web process may suspend or restart. Paid runs in `claimed` or `running` states remain frozen for human inspection after crashes; they are not automatically replayed.
+- Live DeepSeek execution is **not** proven by the synthetic zero-cost probe. Real provider and R2 integration require a separately authorized limited-cost test and successful immutable checkpoint/manifest audit.
+- Postgres is the primary persistent record. The database snapshot/backup plan must be completed before its free-instance expiration.
+- The Owner may need to disconnect/reconnect the custom ChatGPT MCP plugin to request the upgraded scopes, depending on the client.

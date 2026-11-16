@@ -27,10 +27,39 @@ from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
 from backend.sc05_eval_api import SC05Case, SC05Run, StartRequest, run_view, case_view, load
 from backend.research_budget import status as budget_status
+from backend.sc05_worker import (
+    SC05DelegatedAuthorization, flag as worker_flag, worker_status
+)
 
 READ="experiments:read"
 RUN="experiments:run"
 SCOPES={READ,RUN}
+
+
+def required_scopes() -> str:
+    # First OAuth challenge previously forced READ even when RUN was offered.
+    # OAuth does not upgrade already-issued grants without user re-consent.
+    if worker_flag("SC05_MCP_RUN_SCOPE_ENABLED"):
+        return READ + " " + RUN
+    return READ
+
+
+def required_scope_challenge() -> str:
+    return ('Bearer resource_metadata="' + public_base() +
+            '/.well-known/oauth-protected-resource", scope="' +
+            required_scopes() + '"')
+
+
+def step_up_result() -> dict:
+    # Per-tool OAuth scope escalation contract required by ChatGPT.
+    challenge = ('Bearer resource_metadata="' + public_base() +
+                 '/.well-known/oauth-protected-resource", scope="' +
+                 READ + " " + RUN +
+                 '", error="insufficient_scope", error_description="Owner must approve experiment execution"')
+    data = result({"error":"Owner must authorize experiments:run to use this paid action"},
+                  error=True)
+    data["_meta"] = {"mcp/www_authenticate":[challenge]}
+    return data
 CLIENT="https://chatgpt.com/oauth/client.json"
 REDIRECT="https://chatgpt.com/connector_platform_oauth_redirect"
 MCP_VERSION="2025-06-18"
@@ -104,6 +133,8 @@ def authorize_request(data):
     scopes=set(data.get("scope",READ).split())
     if not scopes or not scopes.issubset(SCOPES):
         raise HTTPException(400,"Unsupported OAuth scopes")
+    if RUN in scopes and not worker_flag("SC05_MCP_RUN_SCOPE_ENABLED"):
+        raise HTTPException(403,"Run scope cannot be granted on this deployment")
     return base,scopes
 
 
@@ -155,11 +186,27 @@ TOOLS=[
          "run_id":{"type":"string","description":"Existing SC05 run ID"},
          "confirm_paid":{"type":"boolean","description":"Set true only after user explicitly authorized actual DeepSeek model spending in this conversation"}},
          "required":["run_id","confirm_paid"],"additionalProperties":False}},
+    {"name":"get_executor_status","description":"Check zero-cost Render worker probe, paid executor enablement, queued dispatches and archive switch; no model calls.",
+     "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
     {"name":"get_experiment_status","description":"Check an existing Owner run without making model calls. Return stage, checkpoint count, tokens and errors; also sync Development Studio run status.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}},
     {"name":"get_experiment_result","description":"Read an existing completed Owner SC05 report (limited length), quality indicators and source/pipeline hashes. Read-only. No synthetic scientific scoring.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}}
 ]
+
+
+# Publish per-tool OAuth requirements so ChatGPT can request the
+# experiments:run grant and perform step-up after an earlier read-only link.
+for _tool in TOOLS:
+    _write = _tool["name"] == "start_experiment"
+    _scopes = [READ, RUN] if _write else [READ]
+    _tool["securitySchemes"] = [{"type":"oauth2","scopes":_scopes}]
+    _tool["_meta"] = {"securitySchemes":[{"type":"oauth2","scopes":_scopes}]}
+    _tool["annotations"] = {
+        "readOnlyHint":not _write,
+        "destructiveHint":False,
+        "openWorldHint":bool(_write),
+    }
 
 
 def result(value, *, error=False):
@@ -440,7 +487,7 @@ def mount(app,*,get_db,get_factory):
         grant=db.get(OAuthGrant,digest(auth)) if auth else None
         if grant is None or grant.revoked or grant.expires_at<now_seconds() or grant.resource!=base+"/mcp":
             return JSONResponse({"error":"Authorization required"},status_code=401,
-                    headers={"WWW-Authenticate":'Bearer resource_metadata="'+base+'/.well-known/oauth-protected-resource", scope="'+READ+'"',
+                    headers={"WWW-Authenticate":required_scope_challenge(),
                              "Cache-Control":"no-store"})
         owner=db.get(TeamMember,grant.member_id)
         if owner is None or not owner.active or owner.role!="owner":
@@ -480,6 +527,8 @@ def mount(app,*,get_db,get_factory):
                     raise HTTPException(403,"Missing read scope")
                 if name=="list_experiments":
                     payload=result(list_owned(db,owner))
+                elif name=="get_executor_status":
+                    payload=result(worker_status(get_factory()))
                 elif name=="prepare_experiment":
                     payload=result(preflight(db,owner,arguments.get("run_id","")))
                 elif name=="get_experiment_status":
@@ -498,8 +547,18 @@ def mount(app,*,get_db,get_factory):
                         data["run"]["report_md"]=data["run"]["report_md"][:50000]
                     payload=result(data)
                 elif name=="start_experiment":
-                    if RUN not in scopes or not paid_enabled:
-                        raise HTTPException(403,"Paid delegated starts are disabled or not authorized")
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
+                    if not paid_enabled:
+                        raise HTTPException(503,"Owner delegated paid starts are disabled")
+                    if os.getenv("SC05_MCP_ENFORCE_WORKER_READINESS","true").lower() not in ("false","0") and not (
+                        worker_flag("SC05_INLINE_WORKER_ENABLED")
+                        and worker_flag("SC05_INLINE_WORKER_LIVE_ENABLED")
+                        and os.getenv("SC05_EXECUTION_MODE","").lower()=="worker"
+                    ):
+                        raise HTTPException(503,"Cloud worker not ready; paid jobs cannot be queued")
                     if arguments.get("confirm_paid") is not True:
                         raise HTTPException(422,"Explicit consent required for this paid call")
                     row=own_run(db,owner,arguments.get("run_id",""))
@@ -522,9 +581,19 @@ def mount(app,*,get_db,get_factory):
                     started=endpoint(row.id,StartRequest(acknowledge_external_model=True),
                                      background,db,owner)
                     db.refresh(row)
-                    devstudio_id=register_devstudio(db,owner,row)
-                    add_audit(db,"sc05.mcp_paid_start",owner.id,row.id,"delegated ChatGPT tool call")
+                    # This approved dispatch is independent of the historic
+                    # SC05 queue. The free Render worker consumes ONLY rows
+                    # with this exact per-run Owner authorization.
+                    approval=db.get(SC05DelegatedAuthorization,row.id)
+                    if approval:
+                        raise HTTPException(409,"Delegated authorization already exists")
+                    db.add(SC05DelegatedAuthorization(
+                        run_id=row.id,member_id=owner.id,status="approved"
+                    ))
+                    add_audit(db,"sc05.mcp_paid_start",owner.id,row.id,
+                              "OAuth run scope + per-call paid consent")
                     db.commit()
+                    devstudio_id=register_devstudio(db,owner,row)
                     payload=result({"run":started,"devstudio_experiment_id":devstudio_id,
                                     "message":"Experiment enqueued; use get_experiment_status to follow progress."})
                 else:
