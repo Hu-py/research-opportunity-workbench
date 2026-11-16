@@ -405,8 +405,12 @@ def method_lineage(raw: dict, facts: list[dict]) -> dict:
 
 def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
     items = raw.get("queries")
-    if not isinstance(items, list) or len(items) > 7:
-        raise EvidenceError("Expected 0-7 evidence questions")
+    if not isinstance(items, list):
+        raise EvidenceError("Evidence questions must be a list")
+    # Keep the first seven in model priority order. This is a bounded
+    # retrieval plan, not a scientific conclusion; excess queries are omitted
+    # deterministically rather than aborting the entire A/B run.
+    items = items[:7]
     ids = {d["id"] for d in diagnoses}
     result = []
     for item in items:
