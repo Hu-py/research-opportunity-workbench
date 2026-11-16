@@ -122,7 +122,12 @@ def test_discovery_pkce_and_replay_protection(workspace):
             "get_experiment_status","get_experiment_result","get_executor_status",
             "prepare_ab_pair","get_ab_pair_status","start_ab_pair","get_ab_pair_result",
             "record_blind_review","compare_ab_pair","list_experiment_rounds",
-            "record_experiment_round"} <= {x["name"] for x in names}
+            "record_experiment_round","get_model_config_status","probe_model_connection"} <= {x["name"] for x in names}
+    probe_tool=next(x for x in names if x["name"]=="probe_model_connection")
+    assert probe_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
+    assert probe_tool["annotations"]["readOnlyHint"] is False
+    config_tool=next(x for x in names if x["name"]=="get_model_config_status")
+    assert config_tool["annotations"]["readOnlyHint"] is True
     create_tool=next(x for x in names if x["name"]=="create_ab_pair")
     assert create_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
     assert create_tool["_meta"]["securitySchemes"]==create_tool["securitySchemes"]
@@ -143,6 +148,57 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert new.status_code==200
     assert call(client,tokens["access_token"],"tools/list").status_code==401
     assert call(client,new.json()["access_token"],"tools/list").status_code==200
+
+
+
+def test_model_config_status_is_read_only_and_never_discloses_key(workspace):
+    client,_=workspace
+    tokens,_=connect(client)
+    reply=call(client,tokens["access_token"],"tools/call",{
+        "name":"get_model_config_status","arguments":{}})
+    assert reply.json()["result"]["isError"] is False
+    data=json.loads(reply.json()["result"]["content"][0]["text"])
+    assert data["direct_env_key_available"] is True
+    assert data["credential_source"]=="environment"
+    assert data["provider_calls"]==0
+    assert "fake-provider-key-never-paid" not in json.dumps(data)
+
+
+def test_paid_model_connection_probe_records_usage_and_safe_error(workspace,monkeypatch):
+    from backend.model_gateway import ModelCallError
+    import backend.sc05_agent_bridge as bridge
+    client,factory=workspace
+    tokens,_=connect(client)
+    calls=[]
+    def fake_provider(key,model,system,payload,max_tokens=96):
+        calls.append({"model":model,"stage":payload["sc05_stage"],"max_tokens":max_tokens})
+        return {"ok":True},{"input_tokens":11,"output_tokens":3}
+    monkeypatch.setattr(bridge,"request_json",fake_provider)
+    reply=call(client,tokens["access_token"],"tools/call",{
+        "name":"probe_model_connection","arguments":{"confirm_paid":True}})
+    assert reply.json()["result"]["isError"] is False,reply.text
+    data=json.loads(reply.json()["result"]["content"][0]["text"])
+    assert data["ok"] is True
+    assert data["provider_calls"]==1
+    assert data["usage"]=={"input_tokens":11,"output_tokens":3}
+    assert calls==[{"model":"deepseek-flash","stage":"connection_probe","max_tokens":96}]
+    with factory() as db:
+        from backend.research_budget import ResearchDailyBudget
+        from datetime import datetime,timezone
+        row=db.get(ResearchDailyBudget,datetime.now(timezone.utc).date().isoformat())
+        assert row.reserved_calls==1 and row.reserved_tokens==256
+        assert row.actual_input_tokens==11 and row.actual_output_tokens==3
+
+    def failed_provider(*args,**kwargs):
+        raise ModelCallError("DeepSeek HTTP 401：密钥无效")
+    monkeypatch.setattr(bridge,"request_json",failed_provider)
+    failed=call(client,tokens["access_token"],"tools/call",{
+        "name":"probe_model_connection","arguments":{"confirm_paid":True}})
+    assert failed.json()["result"]["isError"] is True
+    failure=json.loads(failed.json()["result"]["content"][0]["text"])
+    assert failure["error"]=="DeepSeek HTTP 401：密钥无效"
+    assert "fake-provider-key-never-paid" not in json.dumps(failure)
+
 
 
 def test_read_only_token_cannot_run_paid_and_disabled_switch(workspace):
