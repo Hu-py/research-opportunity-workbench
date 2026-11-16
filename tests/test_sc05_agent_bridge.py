@@ -167,6 +167,7 @@ def test_model_config_status_is_read_only_and_never_discloses_key(workspace):
 def test_paid_model_connection_probe_records_usage_and_safe_error(workspace,monkeypatch):
     from backend.model_gateway import ModelCallError
     import backend.sc05_agent_bridge as bridge
+    monkeypatch.setenv("SC05_MCP_PAID_ENABLED","true")
     client,factory=workspace
     tokens,_=connect(client)
     calls=[]
