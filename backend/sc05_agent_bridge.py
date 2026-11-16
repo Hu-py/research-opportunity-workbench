@@ -391,7 +391,7 @@ def pair_preflight(db,owner,pair_id):
             SC05Rating.run_id.in_([baseline.id,gated.id])
         )).all()
         unblinded=db.scalars(select(AuditEntry.id).where(
-            AuditEntry.member_id==owner.id,
+            AuditEntry.actor_id==owner.id,
             AuditEntry.action=="sc05.ab_unblinded",
             AuditEntry.target==pair_id
         ).limit(1)).first() is not None
@@ -443,7 +443,7 @@ def sync_round_from_pair(db,owner,pair_id):
     state=pair_preflight(db,owner,pair_id)
     by,_=pair_rows(db,owner,pair_id)
     unblinded=db.scalars(select(AuditEntry.id).where(
-        AuditEntry.member_id==owner.id,
+        AuditEntry.actor_id==owner.id,
         AuditEntry.action=="sc05.ab_unblinded",
         AuditEntry.target==pair_id
     ).limit(1)).first() is not None
@@ -645,7 +645,7 @@ def list_owned(db,owner):
         SC05ExperimentRound.member_id==owner.id
     ).order_by(SC05ExperimentRound.created_at.desc()).limit(100)).all()
     unblinded_pairs=set(db.scalars(select(AuditEntry.target).where(
-        AuditEntry.member_id==owner.id,
+        AuditEntry.actor_id==owner.id,
         AuditEntry.action=="sc05.ab_unblinded"
     )).all())
     run_views=[]
@@ -1302,7 +1302,7 @@ def mount(app,*,get_db,get_factory):
                     base=next(x for x in details if x["variant"]=="science_gate_off")
                     gate=next(x for x in details if x["variant"]=="science_gate_on")
                     already_unblinded=db.scalars(select(AuditEntry.id).where(
-                        AuditEntry.member_id==owner.id,
+                        AuditEntry.actor_id==owner.id,
                         AuditEntry.action=="sc05.ab_unblinded",
                         AuditEntry.target==pair_id
                     ).limit(1)).first()
