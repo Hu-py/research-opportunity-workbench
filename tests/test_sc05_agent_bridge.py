@@ -119,7 +119,10 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert init.json()["result"]["serverInfo"]["name"]=="research-atlas-sc05"
     names=call(client,tokens["access_token"],"tools/list").json()["result"]["tools"]
     assert {"list_experiments","create_ab_pair","prepare_experiment","start_experiment",
-            "get_experiment_status","get_experiment_result","get_executor_status"}=={x["name"] for x in names}
+            "get_experiment_status","get_experiment_result","get_executor_status",
+            "prepare_ab_pair","get_ab_pair_status","start_ab_pair","get_ab_pair_result",
+            "record_blind_review","compare_ab_pair","list_experiment_rounds",
+            "record_experiment_round"} <= {x["name"] for x in names}
     create_tool=next(x for x in names if x["name"]=="create_ab_pair")
     assert create_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
     assert create_tool["_meta"]["securitySchemes"]==create_tool["securitySchemes"]
