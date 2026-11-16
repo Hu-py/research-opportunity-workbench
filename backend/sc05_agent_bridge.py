@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, check_fact_type_resume, EvidenceError)
+from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
 from backend.sc05_paper_only import run_paper
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
@@ -348,6 +348,13 @@ def preflight(db,owner,run_id):
             query_info=diagnose_search_query_checkpoint(row,paper)
             repair_summary={"search_query_repair":query_info}
             repair_ready=bool(query_info.get("ready"))
+        except (EvidenceError,ValueError,TypeError) as exc:
+            repair_summary={"ready":False,"reason":str(exc)[:180],"paid_calls_on_check":0}
+    elif row.status=="failed" and row.error=="Missing references: literature diagnosis":
+        try:
+            literature_info=check_literature_diagnosis_resume(row,paper)
+            repair_summary={"literature_diagnosis_repair":literature_info}
+            repair_ready=True
         except (EvidenceError,ValueError,TypeError) as exc:
             repair_summary={"ready":False,"reason":str(exc)[:180],"paid_calls_on_check":0}
     elif row.status=="failed":
