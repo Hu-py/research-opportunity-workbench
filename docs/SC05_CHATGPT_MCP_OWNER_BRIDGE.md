@@ -76,7 +76,7 @@ A paid start requires all of the following:
 - Daily call/token budget is available.
 - The target run passes the source, checkpoint and frozen-evidence preflight.
 
-The isolated Render workspace has no separately confirmed independent SC05 Background Worker resource. The optional inline worker on a free Web Service may sleep or restart. Do not enable paid starts merely because the MCP endpoint is reachable. Interrupted `claimed` / `running` requests remain frozen for review; they are not automatically stolen or replayed because a provider may already have billed them.
+The isolated Render workspace has no separately confirmed independent SC05 Background Worker resource. Render logs on 2026-11-16 show the inline worker started with `live_deepseek_enabled=True`, so the currently deployed service is technically capable of paid DeepSeek execution. This is not user consent. The optional inline worker on a free Web Service may sleep or restart. Do not enable paid starts merely because the MCP endpoint is reachable. Interrupted `claimed` / `running` requests remain frozen for review; they are not automatically stolen or replayed because a provider may already have billed them.
 
 R2 archiving is optional. PostgreSQL remains authoritative. R2 failure must never trigger a second paid model request.
 
