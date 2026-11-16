@@ -977,21 +977,8 @@ def run_paper(
         "novelty_proved":False,
     }
     output["quality"]=inspect_report(output)
-    unlinked_literature=sum(1 for item in literature
-                            if item.get("diagnosis_link_status")=="unlinked")
-    if unlinked_literature:
-        output["quality"].setdefault("warnings",[]).append(
-            str(unlinked_literature)+" 篇文献暂未关联到具体诊断；未强行建立关系。"
-        )
-        output["quality"]["unlinked_literature_assessments"]=unlinked_literature
-    unverified_literature_quotes=sum(
-        1 for item in literature if item.get("evidence_status")=="quote_unverified")
-    if unverified_literature_quotes:
-        output["quality"].setdefault("warnings",[]).append(
-            str(unverified_literature_quotes)+" 篇文献的摘要引文未通过逐字核验；"
-            "已移除未核验引文，仅保留为待核查线索。"
-        )
-        output["quality"]["unverified_literature_quotes"]=unverified_literature_quotes
+    # inspect_report owns literature-link and abstract-evidence warnings;
+    # do not append duplicate warnings at the orchestration layer.
     unknown_confidence=sum(
         1 for d in diagnosis["diagnoses"]
         if d.get("confidence") == "not_assessed"
