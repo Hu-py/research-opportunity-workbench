@@ -53,7 +53,7 @@ def _parse_json_object(content: str) -> dict:
                     cleaned.append(ch)
                     if escaped:
                         escaped=False
-                    elif ch=="\":
+                    elif ch=="\\":
                         escaped=True
                     elif ch=='"':
                         in_string=False
