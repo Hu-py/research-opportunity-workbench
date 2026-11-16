@@ -1376,3 +1376,12 @@ from backend.research_evolution_api import mount as _mount_evolution_routes
 _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
                        require_actor=require_actor, require_editor=require_editor,
                        team_auth_enabled=team_auth_enabled)
+
+
+# Research Atlas unified, team-authenticated developer governance.
+from backend.devstudio import mount as _mount_devstudio_routes
+_mount_devstudio_routes(
+    app, get_db=get_db, require_actor=require_actor,
+    require_editor=require_editor, require_admin=require_admin,
+    team_auth_enabled=team_auth_enabled,
+)
