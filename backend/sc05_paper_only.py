@@ -465,42 +465,131 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None) ->
 
 
 def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: dict) -> list[dict]:
-    """Do not allow fabricated nearest-paper details or invented abstracts."""
+    """Validate literature identity, typed diagnosis links and abstract provenance."""
     rows=raw.get("assessments")
     if not isinstance(rows,list) or len(rows)>25:
         raise EvidenceError("Invalid literature assessment batch")
     allowed={p["id"]:p for p in external_papers}
     diag_ids={d["id"] for d in diagnosis["diagnoses"]}
     result=[];seen=set()
+    relation_types={"direct","indirect","counterexample"}
+
     for item in rows:
-        if not isinstance(item,dict):raise EvidenceError("Invalid literature assessment")
+        if not isinstance(item,dict):
+            raise EvidenceError("Invalid literature assessment")
         pid=item.get("paper_id")
         if pid not in allowed or pid in seen:
             raise EvidenceError("Literature assessment cites unknown/duplicate paper")
         seen.add(pid)
         if item.get("relevance") not in ("close","partial","counterexample","low"):
             raise EvidenceError("Invalid paper relevance")
+
+        # V2 represents relations per diagnosis: one paper can support D01
+        # directly and challenge D02 as a counterexample.
+        links=[]
+        if isinstance(item.get("diagnosis_links"),list):
+            raw_links=item.get("diagnosis_links")
+            if len(raw_links)>10:
+                raise EvidenceError("Too many literature diagnosis links")
+            used_diag_ids=set()
+            for link in raw_links:
+                if not isinstance(link,dict):
+                    raise EvidenceError("Invalid literature diagnosis link")
+                diagnosis_id=link.get("diagnosis_id")
+                if not isinstance(diagnosis_id,str) or diagnosis_id not in diag_ids:
+                    raise EvidenceError("Fabricated reference: literature diagnosis")
+                if diagnosis_id in used_diag_ids:
+                    raise EvidenceError("Duplicate literature diagnosis link")
+                used_diag_ids.add(diagnosis_id)
+                relation_type=link.get("relation_type")
+                if relation_type not in relation_types:
+                    raise EvidenceError("Invalid literature relation type")
+                explanation=_limited(
+                    link.get("relation_explanation"),
+                    "literature relation explanation",700)
+                links.append({
+                    "diagnosis_id":diagnosis_id,
+                    "relation_type":relation_type,
+                    "relation_explanation":explanation,
+                })
+            if links:
+                unlinked_reason=""
+            else:
+                # Missing or empty links never trigger a fabricated association.
+                reason=item.get("unlinked_reason")
+                unlinked_reason=(
+                    _limited(reason,"unlinked literature reason",500)
+                    if isinstance(reason,str) and reason.strip()
+                    else "模型未提供可核验的诊断关联；暂不推断关联。"
+                )
+        else:
+            # Backward compatibility for an already-paid V1 checkpoint.
+            legacy_ids=item.get("diagnosis_ids")
+            legacy_ids=[] if legacy_ids is None else _references(
+                legacy_ids,diag_ids,"literature diagnosis",allow_empty=True)
+            links=[{
+                "diagnosis_id":diagnosis_id,
+                "relation_type":"direct",
+                "relation_explanation":(
+                    "旧版输出明确列出了该诊断编号；旧版未区分直接、间接或反例关系，"
+                    "因此仅保留其显式关联，不进一步推断关系机制。"
+                ),
+            } for diagnosis_id in legacy_ids]
+            unlinked_reason=(
+                "" if links else
+                "旧版输出未提供诊断编号；未推断其与任何诊断的关系。"
+            )
+
+        diagnosis_refs=[link["diagnosis_id"] for link in links]
         excerpt=item.get("abstract_excerpt")
-        abstract=allowed[pid]["abstract"]
-        if abstract:
-            if not isinstance(excerpt,str) or not 12<=len(excerpt)<=150 or excerpt not in abstract:
-                raise EvidenceError("Literature evidence quote does not match OpenAlex abstract")
-        elif excerpt not in ("",None):
-            raise EvidenceError("No abstract available for claimed evidence quote")
-        raw_diagnosis_refs=item.get("diagnosis_ids")
-        diagnosis_refs=[] if raw_diagnosis_refs is None else _references(
-            raw_diagnosis_refs,diag_ids,"literature diagnosis",allow_empty=True)
+        abstract=allowed[pid].get("abstract") or ""
+        excerpt_status="metadata_only"
+        verified_excerpt=""
+        if abstract and isinstance(excerpt,str) and 12<=len(excerpt)<=150:
+            if excerpt in abstract:
+                verified_excerpt=excerpt
+                excerpt_status="verified"
+            else:
+                # Allow PDF/API whitespace normalization, but never fuzzy text matching.
+                norm=lambda value:" ".join(value.split())
+                if norm(excerpt) in norm(abstract):
+                    verified_excerpt=excerpt
+                    excerpt_status="verified_whitespace_normalized"
+                else:
+                    excerpt_status="rejected"
+        elif abstract and excerpt not in ("",None):
+            excerpt_status="rejected"
+        elif not abstract and excerpt not in ("",None):
+            excerpt_status="rejected"
+
+        evidence_status=(
+            "abstract_quote_verified"
+            if excerpt_status in ("verified","verified_whitespace_normalized")
+            else "quote_unverified" if excerpt_status=="rejected"
+            else "metadata_only"
+        )
         result.append({
             "paper_id":pid,
             "diagnosis_ids":diagnosis_refs,
-            "diagnosis_link_status":"linked" if diagnosis_refs else "unlinked",
+            "diagnosis_links":links,
+            "relation_types":list(dict.fromkeys(
+                link["relation_type"] for link in links)),
+            "diagnosis_link_status":"linked" if links else "unlinked",
+            "unlinked_reason":unlinked_reason,
             "tested_problem":_limited(item.get("tested_problem"),"tested_problem"),
             "method":_limited(item.get("method"),"paper method"),
             "relevance":item["relevance"],
             "conditional_transfer":_limited(item.get("conditional_transfer"),"transfer"),
             "unresolved":_limited(item.get("unresolved"),"literature scope"),
-            "abstract_excerpt":excerpt or "",
-            "level":"OpenAlex abstract only" if abstract else "metadata only",
+            # Never expose a model-provided excerpt that failed exact source checking.
+            "abstract_excerpt":verified_excerpt,
+            "abstract_quote_status":excerpt_status,
+            "evidence_status":evidence_status,
+            "level":(
+                "OpenAlex abstract only" if evidence_status=="abstract_quote_verified"
+                else "OpenAlex metadata; abstract quote unverified"
+                if evidence_status=="quote_unverified" else "metadata only"
+            ),
         })
     return result
 
