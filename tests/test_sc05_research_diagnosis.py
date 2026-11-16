@@ -188,6 +188,7 @@ def test_model_reported_confidence_provenance_is_explicit():
     ("inference_boundary","identifiability"),
     ("method_dependence","method"),
     ("confounding","identifiability"),
+    ("identification","identifiability"),
     ("data","other"),
     ("design","method"),
     ("research_design","method"),
