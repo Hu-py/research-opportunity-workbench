@@ -19,6 +19,9 @@ ISSUE_CLASSES = frozenset({
 })
 STATUSES = frozenset({"observed", "hypothesis", "unknown"})
 CONFIDENCES = frozenset({"low", "medium", "high", "not_assessed"})
+# Explicit, auditable epistemic-status aliases. "inferred" is a model
+# inference rather than a directly observed fact, so normalize it to hypothesis.
+STATUS_ALIASES = {"inferred": "hypothesis"}
 # Explicit, auditable taxonomy aliases only. The raw model label is retained.
 ISSUE_CLASS_ALIASES = {
     "causal_inference": "identifiability",
@@ -197,7 +200,8 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
         refs = issue.get("fact_ids")
         if not isinstance(refs, list) or not set(refs) <= allowed:
             raise EvidenceError("Invented diagnosis fact reference")
-        status = issue.get("epistemic_status")
+        raw_status = issue.get("epistemic_status")
+        status = STATUS_ALIASES.get(raw_status, raw_status) if isinstance(raw_status,str) else raw_status
         raw_category = issue.get("issue_class")
         category = ISSUE_CLASS_ALIASES.get(raw_category, raw_category) if isinstance(raw_category, str) else raw_category
         raw_confidence = issue.get("confidence")
@@ -223,6 +227,8 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
             "problem": required(issue.get("problem"), "problem"),
             "fact_ids": list(dict.fromkeys(refs)),
             "epistemic_status": status,
+            "raw_epistemic_status": raw_status,
+            "epistemic_status_normalized": raw_status != status,
             "rival_explanations": rivals,
             "verification_tests": tests,
             "research_consequence": required(
