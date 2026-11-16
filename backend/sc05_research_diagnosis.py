@@ -21,7 +21,7 @@ STATUSES = frozenset({"observed", "hypothesis", "unknown"})
 CONFIDENCES = frozenset({"low", "medium", "high", "not_assessed"})
 # Explicit, auditable epistemic-status aliases. "inferred" is a model
 # inference rather than a directly observed fact, so normalize it to hypothesis.
-STATUS_ALIASES = {"inferred": "hypothesis"}
+STATUS_ALIASES = {"inferred": "hypothesis", "unknown_fact": "unknown"}
 # Explicit, auditable taxonomy aliases only. The raw model label is retained.
 ISSUE_CLASS_ALIASES = {
     "causal_inference": "identifiability",
