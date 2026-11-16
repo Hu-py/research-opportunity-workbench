@@ -148,13 +148,17 @@ def test_model_omitted_confidence_is_not_invented_and_inference_is_preserved():
 
 
 
-def test_optional_open_questions_may_be_omitted_but_wrong_type_is_rejected():
+def test_optional_open_questions_accept_single_string_without_inventing_content():
     raw=valid_response()
     raw.pop("open_questions")
     result=validate_diagnosis(raw,snapshot())
     assert result["open_questions"]==[]
     raw=valid_response()
-    raw["open_questions"]="not-a-list"
+    raw["open_questions"]="One concise unresolved question?"
+    result=validate_diagnosis(raw,snapshot())
+    assert result["open_questions"]==["One concise unresolved question?"]
+    raw=valid_response()
+    raw["open_questions"]={"unexpected":"object"}
     with pytest.raises(EvidenceError,match="Expected list open_questions"):
         validate_diagnosis(raw,snapshot())
 
