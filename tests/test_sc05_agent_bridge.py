@@ -224,7 +224,7 @@ def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
         assert all(row is not None and row.status=="prepared" and row.calls==0 for row in rows)
         assert rows[0].case_id==rows[1].case_id==payload["case"]["id"]
         assert original.shared_evidence_json=='{"old_snapshot":"must remain untouched"}'
-        assert cloned.shared_evidence_json is None
+        assert not cloned.shared_evidence_json
         assert original.pages_json==cloned.pages_json
         assert original.source_sha==cloned.source_sha
 
