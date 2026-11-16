@@ -1226,7 +1226,22 @@ def mount(app,*,get_db,get_factory):
                 elif name=="get_experiment_status":
                     row=own_run(db,owner,arguments.get("run_id",""))
                     devstudio_id=register_devstudio(db,owner,row)
-                    payload=result({"run":run_view(row),"saved_checkpoints":len(load(row.checkpoints_json,[])),
+                    checkpoints=load(row.checkpoints_json,[])
+                    checkpoint_summary=[]
+                    for item in checkpoints:
+                        response=item.get("response",{}) if isinstance(item,dict) else {}
+                        diagnosis=response.get("diagnoses",[]) if isinstance(response,dict) else []
+                        raw_classes=sorted({str(d.get("issue_class")) for d in diagnosis
+                                             if isinstance(d,dict) and d.get("issue_class") is not None})
+                        checkpoint_summary.append({
+                            "stage":item.get("stage"),
+                            "model":item.get("model"),
+                            "input_tokens":(item.get("usage") or {}).get("input_tokens",0),
+                            "output_tokens":(item.get("usage") or {}).get("output_tokens",0),
+                            "diagnosis_issue_classes":raw_classes,
+                        })
+                    payload=result({"run":run_view(row),"saved_checkpoints":len(checkpoints),
+                                    "checkpoint_summary":checkpoint_summary,
                                     "devstudio_experiment_id":devstudio_id})
                 elif name=="get_experiment_result":
                     row=own_run(db,owner,arguments.get("run_id",""))
