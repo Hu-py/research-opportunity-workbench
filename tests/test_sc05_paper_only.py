@@ -214,6 +214,14 @@ def test_route_candidates_are_capped_and_overflow_is_audited():
 
 
 
+
+def test_independent_critic_accepts_empty_route_set_without_reviews():
+    assert critique({"reviews":[]},[])==[]
+    with pytest.raises(EvidenceError,match="Critic must cover each route"):
+        critique({"reviews":[{"route_id":"R01"}]},[])
+
+
+
 def test_no_llm_when_key_is_missing(monkeypatch,tmp_path):
     import backend.sc05_paper_only as p
     monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"hash"))
