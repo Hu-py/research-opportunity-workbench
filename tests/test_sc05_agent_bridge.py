@@ -119,7 +119,7 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert init.json()["result"]["serverInfo"]["name"]=="research-atlas-sc05"
     names=call(client,tokens["access_token"],"tools/list").json()["result"]["tools"]
     assert {
-        "list_experiments","create_ab_pair","prepare_experiment","start_experiment",
+        "list_experiments","create_paper_case","create_ab_pair","prepare_experiment","start_experiment",
         "get_experiment_status","get_experiment_result","get_executor_status",
         "prepare_ab_pair","get_ab_pair_status","start_ab_pair","get_ab_pair_result",
         "record_blind_review","compare_ab_pair","list_experiment_rounds",
@@ -134,8 +134,8 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert write_tool["_meta"]["securitySchemes"]==write_tool["securitySchemes"]
     assert write_tool["annotations"]["readOnlyHint"] is False
     write_names={
-        "create_ab_pair","start_experiment","get_ab_pair_status","start_ab_pair",
-        "record_blind_review","compare_ab_pair","record_experiment_round",
+        "create_paper_case","create_ab_pair","start_experiment","get_ab_pair_status",
+        "start_ab_pair","record_blind_review","compare_ab_pair","record_experiment_round",
     }
     read_names={
         "list_experiments","prepare_experiment","get_executor_status",
@@ -183,6 +183,13 @@ def test_read_only_token_cannot_run_paid_and_disabled_switch(workspace):
     assert create.status_code==200
     assert create.json()["result"]["isError"] is True
     assert create.json()["result"]["_meta"]["mcp/www_authenticate"]
+    paper=call(client,tokens["access_token"],"tools/call",{
+        "name":"create_paper_case","arguments":{
+            "title":"A sufficiently long research paper title",
+            "pages":{"page_01":"This is a sufficiently long Methods and Results page excerpt for an SC05 paper case."},
+            "confirm_create":True}})
+    assert paper.json()["result"]["isError"] is True
+    assert paper.json()["result"]["_meta"]["mcp/www_authenticate"]
     pair_status=call(client,tokens["access_token"],"tools/call",{
         "name":"get_ab_pair_status","arguments":{"pair_id":"sc05pair_"+"c"*28}})
     assert pair_status.json()["result"]["isError"] is True
@@ -377,15 +384,18 @@ def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypat
 
 def test_owner_mcp_pair_preflight_and_round_ledger_are_chatgpt_tools(workspace):
     client,factory=workspace
-    session=api_session(client)
+    api_session(client)
     pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
-    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
-        json={"title":"Published urban transport study","pages":pages})
-    assert case.status_code==201,case.text
     tokens,_=connect(client)
     access=tokens["access_token"]
+    case_created=call(client,access,"tools/call",{"name":"create_paper_case","arguments":{
+        "title":"Published urban transport study","pages":pages,"confirm_create":True}})
+    assert case_created.json()["result"]["isError"] is False,case_created.text
+    case_payload=json.loads(case_created.json()["result"]["content"][0]["text"])
+    assert case_payload["model_calls"]==0
+    assert case_payload["case"]["source_type"]=="uploaded_extracted_pages"
     created=call(client,access,"tools/call",{"name":"create_ab_pair","arguments":{
-        "case_id":case.json()["id"],"fresh_copy":True,"confirm_create":True}})
+        "case_id":case_payload["case"]["id"],"fresh_copy":True,"confirm_create":True}})
     assert created.json()["result"]["isError"] is False,created.text
     pair=json.loads(created.json()["result"]["content"][0]["text"])
     pair_id=pair["pair_id"]
