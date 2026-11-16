@@ -21,7 +21,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, select, upda
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from research_workbench.core import Base, query_openalex
 from backend.team import TeamMember, add_audit
-from backend.model_gateway import request_json
+from backend.model_gateway import ModelCallError, request_json
 from backend.research_budget import reserve, record_usage, status as budget_status
 from backend.sc05_paper_only import (
     run_paper, page_texts_from_pdf, FUTURE_HEADING,
@@ -580,7 +580,11 @@ def execute(factory,run_id,*,claimed_by_worker=False):
         archive_if_enabled(factory,run_id)
     except Exception as exc:
         # Messages are whitelisted to avoid logging raw provider responses.
-        safe=(str(exc) if isinstance(exc,(EvidenceError,RuntimeError)) else
+        # ModelCallError contains only adapter-whitelisted diagnostics
+        # (HTTP status class, timeout, transport or response-shape category).
+        # Preserve it so Owner can fix the actual provider problem; never log
+        # raw HTTP bodies, credentials or prompt payloads.
+        safe=(str(exc) if isinstance(exc,(EvidenceError,RuntimeError,ModelCallError)) else
               type(exc).__name__ + ": stage failed")
         with factory() as db:
             row=db.get(SC05Run,run_id)
