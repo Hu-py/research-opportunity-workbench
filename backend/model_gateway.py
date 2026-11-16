@@ -24,6 +24,69 @@ def _error(exc):
         return "DeepSeek HTTP "+str(code)+"："+hints.get(code,"请求失败，请查看 DeepSeek 服务状态")
     return "模型返回或验证失败："+type(exc).__name__
 
+def _parse_json_object(content: str) -> dict:
+    """Parse a JSON object even when a provider wraps it in fences or prose.
+
+    Only syntax-level repairs are allowed: locate the first JSON object and
+    remove trailing commas outside strings. Never invent missing keys/values.
+    """
+    import re
+
+    text=content.strip()
+    if text.startswith("```"):
+        text=re.sub(r"^\`\`\`(?:json)?\\s*", "", text, count=1, flags=re.IGNORECASE)
+        text=re.sub(r"\\s*\`\`\`$", "", text, count=1)
+    try:
+        parsed=json.loads(text)
+    except (ValueError,TypeError):
+        start=text.find("{")
+        if start<0:
+            raise ModelCallError("模型未返回有效 JSON")
+        candidate=text[start:]
+        decoder=json.JSONDecoder()
+        try:
+            parsed,_=decoder.raw_decode(candidate)
+        except (ValueError,TypeError):
+            # Remove trailing commas only when they occur outside JSON strings.
+            cleaned=[]
+            in_string=False
+            escaped=False
+            i=0
+            while i<len(candidate):
+                ch=candidate[i]
+                if in_string:
+                    cleaned.append(ch)
+                    if escaped:
+                        escaped=False
+                    elif ch=="\\\\": 
+                        escaped=True
+                    elif ch=='"':
+                        in_string=False
+                    i+=1
+                    continue
+                if ch=='"':
+                    in_string=True
+                    cleaned.append(ch)
+                    i+=1
+                    continue
+                if ch==",":
+                    j=i+1
+                    while j<len(candidate) and candidate[j].isspace():
+                        j+=1
+                    if j<len(candidate) and candidate[j] in "}]":
+                        i+=1
+                        continue
+                cleaned.append(ch)
+                i+=1
+            try:
+                parsed,_=decoder.raw_decode("".join(cleaned))
+            except (ValueError,TypeError) as exc:
+                raise ModelCallError("模型未返回有效 JSON") from exc
+    if not isinstance(parsed,dict):
+        raise ModelCallError("模型输出必须是 JSON 对象")
+    return parsed
+
+
 def request_json(api_key,model,system,payload,client=None,max_tokens=2000):
     """Return (strict JSON object, token usage), never a plain free-form answer."""
     if model not in ("deepseek-flash","deepseek-v4-pro"):
@@ -51,12 +114,7 @@ def request_json(api_key,model,system,payload,client=None,max_tokens=2000):
         content=(choice.get("message") or {}).get("content") or ""
         if not content.strip():
             raise ModelCallError("模型返回空内容，请重试或调整模型配置")
-        try:
-            parsed=json.loads(content)
-        except (ValueError,TypeError) as exc:
-            raise ModelCallError("模型未返回有效 JSON") from exc
-        if not isinstance(parsed,dict):
-            raise ModelCallError("模型输出必须是 JSON 对象")
+        parsed=_parse_json_object(content)
         usage=raw.get("usage") or {}
         return parsed,{"input_tokens":max(0,int(usage.get("prompt_tokens") or 0)),
                        "output_tokens":max(0,int(usage.get("completion_tokens") or 0))}
