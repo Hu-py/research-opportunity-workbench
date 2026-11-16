@@ -4,7 +4,7 @@ The new frontend is in \`frontend/\`. The old Streamlit deployment guide has bee
 
 ## Shared team deployment
 
-The recommended 10-member team mode uses the same PostgreSQL instance, same papers and ideas, and one shared team profile. Configure per-member accounts and audit with [TEAM_SETUP.md](docs/TEAM_SETUP.md). Deploy API and DB and bootstrap an admin before enabling `TEAM_AUTH_ENABLED=true` on Vercel.
+The recommended 10-member team mode uses the same PostgreSQL instance, same papers and ideas, and one shared team profile. Configure per-member accounts and audit with [TEAM_SETUP.md](docs/08-governance/TEAM_SETUP.md). Deploy API and DB and bootstrap an admin before enabling `TEAM_AUTH_ENABLED=true` on Vercel.
 
 ## Prerequisites
 
