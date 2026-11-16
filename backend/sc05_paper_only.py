@@ -21,7 +21,8 @@ from backend.sc05_research_diagnosis import (
     required, text_items, validate_diagnosis, verify_facts,
 )
 
-VERSION = "sc05-paper-only-v0.3.0"
+# Keep the prompt payload version stable so saved V0.2 paid checkpoints replay exactly.
+VERSION = "sc05-paper-only-v0.2.0"
 MODEL = "deepseek-flash"
 FACT_KINDS = {"objective", "data", "method", "evaluation", "result", "limitation", "other"}
 # The first real provider run showed that valid cited facts can carry
