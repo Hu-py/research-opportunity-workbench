@@ -414,14 +414,21 @@ class _LiteraturePrefixBoundary(Exception):
     """Stop after validating saved literature output, before new model calls."""
 
 
-def check_literature_diagnosis_resume(row: SC05Run, doc: SC05Case) -> dict:
+def check_literature_diagnosis_resume(
+    row: SC05Run, doc: SC05Case, *, allow_queued: bool = False
+) -> dict:
     """Verify the five saved gated prompts and conservatively parse unlinked literature.
 
     OpenAlex is queried again to reconstruct the literature-assessment prompt.
     If its results differ from the saved prompt fingerprint, recovery is refused.
-    No DeepSeek request is made by this check.
+    No DeepSeek request is made by this check. Queued recovery is allowed only
+    for the MCP worker's already-authorized needs_review retry path.
     """
-    if row.status != "failed" or row.error != "Missing references: literature diagnosis":
+    failed_eligible=(
+        row.status=="failed" and row.error=="Missing references: literature diagnosis"
+    )
+    queued_eligible=allow_queued and row.status=="queued" and not row.error
+    if not (failed_eligible or queued_eligible):
         raise EvidenceError("Not the eligible missing literature-diagnosis reference failure")
     if row.variant != "science_gate_on" or row.calls != 5:
         raise EvidenceError("Only the five-stage gated literature-assessment failure is eligible")
