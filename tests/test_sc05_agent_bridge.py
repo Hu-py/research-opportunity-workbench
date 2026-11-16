@@ -4,6 +4,7 @@ No real provider requests, external logins, browser automation or billable calls
 """
 import base64
 import hashlib
+import json
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -203,7 +204,8 @@ def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypat
     ready=call(client,access,"tools/call",{"name":"prepare_experiment",
         "arguments":{"run_id":run["id"]}})
     assert ready.json()["result"]["isError"] is False
-    assert ready.json()["result"]["safe_to_submit"] is True
+    ready_data=json.loads(ready.json()["result"]["content"][0]["text"])
+    assert ready_data["safe_to_submit"] is True
     paid=call(client,access,"tools/call",{"name":"start_experiment",
         "arguments":{"run_id":run["id"],"confirm_paid":True}})
     assert paid.json()["result"]["isError"] is False,paid.text
