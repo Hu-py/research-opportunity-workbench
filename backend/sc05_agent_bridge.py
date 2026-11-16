@@ -26,9 +26,11 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, SC05Rating, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
+from backend.sc05_eval_api import (SC05Case, SC05Run, SC05Rating, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError, _model_key)
 from backend.sc05_paper_only import run_paper
-from backend.research_budget import status as budget_status
+from backend.model_gateway import ModelCallError, request_json
+from backend.model_vault import status as model_config_status
+from backend.research_budget import status as budget_status, reserve, record_usage
 from backend.sc05_worker import (
     SC05DelegatedAuthorization, flag as worker_flag, worker_status
 )
@@ -220,6 +222,11 @@ TOOLS=[
          "required":["run_id","confirm_paid"],"additionalProperties":False}},
     {"name":"get_executor_status","description":"Check zero-cost Render worker probe, paid executor enablement, queued dispatches and archive switch; no model calls.",
      "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
+    {"name":"get_model_config_status","description":"Read-only check of the DeepSeek credential source, encrypted-vault readiness, configured model names and execution flags. Never returns the key and makes no provider call.",
+     "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
+    {"name":"probe_model_connection","description":"Paid one-request DeepSeek connectivity test using the Owner's stored credential. Returns only sanitized provider status and token usage. Requires experiments:run and explicit per-call consent; reserves one call and 256 tokens.",
+     "inputSchema":{"type":"object","properties":{"confirm_paid":{"type":"boolean","description":"Set true only after the user explicitly authorizes this small paid DeepSeek connectivity request"}},
+                    "required":["confirm_paid"],"additionalProperties":False}},
     {"name":"get_experiment_status","description":"Check an existing Owner run without making model calls. Return stage, checkpoint count, tokens and errors; also sync Development Studio run status.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}},
     {"name":"get_experiment_result","description":"Read an existing completed Owner SC05 report (limited length), quality indicators and source/pipeline hashes. Read-only. No synthetic scientific scoring.",
@@ -268,7 +275,7 @@ TOOLS=[
 for _tool in TOOLS:
     _write = _tool["name"] in {
         "create_ab_pair","start_experiment","start_ab_pair",
-        "record_blind_review","record_experiment_round"
+        "probe_model_connection","record_blind_review","record_experiment_round"
     }
     _scopes = [READ, RUN] if _write else [READ]
     _tool["securitySchemes"] = [{"type":"oauth2","scopes":_scopes}]
@@ -1074,6 +1081,70 @@ def mount(app,*,get_db,get_factory):
                     payload=result(list_owned(db,owner))
                 elif name=="get_executor_status":
                     payload=result(worker_status(get_factory()))
+                elif name=="get_model_config_status":
+                    config=model_config_status(db)
+                    direct_available=bool(os.getenv("SC04_DEEPSEEK_API_KEY","").strip())
+                    config["direct_env_key_available"]=direct_available
+                    config["credential_source"]=(
+                        "environment" if direct_available else
+                        "encrypted_vault" if config.get("configured") else "missing"
+                    )
+                    config["provider_calls"]=0
+                    payload=result(config)
+                elif name=="probe_model_connection":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
+                    if not paid_enabled:
+                        raise HTTPException(503,"Owner delegated paid starts are disabled")
+                    if arguments.get("confirm_paid") is not True:
+                        raise HTTPException(422,"Explicit consent required for this paid connectivity probe")
+                    try:
+                        key=_model_key(get_factory())
+                    except Exception as exc:
+                        safe=str(exc) if isinstance(exc,ValueError) else type(exc).__name__+": credential lookup failed"
+                        payload=result({"ok":False,"error":safe,"provider_calls":0},error=True)
+                    else:
+                        if not key:
+                            payload=result({"ok":False,"error":"No DeepSeek credential is configured in the environment or encrypted vault.","provider_calls":0},error=True)
+                        elif not reserve(get_factory(),calls=1,tokens=256):
+                            payload=result({"ok":False,"error":"Daily model-call or token reservation limit reached; no provider request was sent.","provider_calls":0,"budget":budget_status(db)},error=True)
+                        else:
+                            try:
+                                response,usage=request_json(
+                                    key,"deepseek-flash",
+                                    "你正在执行一个最小 API 连通性测试。请只返回有效 JSON。",
+                                    {"sc05_stage":"connection_probe",
+                                     "instruction":"Return exactly one JSON object with ok set to true.",
+                                     "required_json_shape":{"ok":True}},
+                                    max_tokens=96,
+                                )
+                                record_usage(get_factory(),usage)
+                                ok=response.get("ok") is True
+                                add_audit(db,"sc05.model_connection_probe",owner.id,
+                                          "deepseek-flash","success="+str(ok))
+                                db.commit()
+                                payload=result({"ok":ok,"model":"deepseek-flash",
+                                    "usage":usage,"provider_calls":1,
+                                    "response_valid":isinstance(response,dict),
+                                    "budget":budget_status(db)},
+                                    error=not ok)
+                            except ModelCallError as exc:
+                                add_audit(db,"sc05.model_connection_probe",owner.id,
+                                          "deepseek-flash","failure="+str(exc)[:180])
+                                db.commit()
+                                payload=result({"ok":False,"model":"deepseek-flash",
+                                    "error":str(exc),"provider_calls":1,
+                                    "budget":budget_status(db)},error=True)
+                            except Exception as exc:
+                                safe=type(exc).__name__+": connectivity probe failed"
+                                add_audit(db,"sc05.model_connection_probe",owner.id,
+                                          "deepseek-flash","failure="+safe)
+                                db.commit()
+                                payload=result({"ok":False,"model":"deepseek-flash",
+                                    "error":safe,"provider_calls":1,
+                                    "budget":budget_status(db)},error=True)
                 elif name=="create_ab_pair":
                     if RUN not in scopes:
                         payload=step_up_result()
