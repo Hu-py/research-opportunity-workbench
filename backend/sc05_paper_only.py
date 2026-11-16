@@ -380,7 +380,7 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
         result.append({
             "diagnosis_ids": _references(item.get("diagnosis_ids"), ids,
                 "search diagnosis", allow_empty=True),
-            "query": _limited(item.get("query"), "search query", 190),
+            "query": _limited(item.get("query"), "search query", 400),
             "need": item["need"],
             "assumption_to_test": _limited(
                 item.get("assumption_to_test"), "search purpose", 450),
