@@ -25,6 +25,7 @@ STATUS_ALIASES = {"inferred": "hypothesis", "unknown_fact": "unknown"}
 # Explicit, auditable taxonomy aliases only. The raw model label is retained.
 ISSUE_CLASS_ALIASES = {
     "causal_inference": "identifiability",
+    "identification": "identifiability",
     "inference_boundary": "identifiability",
     "confounding": "identifiability",
     "method_dependence": "method",
