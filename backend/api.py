@@ -239,7 +239,42 @@ async def lifespan(app:FastAPI):
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
         )
+    # Opt-in on-demand SC05 queue consumer on the existing *isolated*
+    # Render web instance. No new paid Render Worker resource is created.
+    # A free web instance may sleep; an in-flight provider call is NEVER
+    # automatically retried after restart to prevent duplicate charges.
+    from backend.sc05_worker import flag as _sc05_flag
+    _sc05_stop = None
+    if _sc05_flag("SC05_INLINE_WORKER_ENABLED"):
+        from threading import Event, Thread
+        from backend.sc05_worker import (
+            require_postgres, queue_smoke_probe, inline_worker_loop
+        )
+        require_postgres(factory)
+        if _sc05_flag("SC05_WORKER_SMOKE_ON_STARTUP"):
+            probe_id = os.getenv(
+                "SC05_WORKER_SMOKE_ID", "sc05probe_isolated_staging_20261116"
+            )
+            created = queue_smoke_probe(factory, probe_id)
+            logging.getLogger("uvicorn.error").info(
+                "SC05 WORKER PROBE queued=%s id=%s; paid_calls=0",
+                created, probe_id
+            )
+        _sc05_stop = Event()
+        _sc05_thread = Thread(
+            target=inline_worker_loop, args=(factory,_sc05_stop),
+            daemon=True, name="sc05-inline-staging-worker"
+        )
+        _sc05_thread.start()
+        app.state.sc05_worker_thread = _sc05_thread
+        logging.getLogger("uvicorn.error").info(
+            "SC05 inline worker started; live_deepseek_enabled=%s",
+            _sc05_flag("SC05_INLINE_WORKER_LIVE_ENABLED")
+            and _sc05_flag("SC05_MCP_PAID_ENABLED")
+        )
     yield
+    if _sc05_stop is not None:
+        _sc05_stop.set()
 
 app=FastAPI(
     title="Research Opportunity Workbench API",
