@@ -315,6 +315,85 @@ def check_fact_type_resume(row: SC05Run, doc: SC05Case) -> dict:
             "types":types,"replay_prompt_matches":True}
 
 
+class _SearchPlanPrefixComplete(Exception):
+    """Stop a no-cost replay immediately after validating the saved search plan."""
+
+
+def check_search_query_resume(row: SC05Run, doc: SC05Case) -> dict:
+    """Verify the four saved gated checkpoints under the relaxed query-length validator.
+
+    Reconstructs the exact prompts from the source and frozen facts, consumes only
+    saved responses, and stops before OpenAlex or any new model request.
+    """
+    if row.status != "failed" or row.error != "Missing/invalid search query":
+        raise EvidenceError("Not the eligible saved search-query validation failure")
+    if row.variant != "science_gate_on" or row.calls != 4:
+        raise EvidenceError("Only the four-stage gated search-query failure is eligible")
+    entries = load(row.checkpoints_json, [])
+    expected = ["method_lineage", "diagnosis", "scientific_value_triage", "evidence_questions"]
+    if not isinstance(entries, list) or len(entries) != 4:
+        raise EvidenceError("Expected exactly four saved model checkpoints")
+    if [x.get("stage") for x in entries if isinstance(x, dict)] != expected:
+        raise EvidenceError("Saved checkpoint stages are incomplete or reordered")
+    pages = load(doc.pages_json, {})
+    frozen = load(doc.shared_evidence_json)
+    if not frozen:
+        raise EvidenceError("Gated search-query recovery requires frozen baseline facts")
+    cursor = [0]
+    captured = {}
+
+    def cached_only(api_key, model, system, payload, max_tokens=3000):
+        if cursor[0] >= len(entries):
+            raise _SearchPlanPrefixComplete()
+        entry = entries[cursor[0]]
+        fingerprint = hashlib.sha256(dump({
+            "model": model, "system": system, "payload": payload,
+            "max_tokens": max_tokens,
+        }).encode()).hexdigest()
+        stage = payload.get("sc05_stage")
+        if (entry.get("prompt_sha256") != fingerprint
+            or entry.get("stage") != stage
+            or entry.get("model") != model):
+            raise EvidenceError("Saved prompt fingerprint mismatch at " + str(stage))
+        if stage == "evidence_questions":
+            captured["response"] = entry.get("response")
+        cursor[0] += 1
+        return entry.get("response"), entry.get("usage", {})
+
+    def stop_before_openalex(*args, **kwargs):
+        raise _SearchPlanPrefixComplete()
+
+    try:
+        run_paper(
+            None, "cached-response-only", model_call=cached_only,
+            search_provider=stop_before_openalex, source_title=doc.title,
+            pages_override=pages, source_sha=doc.source_sha,
+            frozen_snapshot=frozen, scientific_value_gate=True, max_calls=40,
+        )
+    except _SearchPlanPrefixComplete:
+        pass
+    except EvidenceError as exc:
+        raise EvidenceError(
+            "Saved search-query response still fails validation: " + str(exc)[:120]
+        ) from exc
+    if cursor[0] != 4:
+        raise EvidenceError("Cached replay did not verify all four saved stages")
+    raw = captured.get("response")
+    queries = raw.get("queries") if isinstance(raw, dict) else None
+    if not isinstance(queries, list) or len(queries) > 7:
+        raise EvidenceError("Saved search-query response has an invalid query list")
+    lengths = [len(x.get("query", "")) for x in queries
+               if isinstance(x, dict) and isinstance(x.get("query"), str)]
+    return {
+        "cached_stages": 4,
+        "prompt_hashes_verified": True,
+        "validated_queries": len(queries),
+        "max_query_length": max(lengths, default=0),
+        "paid_calls_on_check": 0,
+        "network_searches_on_check": 0,
+    }
+
+
 def eligible_unstarted_gate_migration(db:Session,row:SC05Run,doc:SC05Case,
                                       current_sha:str)->bool:
     """Safely re-pin an unexecuted B run after recovering its original A.
@@ -519,15 +598,25 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
                           ";no_paid_stages=True;shared_facts=True")
             else:
                 try:
-                    info=check_fact_type_resume(row,document)
+                    if row.error=="Missing/invalid search query":
+                        info=check_search_query_resume(row,document)
+                        audit_action="sc05.verified_search_query_length_repair"
+                        audit_detail=("old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
+                                      ";cached_stages="+str(info["cached_stages"])+
+                                      ";validated_queries="+str(info["validated_queries"])+
+                                      ";max_query_length="+str(info["max_query_length"])+
+                                      ";no_paid_replay=True")
+                    else:
+                        info=check_fact_type_resume(row,document)
+                        audit_action="sc05.verified_taxonomy_parser_repair"
+                        audit_detail=("old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
+                                      ";replayed_facts="+str(info["facts"]))
                 except (EvidenceError,ValueError,TypeError) as exc:
                     raise HTTPException(
                         409,"Saved run cannot be safely migrated: "+str(exc)[:180]
                     ) from None
                 row.pipeline_sha=current_sha
-                add_audit(db,"sc05.verified_taxonomy_parser_repair",actor.id,row.id,
-                          "old_sha="+old_sha[:16]+";new_sha="+current_sha[:16]+
-                          ";replayed_facts="+str(info["facts"]))
+                add_audit(db,audit_action,actor.id,row.id,audit_detail)
         row.status="queued";row.error="";row.updated_at=now()
         add_audit(db,"sc05.authorized_model_run",actor.id,row.id,
                   "variant="+row.variant)
@@ -544,6 +633,9 @@ def mount(app,*,get_db,require_actor,team_auth_enabled,get_factory):
             return {"ready":True,"requires_migration":False,
                     "saved_checkpoints":len(load(row.checkpoints_json,[]))}
         try:
+            if row.error=="Missing/invalid search query":
+                result=check_search_query_resume(row,db.get(SC05Case,row.case_id))
+                return {"ready":True,"requires_migration":True,**result}
             result=check_fact_type_resume(row,db.get(SC05Case,row.case_id))
         except (EvidenceError,ValueError,TypeError) as exc:
             return {"ready":False,"requires_migration":True,
