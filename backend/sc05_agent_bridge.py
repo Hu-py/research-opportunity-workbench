@@ -57,7 +57,7 @@ def step_up_result() -> dict:
                  '/.well-known/oauth-protected-resource", scope="' +
                  READ + " " + RUN +
                  '", error="insufficient_scope", error_description="Owner must approve experiment execution"')
-    data = result({"error":"Owner must authorize experiments:run to use this paid action"},
+    data = result({"error":"Owner must authorize experiments:run to create or start experiments"},
                   error=True)
     data["_meta"] = {"mcp/www_authenticate":[challenge]}
     return data
@@ -179,6 +179,11 @@ def form_html(data):
 TOOLS=[
     {"name":"list_experiments","description":"List Owner SC05 papers, A/B runs, their actual status and remaining daily DeepSeek call budget. Read-only.",
      "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
+    {"name":"create_ab_pair","description":"Owner write action with zero model calls: create a fresh science_gate_off/science_gate_on run pair for an existing Owner SC05 paper case. Does not start either run or spend DeepSeek budget. Run the gate-off baseline first; gate-on requires its frozen evidence snapshot.",
+     "inputSchema":{"type":"object","properties":{
+         "case_id":{"type":"string","description":"Existing Owner SC05 case ID returned by list_experiments"},
+         "confirm_create":{"type":"boolean","description":"Confirm creating two prepared run records; this does not make model calls"}},
+         "required":["case_id","confirm_create"],"additionalProperties":False}},
     {"name":"prepare_experiment","description":"Read-only preflight for an existing SC05 run: verify source hashes, frozen evidence, checkpoint counts, status, and budget before spending anything.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string","description":"Existing sc05run_ ID"}},
                     "required":["run_id"],"additionalProperties":False}},
@@ -199,7 +204,7 @@ TOOLS=[
 # Publish per-tool OAuth requirements so ChatGPT can request the
 # experiments:run grant and perform step-up after an earlier read-only link.
 for _tool in TOOLS:
-    _write = _tool["name"] == "start_experiment"
+    _write = _tool["name"] in {"create_ab_pair","start_experiment"}
     _scopes = [READ, RUN] if _write else [READ]
     _tool["securitySchemes"] = [{"type":"oauth2","scopes":_scopes}]
     _tool["_meta"] = {"securitySchemes":[{"type":"oauth2","scopes":_scopes}]}
@@ -672,6 +677,41 @@ def mount(app,*,get_db,get_factory):
                     payload=result(list_owned(db,owner))
                 elif name=="get_executor_status":
                     payload=result(worker_status(get_factory()))
+                elif name=="create_ab_pair":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
+                    if arguments.get("confirm_create") is not True:
+                        raise HTTPException(422,"Explicit confirmation required to create an A/B run pair")
+                    case_id=arguments.get("case_id","")
+                    if not re.fullmatch(r"sc05case_[a-f0-9]{20,32}",case_id):
+                        raise HTTPException(400,"Invalid SC05 case ID")
+                    paper=db.get(SC05Case,case_id)
+                    if paper is None or paper.member_id!=owner.id:
+                        raise HTTPException(404,"Paper case not found")
+                    pair_id="sc05pair_"+uuid.uuid4().hex[:28]
+                    created=[]
+                    for variant in ("science_gate_off","science_gate_on"):
+                        item=SC05Run(
+                            id="sc05run_"+uuid.uuid4().hex[:28],
+                            member_id=owner.id,case_id=paper.id,pair_id=pair_id,
+                            variant=variant,pipeline_sha=pipeline_sha(),
+                        )
+                        db.add(item)
+                        created.append(item)
+                    add_audit(db,"sc05.mcp_ab_pair_created",owner.id,pair_id,
+                              "source_sha="+paper.source_sha[:16]+";model_calls=0")
+                    db.commit()
+                    for item in created:
+                        db.refresh(item)
+                    payload=result({
+                        "pair_id":pair_id,
+                        "case":case_view(paper),
+                        "runs":[run_view(item) for item in created],
+                        "model_calls":0,
+                        "message":"A/B pair created as prepared records. No DeepSeek calls or model spending occurred. Start science_gate_off first; science_gate_on requires the baseline's frozen evidence snapshot."
+                    })
                 elif name=="prepare_experiment":
                     payload=result(preflight(db,owner,arguments.get("run_id","")))
                 elif name=="get_experiment_status":
