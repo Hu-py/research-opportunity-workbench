@@ -125,7 +125,7 @@ SC05 的研究对象是 Research Atlas Agent 的完整科研工作流，不是�
 - R2：可选私有归档；数据库仍是 source of truth。
 - GitHub Actions：CI、定时数据采集、同步与测试。
 
-Render 隔离测试服务 `research-atlas-devstudio-e2e-ejmh` 的自动部署曾配置为关闭（`autoDeploy=no`）。因此 GitHub 新提交不会自动更新该服务。每次部署前必须核对分支、commit、数据库和环境变量；不得把测试服务改指生产数据库。
+Render 隔离测试服务 `research-atlas-devstudio-e2e-ejmh` 的自动部署为关闭（`autoDeploy=no`）。截至 2026-11-16 本次审计，最新观察到的 Live deploy commit 为 `262f3b053bb8a3910aed85bda1665073fcfad5f1`；本整理分支的后续代码尚未部署。Render 应用日志还显示 inline worker 已启动且 `live_deepseek_enabled=True`，因此当前服务具备触发真实付费模型调用的条件。每次部署前必须核对分支、commit、数据库和环境变量；不得把测试服务改指生产数据库。
 
 截至本次审计，仓库有独立 staging 分支和多个未合并 PR。当前 SC05 整理分支不代表 Render 或 ChatGPT 已经运行了最新代码。请以 [分支生命周期](BRANCH_LIFECYCLE.md) 和 [SC05 ChatGPT 操作指南](SC05_CHATGPT_OPERATING_GUIDE.md) 为准。
 
