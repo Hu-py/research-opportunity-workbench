@@ -230,12 +230,16 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
             "confidence": confidence,
             "confidence_provenance": ("model_reported" if raw_confidence is not None else "not_provided"),
         })
+    open_questions_raw=raw.get("open_questions", [])
+    # This field is optional and descriptive. Models sometimes return one
+    # concise question as a string instead of a one-item array; normalize that
+    # representation without inventing or rewriting its content.
+    if isinstance(open_questions_raw,str):
+        open_questions_raw=[open_questions_raw] if open_questions_raw.strip() else []
     return {
         "schema_version": VERSION, "study_reconstruction": clean_reconstruction,
         "diagnoses": clean_issues,
-        # A model may omit optional follow-up questions. Missing means none
-        # were supplied; malformed non-list values still fail validation.
-        "open_questions": text_items(raw.get("open_questions", []), "open_questions"),
+        "open_questions": text_items(open_questions_raw, "open_questions"),
         "snapshot_sha256": snapshot["snapshot_sha256"],
         "novelty_verified": False,
         "experimental_evaluation_executed": False,
