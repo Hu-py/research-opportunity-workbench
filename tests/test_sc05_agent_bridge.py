@@ -178,6 +178,11 @@ def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
     case=client.post("/api/personal-research/me/sc05/cases",headers=session,
         json={"title":"Published urban transport study","pages":pages})
     assert case.status_code==201,case.text
+    from backend.sc05_eval_api import SC05Case
+    with factory() as db:
+        original=db.get(SC05Case,case.json()["id"])
+        original.shared_evidence_json='{"old_snapshot":"must remain untouched"}'
+        db.commit()
 
     tokens,_=connect(client)
     access=tokens["access_token"]
@@ -189,12 +194,17 @@ def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
 
     created=call(client,access,"tools/call",{
         "name":"create_ab_pair","arguments":{
-            "case_id":case.json()["id"],"confirm_create":True
+            "case_id":case.json()["id"],"fresh_copy":True,"confirm_create":True
         }})
     assert created.status_code==200
     assert created.json()["result"]["isError"] is False,created.text
     payload=json.loads(created.json()["result"]["content"][0]["text"])
-    assert payload["case"]["id"]==case.json()["id"]
+    assert payload["source_case"]["id"]==case.json()["id"]
+    assert payload["case"]["id"]!=case.json()["id"]
+    assert payload["fresh_copy"] is True
+    assert payload["case"]["sha256"]==case.json()["sha256"]
+    assert payload["case"]["pages"]==case.json()["pages"]
+    assert payload["case"]["shared_evidence_ready"] is False
     assert payload["model_calls"]==0
     assert [x["variant"] for x in payload["runs"]]==[
         "science_gate_off","science_gate_on"
@@ -209,8 +219,14 @@ def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
     assert after_data["budget"]["used"]["model_calls"]==before_calls
     with factory() as db:
         rows=[db.get(SC05Run,x["id"]) for x in payload["runs"]]
+        original=db.get(SC05Case,case.json()["id"])
+        cloned=db.get(SC05Case,payload["case"]["id"])
         assert all(row is not None and row.status=="prepared" and row.calls==0 for row in rows)
-        assert rows[0].case_id==rows[1].case_id==case.json()["id"]
+        assert rows[0].case_id==rows[1].case_id==payload["case"]["id"]
+        assert original.shared_evidence_json=='{"old_snapshot":"must remain untouched"}'
+        assert cloned.shared_evidence_json is None
+        assert original.pages_json==cloned.pages_json
+        assert original.source_sha==cloned.source_sha
 
 
 def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypatch):
