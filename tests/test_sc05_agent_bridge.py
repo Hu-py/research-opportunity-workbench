@@ -98,6 +98,15 @@ def test_discovery_pkce_and_replay_protection(workspace):
     page=client.get("/oauth/authorize",params=oauth_form())
     assert page.status_code==200
     assert "Authorize ChatGPT" in page.text
+    # Browsers enforce form-action on a POST's 303 redirect chain.
+    # Without the explicit verified callback origin, Chrome and Edge silently
+    # leave the consent form visible although POST /oauth/authorize returns 303.
+    csp=page.headers["content-security-policy"]
+    assert "form-action 'self' https://chatgpt.com;" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "default-src 'none'" in csp
+    assert "https://evil.invalid" not in csp
+    assert page.headers["referrer-policy"]=="no-referrer"
     tokens,data=connect(client)
     assert client.post("/oauth/token",data=data).status_code==400
     init=call(client,tokens["access_token"],"initialize")
