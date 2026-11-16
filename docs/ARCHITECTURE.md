@@ -1,3 +1,5 @@
+> **版本说明（2026-11-16）：**本文保留早期 v0.2 架构说明和历史 API 设计。当前部署入口、Vercel / Render / PostgreSQL / R2 边界、SC04/SC05 和 ChatGPT MCP 以[当前仓库总览](REPOSITORY_MAP.md)为准；文件使用状态见[文件清单](REPOSITORY_FILE_INVENTORY.md)。不要将本文中的早期“未实现”描述直接视为当前代码状态。
+
 # Research Atlas architecture (v0.2)
 
 ```
