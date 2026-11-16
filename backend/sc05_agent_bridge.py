@@ -1080,7 +1080,19 @@ def mount(app,*,get_db,get_factory):
                 if name=="list_experiments":
                     payload=result(list_owned(db,owner))
                 elif name=="get_executor_status":
-                    payload=result(worker_status(get_factory()))
+                    state=worker_status(get_factory())
+                    config=model_config_status(db)
+                    direct_available=bool(os.getenv("SC04_DEEPSEEK_API_KEY","").strip())
+                    state["model_config"]={
+                        "configured":bool(config.get("configured")),
+                        "vault_ready":bool(config.get("vault_ready")),
+                        "fast_model":config.get("fast_model"),
+                        "reason_model":config.get("reason_model"),
+                        "direct_env_key_available":direct_available,
+                        "credential_source":("environment" if direct_available else
+                            "encrypted_vault" if config.get("configured") else "missing"),
+                    }
+                    payload=result(state)
                 elif name=="get_model_config_status":
                     config=model_config_status(db)
                     direct_available=bool(os.getenv("SC04_DEEPSEEK_API_KEY","").strip())
