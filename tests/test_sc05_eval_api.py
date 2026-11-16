@@ -406,6 +406,42 @@ def test_owner_queue_mode_defers_paid_calls_until_worker_claim(workspace, monkey
         assert len(ev.load(completed.checkpoints_json, [])) == 1
 
 
+
+def test_provider_model_call_error_is_preserved_without_leaking_provider_payload(workspace,monkeypatch):
+    from backend.model_gateway import ModelCallError
+    client,factory,owner,_=workspace
+    case_id=upload(client,owner)
+    pair=client.post(BASE+"/cases/"+case_id+"/ab",headers=auth(owner)).json()
+    run_id=pair["runs"][0]["id"]
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        row.status="claimed"
+        row.stage="worker_claimed"
+        db.commit()
+
+    def fake_run_paper(pdf,key,*,model_call,**kwargs):
+        model_call(key,"deepseek-flash","diagnostic system",
+                   {"sc05_stage":"first_stage","required_json_shape":{"ok":True}},
+                   max_tokens=96)
+        raise AssertionError("provider error should have stopped the stage")
+
+    def failing_provider(*args,**kwargs):
+        raise ModelCallError("DeepSeek HTTP 402：账户余额不足")
+
+    monkeypatch.setattr(ev,"run_paper",fake_run_paper)
+    monkeypatch.setattr(ev,"request_json",failing_provider)
+    ev.execute(factory,run_id,claimed_by_worker=True)
+
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        assert row.status=="failed"
+        assert row.error=="DeepSeek HTTP 402：账户余额不足"
+        assert row.calls==0
+        assert ev.load(row.checkpoints_json,[])==[]
+        assert "Bearer" not in row.error
+        assert "api_key" not in row.error
+
+
 def test_sc05_r2_archives_source_checkpoint_and_report_privately(workspace, monkeypatch):
     from backend import sc05_r2_artifacts as artifacts
     client, factory, owner, _ = workspace
