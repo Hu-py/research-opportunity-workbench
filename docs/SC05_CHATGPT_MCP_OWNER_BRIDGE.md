@@ -1,102 +1,105 @@
-# Research Atlas · ChatGPT Owner delegated SC05 tools
+# Research Atlas · ChatGPT Owner SC05 MCP Bridge
 
-Status: **staging feature**. This is not a deployed/installed ChatGPT plugin, and it does not automatically cause paid DeepSeek calls. The current code is deliberately disabled until the isolated deployment is verified.
+**Status as of 2026-11-16:** The bridge and A/B orchestration are implemented in the SC05 staging code line. The repository's isolated Render service has automatic deployment disabled, so a GitHub commit alone does not deploy the new tools. ChatGPT tool discovery and a real paid A/B run remain separate acceptance steps. See the [SC05 ChatGPT operating guide](SC05_CHATGPT_OPERATING_GUIDE.md).
 
-## Goals and boundaries
+## Purpose
 
-The ChatGPT assistant may prepare, enqueue and inspect **existing** SC05 Owner experiments, and store references in Development Studio. It may never impersonate a browser session, choose a new paper from a public repository, silently restart failed stages, or auto-approve its own scientific output.
+Allow ChatGPT to manage an Owner's complete SC05 experiment workflow without copying Owner credentials into the conversation or requiring a local terminal for normal operations.
 
-The bridge is part of the existing FastAPI backend, at `https://<isolated-render-host>/mcp`. It is a minimal **stateless Streamable HTTP JSON-RPC** implementation with OAuth authorization code + PKCE S256, exact ChatGPT client identity and fixed redirect. Test protocol compatibility with ChatGPT itself before production release; no MCP SDK is used in this prototype.
+The bridge can create private paper cases from extracted text, create and preflight A/B pairs, start the next safe arm, inspect status, return blind reports, save blind scores, unblind and compare, and maintain a durable experiment-round ledger.
 
-Authorization endpoint is `/oauth/authorize`. On first authorization the Owner enters their Research Atlas email and password **on the Research Atlas backend page**, not in ChatGPT. Access tokens expire in 60 minutes; refresh tokens in 30 days. Token hashes are stored in PostgreSQL, rotated on refresh, and Owner revocation is available at the authenticated `/api/mcp/delegations` management endpoints. Disabling Owner status immediately removes access.
+It does not silently start paid models, automatically retry an ambiguous provider request, or declare scientific success based on a completed API run.
 
-MCP operations:
+## Endpoints and OAuth
+
+- MCP resource: `/mcp`
+- Resource metadata: `/.well-known/oauth-protected-resource`
+- Authorization server metadata: `/.well-known/oauth-authorization-server`
+- Owner authorization: `/oauth/authorize`
+- Token exchange / refresh: `/oauth/token`
+- Token revocation: `/oauth/revoke`
+- Owner delegation management: `/api/mcp/delegations`
+
+The implementation uses the exact ChatGPT client identity and redirect URI, OAuth Authorization Code + PKCE S256, a fixed HTTPS resource origin, hashed access/refresh tokens in PostgreSQL, one-hour access tokens and rotating refresh tokens. The Owner signs in on the Research Atlas backend authorization page; ChatGPT never receives the Owner password or DeepSeek credential.
+
+Every MCP request validates token expiry, audience, scopes, active Owner status and ownership of the requested paper/run/pair.
+
+## Current tool registry
 
 | Tool | Scope | Side effect |
 |---|---|---|
-| `list_experiments` | `experiments:read` | None |
-| `prepare_experiment` | `experiments:read` | None |
-| `get_experiment_status` | `experiments:read` | Writes an idempotent Development Studio SC05 link/status |
-| `get_experiment_result` | `experiments:read` | None |
-| `start_experiment` | `experiments:read experiments:run` | Can enqueue **one prepared Owner run**; requires `confirm_paid=true` + positive paid flag |
+| `list_experiments` | `experiments:read` | Read Owner cases, pairs, rounds and budget; blind run IDs/variants remain hidden until unblinding |
+| `prepare_experiment` | `experiments:read` | Read-only single-run checkpoint/budget preflight |
+| `get_executor_status` | `experiments:read` | Read worker probe and queue readiness |
+| `get_experiment_status` | `experiments:read` | Read-only single-run status |
+| `get_experiment_result` | `experiments:read` | Read completed report and quality metadata |
+| `prepare_ab_pair` | `experiments:read` | Read-only pair-level preflight |
+| `get_ab_pair_result` | `experiments:read` | Read anonymized A/B reports |
+| `list_experiment_rounds` | `experiments:read` | Read persistent experiment-round ledger |
+| `create_paper_case` | `experiments:read experiments:run` | Save a private extracted-paper snapshot; zero model calls |
+| `create_ab_pair` | `experiments:read experiments:run` | Create the two prepared run records; zero model calls |
+| `get_ab_pair_status` | `experiments:read experiments:run` | Read pair status and synchronize the round ledger |
+| `start_ab_pair` | `experiments:read experiments:run` | Enqueue only the next safe arm; may make paid model calls |
+| `start_experiment` | `experiments:read experiments:run` | Compatibility single-run start/resume; may make paid model calls |
+| `record_blind_review` | `experiments:read experiments:run` | Save a score for anonymous A or B |
+| `compare_ab_pair` | `experiments:read experiments:run` | Write an audit record and reveal the mapping after both blind scores exist |
+| `record_experiment_round` | `experiments:read experiments:run` | Create/update the durable round ledger |
 
-All tools verify access token expiry, scopes, audience, active Owner membership and exact run ownership. A foreign run ID is always 404. `start_experiment` reuses the existing SC05 Owner route for all previous guards and source-hash protections, rather than duplicating LLM or billing logic. Global model-call/token ceilings remain enforced by `backend/research_budget.py`. This is **not** an exact USD billing limiter.
+All mutating tools publish write annotations and require the run scope. `get_ab_pair_status` is treated as a write because it synchronizes the persistent round ledger. `compare_ab_pair` is an explicit unblinding action and cannot be repeated after a pair has been unblinded.
 
-## Safe staging release procedure
+## Scientific workflow rules
 
-1. Confirm intended Render workspace, exact isolated SC05 service and PostgreSQL schema, and complete a DB backup. Do not modify production, databases, secrets or OAuth settings in other projects.
-2. Merge the tested PR into `experiment/devstudio-postgres-e2e-20261114` only. Render's isolated service `research-atlas-devstudio-e2e-ejmh` uses this branch, and auto-deploy is OFF. Trigger the explicit deploy after merge.
-3. Configure these server-only env vars on that isolated service:
+1. Create or select one Owner paper case.
+2. Create a clean A/B pair using the same source snapshot.
+3. Preflight the pair and verify source/pipeline hashes.
+4. Start gate-off baseline first.
+5. Freeze the shared evidence snapshot.
+6. Start gate-on only after baseline completion.
+7. Retrieve anonymized reports and save both blind reviews.
+8. Unblind only after both reviews exist.
+9. Persist comparison and next-step notes in the round ledger.
 
-   - `SC05_MCP_ENABLED=true`
-   - `SC05_MCP_PUBLIC_URL=https://research-atlas-devstudio-e2e-ejmh.onrender.com`
-   - `SC05_MCP_PAID_ENABLED=false` (leave false until the executor is operating)
-   - existing `API_BEARER_TOKEN`, `DATABASE_URL` and `TEAM_AUTH_ENABLED=true` must remain unchanged.
+The baseline and gate-on arms must not run concurrently. A pipeline hash mismatch requires a new clean pair or a separately validated recovery; the MCP bridge must not silently rewrite old checkpoints.
 
-4. Check `GET /.well-known/oauth-protected-resource`, `GET /.well-known/oauth-authorization-server`, `GET /mcp` with no auth (expected 401 challenge), `GET /api/health`. Perform a single Owner OAuth connection in ChatGPT, followed by `tools/list` and `list_experiments`.
-5. In ChatGPT web, Plugins → Add custom MCP server. Use `https://research-atlas-devstudio-e2e-ejmh.onrender.com/mcp`, OAuth authentication, then install the plugin. The Owner must perform this connection step personally; ChatGPT cannot grant its own access or directly install a custom MCP plugin. In the conversation, select the new plugin explicitly.
-6. Verify a **read-only** SC05 inspection and existing A results. Do not initiate a new paid run to test discovery. Confirm DevStudio's linked experiment entry and record read-only status.
-7. Only when an actual durable task consumer is working (or after consciously accepting the free Render background-worker interruption risk), decide how to enable paid starts. In normal operations, **do not enable** the paid switch if `SC05_EXECUTION_MODE=worker` has no independent running worker; a job would only stay queued. A Render Background Worker costs money; GitHub Actions needs a separately provisioned, protected cloud-running authentication mechanism.
-8. Keep the SC05 B failed run frozen until the existing `Missing/invalid search query` model-response issue is repaired through an auditable stage-specific recovery. Paid retries must not discard the original four checkpoints.
+## Paper intake limits
+
+`create_paper_case` accepts extracted page text from ChatGPT and is limited to a 48,000-byte UTF-8 JSON payload per MCP request. It uses the same page validation and blind-eligibility filtering as the authenticated PDF endpoint. Larger PDFs should be uploaded through the authenticated Research Atlas PDF page. Original PDFs and private source pages must not be committed to GitHub.
+
+## Paid execution and worker readiness
+
+A paid start requires all of the following:
+
+- OAuth grant includes `experiments:run`.
+- The user explicitly authorizes actual DeepSeek model spending in the current conversation and the tool receives `confirm_paid=true`.
+- Server-side `SC05_MCP_PAID_ENABLED=true`.
+- Worker readiness checks pass (unless an Owner has explicitly disabled the readiness guard for a controlled test).
+- Daily call/token budget is available.
+- The target run passes the source, checkpoint and frozen-evidence preflight.
+
+The isolated Render workspace has no separately confirmed independent SC05 Background Worker resource. Render logs on 2026-11-16 show the inline worker started with `live_deepseek_enabled=True`, so the currently deployed service is technically capable of paid DeepSeek execution. This is not user consent. The optional inline worker on a free Web Service may sleep or restart. Do not enable paid starts merely because the MCP endpoint is reachable. Interrupted `claimed` / `running` requests remain frozen for review; they are not automatically stolen or replayed because a provider may already have billed them.
+
+R2 archiving is optional. PostgreSQL remains authoritative. R2 failure must never trigger a second paid model request.
+
+## Staging release checklist
+
+1. Confirm the Render workspace, exact isolated service and isolated PostgreSQL schema.
+2. Merge the reviewed PR into the branch bound to the isolated service.
+3. Trigger a manual Render deploy because `autoDeploy=no`.
+4. Verify the live deploy commit equals the intended GitHub commit.
+5. Verify `/api/health`, OAuth discovery endpoints, and the unauthenticated MCP challenge.
+6. Connect ChatGPT using the exact `/mcp` URL and Owner authorization. Grant both `experiments:read` and `experiments:run`.
+7. Verify `tools/list` includes the current tool registry and run read-only / zero-cost operations first.
+8. Verify the synthetic PostgreSQL worker probe before considering paid execution.
+9. Only after the actual queue consumer is ready, separately authorize a bounded real DeepSeek test.
+10. Review the saved source SHA, pipeline SHA, checkpoints, token usage, A/B blind scores, unblinded comparison and round ledger.
 
 ## Owner revocation
 
-Send requests via the existing authenticated Research Atlas backend proxy:
+- `GET /api/mcp/delegations` lists grant fingerprints, scopes and expiry; it does not expose raw tokens.
+- `POST /api/mcp/delegations/{grant_id}/revoke` revokes one Owner grant.
+- `POST /oauth/revoke` supports OAuth-client token revocation.
+- Disabling the MCP feature flag or deactivating/changing the Owner role also blocks access.
 
-- `GET /api/mcp/delegations` lists grant fingerprints, scopes and expiry (no raw tokens).
-- `POST /api/mcp/delegations/{grant_id}/revoke` revokes a selected link.
-- OAuth clients may call `POST /oauth/revoke` with their own refresh/access token.
+## Security limitations
 
-Owner inactivity, role change and expiry also make the link unusable. To disable the integration immediately, set `SC05_MCP_ENABLED=false` on the isolated service.
-
-## Security requirements before production
-
-This is a staging prototype, not an externally audited OAuth server. Require remote protocol compatibility tests, secure cookie/CSRF review, rate-limit/WAF for login and OAuth, OAuth client metadata verification or trusted IdP, safe database migrations, token revocation audit, budget policy review, and a hardened execution queue before public release. The existing Owner email and provider keys must not be embedded in ChatGPT or source code.
-
-### Tests
-
-`pytest -q tests/test_sc05_agent_bridge.py tests/test_sc05_eval_api.py`
-
-CI tests must not make real model calls. Successful CI establishes only software function and security checks, not new-paper scientific merit.
-
-
-## 2026-11-16: Owner-delegated run scope and zero-fixed-cost executor
-
-This deployment deliberately reuses the **existing isolated Render web service**, not a new paid Render Background Worker. `experiments:run` is not enabled for an existing read-only token automatically.
-
-**OAuth / ChatGPT scope upgrade**
-
-The first unauthenticated MCP 401 advertises `scope="experiments:read experiments:run"` when `SC05_MCP_RUN_SCOPE_ENABLED=true`. Per-tool OAuth `securitySchemes` declare read-only scopes for inspection and both scopes for `start_experiment`. If an old read-only grant invokes `start_experiment`, the MCP result advertises an `insufficient_scope` reauthorization challenge. The Owner must re-consent. Both OAuth scope and paid-model consent are checked server-side.
-
-**Isolated Render rollout (stage 1; no model calls)**
-
-```env
-SC05_MCP_RUN_SCOPE_ENABLED=true
-SC05_INLINE_WORKER_ENABLED=true
-SC05_WORKER_SMOKE_ON_STARTUP=true
-SC05_WORKER_SMOKE_ID=sc05probe_isolated_staging_20261116
-SC05_EXECUTION_MODE=worker
-SC05_INLINE_WORKER_LIVE_ENABLED=false
-SC05_MCP_PAID_ENABLED=false
-SC05_MCP_ENFORCE_WORKER_READINESS=true
-```
-
-At startup a synthetic probe is inserted at most once in `sc05_worker_probes`, committed, claimed by the actual Render worker loop, and marked completed. A `SC05 WORKER PROBE: completed` log line and a `get_executor_status` response with status `completed` confirm the PostgreSQL writer/reader cycle **without** DeepSeek or R2. If it fails, do not enable paid work.
-
-**Isolated Render rollout (stage 2; availability only, not a paid test)**
-
-After verifying the zero-cost probe and confirming no unexpected in-flight SC05 rows:
-
-```env
-SC05_INLINE_WORKER_LIVE_ENABLED=true
-SC05_MCP_PAID_ENABLED=true
-```
-
-All other variables above stay unchanged. The worker only consumes rows in `sc05_delegated_worker_authorizations` marked `approved` following a new ChatGPT OAuth Owner tool invocation with `confirm_paid=true`; historical `queued`, `claimed` and `failed` SC05 runs cannot be silently restarted. Each stage still reserves from the existing global daily call/token budget, checkpoints in PostgreSQL, and optionally mirrors to R2 if the bucket credentials and `SC05_R2_ARCHIVE_ENABLED=true` are actually configured.
-
-**Important limitations**
-
-- This is not a continuously available independent Worker: Render's free web process may suspend or restart. Paid runs in `claimed` or `running` states remain frozen for human inspection after crashes; they are not automatically replayed.
-- Live DeepSeek execution is **not** proven by the synthetic zero-cost probe. Real provider and R2 integration require a separately authorized limited-cost test and successful immutable checkpoint/manifest audit.
-- Postgres is the primary persistent record. The database snapshot/backup plan must be completed before its free-instance expiration.
-- The Owner may need to disconnect/reconnect the custom ChatGPT MCP plugin to request the upgraded scopes, depending on the client.
+This is a staging integration, not an externally audited OAuth provider. Before public production use, complete rate-limit/WAF protection for Owner login, CSRF and OAuth threat review, schema migration/backup validation, worker lease/heartbeat design, exact cost controls, and a formal incident/revocation procedure. Never put Owner passwords, provider keys, database URLs, bearer tokens or R2 credentials in ChatGPT, source code, GitHub Actions logs or public frontend variables.

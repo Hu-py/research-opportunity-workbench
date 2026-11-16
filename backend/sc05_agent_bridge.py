@@ -25,8 +25,8 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstr
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
-from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
+from backend.team import AuditEntry, TeamMember, add_audit, login as member_login, revoke_session
+from backend.sc05_eval_api import (SC05Case, SC05Run, SC05Rating, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, safe_pages, EvidenceError)
 from backend.sc05_paper_only import run_paper
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
@@ -204,6 +204,13 @@ def form_html(data):
 TOOLS=[
     {"name":"list_experiments","description":"List Owner SC05 papers, A/B runs, their actual status and remaining daily DeepSeek call budget. Read-only.",
      "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
+    {"name":"create_paper_case","description":"Create a private Owner SC05 paper case directly from extracted Methods/Results page text supplied in ChatGPT. No DeepSeek calls. The MCP request is limited to 48,000 characters total; larger PDFs should be uploaded through the authenticated Research Atlas PDF page.",
+     "inputSchema":{"type":"object","properties":{
+         "title":{"type":"string","minLength":8,"maxLength":300},
+         "pages":{"type":"object","minProperties":1,"maxProperties":120,
+                  "additionalProperties":{"type":"string","minLength":40,"maxLength":60000}},
+         "confirm_create":{"type":"boolean","description":"Confirm saving this private extracted-paper snapshot; no model calls or provider spending"}},
+         "required":["title","pages","confirm_create"],"additionalProperties":False}},
     {"name":"create_ab_pair","description":"Owner write action with zero model calls: create a fresh science_gate_off/science_gate_on run pair for an existing Owner SC05 paper case. Does not start either run or spend DeepSeek budget. Run the gate-off baseline first; gate-on requires its frozen evidence snapshot.",
      "inputSchema":{"type":"object","properties":{
          "case_id":{"type":"string","description":"Existing Owner SC05 case ID returned by list_experiments"},
@@ -220,7 +227,7 @@ TOOLS=[
          "required":["run_id","confirm_paid"],"additionalProperties":False}},
     {"name":"get_executor_status","description":"Check zero-cost Render worker probe, paid executor enablement, queued dispatches and archive switch; no model calls.",
      "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
-    {"name":"get_experiment_status","description":"Check an existing Owner run without making model calls. Return stage, checkpoint count, tokens and errors; also sync Development Studio run status.",
+    {"name":"get_experiment_status","description":"Read an existing Owner run without making model calls or changing Development Studio records. Return stage, checkpoint count, tokens and errors.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}},
     {"name":"get_experiment_result","description":"Read an existing completed Owner SC05 report (limited length), quality indicators and source/pipeline hashes. Read-only. No synthetic scientific scoring.",
      "inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":False}},
@@ -267,8 +274,9 @@ TOOLS=[
 # experiments:run grant and perform step-up after an earlier read-only link.
 for _tool in TOOLS:
     _write = _tool["name"] in {
-        "create_ab_pair","start_experiment","start_ab_pair",
-        "record_blind_review","record_experiment_round"
+        "create_paper_case","create_ab_pair","start_experiment",
+        "get_ab_pair_status","start_ab_pair","record_blind_review",
+        "compare_ab_pair","record_experiment_round"
     }
     _scopes = [READ, RUN] if _write else [READ]
     _tool["securitySchemes"] = [{"type":"oauth2","scopes":_scopes}]
@@ -385,8 +393,24 @@ def pair_preflight(db,owner,pair_id):
             next_action="review_gate"
             reason="The gate-on arm is not safe to submit; inspect its saved checkpoints and error."
     else:
-        next_action="blind_review"
-        reason="Both real A/B runs are complete. Retrieve anonymized reports, score them blindly, then unblind."
+        rating_ids=db.scalars(select(SC05Rating.run_id).where(
+            SC05Rating.member_id==owner.id,
+            SC05Rating.run_id.in_([baseline.id,gated.id])
+        )).all()
+        unblinded=db.scalars(select(AuditEntry.id).where(
+            AuditEntry.actor_id==owner.id,
+            AuditEntry.action=="sc05.ab_unblinded",
+            AuditEntry.target==pair_id
+        ).limit(1)).first() is not None
+        if unblinded:
+            next_action="complete"
+            reason="Both reports were blindly scored and the A/B mapping was already unblinded and compared."
+        elif len(set(rating_ids))==2:
+            next_action="unblind_compare"
+            reason="Both reports have blind scores. The next step is to unblind and compare the recorded scores."
+        else:
+            next_action="blind_review"
+            reason="Both real A/B runs are complete. Retrieve anonymized reports and score both blindly before unblinding."
     if baseline.status=="completed" and gated.status=="completed":
         pair_status="completed"
     elif any(row.status=="failed" for row in (baseline,gated)):
@@ -425,12 +449,20 @@ def sync_round_from_pair(db,owner,pair_id):
         return None
     state=pair_preflight(db,owner,pair_id)
     by,_=pair_rows(db,owner,pair_id)
+    unblinded=db.scalars(select(AuditEntry.id).where(
+        AuditEntry.actor_id==owner.id,
+        AuditEntry.action=="sc05.ab_unblinded",
+        AuditEntry.target==pair_id
+    ).limit(1)).first() is not None
     if state["pair_status"]=="completed":
         rating_ids=db.scalars(select(SC05Rating.run_id).where(
             SC05Rating.member_id==owner.id,
             SC05Rating.run_id.in_([r.id for r in by.values()])
         )).all()
-        if len(set(rating_ids))==2:
+        if len(set(rating_ids))==2 and unblinded:
+            row.brief_result="A/B 两组已完成盲评和解盲比较；可依据真实差异制定下一轮修复。"
+            row.next_step="根据解盲比较结果选择最高影响的失败环节，建立下一轮可证伪实验。"
+        elif len(set(rating_ids))==2:
             row.brief_result="A/B 两组已完成并完成盲评，等待解盲比较。"
             row.next_step="执行 A/B 解盲比较，记录质量差异与下一轮修复点。"
         else:
@@ -448,7 +480,10 @@ def sync_round_from_pair(db,owner,pair_id):
     row.status=state["pair_status"]
     row.source_sha=state["source_sha256"]
     row.pipeline_sha=state["pipeline_sha256"]
-    row.detailed_record_json=dump({
+    detail=load(row.detailed_record_json,{})
+    if not isinstance(detail,dict):
+        detail={"researcher_notes":detail}
+    detail.update({
         "pair_id":pair_id,"source_sha256":state["source_sha256"],
         "pipeline_sha256":state["pipeline_sha256"],
         "pipeline_hashes_consistent":state["pipeline_hashes_consistent"],
@@ -456,8 +491,10 @@ def sync_round_from_pair(db,owner,pair_id):
         "shared_evidence_frozen":state["shared_evidence_frozen"],
         "baseline":state["baseline"],"gate":state["gate"],
         "budget":state["budget"],"next_action":state["next_action"],
+        "unblinded":unblinded,
         "updated_at":now().isoformat(),
     })
+    row.detailed_record_json=dump(detail)
     row.updated_at=now()
     return row
 
@@ -614,13 +651,16 @@ def list_owned(db,owner):
     rounds=db.scalars(select(SC05ExperimentRound).where(
         SC05ExperimentRound.member_id==owner.id
     ).order_by(SC05ExperimentRound.created_at.desc()).limit(100)).all()
+    unblinded_pairs=set(db.scalars(select(AuditEntry.target).where(
+        AuditEntry.actor_id==owner.id,
+        AuditEntry.action=="sc05.ab_unblinded"
+    )).all())
     run_views=[]
     for run in runs:
         view=run_view(run)
-        rated=db.scalars(select(SC05Rating.id).where(
-            SC05Rating.member_id==owner.id,SC05Rating.run_id==run.id
-        ).limit(1)).first()
-        if rated is None:
+        # Keep both run IDs and variants hidden until BOTH blind ratings are
+        # saved and compare_ab_pair explicitly records the unblinding event.
+        if run.pair_id and run.pair_id not in unblinded_pairs:
             view.pop("id",None)
             view.pop("variant",None)
             view["arm"]="blind_pending"
@@ -1073,6 +1113,40 @@ def mount(app,*,get_db,get_factory):
                     payload=result(list_owned(db,owner))
                 elif name=="get_executor_status":
                     payload=result(worker_status(get_factory()))
+                elif name=="create_paper_case":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
+                    if arguments.get("confirm_create") is not True:
+                        raise HTTPException(422,"Explicit confirmation required to save a paper case")
+                    title=str(arguments.get("title","")).strip()
+                    if not 8<=len(title)<=300:
+                        raise HTTPException(422,"Paper title must contain 8-300 characters")
+                    try:
+                        pages=safe_pages(arguments.get("pages"))
+                    except (ValueError,TypeError) as exc:
+                        raise HTTPException(422,str(exc)) from exc
+                    payload_bytes=len(dump({"title":title,"pages":pages}).encode("utf-8"))
+                    if payload_bytes>48000:
+                        raise HTTPException(413,"ChatGPT paper intake is limited to a 48,000-byte UTF-8 payload; use the authenticated PDF upload for larger papers")
+                    source_sha=hashlib.sha256(dump(pages).encode()).hexdigest()
+                    paper=SC05Case(
+                        id="sc05case_"+uuid.uuid4().hex[:28],
+                        member_id=owner.id,title=title,pages_json=dump(pages),
+                        source_sha=source_sha,source_type="uploaded_extracted_pages",
+                        shared_evidence_json=None,
+                    )
+                    db.add(paper)
+                    add_audit(db,"sc05.mcp_paper_case_created",owner.id,paper.id,
+                              "source_sha="+source_sha[:16]+";pages="+str(len(pages))+
+                              ";model_calls=0")
+                    db.commit()
+                    db.refresh(paper)
+                    payload=result({
+                        "case":case_view(paper),"model_calls":0,
+                        "message":"Private paper case saved. No DeepSeek calls or provider spending occurred. Create an A/B pair next, then preflight before any paid start."
+                    })
                 elif name=="create_ab_pair":
                     if RUN not in scopes:
                         payload=step_up_result()
@@ -1138,9 +1212,8 @@ def mount(app,*,get_db,get_factory):
                     payload=result(preflight(db,owner,arguments.get("run_id","")))
                 elif name=="get_experiment_status":
                     row=own_run(db,owner,arguments.get("run_id",""))
-                    devstudio_id=register_devstudio(db,owner,row)
-                    payload=result({"run":run_view(row),"saved_checkpoints":len(load(row.checkpoints_json,[])),
-                                    "devstudio_experiment_id":devstudio_id})
+                    payload=result({"run":run_view(row),
+                                    "saved_checkpoints":len(load(row.checkpoints_json,[]))})
                 elif name=="get_experiment_result":
                     row=own_run(db,owner,arguments.get("run_id",""))
                     paper=db.get(SC05Case,row.case_id)
@@ -1154,6 +1227,10 @@ def mount(app,*,get_db,get_factory):
                 elif name=="prepare_ab_pair":
                     payload=result(pair_preflight(db,owner,arguments.get("pair_id","")))
                 elif name=="get_ab_pair_status":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
                     state=pair_preflight(db,owner,arguments.get("pair_id",""))
                     sync_round_from_pair(db,owner,arguments.get("pair_id",""))
                     db.commit()
@@ -1265,9 +1342,31 @@ def mount(app,*,get_db,get_factory):
                             "quality":load(row.result_json,{}).get("quality",{})})
                     base=next(x for x in details if x["variant"]=="science_gate_off")
                     gate=next(x for x in details if x["variant"]=="science_gate_on")
-                    sync_round_from_pair(db,owner,pair_id)
+                    already_unblinded=db.scalars(select(AuditEntry.id).where(
+                        AuditEntry.actor_id==owner.id,
+                        AuditEntry.action=="sc05.ab_unblinded",
+                        AuditEntry.target==pair_id
+                    ).limit(1)).first()
+                    if already_unblinded:
+                        raise HTTPException(409,"This A/B pair has already been unblinded")
                     add_audit(db,"sc05.ab_unblinded",owner.id,pair_id,
                               "score_delta="+str(gate["blind_score"]-base["blind_score"]))
+                    round_row=sync_round_from_pair(db,owner,pair_id)
+                    if round_row is not None:
+                        round_detail=load(round_row.detailed_record_json,{})
+                        if not isinstance(round_detail,dict):
+                            round_detail={"researcher_notes":round_detail}
+                        round_detail["unblinded"]=True
+                        round_detail["comparison"]={
+                            "score_delta":gate["blind_score"]-base["blind_score"],
+                            "scientific_value_delta":gate["science_value"]-base["science_value"],
+                            "baseline_score":base["blind_score"],
+                            "gate_score":gate["blind_score"],
+                        }
+                        round_row.detailed_record_json=dump(round_detail)
+                        round_row.brief_result="A/B 两组已完成盲评和解盲比较；可依据真实差异制定下一轮修复。"
+                        round_row.next_step="根据解盲比较结果选择最高影响的失败环节，建立下一轮可证伪实验。"
+                        round_row.updated_at=now()
                     db.commit()
                     payload=result({"pair_id":pair_id,"unblinded":True,"runs":details,
                         "score_delta":gate["blind_score"]-base["blind_score"],
@@ -1280,6 +1379,10 @@ def mount(app,*,get_db,get_factory):
                     payload=result({"categories":ROUND_CATEGORIES,
                                     "rounds":[round_view(x) for x in rounds]})
                 elif name=="record_experiment_round":
+                    if RUN not in scopes:
+                        payload=step_up_result()
+                        return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                            headers={"Cache-Control":"no-store"})
                     row=upsert_round(db,owner,arguments)
                     db.commit()
                     payload=result(round_view(row))

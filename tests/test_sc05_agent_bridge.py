@@ -118,8 +118,13 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert init.status_code==200
     assert init.json()["result"]["serverInfo"]["name"]=="research-atlas-sc05"
     names=call(client,tokens["access_token"],"tools/list").json()["result"]["tools"]
-    assert {"list_experiments","create_ab_pair","prepare_experiment","start_experiment",
-            "get_experiment_status","get_experiment_result","get_executor_status"}=={x["name"] for x in names}
+    assert {
+        "list_experiments","create_paper_case","create_ab_pair","prepare_experiment","start_experiment",
+        "get_experiment_status","get_experiment_result","get_executor_status",
+        "prepare_ab_pair","get_ab_pair_status","start_ab_pair","get_ab_pair_result",
+        "record_blind_review","compare_ab_pair","list_experiment_rounds",
+        "record_experiment_round",
+    } == {x["name"] for x in names}
     create_tool=next(x for x in names if x["name"]=="create_ab_pair")
     assert create_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
     assert create_tool["_meta"]["securitySchemes"]==create_tool["securitySchemes"]
@@ -128,7 +133,26 @@ def test_discovery_pkce_and_replay_protection(workspace):
     assert write_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
     assert write_tool["_meta"]["securitySchemes"]==write_tool["securitySchemes"]
     assert write_tool["annotations"]["readOnlyHint"] is False
-    assert next(x for x in names if x["name"]=="list_experiments")["annotations"]["readOnlyHint"] is True
+    write_names={
+        "create_paper_case","create_ab_pair","start_experiment","get_ab_pair_status",
+        "start_ab_pair","record_blind_review","compare_ab_pair","record_experiment_round",
+    }
+    read_names={
+        "list_experiments","prepare_experiment","get_executor_status",
+        "get_experiment_status","get_experiment_result","prepare_ab_pair",
+        "get_ab_pair_result","list_experiment_rounds",
+    }
+    by_name={x["name"]:x for x in names}
+    for name in write_names:
+        assert by_name[name]["annotations"]["readOnlyHint"] is False
+        assert by_name[name]["securitySchemes"]==[
+            {"type":"oauth2","scopes":["experiments:read","experiments:run"]}
+        ]
+    for name in read_names:
+        assert by_name[name]["annotations"]["readOnlyHint"] is True
+        assert by_name[name]["securitySchemes"]==[
+            {"type":"oauth2","scopes":["experiments:read"]}
+        ]
     assert call(client,tokens["access_token"],"tools/call",{
         "name":"list_experiments","arguments":{}}).json()["result"]["isError"] is False
     assert call(client,tokens["access_token"],"tools/list").status_code==200
@@ -159,6 +183,23 @@ def test_read_only_token_cannot_run_paid_and_disabled_switch(workspace):
     assert create.status_code==200
     assert create.json()["result"]["isError"] is True
     assert create.json()["result"]["_meta"]["mcp/www_authenticate"]
+    paper=call(client,tokens["access_token"],"tools/call",{
+        "name":"create_paper_case","arguments":{
+            "title":"A sufficiently long research paper title",
+            "pages":{"page_01":"This is a sufficiently long Methods and Results page excerpt for an SC05 paper case."},
+            "confirm_create":True}})
+    assert paper.json()["result"]["isError"] is True
+    assert paper.json()["result"]["_meta"]["mcp/www_authenticate"]
+    pair_status=call(client,tokens["access_token"],"tools/call",{
+        "name":"get_ab_pair_status","arguments":{"pair_id":"sc05pair_"+"c"*28}})
+    assert pair_status.json()["result"]["isError"] is True
+    assert pair_status.json()["result"]["_meta"]["mcp/www_authenticate"]
+    round_write=call(client,tokens["access_token"],"tools/call",{
+        "name":"record_experiment_round","arguments":{
+            "round_code":"R6.4","category_code":"◆01","category_label":"工作流完整性",
+            "problem":"scope test","method":"scope test","experiment_content":"scope test"}})
+    assert round_write.json()["result"]["isError"] is True
+    assert round_write.json()["result"]["_meta"]["mcp/www_authenticate"]
 
 
 def test_owner_auth_required_and_activation_flag(workspace,monkeypatch):
@@ -229,6 +270,62 @@ def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
         assert original.source_sha==cloned.source_sha
 
 
+def test_owner_mcp_keeps_pair_mapping_hidden_until_blind_compare(workspace):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Blind mapping privacy test","pages":pages})
+    assert case.status_code==201,case.text
+    pair=client.post("/api/personal-research/me/sc05/cases/"+case.json()["id"]+"/ab",headers=session)
+    assert pair.status_code==201,pair.text
+    pair_id=pair.json()["pair_id"]
+    runs=pair.json()["runs"]
+    from backend.sc05_eval_api import SC05Case,SC05Rating,dump
+    with factory() as db:
+        paper=db.get(SC05Case,case.json()["id"])
+        paper.shared_evidence_json=dump({"frozen":True})
+        for item in runs:
+            row=db.get(SC05Run,item["id"])
+            row.status="completed";row.stage="complete"
+            row.report_md="# Blind report"
+            row.result_json=dump({"quality":{"warnings":[]}})
+        db.add(SC05Rating(
+            id="sc05rating_"+"a"*28,member_id=db.get(SC05Run,runs[0]["id"]).member_id,
+            run_id=runs[0]["id"],accuracy=4,science_value=4,narrative=4,
+            literature=4,feasibility=4,hard_failure=False,feedback="",
+            failure_tags_json="[]"))
+        db.commit()
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    def listed():
+        response=call(client,access,"tools/call",{"name":"list_experiments","arguments":{}})
+        assert response.json()["result"]["isError"] is False,response.text
+        return json.loads(response.json()["result"]["content"][0]["text"])
+    before=listed()
+    pair_runs=[x for x in before["runs"] if x.get("pair_id")==pair_id]
+    assert len(pair_runs)==2
+    assert all("id" not in x and "variant" not in x and x["arm"]=="blind_pending"
+               for x in pair_runs)
+    with factory() as db:
+        db.add(SC05Rating(
+            id="sc05rating_"+"b"*28,member_id=db.get(SC05Run,runs[1]["id"]).member_id,
+            run_id=runs[1]["id"],accuracy=4,science_value=3,narrative=4,
+            literature=4,feasibility=4,hard_failure=False,feedback="",
+            failure_tags_json="[]"))
+        db.commit()
+    still_blind=listed()
+    pair_runs=[x for x in still_blind["runs"] if x.get("pair_id")==pair_id]
+    assert len(pair_runs)==2
+    assert all("id" not in x and "variant" not in x for x in pair_runs)
+    compared=call(client,access,"tools/call",{
+        "name":"compare_ab_pair","arguments":{"pair_id":pair_id}})
+    assert compared.json()["result"]["isError"] is False,compared.text
+    after=listed()
+    pair_runs=[x for x in after["runs"] if x.get("pair_id")==pair_id]
+    assert len(pair_runs)==2
+    assert all("id" in x and "variant" in x for x in pair_runs)
+
 def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypatch):
     client,factory=workspace
     session=api_session(client)
@@ -287,15 +384,18 @@ def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypat
 
 def test_owner_mcp_pair_preflight_and_round_ledger_are_chatgpt_tools(workspace):
     client,factory=workspace
-    session=api_session(client)
+    api_session(client)
     pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
-    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
-        json={"title":"Published urban transport study","pages":pages})
-    assert case.status_code==201,case.text
     tokens,_=connect(client)
     access=tokens["access_token"]
+    case_created=call(client,access,"tools/call",{"name":"create_paper_case","arguments":{
+        "title":"Published urban transport study","pages":pages,"confirm_create":True}})
+    assert case_created.json()["result"]["isError"] is False,case_created.text
+    case_payload=json.loads(case_created.json()["result"]["content"][0]["text"])
+    assert case_payload["model_calls"]==0
+    assert case_payload["case"]["source_type"]=="uploaded_extracted_pages"
     created=call(client,access,"tools/call",{"name":"create_ab_pair","arguments":{
-        "case_id":case.json()["id"],"fresh_copy":True,"confirm_create":True}})
+        "case_id":case_payload["case"]["id"],"fresh_copy":True,"confirm_create":True}})
     assert created.json()["result"]["isError"] is False,created.text
     pair=json.loads(created.json()["result"]["content"][0]["text"])
     pair_id=pair["pair_id"]

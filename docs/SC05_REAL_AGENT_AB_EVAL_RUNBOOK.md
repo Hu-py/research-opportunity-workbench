@@ -4,11 +4,11 @@
 
 ## Status and safety
 
-- The isolated GitHub PR implements a callable experiment platform and offline mocked-model tests.
+- The SC05 Owner API and ChatGPT MCP bridge are implemented in the isolated staging code line. Offline mocked-model CI validates API and tool behavior, not real DeepSeek research quality.
 - **No real DeepSeek research-quality result exists until an Owner explicitly starts the paid runs and the provider responds.** Unit/integration CI does not replace this.
-- All Owner API endpoints require the existing two-layer auth (API bearer and individual session), active Owner role and separate model-cost consent. No deploy, GET request or case creation calls the model.
+- Browser-facing Owner REST endpoints require the existing two-layer auth (API bearer and individual session), active Owner role and separate model-cost consent. The ChatGPT MCP bridge uses its own OAuth Authorization Code + PKCE grant, verifies the active Owner and scopes, and still requires explicit per-run paid consent. Case creation, pair creation and preflight do not call the model.
 - The full PDF is not committed to the public repository. PDF upload holds bytes only in memory/temporary storage, extracts text using PyMuPDF, and saves source page text privately to PostgreSQL.
-- No direct shell/HTTP invocation from this ChatGPT conversation into the Owner-authenticated Render instance is currently available. An operator with a signed-in Owner session must use the trusted CLI; **do not paste credentials into ChatGPT or GitHub**.
+- A ChatGPT MCP workflow is now implemented in staging code; see [SC05 ChatGPT complete workflow guide](SC05_CHATGPT_OPERATING_GUIDE.md). It is not considered available until the exact staging commit is manually deployed to Render, ChatGPT completes Owner OAuth, and the current tools/list is verified. Do not paste Owner credentials, provider keys or bearer tokens into ChatGPT or GitHub.
 
 ## Experiment principles and iteration rules
 
