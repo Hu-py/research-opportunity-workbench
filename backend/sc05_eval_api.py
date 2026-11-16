@@ -26,12 +26,13 @@ from backend.research_budget import reserve, record_usage, status as budget_stat
 from backend.sc05_paper_only import (
     run_paper, page_texts_from_pdf, FUTURE_HEADING,
     _chunks, extract_ledger, normalize_fact_kind,
+    LITERATURE_SCHEMA_V1, LITERATURE_ASSESSMENT_SYSTEM_V1,
 )
 from backend.sc05_research_diagnosis import EvidenceError
 
 MAX_TEXT=650000
 MAX_PDF_BYTES=32000000
-VERSION="sc05-eval-v0.1.0"
+VERSION="sc05-eval-v0.2.0"
 
 
 def pipeline_sha():
@@ -221,7 +222,20 @@ def _checkpoint_call(factory,run_id):
                 row=db.get(SC05Run,run_id)
                 entry=load(row.checkpoints_json,[])[cursor[0]]
             if entry["prompt_sha256"]!=fingerprint:
-                raise EvidenceError("Previously checkpointed prompt differs; cannot silently replay a changed model")
+                # One explicitly supported legacy prompt migration: the old
+                # literature-assessment schema did not encode typed diagnosis links.
+                legacy_match=False
+                if stage=="literature_assessment":
+                    legacy_payload=dict(payload)
+                    legacy_payload["required_json_shape"]=LITERATURE_SCHEMA_V1
+                    legacy_system=LITERATURE_ASSESSMENT_SYSTEM_V1+"\\n输出一个 JSON 对象。"
+                    legacy_fingerprint=hashlib.sha256(dump({
+                        "model":model,"system":legacy_system,
+                        "payload":legacy_payload,"max_tokens":max_tokens,
+                    }).encode()).hexdigest()
+                    legacy_match=entry["prompt_sha256"]==legacy_fingerprint
+                if not legacy_match:
+                    raise EvidenceError("Previously checkpointed prompt differs; cannot silently replay a changed model")
             cursor[0]+=1
             return entry["response"],entry["usage"]
         if not reserve(factory,calls=1,tokens=10000):
@@ -369,6 +383,7 @@ def check_search_query_resume(row: SC05Run, doc: SC05Case) -> dict:
             search_provider=stop_before_openalex, source_title=doc.title,
             pages_override=pages, source_sha=doc.source_sha,
             frozen_snapshot=frozen, scientific_value_gate=True, max_calls=40,
+            legacy_literature_checkpoint=True,
         )
     except _SearchPlanPrefixComplete:
         pass
