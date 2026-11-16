@@ -158,6 +158,10 @@ def test_model_reported_confidence_provenance_is_explicit():
     ("inference_boundary","identifiability"),
     ("method_dependence","method"),
     ("confounding","identifiability"),
+    ("data","other"),
+    ("design","method"),
+    ("research_design","method"),
+    ("experimental_design","method"),
 ])
 def test_gated_diagnosis_taxonomy_aliases_preserve_raw_labels(raw_label,canonical):
     raw=valid_response()
