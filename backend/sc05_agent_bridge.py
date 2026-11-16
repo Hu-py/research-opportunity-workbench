@@ -26,11 +26,11 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, SC05Rating, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError, _model_key)
+from backend.sc05_eval_api import (SC05Case, SC05Run, SC05Rating, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
 from backend.sc05_paper_only import run_paper
 from backend.model_gateway import ModelCallError, request_json
 from backend.model_vault import status as model_config_status
-from backend.research_budget import status as budget_status, reserve, record_usage
+from backend.research_budget import status as budget_status, reserve_session, record_usage_session
 from backend.sc05_worker import (
     SC05DelegatedAuthorization, flag as worker_flag, worker_status
 )
@@ -1101,14 +1101,17 @@ def mount(app,*,get_db,get_factory):
                     if arguments.get("confirm_paid") is not True:
                         raise HTTPException(422,"Explicit consent required for this paid connectivity probe")
                     try:
-                        key=_model_key(get_factory())
+                        key=os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
+                        if not key:
+                            from backend.model_vault import load_key
+                            key=load_key(db)
                     except Exception as exc:
                         safe=str(exc) if isinstance(exc,ValueError) else type(exc).__name__+": credential lookup failed"
                         payload=result({"ok":False,"error":safe,"provider_calls":0},error=True)
                     else:
                         if not key:
                             payload=result({"ok":False,"error":"No DeepSeek credential is configured in the environment or encrypted vault.","provider_calls":0},error=True)
-                        elif not reserve(get_factory(),calls=1,tokens=256):
+                        elif not reserve_session(db,calls=1,tokens=256):
                             payload=result({"ok":False,"error":"Daily model-call or token reservation limit reached; no provider request was sent.","provider_calls":0,"budget":budget_status(db)},error=True)
                         else:
                             try:
@@ -1120,7 +1123,7 @@ def mount(app,*,get_db,get_factory):
                                      "required_json_shape":{"ok":True}},
                                     max_tokens=96,
                                 )
-                                record_usage(get_factory(),usage)
+                                record_usage_session(db,usage)
                                 ok=response.get("ok") is True
                                 add_audit(db,"sc05.model_connection_probe",owner.id,
                                           "deepseek-flash","success="+str(ok))
