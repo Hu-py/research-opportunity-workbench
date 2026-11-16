@@ -26,7 +26,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
 from backend.team import TeamMember, add_audit, login as member_login, revoke_session
-from backend.sc05_eval_api import (SC05Case, SC05Run, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
+from backend.sc05_eval_api import (SC05Case, SC05Run, SC05Rating, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
 from backend.sc05_paper_only import run_paper
 from backend.research_budget import status as budget_status
 from backend.sc05_worker import (
