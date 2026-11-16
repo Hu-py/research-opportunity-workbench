@@ -365,6 +365,23 @@ def test_quality_only_route_is_rejected():
         research_routes(raw,{"diagnoses":diagnoses},[],triage)
 
 
+
+def test_unknown_paper_scope_label_is_preserved_and_conservatively_normalized():
+    from backend.sc05_science_gate import validate_scientific_triage
+    result=validate_scientific_triage({
+      "issue_classifications":[{
+        "diagnosis_id":"D01","lane":"scientific_frontier",
+        "scope_status":"not_explicitly_addressed",
+        "reason":"The model used unfamiliar wording for the scope status.",
+      }],"scientific_questions":[]
+    },[{"id":"D01"}],[])
+    row=result["issue_classifications"][0]
+    assert row["scope_status"]=="unknown"
+    assert row["raw_scope_status"]=="not_explicitly_addressed"
+    assert row["scope_status_normalized"] is True
+
+
+
 def test_scientific_question_must_cite_real_paper_and_distinct_story():
     from backend.sc05_science_gate import validate_scientific_triage
     with pytest.raises(EvidenceError,match="Invented"):
