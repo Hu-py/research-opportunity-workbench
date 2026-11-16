@@ -233,7 +233,9 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
     return {
         "schema_version": VERSION, "study_reconstruction": clean_reconstruction,
         "diagnoses": clean_issues,
-        "open_questions": text_items(raw.get("open_questions"), "open_questions"),
+        # A model may omit optional follow-up questions. Missing means none
+        # were supplied; malformed non-list values still fail validation.
+        "open_questions": text_items(raw.get("open_questions", []), "open_questions"),
         "snapshot_sha256": snapshot["snapshot_sha256"],
         "novelty_verified": False,
         "experimental_evaluation_executed": False,
