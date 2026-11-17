@@ -25,7 +25,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstr
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from research_workbench.core import Base
-from backend.team import TeamMember, add_audit, login as member_login, revoke_session
+from backend.team import AuditEntry, TeamMember, add_audit, login as member_login, revoke_session
 from backend.sc05_eval_api import (SC05Case, SC05Run, SC05Rating, StartRequest, run_view, case_view, load, dump, now, pipeline_sha, check_fact_type_resume, check_literature_diagnosis_resume, EvidenceError)
 from backend.sc05_paper_only import run_paper
 from backend.model_gateway import ModelCallError, request_json
@@ -437,7 +437,15 @@ def sync_round_from_pair(db,owner,pair_id):
             SC05Rating.member_id==owner.id,
             SC05Rating.run_id.in_([r.id for r in by.values()])
         )).all()
-        if len(set(rating_ids))==2:
+        unblinded=db.scalar(select(AuditEntry.id).where(
+            AuditEntry.actor_id==owner.id,
+            AuditEntry.action=="sc05.ab_unblinded",
+            AuditEntry.target==pair_id
+        ).limit(1)) is not None
+        if unblinded and len(set(rating_ids))==2:
+            row.brief_result="A/B 两组运行、盲评、解盲比较均已完成；请查看评分差异及科学质量限制。"
+            row.next_step="优先修复文献检索与近邻证据链，再评估选题新颖性和可执行性。"
+        elif len(set(rating_ids))==2:
             row.brief_result="A/B 两组已完成并完成盲评，等待解盲比较。"
             row.next_step="执行 A/B 解盲比较，记录质量差异与下一轮修复点。"
         else:
@@ -1371,9 +1379,10 @@ def mount(app,*,get_db,get_factory):
                             "quality":load(row.result_json,{}).get("quality",{})})
                     base=next(x for x in details if x["variant"]=="science_gate_off")
                     gate=next(x for x in details if x["variant"]=="science_gate_on")
-                    sync_round_from_pair(db,owner,pair_id)
                     add_audit(db,"sc05.ab_unblinded",owner.id,pair_id,
                               "score_delta="+str(gate["blind_score"]-base["blind_score"]))
+                    db.flush()
+                    sync_round_from_pair(db,owner,pair_id)
                     db.commit()
                     payload=result({"pair_id":pair_id,"unblinded":True,"runs":details,
                         "score_delta":gate["blind_score"]-base["blind_score"],
