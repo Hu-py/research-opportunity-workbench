@@ -93,3 +93,43 @@ def test_ambiguous_running_job_blocks_new_claims(tmp_path,monkeypatch):
     assert execute_once(factory,delegated_only=True,require_pg=False) is False
     with factory() as db:
         assert db.get(SC05DelegatedAuthorization,"sc05run_"+"2"*28).status=="approved"
+
+
+def test_openalex_one_shot_persists_actual_results_without_repeating(tmp_path,monkeypatch):
+    import backend.sc05_worker as worker
+    factory,_=workspace(tmp_path)
+    calls=[]
+    def fake_search(query,since,limit=15,client=None,source_ids=None):
+        calls.append((query,since,limit))
+        return [{"title":"A real paper","id":"https://openalex.org/W123"},
+                {"display_name":"Another paper","id":"https://openalex.org/W456"}]
+    monkeypatch.setattr("research_workbench.core.query_openalex",fake_search)
+    marker="sc05probe_openalex_research_20261117"
+    assert worker.run_openalex_probe_once(factory,marker,require_pg=False)=="openalex_ready_2"
+    assert worker.run_openalex_probe_once(factory,marker,require_pg=False)=="already_recorded"
+    assert len(calls)==1
+    with factory() as db:
+        record=db.get(SC05WorkerProbe,marker)
+        assert record.status=="openalex_ready_2"
+        assert record.completed_at
+
+
+def test_openalex_one_shot_reports_http_error_without_url_or_retries(tmp_path,monkeypatch):
+    import backend.sc05_worker as worker
+    import httpx
+    factory,_=workspace(tmp_path)
+    calls=[]
+    def denied(*args,**kwargs):
+        calls.append(True)
+        request=httpx.Request("GET","https://api.openalex.org/works?api_key=private-secret")
+        response=httpx.Response(409,request=request)
+        raise httpx.HTTPStatusError("private-secret",request=request,response=response)
+    monkeypatch.setattr("research_workbench.core.query_openalex",denied)
+    marker="sc05probe_openalex_fail_20261117"
+    assert worker.run_openalex_probe_once(factory,marker,require_pg=False)=="openalex_http_409"
+    assert worker.run_openalex_probe_once(factory,marker,require_pg=False)=="already_recorded"
+    assert len(calls)==1
+    with factory() as db:
+        record=db.get(SC05WorkerProbe,marker)
+        assert record.status=="openalex_http_409"
+        assert "private-secret" not in record.status
