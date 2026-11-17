@@ -1100,6 +1100,21 @@ def mount(app,*,get_db,get_factory):
                         "credential_source":("environment" if direct_available else
                             "encrypted_vault" if config.get("configured") else "missing"),
                     }
+                    # This checks configuration only: do not mistake a present
+                    # credential for a successful external literature search.
+                    retrieval_key_present=bool(os.getenv("OPENALEX_API_KEY","").strip())
+                    state["academic_retrieval"]={
+                        "provider":"OpenAlex",
+                        "api_key_configured":retrieval_key_present,
+                        "connection_tested":False,
+                        "status":("configured_unverified" if retrieval_key_present
+                                  else "missing_api_key"),
+                        "note":("Key presence does not establish query success."
+                                if retrieval_key_present else
+                                "Set a free OPENALEX_API_KEY on the Render service "
+                                "before using A/B reports to assess novelty."),
+                        "provider_calls_on_check":0,
+                    }
                     payload=result(state)
                 elif name=="get_model_config_status":
                     config=model_config_status(db)
