@@ -413,16 +413,26 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
     items = items[:7]
     ids = {d["id"] for d in diagnoses}
     result = []
+    aliases={
+        "methods":"method", "methodology":"method",
+        "theoretical":"theory", "theoretical_framework":"theory",
+        "empirical_validation":"validation", "evaluation":"validation",
+        "counterexamples":"counterexample", "negative_evidence":"counterexample",
+    }
     for item in items:
-        if not isinstance(item, dict) or item.get("need") not in (
-            "theory", "method", "counterexample", "validation",
-        ):
-            raise EvidenceError("Invalid evidence search request")
+        if not isinstance(item,dict):
+            continue
+        raw_need=str(item.get("need") or "").strip().lower().replace(" ","_")
+        need=aliases.get(raw_need,raw_need)
+        if need not in ("theory","method","counterexample","validation"):
+            # A query is a retrieval suggestion, not an evidence finding.
+            # Drop an unclassifiable suggestion rather than invent its meaning.
+            continue
         result.append({
             "diagnosis_ids": _references(item.get("diagnosis_ids"), ids,
                 "search diagnosis", allow_empty=True),
             "query": _limited(item.get("query"), "search query", 400),
-            "need": item["need"],
+            "need": need,
             "assumption_to_test": _limited(
                 item.get("assumption_to_test"), "search purpose", 450),
         })
@@ -933,6 +943,8 @@ def run_paper(
          "open_questions":diagnosis["open_questions"],
          "required_json_shape":SEARCH_SCHEMA},log,max_calls=max_calls)
     questions=search_plan(question_raw,diagnosis["diagnoses"])
+    raw_queries=question_raw.get("queries",[]) if isinstance(question_raw,dict) else []
+    skipped_queries=max(0,min(len(raw_queries),7)-len(questions)) if isinstance(raw_queries,list) else 0
     papers,search_errors=openalex_search(questions,provider=search_provider)
     literature=[]
     if papers:
@@ -996,6 +1008,8 @@ def run_paper(
         "snapshot":snapshot,"method_lineage":lineage,
         "diagnosis":diagnosis,"scientific_triage":scientific_triage,
         "search_queries":questions,
+        "search_query_audit":{"proposed_count":len(raw_queries) if isinstance(raw_queries,list) else 0,
+                              "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries},
         "external_papers":papers,"search_errors":search_errors,
         "literature_assessments":literature,
         "routes":routes,"route_generation_audit":route_generation_audit,
@@ -1010,6 +1024,11 @@ def run_paper(
     output["quality"]=inspect_report(output)
     # inspect_report owns literature-link and abstract-evidence warnings;
     # do not append duplicate warnings at the orchestration layer.
+    if skipped_queries:
+        output["quality"].setdefault("warnings",[]).append(
+            str(skipped_queries)+" unclassifiable evidence-search suggestion(s) were omitted; "
+            "no evidence was invented."
+        )
     if route_generation_audit["truncated_route_count"]:
         output["quality"].setdefault("warnings",[]).append(
             str(route_generation_audit["truncated_route_count"])+
