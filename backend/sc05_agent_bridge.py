@@ -220,8 +220,10 @@ TOOLS=[
          "run_id":{"type":"string","description":"Existing SC05 run ID"},
          "confirm_paid":{"type":"boolean","description":"Set true only after user explicitly authorized actual DeepSeek model spending in this conversation"}},
          "required":["run_id","confirm_paid"],"additionalProperties":False}},
-    {"name":"get_executor_status","description":"Check zero-cost Render worker probe, paid executor enablement, queued dispatches and archive switch; no model calls.",
-     "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
+    {"name":"get_executor_status","description":"Read-only worker and academic-retrieval status. Defaults to zero provider calls; pass probe_openalex=true to make one explicit, bounded OpenAlex metadata check using the configured free-tier key. Never calls DeepSeek.",
+     "inputSchema":{"type":"object","properties":{
+         "probe_openalex":{"type":"boolean","description":"Opt into one bounded OpenAlex search to verify actual connectivity; uses the account's OpenAlex quota but no DeepSeek tokens"}},
+         "additionalProperties":False}},
     {"name":"get_model_config_status","description":"Read-only check of the DeepSeek credential source, encrypted-vault readiness, configured model names and execution flags. Never returns the key and makes no provider call.",
      "inputSchema":{"type":"object","properties":{},"additionalProperties":False}},
     {"name":"probe_model_connection","description":"Paid one-request DeepSeek connectivity test using the Owner's stored credential. Returns only sanitized provider status and token usage. Requires experiments:run and explicit per-call consent; reserves one call and 256 tokens.",
@@ -1115,6 +1117,40 @@ def mount(app,*,get_db,get_factory):
                                 "before using A/B reports to assess novelty."),
                         "provider_calls_on_check":0,
                     }
+                    if arguments.get("probe_openalex") is True:
+                        if RUN not in scopes:
+                            payload=step_up_result()
+                            return JSONResponse({"jsonrpc":"2.0","id":identifier,"result":payload},
+                                                headers={"Cache-Control":"no-store"})
+                        if not retrieval_key_present:
+                            state["academic_retrieval"]["status"]="missing_api_key"
+                            state["academic_retrieval"]["note"]="No OpenAlex API key in the running container."
+                        else:
+                            # Fixed, low-volume query; never return credentials, raw
+                            # provider exception text or the URL containing api_key.
+                            from research_workbench.core import query_openalex
+                            from backend.openalex_errors import safe_openalex_error
+                            try:
+                                works=query_openalex("urban transit resilience", "2020-01-01", limit=2)
+                                if not isinstance(works,list):
+                                    raise ValueError("Invalid OpenAlex results")
+                                state["academic_retrieval"].update({
+                                    "connection_tested":True,
+                                    "status":"query_succeeded",
+                                    "works_returned":len(works),
+                                    "sample_titles":[str(x.get("title") or x.get("display_name") or "")[:180]
+                                                     for x in works[:2] if isinstance(x,dict)],
+                                    "provider_calls_on_check":"1-3",  # core query_openalex has bounded retries
+                                    "note":"API responded; relevance and abstract grounding still require a separate audit.",
+                                })
+                            except Exception as exc:
+                                state["academic_retrieval"].update({
+                                    "connection_tested":True,
+                                    "status":"query_failed",
+                                    "provider_calls_on_check":"1-3",
+                                    "error":safe_openalex_error(exc),
+                                    "note":"A configured API key does not guarantee a successful search.",
+                                })
                     payload=result(state)
                 elif name=="get_model_config_status":
                     config=model_config_status(db)
