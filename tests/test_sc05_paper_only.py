@@ -463,3 +463,21 @@ def test_search_plan_caps_excess_queries_in_model_priority_order():
     result=search_plan(raw,diagnoses)
     assert len(result)==7
     assert [x["query"] for x in result]==[f"query {i}" for i in range(7)]
+
+
+def test_search_plan_preserves_valid_queries_and_omits_unknown_needs():
+    from backend.sc05_paper_only import search_plan
+    diagnostics=[{"id":"D01"}]
+    raw={"queries":[
+       {"diagnosis_ids":["D01"],"query":"prior method comparison",
+        "need":"methodology","assumption_to_test":"Compare techniques"},
+       {"diagnosis_ids":["D01"],"query":"unclassified literature",
+        "need":"general_background","assumption_to_test":"No ungrounded classification"},
+       {"diagnosis_ids":["D01"],"query":"independent observational tests",
+        "need":"empirical_validation","assumption_to_test":"Independent outcome"},
+    ]}
+    result=search_plan(raw,diagnostics)
+    assert len(result)==2
+    assert [x["need"] for x in result]==["method","validation"]
+    assert [x["query"] for x in result]==[
+        "prior method comparison","independent observational tests"]
