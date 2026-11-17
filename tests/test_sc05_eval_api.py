@@ -407,6 +407,41 @@ def test_owner_queue_mode_defers_paid_calls_until_worker_claim(workspace, monkey
 
 
 
+
+def test_invalid_provider_json_is_retried_once_with_separate_budget_reservations(workspace,monkeypatch):
+    from backend.model_gateway import ModelCallError
+    from backend.research_budget import ResearchDailyBudget
+    from datetime import datetime,timezone
+    client,factory,owner,_=workspace
+    case_id=upload(client,owner)
+    pair=client.post(BASE+"/cases/"+case_id+"/ab",headers=auth(owner)).json()
+    run_id=pair["runs"][0]["id"]
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        row.status="claimed"
+        db.commit()
+    attempted=[]
+    def flaky_provider(key,model,system,payload,max_tokens=250):
+        attempted.append(payload)
+        if len(attempted)==1:
+            raise ModelCallError("模型未返回有效 JSON")
+        return {"mock":"real schema not sent","scientific":False}, {"input_tokens":20,"output_tokens":10}
+    monkeypatch.setattr(ev,"request_json",flaky_provider)
+    monkeypatch.setattr(ev,"run_paper",fake_run_paper)
+    ev.execute(factory,run_id,claimed_by_worker=True)
+    assert len(attempted)==2
+    with factory() as db:
+        row=db.get(SC05Run,run_id)
+        assert row.status=="completed"
+        assert row.calls==1
+        entry=ev.load(row.checkpoints_json,[])[0]
+        assert entry["provider_attempts"]==2
+        budget=db.get(ResearchDailyBudget,datetime.now(timezone.utc).date().isoformat())
+        assert budget.reserved_calls==2
+        assert budget.reserved_tokens==20000
+
+
+
 def test_provider_model_call_error_is_preserved_without_leaking_provider_payload(workspace,monkeypatch):
     from backend.model_gateway import ModelCallError
     client,factory,owner,_=workspace
