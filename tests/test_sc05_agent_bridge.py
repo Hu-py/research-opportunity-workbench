@@ -423,3 +423,24 @@ def test_owner_mcp_start_enqueues_once_and_registers_in_devstudio(workspace,monk
     devstudio=client.get("/api/devstudio/experiments",headers=session)
     assert devstudio.status_code==200
     assert any("SC05" in x["title"] for x in devstudio.json()["items"])
+
+
+def test_executor_shows_openalex_config_without_leaking_key(workspace,monkeypatch):
+    client,_=workspace
+    tokens,_=connect(client)
+    monkeypatch.delenv("OPENALEX_API_KEY",raising=False)
+    def status():
+        reply=call(client,tokens["access_token"],"tools/call",{
+            "name":"get_executor_status","arguments":{}})
+        assert reply.status_code==200
+        assert reply.json()["result"]["isError"] is False
+        return json.loads(reply.json()["result"]["content"][0]["text"])
+    missing=status()["academic_retrieval"]
+    assert missing["status"]=="missing_api_key"
+    assert missing["provider_calls_on_check"]==0
+    monkeypatch.setenv("OPENALEX_API_KEY","do-not-leak-this-value")
+    reported=status()
+    configured=reported["academic_retrieval"]
+    assert configured["status"]=="configured_unverified"
+    assert configured["connection_tested"] is False
+    assert "do-not-leak-this-value" not in json.dumps(reported)
