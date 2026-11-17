@@ -482,3 +482,33 @@ def test_search_plan_preserves_valid_queries_and_omits_unknown_needs():
     assert [x["need"] for x in result]==["method","validation"]
     assert [x["query"] for x in result]==[
         "prior method comparison","independent observational tests"]
+
+
+def test_openalex_api_failure_keeps_http_status_but_never_provider_secrets():
+    """A blocked provider must be visible to the researcher without leaking URLs."""
+    import httpx
+    request=httpx.Request("GET", "https://api.openalex.org/works?api_key=secret-key")
+    response=httpx.Response(409,request=request)
+    def unauthorized(*args,**kwargs):
+        raise httpx.HTTPStatusError(
+            "Unauthorized search with secret-key",request=request,response=response)
+    papers,errors=openalex_search([{"query":"metro network resilience"}],
+                                  provider=unauthorized)
+    assert papers==[]
+    assert len(errors)==1
+    assert "OpenAlex HTTP 409" in errors[0]
+    assert "OPENALEX_API_KEY" in errors[0]
+    assert "secret-key" not in errors[0]
+    assert "https://api.openalex.org" not in errors[0]
+
+
+def test_openalex_transport_failure_is_reported_without_raw_exception():
+    import httpx
+    def unavailable(*args,**kwargs):
+        raise httpx.ConnectError("api.openalex.org token-should-not-appear")
+    papers,errors=openalex_search([{"query":"interdependent network disruptions"}],
+                                  provider=unavailable)
+    assert papers==[]
+    assert len(errors)==1
+    assert "网络连接失败" in errors[0]
+    assert "token-should-not-appear" not in errors[0]
