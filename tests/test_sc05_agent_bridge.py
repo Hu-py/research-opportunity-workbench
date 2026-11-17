@@ -498,3 +498,28 @@ def test_openalex_probe_reports_safe_provider_failure(workspace,monkeypatch):
     assert retrieved["connection_tested"] is True
     assert "OpenAlex HTTP 409" in retrieved["error"]
     assert "never-leak-this-key" not in json.dumps(data)
+
+
+def test_cached_openalex_startup_probe_available_via_old_read_only_mcp_shape(workspace,monkeypatch):
+    from backend.sc05_worker import SC05WorkerProbe
+    from datetime import datetime,timezone
+    client,factory=workspace
+    tokens,_=connect(client)
+    marker="sc05probe_openalex_research_20261117"
+    monkeypatch.setenv("SC05_OPENALEX_ONCE_ID",marker)
+    monkeypatch.setenv("OPENALEX_API_KEY","redacted-test-key")
+    with factory() as db:
+        db.add(SC05WorkerProbe(
+            id=marker,status="openalex_ready_2",
+            completed_at=datetime.now(timezone.utc)))
+        db.commit()
+    reply=call(client,tokens["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{}})
+    assert reply.status_code==200
+    data=json.loads(reply.json()["result"]["content"][0]["text"])
+    academic=data["academic_retrieval"]
+    assert academic["connection_tested"] is True
+    assert academic["status"]=="query_succeeded"
+    assert academic["works_returned"]==2
+    assert academic["provider_calls_on_check"]==0
+    assert "redacted-test-key" not in json.dumps(data)
