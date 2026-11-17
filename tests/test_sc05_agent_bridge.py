@@ -444,3 +444,57 @@ def test_executor_shows_openalex_config_without_leaking_key(workspace,monkeypatc
     assert configured["status"]=="configured_unverified"
     assert configured["connection_tested"] is False
     assert "do-not-leak-this-value" not in json.dumps(reported)
+
+
+def test_openalex_live_probe_needs_scope_and_opt_in(workspace,monkeypatch):
+    client,_=workspace
+    reader,_=connect(client,scope="experiments:read")
+    monkeypatch.setenv("OPENALEX_API_KEY","fake-private-openalex-key")
+    calls=[]
+    def search(query,since,limit=15,client=None,source_ids=None):
+        calls.append((query,since,limit))
+        return [{"title":"Network resilience under urban disruptions","id":"https://openalex.org/W123"}]
+    monkeypatch.setattr("research_workbench.core.query_openalex",search)
+    without_consent=call(client,reader["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{}})
+    assert without_consent.json()["result"]["isError"] is False
+    assert calls==[]
+    denied=call(client,reader["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{"probe_openalex":True}})
+    assert denied.status_code==200
+    assert calls==[]
+    assert "mcp/www_authenticate" in denied.json()["result"]["_meta"]
+
+    owner,_=connect(client)
+    checked=call(client,owner["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{"probe_openalex":True}})
+    assert checked.status_code==200
+    data=json.loads(checked.json()["result"]["content"][0]["text"])
+    retrieved=data["academic_retrieval"]
+    assert retrieved["status"]=="query_succeeded"
+    assert retrieved["connection_tested"] is True
+    assert retrieved["works_returned"]==1
+    assert retrieved["sample_titles"]==["Network resilience under urban disruptions"]
+    assert calls==[("urban transit resilience","2020-01-01",2)]
+    assert "fake-private-openalex-key" not in json.dumps(data)
+
+
+def test_openalex_probe_reports_safe_provider_failure(workspace,monkeypatch):
+    import httpx
+    client,_=workspace
+    owner,_=connect(client)
+    monkeypatch.setenv("OPENALEX_API_KEY","never-leak-this-key")
+    def search(*args,**kwargs):
+        req=httpx.Request("GET","https://api.openalex.org/works?api_key=never-leak-this-key")
+        raise httpx.HTTPStatusError("secret request failed",request=req,
+                                   response=httpx.Response(409,request=req))
+    monkeypatch.setattr("research_workbench.core.query_openalex",search)
+    checked=call(client,owner["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{"probe_openalex":True}})
+    assert checked.status_code==200
+    data=json.loads(checked.json()["result"]["content"][0]["text"])
+    retrieved=data["academic_retrieval"]
+    assert retrieved["status"]=="query_failed"
+    assert retrieved["connection_tested"] is True
+    assert "OpenAlex HTTP 409" in retrieved["error"]
+    assert "never-leak-this-key" not in json.dumps(data)
