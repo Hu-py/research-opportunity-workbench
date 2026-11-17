@@ -211,6 +211,17 @@ async def lifespan(app:FastAPI):
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
     )
+    # Only when explicitly configured on isolated staging, test the real
+    # OpenAlex key once and persist the result in the existing probe table.
+    # The DB marker prevents automatic retries across Render restarts.
+    openalex_once_id = os.getenv("SC05_OPENALEX_ONCE_ID", "").strip()
+    if openalex_once_id:
+        from threading import Thread
+        from backend.sc05_worker import run_openalex_probe_once
+        Thread(
+            target=run_openalex_probe_once, args=(factory, openalex_once_id),
+            daemon=True, name="sc05-openalex-one-shot"
+        ).start()
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
     trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
