@@ -239,13 +239,23 @@ def _checkpoint_call(factory,run_id):
                     raise EvidenceError("Previously checkpointed prompt differs; cannot silently replay a changed model")
             cursor[0]+=1
             return entry["response"],entry["usage"]
-        if not reserve(factory,calls=1,tokens=10000):
-            raise RuntimeError("Daily LLM budget exhausted; no extra API call was made")
-        try:
-            response,usage=request_json(api_key,model,system,payload,max_tokens=max_tokens)
-        except Exception:
-            # The reserved call is never refunded, because provider billing is unknown.
-            raise
+        provider_attempts=0
+        while True:
+            if not reserve(factory,calls=1,tokens=10000):
+                raise RuntimeError("Daily LLM budget exhausted; no extra API call was made")
+            provider_attempts+=1
+            try:
+                response,usage=request_json(api_key,model,system,payload,max_tokens=max_tokens)
+                break
+            except ModelCallError as exc:
+                # One bounded second provider request for a syntactically invalid
+                # JSON body. Both attempts reserve budget independently; failed
+                # attempts are never treated as free or successful checkpoints.
+                if provider_attempts < 2 and str(exc) in (
+                    "模型未返回有效 JSON", "模型返回空内容，请重试或调整模型配置",
+                ):
+                    continue
+                raise
         if not isinstance(response,dict):
             raise EvidenceError("Model returned non-object JSON")
         with factory() as db:
@@ -254,7 +264,8 @@ def _checkpoint_call(factory,run_id):
             if len(existing)!=cursor[0]:
                 raise RuntimeError("Concurrent stage checkpoint update detected")
             existing.append({"stage":stage,"prompt_sha256":fingerprint,
-                             "response":response,"usage":usage,"model":model})
+                             "response":response,"usage":usage,"model":model,
+                             "provider_attempts":provider_attempts})
             row.checkpoints_json=dump(existing)
             row.stage=stage
             row.calls+=1
