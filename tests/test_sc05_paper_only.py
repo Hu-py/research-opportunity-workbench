@@ -457,7 +457,8 @@ def test_search_plan_caps_excess_queries_in_model_priority_order():
     from backend.sc05_paper_only import search_plan
     diagnoses=[{"id":"D01"}]
     raw={"queries":[
-      {"diagnosis_ids":["D01"],"query":f"query {i}","need":"validation"}
+      {"diagnosis_ids":["D01"],"query":f"query {i}","need":"validation",
+       "assumption_to_test":"Check reproducibility"}
       for i in range(9)
     ]}
     result=search_plan(raw,diagnoses)
