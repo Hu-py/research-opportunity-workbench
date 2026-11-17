@@ -16,6 +16,7 @@ from typing import Any, Callable
 from backend.model_gateway import request_json
 from backend.sc05_science_gate import FRONTIER_SCHEMA, validate_scientific_triage, enforce_route_frontiers
 from backend.sc05_quality import inspect_report
+from backend.openalex_errors import safe_openalex_error
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
     required, text_items, validate_diagnosis, verify_facts,
@@ -450,7 +451,9 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None) ->
         try:
             found = fn(spec["query"], "2020-01-01", limit=7)
         except Exception as exc:
-            errors.append("OpenAlex search failed (" + type(exc).__name__ + ")")
+            # Keep actionable HTTP/authentication context without exposing a
+            # provider URL, API key or private query string in the report.
+            errors.append(safe_openalex_error(exc))
             continue
         for raw in found:
             if not isinstance(raw, dict):continue
