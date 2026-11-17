@@ -1117,6 +1117,37 @@ def mount(app,*,get_db,get_factory):
                                 "before using A/B reports to assess novelty."),
                         "provider_calls_on_check":0,
                     }
+                    # Read the durable one-shot result without needing the
+                    # refreshed client-side schema or making a new API request.
+                    once_id=os.getenv("SC05_OPENALEX_ONCE_ID","").strip()
+                    if once_id:
+                        from backend.sc05_worker import SC05WorkerProbe
+                        cached=db.get(SC05WorkerProbe,once_id)
+                        if cached:
+                            result_code=cached.status
+                            ready=result_code.startswith("openalex_ready_")
+                            finished=bool(cached.completed_at)
+                            state["academic_retrieval"].update({
+                                "connection_tested":finished,
+                                "status":(
+                                    "query_succeeded" if ready else
+                                    "query_failed" if finished else
+                                    "query_in_progress"),
+                                "one_shot_probe_id":cached.id,
+                                "one_shot_result":result_code,
+                                "one_shot_checked_at":(
+                                    cached.completed_at.isoformat()
+                                    if cached.completed_at else None),
+                                "works_returned":(
+                                    int(result_code.rsplit("_",1)[-1])
+                                    if ready else 0),
+                                "note":(
+                                    "One-shot OpenAlex metadata query succeeded."
+                                    if ready else
+                                    "One-shot OpenAlex query failed or returned no titles."
+                                    if finished else
+                                    "One-shot OpenAlex query has not finished."),
+                            })
                     if arguments.get("probe_openalex") is True:
                         if RUN not in scopes:
                             payload=step_up_result()
