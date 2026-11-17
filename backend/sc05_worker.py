@@ -67,6 +67,61 @@ def queue_smoke_probe(factory, probe_id: str) -> bool:
     return True
 
 
+def run_openalex_probe_once(factory, probe_id: str, *, require_pg: bool = True) -> str:
+    """One explicitly configured, bounded OpenAlex probe with a durable no-retry marker.
+
+    This tests external academic metadata retrieval only, never DeepSeek.
+    A committed 'started' row prevents duplicate API quota use after a crash.
+    """
+    import httpx
+    from sqlalchemy.exc import IntegrityError
+    from research_workbench.core import query_openalex
+
+    if not re.fullmatch(r"sc05probe_openalex_[a-zA-Z0-9_-]{6,45}", probe_id):
+        raise ValueError("Invalid OpenAlex one-shot probe identifier")
+    if require_pg:
+        require_postgres(factory)
+    with factory() as db:
+        if db.get(SC05WorkerProbe, probe_id):
+            return "already_recorded"
+        db.add(SC05WorkerProbe(id=probe_id, status="openalex_started"))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            return "already_recorded"
+
+    try:
+        works = query_openalex("urban transit resilience", "2020-01-01", limit=2)
+        if not isinstance(works, list):
+            raise ValueError("Invalid OpenAlex results type")
+        valid = sum(
+            1 for row in works
+            if isinstance(row, dict) and str(
+                row.get("title") or row.get("display_name") or "").strip()
+        )
+        status = "openalex_ready_" + str(min(valid, 2)) if valid else "openalex_empty"
+    except httpx.HTTPStatusError as exc:
+        status = "openalex_http_" + str(exc.response.status_code)
+    except httpx.TimeoutException:
+        status = "openalex_timeout"
+    except httpx.TransportError:
+        status = "openalex_network"
+    except Exception:
+        status = "openalex_error"
+
+    with factory() as db:
+        probe = db.get(SC05WorkerProbe, probe_id)
+        if probe is None or probe.status != "openalex_started":
+            return "missing_or_changed"
+        probe.status = status
+        probe.completed_at = now()
+        db.commit()
+    logging.getLogger("uvicorn.error").info(
+        "SC05 OPENALEX ONE SHOT: %s; model_calls=0", status)
+    return status
+
+
 def execute_probe_once(factory, *, require_pg=True) -> str | None:
     """Atomic PostgreSQL queue write/read smoke; NEVER calls DeepSeek or R2."""
     if require_pg:
