@@ -431,7 +431,8 @@ def pair_preflight(db,owner,pair_id):
     return {
         "pair_id":pair_id,"pair_status":pair_status,
         "source_sha256":paper.source_sha,
-        "pipeline_sha256":current_sha,
+        "pipeline_sha256":baseline.pipeline_sha,
+        "current_pipeline_sha256":current_sha,
         "pipeline_hashes_consistent":pipeline_consistent,
         "pipeline_hashes_current":pipeline_current,
         "shared_evidence_frozen":bool(paper.shared_evidence_json),
@@ -503,6 +504,7 @@ def sync_round_from_pair(db,owner,pair_id):
     row.detailed_record_json=dump({**stored,
         "pair_id":pair_id,"source_sha256":state["source_sha256"],
         "pipeline_sha256":state["pipeline_sha256"],
+        "current_pipeline_sha256":state["current_pipeline_sha256"],
         "pipeline_hashes_consistent":state["pipeline_hashes_consistent"],
         "pipeline_hashes_current":state["pipeline_hashes_current"],
         "shared_evidence_frozen":state["shared_evidence_frozen"],
