@@ -739,3 +739,27 @@ def test_dual_lane_paper_run_uses_existing_stages_with_unapproved_transfer(monke
     assert cross["url"] in report
     assert "未经人工批准" in report
     assert "not-a-real-key" not in json.dumps(record)
+
+
+def test_method_discovery_query_does_not_force_source_domain_anchor():
+    """A method-first search reaches other fields without spending extra API calls."""
+    from backend.sc05_relevance import infer_source_domain
+    profile=infer_source_domain({
+        "page_01":"Urban rail subway passenger flow disruptions in metro networks.",
+        "page_02":"Transportation network resilience uses passenger station demand.",
+    })
+    assert profile["code"] == "urban_transport"
+    observed=[]
+    def provider(query,since,limit=7):
+        observed.append(query)
+        return []
+    papers,errors=openalex_search([
+        {"need":"method","query":"graph neural network wildfire transfer model"},
+        {"need":"counterexample","query":"flow failure under disruption"},
+        {"need":"theory","query":"station demand redistribution"},
+    ],provider=provider,source_profile=profile)
+    assert papers==[] and errors==[]
+    assert len(observed)==3
+    assert observed[0]=="graph neural network wildfire transfer model"
+    assert observed[1].startswith("urban rail transit transportation")
+    assert observed[2].startswith("urban rail transit transportation")
