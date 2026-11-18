@@ -21,6 +21,9 @@ from backend.sc05_relevance import (
     infer_source_domain, anchored_query, screen_candidate_papers,
     screen_route_prior_claims,
 )
+from backend.sc05_method_transfer import (
+    collect_transfer_leads, method_leads_for_model, screen_transfer_bridges,
+)
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
     required, text_items, validate_diagnosis, verify_facts,
@@ -113,6 +116,19 @@ ROUTE_SCHEMA = {"routes": [{
     "minimal_experiment": "Specific split, competing baselines, outcomes and checks",
     "negative_result": "A result that would reject or substantially weaken this idea",
     "unknowns": ["Missing evidence"],
+}]}
+METHOD_TRANSFER_PROPOSAL_SHAPE = {"method_transfer_proposals": [{
+    "route_id": "R01",
+    "paper_id": "doi:10.xxxx/actual-cross-domain-paper",
+    "method_name": "A specifically named method present in the abstract",
+    "source_input": "What the method originally consumes, with observable data definitions",
+    "target_input": "Corresponding feasible data in the target research setting",
+    "source_output": "What the source method predicts, optimizes or explains",
+    "target_output": "What the proposed target application must estimate or decide",
+    "invariance_assumption": "What must remain invariant across the two domains",
+    "discriminating_test": "Small test with an explicit domain-specific baseline",
+    "failure_condition": "A falsifying or stop result for transfer",
+    "abstract_excerpt": "Exact source abstract quotation, 12 to 150 chars",
 }]}
 # V1 is retained solely to validate/replay already-paid legacy checkpoints.
 LITERATURE_SCHEMA_V1 = {"assessments": [{
@@ -453,7 +469,14 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
     papers: list[dict] = []
     errors: list[str] = []
     for spec in queries:
-        query = anchored_query(spec["query"], source_profile or {})
+        # Explicit method searches intentionally cross disciplinary boundaries.
+        # Domain/counterexample/validation queries retain their source anchor.
+        # The number of OpenAlex calls remains unchanged (<= 7).
+        is_method_search = spec.get("need") == "method"
+        query = (
+            str(spec["query"]).strip()[:350] if is_method_search
+            else anchored_query(spec["query"], source_profile or {})
+        )
         try:
             # Default OpenAlex search sorting is relevance-based. The generic
             # workbench still uses date sort for weekly trends; SC05 explicitly
@@ -490,6 +513,10 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
                 "evidence_level": "OpenAlex metadata and abstract only",
                 "search_query": spec["query"],
                 "retrieval_query": query,
+                "retrieval_lane_hint": (
+                    "cross_domain_method_discovery" if is_method_search
+                    else "domain_evidence_search"
+                ),
             })
         if len(papers) >= 35:
             break
@@ -844,6 +871,26 @@ def _markdown(result: dict) -> str:
                 assessment_summary.replace("|","／").replace("\n"," ")+" |")
     if result["search_errors"]:
         buf+=["", "检索限制："+"；".join(result["search_errors"])]
+    buf+=["", "### 5.1 跨领域方法迁移候选（未认证、非最近科学先例）", ""]
+    transfer_leads=result.get("method_transfer_leads",[])
+    transfer_bridges=result.get("method_transfer_bridges",[])
+    if not transfer_leads:
+        buf+=["本批检索没有满足显式方法线索门槛的跨领域条目；不能推断其它领域没有可迁移技术。", ""]
+    else:
+        for lead in transfer_leads:
+            buf.append("- ["+lead["title"].replace("|","／")+"]("+lead["url"]+")"+
+                "；候选方法词："+", ".join(lead["method_signals"])+
+                "；状态：待人工审查，不能作为closest_paper_ids或创新性证据。")
+        buf+=["", "方法迁移提案："+str(len(transfer_bridges))+
+              " 条结构与摘要引文达到最低要求，但均未经人工审批。", ""]
+        for transfer in transfer_bridges:
+            buf+=["- **"+transfer["route_id"]+"／"+transfer["paper_id"]+"**："+
+                  transfer["method_name"]+"；数据输入映射："+transfer["source_input"]+
+                  " → "+transfer["target_input"]+"；输出映射："+transfer["source_output"]+
+                  " → "+transfer["target_output"]+"；关键假设："+transfer["invariance_assumption"]+
+                  "；否证试验："+transfer["discriminating_test"]+
+                  "；终止条件："+transfer["failure_condition"]+
+                  "；**未经人工批准，不能称为可行或新颖方法**。", ""]
     buf+=["", "## 6. 候选研究路线：增量、实验与否决", ""]
     if not result["routes"]:
         buf+=["目前证据不足以形成可靠的下一篇方案。建议先核查上面的关键缺口。", ""]
@@ -1038,6 +1085,11 @@ def run_paper(
         questions,provider=search_provider,source_profile=source_domain_profile)
     papers,search_relevance_audit=screen_candidate_papers(
         retrieved_papers,source_domain_profile,source_doi=_source_doi(pages))
+    # Independent method-transfer lane: preserve promising cross-domain
+    # algorithms as unreviewed leads, never as nearest scientific precedents.
+    method_transfer_leads,method_transfer_audit=collect_transfer_leads(
+        retrieved_papers,papers,search_relevance_audit,max_leads=6)
+    transfer_context=method_leads_for_model(method_transfer_leads,max_leads=4)
     literature_context=bounded_literature_context(papers)
     literature=[]
     if papers:
@@ -1070,13 +1122,25 @@ def run_paper(
         "对 diagnosis_links 中的 direct、indirect、counterexample 分别解释，不得把主题相似等同于直接证据。"
         "closest_paper_ids仅能引用相关领域中具有真实摘要证据、同一诊断的直接机制关联或反例的候选工作。"
         "跨域方法类比不是最近先例；若缺少直接相关文献则引用空列表并明确无法确认研究差异。"
+        "跨领域方法候选不属于closest_paper_ids。"
+        "若method_transfer_candidates中的某条具体方法可以启发某条有效研究路线，"
+        "请仅在method_transfer_proposals内提出可审核的跨领域迁移映射："
+        "准确引用候选paper_id与已有route_id，区分原领域的输入/输出与目标领域的输入/输出、"
+        "必须保持的机制假设、最小竞争基线试验及否决条件，给出来源摘要12-150字符原文。"
+        "没有具体可核查映射则method_transfer_proposals为空；"
+        "即使有映射也只是需人工审查的技术假设，不能当作独立创新或已获批准方法。"
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
          "papers":literature_context,
          "literature_assessments":literature,
-         "required_json_shape":(ROUTE_SCHEMA if scientific_value_gate
-              else {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}]})},
+         "method_transfer_candidates":transfer_context,
+         "required_json_shape":(
+              {**ROUTE_SCHEMA,**METHOD_TRANSFER_PROPOSAL_SHAPE}
+              if scientific_value_gate else
+              {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}],
+               **METHOD_TRANSFER_PROPOSAL_SHAPE}
+         )},
          log,max_calls=max_calls,max_tokens=4100)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes_raw,prior_reference_audit=screen_route_prior_claims(
@@ -1086,6 +1150,12 @@ def run_paper(
             routes_raw, scientific_triage)
         route_generation_audit.update(frontier_screen_audit)
     routes=research_routes(routes_raw,diagnosis,papers,scientific_triage if scientific_value_gate else None)
+    # The model may cite only the bounded leads actually shown in its input.
+    visible_transfer_ids={p["id"] for p in transfer_context}
+    method_transfer_bridges,method_bridge_audit=screen_transfer_bridges(
+        routes_raw.get("method_transfer_proposals"),
+        [p for p in method_transfer_leads if p["id"] in visible_transfer_ids],
+        {route["id"] for route in routes})
     if routes:
         critic_raw=_run(model_call,api_key,"independent_critic",
             "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
@@ -1094,6 +1164,7 @@ def run_paper(
             {"routes":routes,"diagnoses":diagnosis["diagnoses"],
              "scientific_triage":scientific_triage,
              "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in literature_context],
+             "unapproved_method_transfer_hypotheses":method_transfer_bridges,
              "required_json_shape":CRITIC_SCHEMA},log,max_calls=max_calls,max_tokens=3000)
     else:
         # With no proposed routes there is no review target. Avoid a paid
@@ -1108,8 +1179,14 @@ def run_paper(
         "diagnosis":diagnosis,"scientific_triage":scientific_triage,
         "search_queries":questions,
         "search_query_audit":{"proposed_count":len(raw_queries) if isinstance(raw_queries,list) else 0,
-                              "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries},
+                              "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries,
+                              "method_discovery_queries":sum(q.get("need")=="method" for q in questions),
+                              "domain_evidence_queries":sum(q.get("need")!="method" for q in questions)},
         "external_papers":papers,"search_errors":search_errors,
+        "method_transfer_leads":method_transfer_leads,
+        "method_transfer_audit":method_transfer_audit,
+        "method_transfer_bridges":method_transfer_bridges,
+        "method_bridge_audit":method_bridge_audit,
         "source_domain_profile":source_domain_profile,
         "search_relevance_audit":search_relevance_audit,
         "prior_reference_audit":prior_reference_audit,

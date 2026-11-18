@@ -1,0 +1,72 @@
+{
+  "schema": "sc05-r67-synthetic-dev-v0.1",
+  "source_profile": {
+    "code": "urban_transport",
+    "confidence": "synthetic_fixture"
+  },
+  "source_doi": "fixture/source",
+  "declared_scope": "ARTIFICIAL examples for developer tests; not actual studies, human gold labels, or held-out scientific evaluation",
+  "firewall": {
+    "r66_holdout_dois_permitted": false,
+    "real_doi_count": 0,
+    "may_claim_out_of_sample_accuracy": false
+  },
+  "cases": [
+    {
+      "id": "fixture:urban-rail",
+      "doi": "fixture/domain_rail",
+      "title": "Urban rail capacity redistribution after metro station disruptions",
+      "abstract": "Rail transit operators observe passenger flow changes and evaluate urban rail resilience following temporary metro closures.",
+      "expected_lane": "domain_candidate"
+    },
+    {
+      "id": "fixture:domain-traffic",
+      "doi": "fixture/domain_traffic",
+      "title": "Transport network signal control",
+      "abstract": "Transportation researchers simulate traffic flow under highway disruptions with observed road sensor readings.",
+      "expected_lane": "domain_candidate"
+    },
+    {
+      "id": "fixture:forestry-method",
+      "doi": "fixture/method_forestry",
+      "title": "Graph neural network estimation of wildfire spread",
+      "abstract": "A graph neural network maps ecological observations to predicted wildfire hazard fields and compares out-of-sample model errors.",
+      "expected_lane": "method_transfer_candidate"
+    },
+    {
+      "id": "fixture:clinical-method",
+      "doi": "fixture/method_clinical",
+      "title": "Bayesian hierarchical inference in hospital risk studies",
+      "abstract": "Bayesian hierarchical inference combines individual hospital records with site-level random effects to predict outcomes.",
+      "expected_lane": "method_transfer_candidate"
+    },
+    {
+      "id": "fixture:ethics-no-method",
+      "doi": "fixture/ethics",
+      "title": "Networks and the ethics of shared responsibility",
+      "abstract": "Philosophical analysis of social responsibility and obligations, including abstract network metaphors.",
+      "expected_lane": "quarantined"
+    },
+    {
+      "id": "fixture:missing-abstract",
+      "doi": "fixture/missing",
+      "title": "Optimization for unknown infrastructure contexts",
+      "abstract": "",
+      "expected_lane": "quarantined"
+    },
+    {
+      "id": "fixture:source",
+      "doi": "fixture/source",
+      "title": "Urban rail passenger flow source",
+      "abstract": "Urban rail transit stations exhibit metro passenger flow under disruptions.",
+      "expected_lane": "quarantined"
+    },
+    {
+      "id": "fixture:generic-weak",
+      "doi": "fixture/generic",
+      "title": "Network resilience studies",
+      "abstract": "General systems perspectives describe the concept of resilience and network analysis without a concrete algorithm or transfer mapping.",
+      "expected_lane": "quarantined"
+    }
+  ]
+}
