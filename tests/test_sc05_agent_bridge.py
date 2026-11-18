@@ -525,7 +525,7 @@ def test_cached_openalex_startup_probe_available_via_old_read_only_mcp_shape(wor
     assert "redacted-test-key" not in json.dumps(data)
 
 
-def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace):
+def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace,monkeypatch):
     """A completed scored/unblinded pair must not erase custom next steps."""
     from backend.sc05_agent_bridge import SC05ExperimentRound
     from backend.sc05_eval_api import SC05Case, SC05Rating
@@ -592,3 +592,24 @@ def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace):
     assert row["detailed_record"]["baseline"]["status"]=="completed"
     assert row["detailed_record"]["gate"]["status"]=="completed"
     assert row["detailed_record"]["_final_review"]["brief_result"]==args["brief_result"]
+    # A newer deployment must not retroactively turn an archived, scored,
+    # internally consistent pair back into an unfinished experiment.
+    monkeypatch.setattr("backend.sc05_agent_bridge.pipeline_sha",
+                        lambda:"9"*64)
+    historical=call(client,access,"tools/call",{
+        "name":"get_ab_pair_status","arguments":{"pair_id":pair_id}})
+    assert historical.status_code==200
+    hist=json.loads(historical.json()["result"]["content"][0]["text"])
+    assert hist["pair_status"]=="completed"
+    assert hist["next_action"]=="complete"
+    assert hist["pipeline_hashes_consistent"] is True
+    assert hist["pipeline_hashes_current"] is False
+    assert hist["can_start_next"] is False
+    assert hist["current_pipeline_sha256"] == "9"*64
+    assert hist["pipeline_sha256"] != hist["current_pipeline_sha256"]
+    rounds_after=call(client,access,"tools/call",{
+        "name":"list_experiment_rounds","arguments":{}})
+    saved_rows=json.loads(rounds_after.json()["result"]["content"][0]["text"])
+    saved=next(x for x in saved_rows["rounds"] if x["round_code"]=="R6.4.5")
+    assert saved["pipeline_sha256"] == hist["pipeline_sha256"]
+    assert saved["detailed_record"]["current_pipeline_sha256"] == "9"*64
