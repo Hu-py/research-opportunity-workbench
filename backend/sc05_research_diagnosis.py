@@ -206,15 +206,23 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
         raw_category = issue.get("issue_class")
         category = ISSUE_CLASS_ALIASES.get(raw_category, raw_category) if isinstance(raw_category, str) else raw_category
         raw_confidence = issue.get("confidence")
-        # Never invent a probability/subjective confidence omitted by a model.
-        # Keep the absence explicit instead of attributing "low"/"medium".
-        confidence = raw_confidence if raw_confidence is not None else "not_assessed"
-        if status not in STATUSES or category not in ISSUE_CLASSES or confidence not in CONFIDENCES:
-            raise EvidenceError(
-                "Invalid diagnosis classification: issue_class="+str(raw_category)[:80]+
-                "; epistemic_status="+str(status)[:40]+
-                "; confidence="+str(confidence)[:40]
-            )
+        # Taxonomy labels from a model are NOT evidence. Fail closed on their
+        # scientific meaning, not on a harmless novel wording. Unknown labels
+        # are never upgraded to observed facts or confident hypotheses. Retain
+        # raw values and explicit downgrade flags for the scientific audit.
+        unknown_status = not isinstance(status, str) or status not in STATUSES
+        unknown_category = not isinstance(category, str) or category not in ISSUE_CLASSES
+        unknown_confidence = (
+            raw_confidence is not None and
+            (not isinstance(raw_confidence, str) or raw_confidence not in CONFIDENCES))
+        if unknown_status:
+            status = "unknown"
+        if unknown_category:
+            category = "other"
+        confidence = (
+            "not_assessed" if raw_confidence is None or unknown_confidence
+            else raw_confidence
+        )
         if status == "observed" and not refs:
             raise EvidenceError("Observed problems must cite facts")
         rivals = text_items(issue.get("rival_explanations"), "rival_explanations")
@@ -230,12 +238,19 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
             "epistemic_status": status,
             "raw_epistemic_status": raw_status,
             "epistemic_status_normalized": raw_status != status,
+            "epistemic_status_unrecognized": unknown_status,
+            "issue_class_unrecognized": unknown_category,
             "rival_explanations": rivals,
             "verification_tests": tests,
             "research_consequence": required(
                 issue.get("research_consequence"), "research_consequence"),
             "confidence": confidence,
-            "confidence_provenance": ("model_reported" if raw_confidence is not None else "not_provided"),
+            "raw_confidence": raw_confidence,
+            "confidence_label_unrecognized": unknown_confidence,
+            "confidence_provenance": (
+                "model_label_unrecognized" if unknown_confidence else
+                "model_reported" if raw_confidence is not None
+                else "not_provided"),
         })
     open_questions_raw=raw.get("open_questions", [])
     # This field is optional and descriptive. Models sometimes return one
