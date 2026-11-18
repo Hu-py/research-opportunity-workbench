@@ -147,12 +147,17 @@ def normalize_paper(work):
                 doi=doi,url=("https://doi.org/"+doi) if doi else work.get("id") or "",
                 published=work.get("publication_date") or "",venue=source.get("display_name") or "")
 
-def query_openalex(query,since,limit=15,client=None,source_ids=None):
+def query_openalex(query,since,limit=15,client=None,source_ids=None,*,sort_by_relevance=False,require_abstract=False):
     filters=["from_publication_date:"+since]
+    if require_abstract:
+        filters.append("has_abstract:true")
     if source_ids:
         safe_ids=[str(x).replace("https://openalex.org/","") for x in source_ids if str(x).startswith(("S","https://openalex.org/S"))]
         if safe_ids: filters.append("primary_location.source.id:"+"|".join(safe_ids))
-    params={"search":query,"filter":",".join(filters),"sort":"publication_date:desc","per-page":max(1,min(int(limit),100))}
+    # SC05 research-neighbor searches prioritize match; recurring trend scans
+    # keep publication-date sorting by default for backward compatibility.
+    sort="relevance_score:desc" if sort_by_relevance else "publication_date:desc"
+    params={"search":query,"filter":",".join(filters),"sort":sort,"per-page":max(1,min(int(limit),100))}
     if os.getenv("OPENALEX_API_KEY"):params["api_key"]=os.environ["OPENALEX_API_KEY"]
     if os.getenv("OPENALEX_MAILTO"):params["mailto"]=os.environ["OPENALEX_MAILTO"]
     own=client is None
