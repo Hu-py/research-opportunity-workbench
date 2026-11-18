@@ -35,15 +35,32 @@ MAX_PDF_BYTES=32000000
 VERSION="sc05-eval-v0.2.0"
 
 
+SC05_PIPELINE_DEPENDENCIES = (
+    "backend/sc05_eval_api.py",
+    "backend/sc05_paper_only.py",
+    "backend/model_gateway.py",
+    "backend/sc05_science_gate.py",
+    "backend/sc05_research_diagnosis.py",
+    "backend/sc05_quality.py",
+    "backend/sc05_relevance.py",
+    "backend/openalex_errors.py",
+    "research_workbench/core.py",
+)
+
+
 def pipeline_sha():
-    """Pin source+prompts so a changed deploy cannot silently resume an old run."""
-    folder=Path(__file__).resolve().parent
-    h=hashlib.sha256()
-    for name in ("sc05_eval_api.py","sc05_paper_only.py","model_gateway.py",
-                 "sc05_science_gate.py","sc05_research_diagnosis.py",
-                 "sc05_quality.py"):
-        h.update((folder/name).read_bytes())
-    return h.hexdigest()
+    """Pin every source-dependent model/retrieval stage, including search rules.
+
+    New retrieval/screening code is experimental treatment, not merely runtime
+    configuration. A changed dependent file must invalidate old checkpoints.
+    """
+    repository_root = Path(__file__).resolve().parent.parent
+    digest = hashlib.sha256()
+    for relative in SC05_PIPELINE_DEPENDENCIES:
+        digest.update(relative.encode("utf-8") + b"\\0")
+        digest.update((repository_root / relative).read_bytes())
+        digest.update(b"\\0")
+    return digest.hexdigest()
 
 
 def now():
