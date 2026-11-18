@@ -704,11 +704,18 @@ def test_dual_lane_paper_run_uses_existing_stages_with_unapproved_transfer(monke
             assert "method_transfer_proposals" in payload["required_json_shape"]
         returned,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
         if stage=="research_redesign":
-            from tests.test_sc05_method_transfer import valid_bridge
-            returned["method_transfer_proposals"]=[
-                valid_bridge(cross["id"],
-                "A graph neural network maps ecological observations")
-            ]
+            returned["method_transfer_proposals"]=[{
+                "route_id":"R01","paper_id":cross["id"],
+                "method_name":"Graph neural network for learning cross-domain spatial dependencies",
+                "source_input":"Observed wildfire measurements attached to spatial grid nodes",
+                "target_input":"Observed passenger loads and station topology at event timestamps",
+                "source_output":"Predicted wildfire hazard on a structured environmental grid",
+                "target_output":"Predicted demand redistribution between metro stations during closures",
+                "invariance_assumption":"Spatial message-passing biases must retain predictive validity under transport constraints",
+                "discriminating_test":"Compare to chronological XGBoost and mean-aggregation baselines on unseen closures",
+                "failure_condition":"Reject when held-out performance or calibration is worse than simple baselines",
+                "abstract_excerpt":"A graph neural network maps ecological observations",
+            }]
         return returned,usage
     def two_paper_provider(query,since,limit=7):
         assert "early warning" in query
