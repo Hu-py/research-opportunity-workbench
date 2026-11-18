@@ -907,6 +907,35 @@ def limit_route_candidates(raw: dict) -> tuple[dict, dict]:
     }
 
 
+def screen_scientific_route_refs(raw: dict, triage: dict) -> tuple[dict, dict]:
+    """Quarantine routes that cite absent scientific-question IDs.
+
+    Model-proposed routes are not automatically repaired or relinked: such
+    guesses could incorrectly promote a quality-only fix to a novel paper.
+    Returning zero supported routes is an honest, auditable outcome.
+    """
+    if not isinstance(raw, dict) or not isinstance(raw.get("routes"), list):
+        raise EvidenceError("Research redesign routes must be a list")
+    allowed = {row["id"] for row in triage.get("scientific_questions", [])}
+    screened = []
+    rejected_positions = []
+    for position, route in enumerate(raw["routes"], 1):
+        ids = route.get("frontier_ids") if isinstance(route, dict) else None
+        if (not isinstance(ids, list) or not ids
+                or not all(isinstance(fid, str) for fid in ids)
+                or not set(ids) <= allowed):
+            rejected_positions.append(position)
+            continue
+        screened.append(route)
+    return {**raw, "routes": screened}, {
+        "proposed_routes_after_cap": len(raw["routes"]),
+        "accepted_scientific_routes": len(screened),
+        "rejected_unlinked_frontier_count": len(rejected_positions),
+        "rejected_route_positions": rejected_positions,
+        "policy": "exclude invalid question references; never invent or relink scientific frontiers",
+    }
+
+
 def run_paper(
     pdf: str | Path | None, api_key: str, *, model_call: Callable = request_json,
     search_provider: Callable | None = None, max_calls: int = 18,
@@ -1011,6 +1040,8 @@ def run_paper(
         "现在才允许提出研究路线。至少比较算法、数据、评价体系、"
         "研究问题重构的适用性，但无需每类各出一个。"+
         ("仅能从新科学问题创建下一篇研究路线；不可将严谨性修补直接推荐为研究主题。"
+         "frontier_ids只能引用scientific_triage.scientific_questions中真实存在的Q编号，"
+         "不得创造新编号；如果没有可引用的科学问题，应返回空routes。"
           if scientific_value_gate else "基于论文证据提出新路线，但不得宣称已经证明创新性。")+
         "每条路线须指明原文证据、"
         "已有最接近研究、具体差异、最低代价的可证伪实验和终止条件。"
@@ -1026,6 +1057,10 @@ def run_paper(
               else {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}]})},
          log,max_calls=max_calls,max_tokens=4100)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
+    if scientific_value_gate:
+        routes_raw,frontier_screen_audit=screen_scientific_route_refs(
+            routes_raw, scientific_triage)
+        route_generation_audit.update(frontier_screen_audit)
     routes=research_routes(routes_raw,diagnosis,papers,scientific_triage if scientific_value_gate else None)
     if routes:
         critic_raw=_run(model_call,api_key,"independent_critic",
@@ -1081,6 +1116,15 @@ def run_paper(
             " model-proposed research route(s) exceeded the five-route limit; "+
             "only the first five were retained in model order."
         )
+    if route_generation_audit.get("rejected_unlinked_frontier_count"):
+        output["quality"].setdefault("warnings",[]).append(
+            str(route_generation_audit["rejected_unlinked_frontier_count"])+
+            " model-proposed route(s) cited missing/invalid scientific questions; "+
+            "they were excluded rather than silently promoted or relinked."
+        )
+        output["quality"]["rejected_unlinked_scientific_routes"] = (
+            route_generation_audit["rejected_unlinked_frontier_count"])
+
     unknown_confidence=sum(
         1 for d in diagnosis["diagnoses"]
         if d.get("confidence") == "not_assessed"
