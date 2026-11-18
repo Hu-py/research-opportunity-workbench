@@ -469,7 +469,14 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
     papers: list[dict] = []
     errors: list[str] = []
     for spec in queries:
-        query = anchored_query(spec["query"], source_profile or {})
+        # Explicit method searches intentionally cross disciplinary boundaries.
+        # Domain/counterexample/validation queries retain their source anchor.
+        # The number of OpenAlex calls remains unchanged (<= 7).
+        is_method_search = spec.get("need") == "method"
+        query = (
+            str(spec["query"]).strip()[:350] if is_method_search
+            else anchored_query(spec["query"], source_profile or {})
+        )
         try:
             # Default OpenAlex search sorting is relevance-based. The generic
             # workbench still uses date sort for weekly trends; SC05 explicitly
@@ -506,6 +513,10 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
                 "evidence_level": "OpenAlex metadata and abstract only",
                 "search_query": spec["query"],
                 "retrieval_query": query,
+                "retrieval_lane_hint": (
+                    "cross_domain_method_discovery" if is_method_search
+                    else "domain_evidence_search"
+                ),
             })
         if len(papers) >= 35:
             break
@@ -1165,7 +1176,9 @@ def run_paper(
         "diagnosis":diagnosis,"scientific_triage":scientific_triage,
         "search_queries":questions,
         "search_query_audit":{"proposed_count":len(raw_queries) if isinstance(raw_queries,list) else 0,
-                              "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries},
+                              "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries,
+                              "method_discovery_queries":sum(q.get("need")=="method" for q in questions),
+                              "domain_evidence_queries":sum(q.get("need")!="method" for q in questions)},
         "external_papers":papers,"search_errors":search_errors,
         "method_transfer_leads":method_transfer_leads,
         "method_transfer_audit":method_transfer_audit,
