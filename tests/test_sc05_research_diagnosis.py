@@ -202,3 +202,67 @@ def test_gated_diagnosis_taxonomy_aliases_preserve_raw_labels(raw_label,canonica
     assert issue["issue_class"]==canonical
     assert issue["raw_issue_class"]==raw_label
     assert issue["issue_class_normalized"] is True
+
+
+def test_novel_epistemic_label_downgrades_to_unknown_without_claiming_observation():
+    raw=valid_response()
+    issue=raw["diagnoses"][0]
+    issue["issue_class"]="validation"
+    issue["epistemic_status"]="reported_claim_with_unverified_causal_link"
+    issue["confidence"]="not_assessed"
+    parsed=validate_diagnosis(raw,snapshot())["diagnoses"][0]
+    assert parsed["epistemic_status"]=="unknown"
+    assert parsed["raw_epistemic_status"]=="reported_claim_with_unverified_causal_link"
+    assert parsed["epistemic_status_unrecognized"] is True
+    assert parsed["epistemic_status_normalized"] is True
+    assert parsed["issue_class"]=="validation"
+    assert parsed["confidence"]=="not_assessed"
+    assert parsed["fact_ids"]==issue["fact_ids"]
+    assert parsed["rival_explanations"]==issue["rival_explanations"]
+    assert parsed["verification_tests"]==issue["verification_tests"]
+
+
+def test_unknown_taxonomy_and_confidence_never_invent_classification_or_certainty():
+    raw=valid_response()
+    issue=raw["diagnoses"][0]
+    issue["issue_class"]="unreviewed_new_category"
+    issue["epistemic_status"]={"unexpected":"object"}
+    issue["confidence"]="95_percent_unverified"
+    parsed=validate_diagnosis(raw,snapshot())["diagnoses"][0]
+    assert parsed["issue_class"]=="other"
+    assert parsed["issue_class_unrecognized"] is True
+    assert parsed["epistemic_status"]=="unknown"
+    assert parsed["epistemic_status_unrecognized"] is True
+    assert parsed["confidence"]=="not_assessed"
+    assert parsed["raw_confidence"]=="95_percent_unverified"
+    assert parsed["confidence_label_unrecognized"] is True
+    assert parsed["confidence_provenance"]=="model_label_unrecognized"
+
+
+def test_taxonomy_downgrade_does_not_weaken_source_fact_id_validation():
+    raw=valid_response()
+    issue=raw["diagnoses"][0]
+    issue["epistemic_status"]="reported_claim_with_unverified_causal_link"
+    issue["fact_ids"]=["F999"]
+    with pytest.raises(EvidenceError,match="Invented diagnosis fact reference"):
+        validate_diagnosis(raw,snapshot())
+
+
+def test_quality_flags_unknown_diagnosis_classifications():
+    from backend.sc05_quality import inspect_report
+    diag=validate_diagnosis({
+        **valid_response(),
+        "diagnoses":[{
+            **valid_response()["diagnoses"][0],
+            "epistemic_status":"reported_claim_with_unverified_causal_link"
+        }],
+    },snapshot())
+    metrics=inspect_report({
+        "snapshot":snapshot(),
+        "diagnosis":diag,"method_lineage":{"links":[]},
+        "external_papers":[],"literature_assessments":[],
+        "routes":[],"reviews":[],
+    })
+    assert metrics["unknown_model_epistemic_statuses"]==1
+    assert any("unknown" in item for item in metrics["warnings"])
+    assert metrics["scientific_quality_certified"] is False
