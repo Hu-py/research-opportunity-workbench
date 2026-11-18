@@ -37,6 +37,9 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         and len(f["verbatim_excerpt"])>=12 for f in facts
     )
     grounded_issues=sum(bool(x.get("fact_ids")) for x in issues)
+    unknown_model_statuses=sum(bool(x.get("epistemic_status_unrecognized")) for x in issues)
+    unknown_model_classes=sum(bool(x.get("issue_class_unrecognized")) for x in issues)
+    unknown_model_confidences=sum(bool(x.get("confidence_label_unrecognized")) for x in issues)
     falsifiable=sum(
         bool(x.get("verification_tests")) and bool(x.get("rival_explanations"))
         for x in issues)
@@ -54,6 +57,12 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
             flags.append("论文未恢复足够的 "+needed+" 原始事实；需回看来源页")
     if not source_validated:flags.append("来源字段不完整")
     if len(method_links)<2:flags.append("计算与测量依赖链较短，可能漏掉关键公式或评估环节")
+    if unknown_model_statuses:
+        flags.append(str(unknown_model_statuses)+" 条诊断的模型认知状态标签不在允许集合；已保守降级为 unknown，不能视为观测事实或已验证机制")
+    if unknown_model_classes:
+        flags.append(str(unknown_model_classes)+" 条诊断的问题分类标签不可识别，已降级为 other")
+    if unknown_model_confidences:
+        flags.append(str(unknown_model_confidences)+" 条诊断的模型置信度标签不可识别，已降级为 not_assessed")
     if issues and grounded_issues<len(issues):
         flags.append("存在没有来源事实的诊断")
     if issues and falsifiable<len(issues):
@@ -81,6 +90,9 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "observed_derived_simulated_types":sorted(measured_types),
         "diagnoses":len(issues),
         "grounded_diagnoses":grounded_issues,
+        "unknown_model_epistemic_statuses":unknown_model_statuses,
+        "unknown_model_issue_classes":unknown_model_classes,
+        "unknown_model_confidence_labels":unknown_model_confidences,
         "falsifiable_diagnoses":falsifiable,
         "external_papers":len(papers),
         "literature_assessments":len(literature),
