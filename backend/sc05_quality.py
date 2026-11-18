@@ -21,6 +21,7 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         if x.get("evidence_status")=="abstract_quote_verified"
     }
     unlinked=sum(1 for x in literature if x.get("diagnosis_link_status")=="unlinked")
+    discarded_relations=sum(int(x.get("discarded_unexplained_relations") or 0) for x in literature)
     unverified_quotes=sum(1 for x in literature if x.get("evidence_status")=="quote_unverified")
     relation_counts={
         relation:sum(
@@ -59,6 +60,8 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         flags.append("部分诊断缺少竞争性解释或证伪检查")
     if record.get("search_errors"):
         flags.append("外部检索失败或部分失败，不能据此认定研究空白")
+    if discarded_relations:
+        flags.append(str(discarded_relations)+" 条文献—诊断关系缺少有效解释，已丢弃；不得作为直接、间接或反例证据")
     if unlinked:
         flags.append(str(unlinked)+" 篇文献暂未关联到具体诊断；不作为诊断关联证据")
     if unverified_quotes:
@@ -83,6 +86,7 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "literature_assessments":len(literature),
         "abstract_checked_papers":len(checked),
         "unlinked_literature_assessments":unlinked,
+        "discarded_unexplained_literature_relations":discarded_relations,
         "unverified_literature_quotes":unverified_quotes,
         "literature_relation_counts":relation_counts,
         "routes":len(routes),

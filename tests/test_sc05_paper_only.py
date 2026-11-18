@@ -534,3 +534,55 @@ def test_bounded_literature_context_balances_queries_without_mutating_sources():
 def test_bounded_literature_context_handles_empty_candidates():
     from backend.sc05_paper_only import bounded_literature_context
     assert bounded_literature_context([])==[]
+
+
+def test_literature_link_without_explanation_is_discarded_not_fabricated():
+    from backend.sc05_quality import inspect_report
+    diagnosis={"diagnoses":[{"id":"D01"},{"id":"D02"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],
+        "diagnosis_links":[
+            {"diagnosis_id":"D01","relation_type":"direct","relation_explanation":""},
+            {"diagnosis_id":"D02","relation_type":"indirect",
+             "relation_explanation":"The paper's route-choice results affect load redistribution."},
+        ],
+        "tested_problem":"Flow","method":"Network simulation",
+        "relevance":"partial","conditional_transfer":"Similar multimodal networks",
+        "unresolved":"Event generalization remains unresolved",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_ids"]==["D02"]
+    assert parsed["relation_types"]==["indirect"]
+    assert parsed["discarded_unexplained_relations"]==1
+    assert all(link["diagnosis_id"]!="D01" for link in parsed["diagnosis_links"])
+    record={
+        "snapshot":{"observations":[{"fact_id":"F001","fact_type":"objective",
+                                      "section":"page_01","verbatim_excerpt":"actual quoted source text"}]},
+        "diagnosis":{"diagnoses":[]},"method_lineage":{"links":[]},
+        "routes":[],"reviews":[],"external_papers":[PAPER],
+        "literature_assessments":[parsed],
+    }
+    quality=inspect_report(record)
+    assert quality["discarded_unexplained_literature_relations"]==1
+    assert quality["literature_relation_counts"]["direct"]==0
+    assert any("已丢弃" in warning for warning in quality["warnings"])
+    assert quality["novelty_certified"] is False
+
+
+def test_all_missing_relation_explanations_become_unlinked():
+    diagnosis={"diagnoses":[{"id":"D01"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],
+        "diagnosis_links":[{"diagnosis_id":"D01","relation_type":"direct",
+                             "relation_explanation":None}],
+        "tested_problem":"Flow","method":"Network simulation",
+        "relevance":"partial","conditional_transfer":"Comparable data",
+        "unresolved":"No independent mechanism evidence",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_links"]==[]
+    assert parsed["diagnosis_link_status"]=="unlinked"
+    assert "缺少可核验的解释" in parsed["unlinked_reason"]
+    assert parsed["discarded_unexplained_relations"]==1
