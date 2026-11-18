@@ -592,3 +592,16 @@ def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace):
     assert row["detailed_record"]["baseline"]["status"]=="completed"
     assert row["detailed_record"]["gate"]["status"]=="completed"
     assert row["detailed_record"]["_final_review"]["brief_result"]==args["brief_result"]
+    # A newer deployment must not retroactively turn an archived, scored,
+    # internally consistent pair back into an unfinished experiment.
+    monkeypatch.setattr("backend.sc05_agent_bridge.pipeline_sha",
+                        lambda:"9"*64)
+    historical=call(client,access,"tools/call",{
+        "name":"get_ab_pair_status","arguments":{"pair_id":pair_id}})
+    assert historical.status_code==200
+    hist=json.loads(historical.json()["result"]["content"][0]["text"])
+    assert hist["pair_status"]=="completed"
+    assert hist["next_action"]=="complete"
+    assert hist["pipeline_hashes_consistent"] is True
+    assert hist["pipeline_hashes_current"] is False
+    assert hist["can_start_next"] is False
