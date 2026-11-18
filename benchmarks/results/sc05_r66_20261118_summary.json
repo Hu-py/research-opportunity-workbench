@@ -1,0 +1,86 @@
+{
+  "schema_version": "sc05-r66-results-v01",
+  "evaluation_status": "partial_provider_coverage_not_comparable",
+  "evaluated_date_utc": "2026-11-18",
+  "heldout_source_doi": "10.1038/s41598-026-67177-7",
+  "benchmark_manifest": "benchmarks/sc05_r66_silver_set_v01.json",
+  "benchmark_labels": "provisional_silver_not_gold",
+  "implementation_sha": "4bad4b54a9620f6036a6abfdb5b25be71e4ef455",
+  "runs": [
+    {
+      "action_run_id": 44331917049,
+      "artifact_id": 14439581879,
+      "source": "github_pull_request",
+      "openalex_requests": 15,
+      "deepseek_calls": 0
+    },
+    {
+      "action_run_id": 44331899054,
+      "artifact_id": 14439682028,
+      "source": "github_push",
+      "openalex_requests": 15,
+      "deepseek_calls": 0
+    }
+  ],
+  "reproducibility": {
+    "result_metrics_identical_in_two_runs": true,
+    "per_doi_screen_decisions_identical_in_two_runs": true,
+    "missing_abstract_doi": "10.1016/j.trd.2024.104587",
+    "api_key_in_github_actions": false,
+    "unverified_external_paper_citation_count": 0,
+    "no_raw_abstracts_or_pdfs_stored": true
+  },
+  "counts": {
+    "manifest_dois": 15,
+    "metadata_with_abstract": 14,
+    "unresolved": 1,
+    "expected_domain_candidates_resolved": 4,
+    "accepted_domain_candidates": 7,
+    "correctly_accepted_domain": 4,
+    "incorrectly_accepted_method_transfer": 3,
+    "irrelevant_count": 4,
+    "irrelevant_accepted": 0,
+    "method_transfer_count": 5,
+    "method_transfer_quarantined": 2,
+    "source_self_count": 1,
+    "source_self_quarantined": 1
+  },
+  "metrics": {
+    "metadata_coverage": 0.9333,
+    "domain_precision_provisional": 0.5714,
+    "domain_recall_provisional": 1,
+    "direct_near_candidate_recall_on_resolved": 1,
+    "unrelated_admission_rate": 0,
+    "method_transfer_quarantine_rate": 0.4,
+    "source_self_excluded": true,
+    "nearest_prior_semantic_accuracy": null,
+    "novelty_certified": false
+  },
+  "cross_domain_admitted": [
+    {
+      "doi": "10.1038/s41467-025-63001-4",
+      "reason": "General heterogeneous flow-weighted network motif method; method transfer, not direct transit prior."
+    },
+    {
+      "doi": "10.1038/s42005-024-01664-z",
+      "reason": "Climate/resource-flow dimension reduction proposed as transferable method, not tested metro mechanism."
+    },
+    {
+      "doi": "10.1038/s41598-024-54104-x",
+      "reason": "Generic neutrosophic graph connectivity with some transportation examples; insufficient evidence for close metro capacity/cascade prior."
+    }
+  ],
+  "conclusions": [
+    "Current R6.5 domain screen retains both resolved directly related papers and domain-context reviews.",
+    "It also admits 3 of 5 method-transfer candidates as domain candidates; same-domain candidate precision is low in this selected silver set.",
+    "Unavailable OpenAlex abstract for 1 truly related article prevents complete-source inference; not a wrong DOI or evidence of research absence.",
+    "Automated downstream nearest-prior semantic validation and true cross-paper scientific value are untested.",
+    "The silver benchmark is small and one-reviewer-labeled, cannot establish broad accuracy or causal gains over the prior version."
+  ],
+  "next_decisions": [
+    "Do not retune and rescore this same silver set as a fresh held-out test.",
+    "Get independent reviewer for gold labels, particularly 3 cross-domain borderline papers.",
+    "Use a separate development set to implement and test a method-transfer candidate lane; reserve another unseen test set.",
+    "Do not run new DeepSeek A/B before explicitly authorized for independent source."
+  ]
+}
