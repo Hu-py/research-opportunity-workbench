@@ -1150,9 +1150,12 @@ def run_paper(
             routes_raw, scientific_triage)
         route_generation_audit.update(frontier_screen_audit)
     routes=research_routes(routes_raw,diagnosis,papers,scientific_triage if scientific_value_gate else None)
+    # The model may cite only the bounded leads actually shown in its input.
+    visible_transfer_ids={p["id"] for p in transfer_context}
     method_transfer_bridges,method_bridge_audit=screen_transfer_bridges(
         routes_raw.get("method_transfer_proposals"),
-        method_transfer_leads,{route["id"] for route in routes})
+        [p for p in method_transfer_leads if p["id"] in visible_transfer_ids],
+        {route["id"] for route in routes})
     if routes:
         critic_raw=_run(model_call,api_key,"independent_critic",
             "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
