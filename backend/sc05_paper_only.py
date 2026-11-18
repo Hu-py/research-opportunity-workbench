@@ -482,6 +482,36 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None) ->
     return papers[:35], errors
 
 
+def bounded_literature_context(papers: list[dict], *, max_papers: int = 12,
+                               max_abstract_chars: int = 1250) -> list[dict]:
+    """Represent multiple diagnosis searches with a predictable LLM input budget.
+
+    A successful OpenAlex query may yield 35 papers. Passing every abstract
+    alongside all eight diagnoses to the provider expands the prompt and output
+    request substantially. Select papers fairly across search queries while
+    retaining full original abstracts for exact quote checks elsewhere.
+    No LLM call, relevance claim or fabricated abstract occurs here.
+    """
+    by_query: dict[str, list[dict]] = {}
+    for paper in papers:
+        key = str(paper.get("search_query") or "unattributed")
+        by_query.setdefault(key, []).append(paper)
+    selected: list[dict] = []
+    while len(selected) < max_papers and any(by_query.values()):
+        for key in by_query:
+            if by_query[key] and len(selected) < max_papers:
+                selected.append(by_query[key].pop(0))
+    return [{
+        "id": str(p.get("id") or ""),
+        "title": str(p.get("title") or "")[:300],
+        "doi": str(p.get("doi") or "")[:180],
+        "url": str(p.get("url") or "")[:1000],
+        "year": str(p.get("year") or "")[:10],
+        "venue": str(p.get("venue") or "")[:200],
+        "abstract": str(p.get("abstract") or "")[:max_abstract_chars],
+    } for p in selected]
+
+
 def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: dict) -> list[dict]:
     """Validate literature identity, typed diagnosis links and abstract provenance."""
     rows=raw.get("assessments")
@@ -949,6 +979,7 @@ def run_paper(
     raw_queries=question_raw.get("queries",[]) if isinstance(question_raw,dict) else []
     skipped_queries=max(0,min(len(raw_queries),7)-len(questions)) if isinstance(raw_queries,list) else 0
     papers,search_errors=openalex_search(questions,provider=search_provider)
+    literature_context=bounded_literature_context(papers)
     literature=[]
     if papers:
         literature_system=(
@@ -962,9 +993,7 @@ def run_paper(
         assessed_raw=_run(model_call,api_key,"literature_assessment",
             literature_system,
             {"diagnosis":diagnosis["diagnoses"],
-             "papers":[{k:p[k] for k in (
-                "id","title","doi","url","year","venue","abstract")}
-                for p in papers[:20]],
+             "papers":literature_context,
              "required_json_shape":literature_schema},log,max_calls=max_calls,
             max_tokens=4100)
         literature=literature_assessments(assessed_raw,papers,diagnosis)
@@ -981,9 +1010,7 @@ def run_paper(
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
-         "papers":[{k:p[k] for k in (
-             "id","title","doi","url","year","venue","abstract")}
-             for p in papers[:20]],
+         "papers":literature_context,
          "literature_assessments":literature,
          "required_json_shape":(ROUTE_SCHEMA if scientific_value_gate
               else {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}]})},
@@ -997,7 +1024,7 @@ def run_paper(
             "允许全部hold或reject。必要数据未知时不得声称真实可验证。",
             {"routes":routes,"diagnoses":diagnosis["diagnoses"],
              "scientific_triage":scientific_triage,
-             "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in papers[:20]],
+             "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in literature_context],
              "required_json_shape":CRITIC_SCHEMA},log,max_calls=max_calls,max_tokens=3000)
     else:
         # With no proposed routes there is no review target. Avoid a paid
@@ -1014,6 +1041,12 @@ def run_paper(
         "search_query_audit":{"proposed_count":len(raw_queries) if isinstance(raw_queries,list) else 0,
                               "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries},
         "external_papers":papers,"search_errors":search_errors,
+        "literature_selection_audit":{
+            "retrieved":len(papers),"provided_to_model":len(literature_context),
+            "per_paper_abstract_chars":1250,
+            "policy":"round_robin_by_search_query",
+            "selected_ids":[p["id"] for p in literature_context],
+        },
         "literature_assessments":literature,
         "routes":routes,"route_generation_audit":route_generation_audit,
         "reviews":reviews,"usage":log,
