@@ -370,7 +370,29 @@ def pair_preflight(db,owner,pair_id):
     pipeline_consistent=(baseline.pipeline_sha==gated.pipeline_sha)
     pipeline_current=(baseline.pipeline_sha==current_sha and gated.pipeline_sha==current_sha)
     active=any(row.status in ("queued","claimed","running") for row in (baseline,gated))
-    if not pipeline_consistent or not pipeline_current:
+    # Completed, internally consistent historical pairs remain completed
+    # after code upgrades; they cannot be resumed against the new SHA, but
+    # this does not invalidate their archived blind reviews.
+    if baseline.status=="completed" and gated.status=="completed" and pipeline_consistent:
+        rating_ids=db.scalars(select(SC05Rating.run_id).where(
+            SC05Rating.member_id==owner.id,
+            SC05Rating.run_id.in_([baseline.id,gated.id])
+        )).all()
+        if len(set(rating_ids))<2:
+            next_action="blind_review"
+            reason="Both completed reports await blind scores."
+        else:
+            unblinded=db.scalar(select(AuditEntry.id).where(
+                AuditEntry.actor_id==owner.id,
+                AuditEntry.action=="sc05.ab_unblinded",
+                AuditEntry.target==pair_id
+            ).limit(1)) is not None
+            next_action="complete" if unblinded else "compare_ab_pair"
+            reason=("Historical pair fully scored/unblinded."
+                    if unblinded else "Both blind scores exist; unblind before comparing.")
+        if not pipeline_current:
+            reason+=" Pinned pipeline is historical; create a new pair for new execution."
+    elif not pipeline_consistent or not pipeline_current:
         next_action="needs_review"
         reason="A/B source-pinned pipeline hashes differ or are not current; create a clean pair rather than silently migrating both arms."
     elif active:
@@ -394,24 +416,11 @@ def pair_preflight(db,owner,pair_id):
             next_action="review_gate"
             reason="The gate-on arm is not safe to submit; inspect its saved checkpoints and error."
     else:
-        rating_ids=db.scalars(select(SC05Rating.run_id).where(
-            SC05Rating.member_id==owner.id,
-            SC05Rating.run_id.in_([baseline.id,gated.id])
-        )).all()
-        if len(set(rating_ids))<2:
-            next_action="blind_review"
-            reason="Both real A/B runs are complete. Score the two anonymized reports before unblinding."
-        else:
-            unblinded=db.scalar(select(AuditEntry.id).where(
-                AuditEntry.actor_id==owner.id,
-                AuditEntry.action=="sc05.ab_unblinded",
-                AuditEntry.target==pair_id
-            ).limit(1)) is not None
-            next_action="complete" if unblinded else "compare_ab_pair"
-            reason=("Both blind scores and unblinding are complete."
-                    if unblinded else
-                    "Two blind scores exist; unblind and compare the completed pair.")
-    if baseline.status=="completed" and gated.status=="completed":
+        # This branch is defensive: a completed pair should have been handled
+        # above, and partial arms always have a specific safe next action.
+        next_action="needs_review"
+        reason="Unexpected A/B lifecycle state; inspect pinned evidence and checkpoints."
+    if baseline.status=="completed" and gated.status=="completed" and pipeline_consistent:
         pair_status="completed"
     elif any(row.status=="failed" for row in (baseline,gated)):
         pair_status="needs_review"
