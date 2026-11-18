@@ -565,3 +565,33 @@ def test_cached_quote_error_rechecks_literal_evidence_without_new_paid_call(work
     assert j["rejected_quotes"]==1
     with factory() as db:
         assert db.get(SC05Run,run_id).calls==1
+
+
+def test_sc05_pipeline_hash_changes_with_retrieval_ontology_and_openalex_logic(monkeypatch):
+    """Any domain policy or OpenAlex implementation change must invalidate SHA."""
+    from pathlib import Path
+    import backend.sc05_eval_api as api
+
+    deps = set(api.SC05_PIPELINE_DEPENDENCIES)
+    assert {"backend/sc05_relevance.py", "backend/openalex_errors.py",
+            "research_workbench/core.py"} <= deps
+    original_bytes = Path.read_bytes
+    base_sha = api.pipeline_sha()
+    assert api.pipeline_sha() == base_sha
+
+    def changed_ontology(self):
+        blob = original_bytes(self)
+        if self.name == "sc05_relevance.py":
+            blob += b"\\n# v-next different domain policy"
+        return blob
+    monkeypatch.setattr(Path,"read_bytes",changed_ontology)
+    assert api.pipeline_sha() != base_sha
+    monkeypatch.setattr(Path,"read_bytes",original_bytes)
+
+    def changed_search(self):
+        blob = original_bytes(self)
+        if str(self).endswith("research_workbench/core.py"):
+            blob += b"\\n# changed query sorting"
+        return blob
+    monkeypatch.setattr(Path,"read_bytes",changed_search)
+    assert api.pipeline_sha() != base_sha
