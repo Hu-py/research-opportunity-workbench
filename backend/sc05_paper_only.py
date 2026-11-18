@@ -17,6 +17,10 @@ from backend.model_gateway import request_json
 from backend.sc05_science_gate import FRONTIER_SCHEMA, validate_scientific_triage, enforce_route_frontiers
 from backend.sc05_quality import inspect_report
 from backend.openalex_errors import safe_openalex_error
+from backend.sc05_relevance import (
+    infer_source_domain, anchored_query, screen_candidate_papers,
+    screen_route_prior_claims,
+)
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
     required, text_items, validate_diagnosis, verify_facts,
@@ -440,7 +444,8 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
     return result
 
 
-def openalex_search(queries: list[dict], *, provider: Callable | None = None) -> tuple[list[dict], list[str]]:
+def openalex_search(queries: list[dict], *, provider: Callable | None = None,
+                    source_profile: dict | None = None) -> tuple[list[dict], list[str]]:
     """Method- and counterexample-oriented discovery; not a false novelty proof."""
     from research_workbench.core import normalize_paper, query_openalex
     fn = provider or query_openalex
@@ -448,8 +453,16 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None) ->
     papers: list[dict] = []
     errors: list[str] = []
     for spec in queries:
+        query = anchored_query(spec["query"], source_profile or {})
         try:
-            found = fn(spec["query"], "2020-01-01", limit=7)
+            # Default OpenAlex search sorting is relevance-based. The generic
+            # workbench still uses date sort for weekly trends; SC05 explicitly
+            # opts into relevance+abstract for nearest-neighbor searches.
+            if provider is None:
+                found = fn(query, "2020-01-01", limit=7,
+                           sort_by_relevance=True, require_abstract=True)
+            else:
+                found = fn(query, "2020-01-01", limit=7)
         except Exception as exc:
             # Keep actionable HTTP/authentication context without exposing a
             # provider URL, API key or private query string in the report.
@@ -476,6 +489,7 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None) ->
                 "abstract": str(row.get("abstract") or "")[:2100],
                 "evidence_level": "OpenAlex metadata and abstract only",
                 "search_query": spec["query"],
+                "retrieval_query": query,
             })
         if len(papers) >= 35:
             break
@@ -843,11 +857,13 @@ def _markdown(result: dict) -> str:
             "**原论文回答不了的原因**："+route["why_previous_study_cannot_answer"], "",
             "**相关诊断**："+", ".join(route["diagnosis_ids"])+
             "；**新科学问题**："+", ".join(route["frontier_ids"]), "",
-            "**最近先例**："+("; ".join(
+            "**同领域相关候选（非新颖性认证）**："+("; ".join(
                 "["+papers[pid]["title"]+"]("+papers[pid]["url"]+")"
                 for pid in route["closest_paper_ids"] if pid in papers
-            ) or "本次检索无对应先例，不能据此声称空白"), "",
-            "**与已有文献的区别（待核验）**："+route["difference_from_prior_work"], "",
+            ) or "无经过同领域、摘要与直接机制关系核验的候选论文；不得据此认定研究空白"), "",
+            ("**与候选文献的区别（仍待人工核验）**：" if route["closest_paper_ids"]
+             else "**模型声称的区别（没有可信直接近邻支撑）**：")+
+            route["difference_from_prior_work"], "",
             "**可行性与替代方案**："+route["feasibility"], "",
             "**最小实验及评价**："+route["minimal_experiment"], "",
             "**否决条件**："+route["negative_result"], "",
@@ -1017,7 +1033,11 @@ def run_paper(
     questions=search_plan(question_raw,diagnosis["diagnoses"])
     raw_queries=question_raw.get("queries",[]) if isinstance(question_raw,dict) else []
     skipped_queries=max(0,min(len(raw_queries),7)-len(questions)) if isinstance(raw_queries,list) else 0
-    papers,search_errors=openalex_search(questions,provider=search_provider)
+    source_domain_profile=infer_source_domain(pages)
+    retrieved_papers,search_errors=openalex_search(
+        questions,provider=search_provider,source_profile=source_domain_profile)
+    papers,search_relevance_audit=screen_candidate_papers(
+        retrieved_papers,source_domain_profile,source_doi=_source_doi(pages))
     literature_context=bounded_literature_context(papers)
     literature=[]
     if papers:
@@ -1048,6 +1068,8 @@ def run_paper(
         "使用literature_assessments时，只能把 evidence_status=abstract_quote_verified 的条目"
         "作为摘要证据；quote_unverified 或 metadata_only 只能作为待核查线索，不能支持事实性论断。"
         "对 diagnosis_links 中的 direct、indirect、counterexample 分别解释，不得把主题相似等同于直接证据。"
+        "closest_paper_ids仅能引用相关领域中具有真实摘要证据、同一诊断的直接机制关联或反例的候选工作。"
+        "跨域方法类比不是最近先例；若缺少直接相关文献则引用空列表并明确无法确认研究差异。"
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
@@ -1057,6 +1079,8 @@ def run_paper(
               else {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}]})},
          log,max_calls=max_calls,max_tokens=4100)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
+    routes_raw,prior_reference_audit=screen_route_prior_claims(
+        routes_raw,papers,literature)
     if scientific_value_gate:
         routes_raw,frontier_screen_audit=screen_scientific_route_refs(
             routes_raw, scientific_triage)
@@ -1086,10 +1110,13 @@ def run_paper(
         "search_query_audit":{"proposed_count":len(raw_queries) if isinstance(raw_queries,list) else 0,
                               "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries},
         "external_papers":papers,"search_errors":search_errors,
+        "source_domain_profile":source_domain_profile,
+        "search_relevance_audit":search_relevance_audit,
+        "prior_reference_audit":prior_reference_audit,
         "literature_selection_audit":{
             "retrieved":len(papers),"provided_to_model":len(literature_context),
             "per_paper_abstract_chars":1250,
-            "policy":"round_robin_by_search_query",
+            "policy":"domain_screen_then_round_robin_by_search_query",
             "selected_ids":[p["id"] for p in literature_context],
         },
         "literature_assessments":literature,
