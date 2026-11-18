@@ -586,3 +586,42 @@ def test_all_missing_relation_explanations_become_unlinked():
     assert parsed["diagnosis_link_status"]=="unlinked"
     assert "缺少可核验的解释" in parsed["unlinked_reason"]
     assert parsed["discarded_unexplained_relations"]==1
+
+
+def test_scientific_route_screen_excludes_missing_q_ids_without_relabeling():
+    from backend.sc05_paper_only import screen_scientific_route_refs
+    triage={"scientific_questions":[{"id":"Q01"},{"id":"Q03"}]}
+    proposed={"routes":[
+        {"id":"R01","title":"Valid mechanism","frontier_ids":["Q01"]},
+        {"id":"R02","title":"Hallucinated frontier","frontier_ids":["Q99"]},
+        {"id":"R03","title":"Mixed valid and fake","frontier_ids":["Q03","Q88"]},
+        {"id":"R04","title":"Missing scientific question","frontier_ids":[]},
+        {"id":"R05","title":"Another valid mechanism","frontier_ids":["Q03"]},
+    ]}
+    cleaned,audit=screen_scientific_route_refs(proposed,triage)
+    assert [r["title"] for r in cleaned["routes"]]==[
+        "Valid mechanism","Another valid mechanism"]
+    assert audit["rejected_unlinked_frontier_count"]==3
+    assert audit["rejected_route_positions"]==[2,3,4]
+    assert audit["accepted_scientific_routes"]==2
+    assert proposed["routes"][1]["frontier_ids"]==["Q99"]
+    assert all(set(r["frontier_ids"]) <= {"Q01","Q03"} for r in cleaned["routes"])
+
+
+def test_scientific_route_screen_does_not_promote_quality_fix_when_no_frontiers():
+    from backend.sc05_paper_only import screen_scientific_route_refs,research_routes
+    triage={"scientific_questions":[]}
+    raw={"routes":[
+        {"title":"Do sensitivity analysis","frontier_ids":["Q01"]},
+        {"title":"Validate index","frontier_ids":[]},
+    ]}
+    cleaned,audit=screen_scientific_route_refs(raw,triage)
+    assert cleaned["routes"]==[]
+    assert audit["rejected_unlinked_frontier_count"]==2
+    assert research_routes(cleaned,{"diagnoses":[{"id":"D01"}]},[],triage)==[]
+
+
+def test_scientific_route_screen_fails_on_missing_json_structure():
+    from backend.sc05_paper_only import screen_scientific_route_refs
+    with pytest.raises(EvidenceError,match="routes must be a list"):
+        screen_scientific_route_refs({"routes":None},{"scientific_questions":[]})
