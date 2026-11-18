@@ -2,6 +2,14 @@ name: SC05 R6.6 held-out OpenAlex silver benchmark
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'eval/sc05-r66-*'
+    paths:
+      - 'benchmarks/sc05_r66_silver_set_v01.json'
+      - 'scripts/sc05_r66_eval.py'
+      - 'tests/test_sc05_r66_eval.py'
+      - '.github/workflows/sc05-r66-openalex-eval.yml'
   pull_request:
     paths:
       - 'benchmarks/sc05_r66_silver_set_v01.json'
