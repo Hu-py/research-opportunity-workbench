@@ -21,7 +21,28 @@ def _error(exc):
         hints={401:"密钥无效",402:"账户余额不足",403:"密钥权限不足",
                429:"超过服务限流",400:"请求或模型参数不兼容",
                422:"请求格式不符合要求"}
-        return "DeepSeek HTTP "+str(code)+"："+hints.get(code,"请求失败，请查看 DeepSeek 服务状态")
+        reason=""
+        if code==400:
+            # Never include arbitrary upstream response text: it may contain
+            # user prompt fragments or credentials. Expose only allowlisted
+            # categories to distinguish context, format and safety failures.
+            try:
+                body=exc.response.json()
+                err=body.get("error",{}) if isinstance(body,dict) else {}
+                message=str(err.get("message") or "").lower()
+                machine=str(err.get("code") or "").lower()
+                combined=message+" "+machine
+                if "content exists risk" in combined or "content_risk" in combined:
+                    reason="（内容审核拒绝；禁止自动重试）"
+                elif any(t in combined for t in ("context length","context_length","maximum context","too many tokens","input is too long")):
+                    reason="（上下文长度超限）"
+                elif any(t in combined for t in ("response_format","json_object","json mode")):
+                    reason="（JSON 输出格式参数问题）"
+                elif any(t in combined for t in ("thinking","unsupported parameter","unsupported_parameter")):
+                    reason="（模型请求参数不兼容）"
+            except (ValueError,TypeError,AttributeError):
+                pass
+        return "DeepSeek HTTP "+str(code)+"："+hints.get(code,"请求失败，请查看 DeepSeek 服务状态")+reason
     return "模型返回或验证失败："+type(exc).__name__
 
 def _parse_json_object(content: str) -> dict:

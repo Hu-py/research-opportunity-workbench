@@ -512,3 +512,25 @@ def test_openalex_transport_failure_is_reported_without_raw_exception():
     assert len(errors)==1
     assert "网络连接失败" in errors[0]
     assert "token-should-not-appear" not in errors[0]
+
+
+def test_bounded_literature_context_balances_queries_without_mutating_sources():
+    from backend.sc05_paper_only import bounded_literature_context
+    papers=[]
+    for query in ["q1","q2","q3"]:
+        for index in range(7):
+            papers.append({"search_query":query,"id":query+str(index),
+                           "title":"Paper "+query+str(index),"doi":"","url":"https://example.invalid/",
+                           "year":"2026","venue":"Test","abstract":"abstract text "*200})
+    out=bounded_literature_context(papers,max_papers=7,max_abstract_chars=120)
+    assert [x["id"] for x in out]==["q10","q20","q30","q11","q21","q31","q12"]
+    assert all(len(x["abstract"])<=120 for x in out)
+    assert all(len(x["abstract"])>0 for x in out)
+    assert len(papers)==21
+    assert len(papers[0]["abstract"])>120
+    assert len({x["id"] for x in out})==7
+
+
+def test_bounded_literature_context_handles_empty_candidates():
+    from backend.sc05_paper_only import bounded_literature_context
+    assert bounded_literature_context([])==[]

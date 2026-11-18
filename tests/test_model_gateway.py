@@ -47,3 +47,26 @@ def test_request_json_rejects_non_json_content():
             "test-key","deepseek-flash","system",{"stage":"test"},
             client=FakeClient("This is not JSON"),max_tokens=64,
         )
+
+
+@pytest.mark.parametrize("provider_message,reason",[
+    ("The input exceeds the maximum context length","上下文长度超限"),
+    ("Content Exists Risk","内容审核拒绝"),
+    ("Unsupported parameter 'thinking'","模型请求参数不兼容"),
+])
+def test_deepseek_400_has_sanitized_error_class_without_upstream_payload(provider_message,reason):
+    import httpx
+    request=httpx.Request("POST","https://api.deepseek.com/chat/completions")
+    response=httpx.Response(400,request=request,json={
+        "error":{"message":provider_message+" private-paper-token",
+                 "code":"invalid_request_error"},
+    })
+    class BadClient:
+        def post(self,*args,**kwargs):
+            return response
+    with pytest.raises(ModelCallError) as failure:
+        request_json("do-not-leak-key","deepseek-flash","test",
+                     {"private":"private-paper-token"},client=BadClient())
+    assert reason in str(failure.value)
+    assert "private-paper-token" not in str(failure.value)
+    assert "do-not-leak-key" not in str(failure.value)
