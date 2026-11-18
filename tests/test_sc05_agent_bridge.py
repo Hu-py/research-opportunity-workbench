@@ -605,3 +605,11 @@ def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace):
     assert hist["pipeline_hashes_consistent"] is True
     assert hist["pipeline_hashes_current"] is False
     assert hist["can_start_next"] is False
+    assert hist["current_pipeline_sha256"] == "9"*64
+    assert hist["pipeline_sha256"] != hist["current_pipeline_sha256"]
+    rounds_after=call(client,access,"tools/call",{
+        "name":"list_experiment_rounds","arguments":{}})
+    saved_rows=json.loads(rounds_after.json()["result"]["content"][0]["text"])
+    saved=next(x for x in saved_rows["rounds"] if x["round_code"]=="R6.4.5")
+    assert saved["pipeline_sha256"] == hist["pipeline_sha256"]
+    assert saved["detailed_record"]["current_pipeline_sha256"] == "9"*64
