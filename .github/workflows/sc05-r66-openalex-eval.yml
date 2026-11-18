@@ -2,15 +2,9 @@ name: SC05 R6.6 held-out OpenAlex silver benchmark
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - 'eval/sc05-r66-*'
-    paths:
-      - 'benchmarks/sc05_r66_silver_set_v01.json'
-      - 'scripts/sc05_r66_eval.py'
-      - 'tests/test_sc05_r66_eval.py'
-      - '.github/workflows/sc05-r66-openalex-eval.yml'
+  # Only first submission/reopening of a new evaluation PR, not every doc update.
   pull_request:
+    types: [opened, reopened, ready_for_review]
     paths:
       - 'benchmarks/sc05_r66_silver_set_v01.json'
       - 'scripts/sc05_r66_eval.py'
@@ -62,9 +56,28 @@ jobs:
             artifacts/sc05_r66_retrieval_stdout.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Report live check status
+      - name: Report live check metrics and warnings
         if: always()
         run: |
-          echo "R6.6 uses public OpenAlex DOI metadata, not DeepSeek." >> "$GITHUB_STEP_SUMMARY"
-          echo "Live step outcome: ${{ steps.live.outcome }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Only complete_silver_not_gold with 100% coverage can support retrieval-metric comparison." >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          path=Path("artifacts/sc05_r66_retrieval_metrics.json")
+          summary=Path(os.environ["GITHUB_STEP_SUMMARY"])
+          with summary.open("a",encoding="utf-8") as f:
+              f.write("## SC05 R6.6 zero-DeepSeek benchmark\n")
+              if not path.exists():
+                  f.write("No metrics artifact. No scholarly quality acceptance.\n")
+                  print("::warning::R6.6 OpenAlex metrics file missing; do not treat CI success as retrieval validation.")
+              else:
+                  data=json.loads(path.read_text(encoding="utf-8"))
+                  m=data["metrics"]
+                  f.write("Status: "+data["evaluation_status"]+"\n\n")
+                  f.write("OpenAlex DOI requests: "+str(m["api_requests"])+"; DeepSeek calls: 0\n\n")
+                  f.write("Metadata coverage: "+str(m["metadata_coverage"])+"\n\n")
+                  f.write("Provisional domain precision: "+str(m["domain_precision_provisional"])+"\n\n")
+                  f.write("Method-transfer quarantine: "+str(m["method_transfer_quarantine_rate"])+"\n\n")
+                  f.write("Gold labels: NOT independently adjudicated; novelty NOT certified.\n")
+                  if data["evaluation_status"]!="complete_silver_not_gold":
+                      print("::warning::R6.6 OpenAlex evidence incomplete; do not interpret green CI as full benchmark PASS.")
+          PY
