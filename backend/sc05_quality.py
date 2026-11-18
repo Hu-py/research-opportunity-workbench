@@ -25,6 +25,10 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     unverified_quotes=sum(1 for x in literature if x.get("evidence_status")=="quote_unverified")
     relevance_audit=record.get("search_relevance_audit") or {}
     prior_audit=record.get("prior_reference_audit") or {}
+    transfer_leads=record.get("method_transfer_leads") or []
+    transfer_bridges=record.get("method_transfer_bridges") or []
+    transfer_audit=record.get("method_transfer_audit") or {}
+    method_bridge_audit=record.get("method_bridge_audit") or {}
     eligible_prior_ids=set(prior_audit.get("minimum_evidence_eligible_paper_ids",[]))
     relation_counts={
         relation:sum(
@@ -86,6 +90,15 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     if prior_audit.get("removed_reference_count",0):
         flags.append(str(prior_audit["removed_reference_count"])+
                      " 条模型宣称的最近先例缺少同领域摘要与直接机制关联核验，已撤销引用")
+    if transfer_leads:
+        flags.append(str(len(transfer_leads))+
+                     " 条跨领域方法线索已分离为独立通道，未经审核，不能自动作为最近科学先例")
+    if transfer_bridges:
+        flags.append(str(len(transfer_bridges))+
+                     " 条跨域方法映射仅通过来源摘要与结构检查，尚未独立验证方法迁移可行性")
+    if method_bridge_audit.get("rejected"):
+        flags.append(str(len(method_bridge_audit["rejected"]))+
+                     " 条方法迁移提案证据或结构不足，已隔离，不进行自动补全")
     if routes and routes_with_checked_nearest<len(routes):
         flags.append("部分研究路线缺少经过摘要核验的近邻研究")
     if routes and not routes_with_nearest:
@@ -113,6 +126,11 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "source_domain":relevance_audit.get("source_domain","unresolved"),
         "minimum_evidence_prior_papers":len(eligible_prior_ids),
         "revoked_nearest_prior_references":prior_audit.get("removed_reference_count",0),
+        "method_transfer_leads":len(transfer_leads),
+        "method_transfer_bridges_proposed":len(transfer_bridges),
+        "method_transfer_bridges_rejected":len(method_bridge_audit.get("rejected",[])),
+        "method_transfer_human_approved":0,
+        "method_transfer_auto_approved":transfer_audit.get("auto_approved_transfers",0),
         "literature_assessments":len(literature),
         "abstract_checked_papers":len(checked),
         "unlinked_literature_assessments":unlinked,
