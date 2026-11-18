@@ -523,3 +523,72 @@ def test_cached_openalex_startup_probe_available_via_old_read_only_mcp_shape(wor
     assert academic["works_returned"]==2
     assert academic["provider_calls_on_check"]==0
     assert "redacted-test-key" not in json.dumps(data)
+
+
+def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace):
+    """A completed scored/unblinded pair must not erase custom next steps."""
+    from backend.sc05_agent_bridge import SC05ExperimentRound
+    from backend.sc05_eval_api import SC05Case, SC05Rating
+    from backend.team import AuditEntry
+
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    created=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert created.status_code==201
+    pair=client.post("/api/personal-research/me/sc05/cases/"+created.json()["id"]+"/ab",
+        headers=session)
+    assert pair.status_code==201
+    pair_id=pair.json()["pair_id"]
+    with factory() as db:
+        rows=db.query(SC05Run).filter(SC05Run.pair_id==pair_id).all()
+        assert len(rows)==2
+        member_id=rows[0].member_id
+        doc=db.get(SC05Case,rows[0].case_id)
+        doc.shared_evidence_json='{"observations":[]}'
+        for index,row in enumerate(rows,1):
+            row.status="completed"
+            row.stage="complete"
+            db.add(SC05Rating(
+                id="sc05rating_mock_"+str(index),member_id=member_id,
+                run_id=row.id,accuracy=4,science_value=3,narrative=3,
+                literature=2,feasibility=3,
+            ))
+        db.add(AuditEntry(actor_id=member_id,action="sc05.ab_unblinded",
+                          target=pair_id))
+        db.commit()
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    args={"round_code":"R6.4.5","category_code":"◆01",
+          "category_label":"完整科研工作流",
+          "problem":"Validate completed A/B records and preserve blind scores",
+          "method":"Use real pair state plus researcher-authored evaluation",
+          "experiment_content":"The two model arms finished and blind scores were recorded",
+          "status":"completed",
+          "brief_result":"Gate-on 70 versus gate-off 38, +32 blind points",
+          "next_step":"Audit nearby-paper relevance before running a held-out paper",
+          "detailed_record":{"grade":{"gate_on":70,"gate_off":38},
+                             "scientific_novelty_certified":False},
+          "pair_id":pair_id}
+    saved=call(client,access,"tools/call",{
+        "name":"record_experiment_round","arguments":args})
+    assert saved.status_code==200
+    assert saved.json()["result"]["isError"] is False,saved.text
+    # A status read triggers server-side sync. It must not overwrite review.
+    res=call(client,access,"tools/call",{
+        "name":"get_ab_pair_status","arguments":{"pair_id":pair_id}})
+    assert res.status_code==200
+    assert json.loads(res.json()["result"]["content"][0]["text"])["next_action"]=="complete"
+    listed=call(client,access,"tools/call",{
+        "name":"list_experiment_rounds","arguments":{}})
+    assert listed.json()["result"]["isError"] is False
+    data=json.loads(listed.json()["result"]["content"][0]["text"])
+    row=next(x for x in data["rounds"] if x["round_code"]=="R6.4.5")
+    assert row["status"]=="completed"
+    assert row["brief_result"]==args["brief_result"]
+    assert row["next_step"]==args["next_step"]
+    assert row["detailed_record"]["grade"]==args["detailed_record"]["grade"]
+    assert row["detailed_record"]["baseline"]["status"]=="completed"
+    assert row["detailed_record"]["gate"]["status"]=="completed"
+    assert row["detailed_record"]["_final_review"]["brief_result"]==args["brief_result"]
