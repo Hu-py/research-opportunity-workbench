@@ -421,8 +421,8 @@ def test_invalid_provider_json_is_retried_once_with_separate_budget_reservations
         row.status="claimed"
         db.commit()
     attempted=[]
-    def flaky_provider(key,model,system,payload,max_tokens=250):
-        attempted.append(payload)
+    def flaky_provider(key,model,system,payload,max_tokens=250,response_mode="json_object"):
+        attempted.append((payload,response_mode))
         if len(attempted)==1:
             raise ModelCallError("模型未返回有效 JSON")
         return {"mock":"real schema not sent","scientific":False}, {"input_tokens":20,"output_tokens":10}
@@ -430,6 +430,7 @@ def test_invalid_provider_json_is_retried_once_with_separate_budget_reservations
     monkeypatch.setattr(ev,"run_paper",fake_run_paper)
     ev.execute(factory,run_id,claimed_by_worker=True)
     assert len(attempted)==2
+    assert [mode for _,mode in attempted]==["json_object","plain_text"]
     with factory() as db:
         row=db.get(SC05Run,run_id)
         assert row.status=="completed"

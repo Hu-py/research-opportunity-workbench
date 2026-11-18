@@ -70,3 +70,26 @@ def test_deepseek_400_has_sanitized_error_class_without_upstream_payload(provide
     assert reason in str(failure.value)
     assert "private-paper-token" not in str(failure.value)
     assert "do-not-leak-key" not in str(failure.value)
+
+
+def test_plain_text_fallback_keeps_strict_json_parser_and_omits_provider_json_mode():
+    captured=[]
+    class CapturingClient:
+        def post(self,*args,**kwargs):
+            captured.append(kwargs["json"])
+            return FakeResponse('{"ok":true,"count":1}')
+    client=CapturingClient()
+    parsed,usage=request_json(
+        "dummy","deepseek-flash","Produce JSON",{"task":"verification"},
+        client=client,response_mode="plain_text")
+    assert parsed["ok"] is True
+    assert "response_format" not in captured[0]
+    assert captured[0]["thinking"]=={"type":"disabled"}
+    request_json("dummy","deepseek-flash","Produce JSON",{"task":"verification"},
+                 client=client)
+    assert captured[1]["response_format"]=={"type":"json_object"}
+
+
+def test_unsupported_provider_response_mode_rejected_without_model_call():
+    with pytest.raises(ModelCallError,match="不支持的模型响应模式"):
+        request_json("dummy","deepseek-flash","system",{},response_mode="unsafe")

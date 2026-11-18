@@ -103,23 +103,33 @@ def _parse_json_object(content: str) -> dict:
     return parsed
 
 
-def request_json(api_key,model,system,payload,client=None,max_tokens=2000):
-    """Return (strict JSON object, token usage), never a plain free-form answer."""
+def request_json(api_key,model,system,payload,client=None,max_tokens=2000,
+                 response_mode="json_object"):
+    """Return a validated JSON object, regardless of the provider response mode.
+
+    JSON mode can occasionally produce whitespace or invalid JSON even with
+    a valid prompt (provider docs). The caller may reserve a SECOND, bounded
+    request in plain-text mode; the exact same JSON parser still applies.
+    """
     if model not in ("deepseek-flash","deepseek-v4-pro"):
         raise ModelCallError("模型类型不在许可列表中")
+    if response_mode not in ("json_object","plain_text"):
+        raise ModelCallError("不支持的模型响应模式")
     http=client or httpx.Client(timeout=75.0,follow_redirects=False)
     close=client is None
+    body={"model":model,
+          "messages":[{"role":"system","content":system+
+                       "\n只输出一个有效的 JSON 对象，不要 Markdown 或其他文字。"},
+                      {"role":"user","content":json.dumps(payload,ensure_ascii=False)}],
+          "thinking":{"type":"disabled"},
+          "max_tokens":max_tokens,
+          "stream":False}
+    if response_mode=="json_object":
+        body["response_format"]={"type":"json_object"}
     try:
         response=http.post(DEEPSEEK_URL,headers={
             "Authorization":"Bearer "+api_key,"Content-Type":"application/json"},
-            json={"model":model,
-                  "messages":[{"role":"system","content":system+
-                               "\n只输出一个有效的 JSON 对象，不要 Markdown 或其他文字。"},
-                              {"role":"user","content":json.dumps(payload,ensure_ascii=False)}],
-                  "response_format":{"type":"json_object"},
-                  "thinking":{"type":"disabled"},
-                  "max_tokens":max_tokens,
-                  "stream":False})
+            json=body)
         response.raise_for_status()
         raw=response.json()
         options=raw.get("choices") or []

@@ -245,7 +245,17 @@ def _checkpoint_call(factory,run_id):
                 raise RuntimeError("Daily LLM budget exhausted; no extra API call was made")
             provider_attempts+=1
             try:
-                response,usage=request_json(api_key,model,system,payload,max_tokens=max_tokens)
+                if provider_attempts == 1:
+                    response,usage=request_json(
+                        api_key,model,system,payload,max_tokens=max_tokens)
+                else:
+                    # DeepSeek JSON mode may return whitespace. The second,
+                    # separately budgeted request omits response_format, but
+                    # MUST pass through request_json's strict object parser.
+                    # We never retry a content-safety or HTTP failure.
+                    response,usage=request_json(
+                        api_key,model,system,payload,max_tokens=max_tokens,
+                        response_mode="plain_text")
                 break
             except ModelCallError as exc:
                 # One bounded second provider request for a syntactically invalid
@@ -265,7 +275,8 @@ def _checkpoint_call(factory,run_id):
                 raise RuntimeError("Concurrent stage checkpoint update detected")
             existing.append({"stage":stage,"prompt_sha256":fingerprint,
                              "response":response,"usage":usage,"model":model,
-                             "provider_attempts":provider_attempts})
+                             "provider_attempts":provider_attempts,
+                             "response_mode":("plain_text" if provider_attempts>1 else "json_object")})
             row.checkpoints_json=dump(existing)
             row.stage=stage
             row.calls+=1
