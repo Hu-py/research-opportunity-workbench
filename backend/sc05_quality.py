@@ -23,6 +23,9 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     unlinked=sum(1 for x in literature if x.get("diagnosis_link_status")=="unlinked")
     discarded_relations=sum(int(x.get("discarded_unexplained_relations") or 0) for x in literature)
     unverified_quotes=sum(1 for x in literature if x.get("evidence_status")=="quote_unverified")
+    relevance_audit=record.get("search_relevance_audit") or {}
+    prior_audit=record.get("prior_reference_audit") or {}
+    eligible_prior_ids=set(prior_audit.get("minimum_evidence_eligible_paper_ids",[]))
     relation_counts={
         relation:sum(
             1 for item in literature
@@ -75,8 +78,18 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         flags.append(str(unlinked)+" 篇文献暂未关联到具体诊断；不作为诊断关联证据")
     if unverified_quotes:
         flags.append(str(unverified_quotes)+" 篇文献的摘要引文未通过逐字核验；不作为已核验摘要证据")
+    if relevance_audit.get("quarantined",0):
+        flags.append(str(relevance_audit["quarantined"])+
+                     " 篇候选文献未通过研究领域/摘要筛选，已隔离且不作为直接先例")
+    if relevance_audit.get("source_domain")=="unresolved":
+        flags.append("原文领域无法可靠识别；保留候选检索但不得确认最近先例")
+    if prior_audit.get("removed_reference_count",0):
+        flags.append(str(prior_audit["removed_reference_count"])+
+                     " 条模型宣称的最近先例缺少同领域摘要与直接机制关联核验，已撤销引用")
     if routes and routes_with_checked_nearest<len(routes):
         flags.append("部分研究路线缺少经过摘要核验的近邻研究")
+    if routes and not routes_with_nearest:
+        flags.append("无任何可证实直接机制关联的最近候选论文；不得据此宣称研究空白")
     if routes and not record.get("external_papers"):
         flags.append("候选路线尚无外部文献证据，必须保持探索性")
     if any(x.get("verdict")=="test" for x in reviews) and (
@@ -95,6 +108,11 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "unknown_model_confidence_labels":unknown_model_confidences,
         "falsifiable_diagnoses":falsifiable,
         "external_papers":len(papers),
+        "external_candidates_before_domain_screen":relevance_audit.get("retrieved",len(papers)),
+        "quarantined_out_of_domain_or_abstract_missing":relevance_audit.get("quarantined",0),
+        "source_domain":relevance_audit.get("source_domain","unresolved"),
+        "minimum_evidence_prior_papers":len(eligible_prior_ids),
+        "revoked_nearest_prior_references":prior_audit.get("removed_reference_count",0),
         "literature_assessments":len(literature),
         "abstract_checked_papers":len(checked),
         "unlinked_literature_assessments":unlinked,

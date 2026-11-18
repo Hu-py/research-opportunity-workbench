@@ -625,3 +625,55 @@ def test_scientific_route_screen_fails_on_missing_json_structure():
     from backend.sc05_paper_only import screen_scientific_route_refs
     with pytest.raises(EvidenceError,match="routes must be a list"):
         screen_scientific_route_refs({"routes":None},{"scientific_questions":[]})
+
+
+def test_paper_pipeline_quarantines_cross_domain_hit_and_never_calls_it_nearest(monkeypatch,tmp_path):
+    """Offline end-to-end: exact abstract alone never proves a scientific neighbor."""
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"test-sha-123"))
+    rejected={
+        "id":"doi:10.1000/metaphysics","title":"Metaphysics of Narrative Forms",
+        "doi":"10.1000/metaphysics","url":"https://doi.org/10.1000/metaphysics",
+        "abstract":"This article studies philosophy of language and poetic form.",
+        "published":"2026-02-01","venue":"Journal of Ontology",
+    }
+    def mixed_provider(query,since,limit=7):
+        assert "early warning" in query
+        return [PAPER,rejected]
+    report,record=run_paper(tmp_path/"published.pdf","not-a-real-key",
+        model_call=model_mock,search_provider=mixed_provider,max_calls=8)
+    assert record["source_domain_profile"]["code"]=="urban_transport"
+    assert record["search_relevance_audit"]["retrieved"]==2
+    assert record["search_relevance_audit"]["quarantined"]==1
+    assert record["external_papers"][0]["id"]==PAPER["id"]
+    assert len(record["external_papers"])==1
+    # Existing V1 mock yields only an indirect/legacy relation. It must not
+    # silently satisfy the newly stricter nearest-paper conditions.
+    assert record["routes"][0]["closest_paper_ids"]==[]
+    assert record["prior_reference_audit"]["removed_reference_count"]==1
+    assert record["quality"]["revoked_nearest_prior_references"]==1
+    assert record["quality"]["quarantined_out_of_domain_or_abstract_missing"]==1
+    assert "无经过同领域" in report
+    assert rejected["title"] not in report
+
+
+def test_sc05_default_openalex_call_enables_relevance_sort_without_extra_requests(monkeypatch):
+    import research_workbench.core as core
+    from backend.sc05_paper_only import openalex_search
+    from backend.sc05_relevance import infer_source_domain
+    requests=[]
+    def fake(query,since,limit=7,*,sort_by_relevance=False,require_abstract=False):
+        requests.append({"query":query,"since":since,"limit":limit,
+                         "sort_by_relevance":sort_by_relevance,
+                         "require_abstract":require_abstract})
+        return []
+    monkeypatch.setattr(core,"query_openalex",fake)
+    profile=infer_source_domain(PAGES)
+    papers,errors=openalex_search(
+        [{"query":"network disruption response"}],
+        source_profile=profile)
+    assert papers==[] and errors==[]
+    assert len(requests)==1
+    assert requests[0]["sort_by_relevance"] is True
+    assert requests[0]["require_abstract"] is True
+    assert requests[0]["since"]=="2020-01-01"
