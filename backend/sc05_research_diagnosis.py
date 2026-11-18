@@ -210,10 +210,11 @@ def validate_diagnosis(raw: dict[str, Any], snapshot: dict[str, Any]) -> dict[st
         # scientific meaning, not on a harmless novel wording. Unknown labels
         # are never upgraded to observed facts or confident hypotheses. Retain
         # raw values and explicit downgrade flags for the scientific audit.
-        unknown_status = status not in STATUSES
-        unknown_category = category not in ISSUE_CLASSES
+        unknown_status = not isinstance(status, str) or status not in STATUSES
+        unknown_category = not isinstance(category, str) or category not in ISSUE_CLASSES
         unknown_confidence = (
-            raw_confidence is not None and raw_confidence not in CONFIDENCES)
+            raw_confidence is not None and
+            (not isinstance(raw_confidence, str) or raw_confidence not in CONFIDENCES))
         if unknown_status:
             status = "unknown"
         if unknown_category:
