@@ -1,0 +1,189 @@
+{
+  "schema_version": "sc05-r66-benchmark-v0.1",
+  "snapshot_status": "provisional_silver_not_gold",
+  "registered_at_utc": "2026-11-18",
+  "baseline_round": "R6.4.5",
+  "evaluation_round": "R6.6",
+  "purpose": "Evaluate retrieval relevance and traceability on a new published transit-network paper without DeepSeek calls. Single-reviewer initial labels require second adjudication before science-quality inference.",
+  "heldout_source": {
+    "doi": "10.1038/s41598-026-67177-7",
+    "title": "Quantifying temporal vulnerability of urban multi-modal transit networks under interdependent cascading failures",
+    "published": "2026-09-16",
+    "publication": "Scientific Reports",
+    "article_url": "https://www.nature.com/articles/s41598-026-67177-7",
+    "source_field": "urban_transport",
+    "selection": "selected_after_R6.5_fixes_before_R6.6_measurement",
+    "previous_ab_source_is_different": true,
+    "model_execution_uploaded": false,
+    "source_summary_for_domain_context": "Urban multi-modal transit network vulnerability; subway and bus passenger flow redistribution, station capacity, and coupled cascading failures after disruption."
+  },
+  "label_definitions": {
+    "direct_near": "Domain-matched original research directly studies transit-network disruption, flow redistribution, operational resilience or capacity effects; not automatically a verified novelty-killing paper.",
+    "domain_context": "Same transportation field but review/background instead of directly tested competing mechanism.",
+    "method_transfer": "Potentially transferable analytical method from a different field; requires explicit input/output bridge and human review before use.",
+    "unrelated": "Not an evidenced urban transport scientific neighbor; should be quarantined from direct-prior claims.",
+    "source_self": "Held-out source itself; never an independent prior work."
+  },
+  "evaluation_limits": {
+    "not_for_novelty_certification": true,
+    "not_for_training_or_prompt_tuning": true,
+    "initial_labels_are_not_blind": true,
+    "second_reviewer_required_for_gold": true,
+    "input_policy": "Publisher-verified DOI and title only. The live benchmark reconstructs real OpenAlex abstracts in memory; report stores hashes, metadata and aggregate metrics, not raw abstracts or PDFs.",
+    "as_of": "2026-09-16",
+    "model_calls_allowed": 0,
+    "openalex_requests_max": 16
+  },
+  "items": [
+    {
+      "id": "R66-01",
+      "doi": "10.1016/j.commtr.2025.100177",
+      "title": "Urban rail transit resilience under different operation schemes: A percolation-based approach",
+      "year": 2025,
+      "label": "direct_near",
+      "publisher_url": "https://doi.org/10.1016/j.commtr.2025.100177",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Rail percolation, operation schemes and resilience thresholds explicitly overlap the held-out paper's transit capacity/cascade mechanism."
+    },
+    {
+      "id": "R66-02",
+      "doi": "10.1016/j.trd.2024.104587",
+      "title": "Resilience assessment of an urban rail transit network under natural disasters",
+      "year": 2025,
+      "label": "direct_near",
+      "publisher_url": "https://doi.org/10.1016/j.trd.2024.104587",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Train-schedule-based rail resilience under disaster disruptions is a substantive adjacent transit mechanism."
+    },
+    {
+      "id": "R66-03",
+      "doi": "10.1016/j.trd.2024.104263",
+      "title": "Assessing flood resilience of urban rail transit systems: Complex network modelling and stress testing in a case study of London",
+      "year": 2024,
+      "label": "direct_near",
+      "publisher_url": "https://doi.org/10.1016/j.trd.2024.104263",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Dynamic rail service loss under floods and recovery modelling directly relates to transit disruption and network resilience."
+    },
+    {
+      "id": "R66-04",
+      "doi": "10.1007/s42524-023-0291-z",
+      "title": "Urban rail transit disruption management: Research progress and future directions",
+      "year": 2024,
+      "label": "domain_context",
+      "publisher_url": "https://doi.org/10.1007/s42524-023-0291-z",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Sector review supplies background on disruption management but is not by itself a directly tested competing mechanism."
+    },
+    {
+      "id": "R66-05",
+      "doi": "10.1080/01441647.2024.2322434",
+      "title": "Assessing transport network resilience: empirical insights from real-world data studies",
+      "year": 2024,
+      "label": "domain_context",
+      "publisher_url": "https://doi.org/10.1080/01441647.2024.2322434",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Empirical transport resilience review; relevant context, not a direct mechanism-specific nearest experiment."
+    },
+    {
+      "id": "R66-06",
+      "doi": "10.1038/s41467-025-63001-4",
+      "title": "A small set of critical hyper-motifs governs heterogeneous flow-weighted network resilience",
+      "year": 2025,
+      "label": "method_transfer",
+      "publisher_url": "https://doi.org/10.1038/s41467-025-63001-4",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "General flow-weighted network motifs may transfer as a method, but application to this transit system is unverified."
+    },
+    {
+      "id": "R66-07",
+      "doi": "10.1038/s42005-024-01664-z",
+      "title": "Dimension reduction approach for understanding resource-flow resilience to climate change",
+      "year": 2024,
+      "label": "method_transfer",
+      "publisher_url": "https://doi.org/10.1038/s42005-024-01664-z",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Low-dimensional infrastructure-flow framework could inspire method transfer, not direct transit precedent."
+    },
+    {
+      "id": "R66-08",
+      "doi": "10.1038/s41598-024-66654-1",
+      "title": "Measuring system resilience through a comparison of information- and flow-based network analyses",
+      "year": 2024,
+      "label": "method_transfer",
+      "publisher_url": "https://doi.org/10.1038/s41598-024-66654-1",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Information/flow network comparison may be transferable after cross-domain assumptions are examined."
+    },
+    {
+      "id": "R66-09",
+      "doi": "10.1038/s41598-024-54104-x",
+      "title": "The connectivity indices concept of neutrosophic graph and their application of computer network, highway system and transport network flow",
+      "year": 2024,
+      "label": "method_transfer",
+      "publisher_url": "https://doi.org/10.1038/s41598-024-54104-x",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Abstract mathematical connectivity indices include transport examples; no verified metro capacity/cascading mechanism."
+    },
+    {
+      "id": "R66-10",
+      "doi": "10.1038/s42003-023-05622-3",
+      "title": "Network-based restoration strategies maximize ecosystem recovery",
+      "year": 2023,
+      "label": "method_transfer",
+      "publisher_url": "https://doi.org/10.1038/s42003-023-05622-3",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Ecological recovery prioritization could be a cross-domain intervention analogy, not rail prior work."
+    },
+    {
+      "id": "R66-11",
+      "doi": "10.1038/s41467-021-27534-8",
+      "title": "Network-driven anomalous transport is a fundamental component of brain microvascular dysfunction",
+      "year": 2021,
+      "label": "unrelated",
+      "publisher_url": "https://doi.org/10.1038/s41467-021-27534-8",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Microvascular circulation uses transport-network terminology but studies different physical phenomena."
+    },
+    {
+      "id": "R66-12",
+      "doi": "10.1038/s42003-024-05784-8",
+      "title": "Adaptive rewiring shapes structure and stability in a three-guild herbivore-plant-pollinator network",
+      "year": 2024,
+      "label": "unrelated",
+      "publisher_url": "https://doi.org/10.1038/s42003-024-05784-8",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Pollinator and herbivore ecological interaction dynamics should not be treated as transit cascade prior work."
+    },
+    {
+      "id": "R66-13",
+      "doi": "10.1038/s43016-023-00889-5",
+      "title": "Decreasing resilience of China's coupled nitrogen–phosphorus cycling network requires urgent action",
+      "year": 2024,
+      "label": "unrelated",
+      "publisher_url": "https://doi.org/10.1038/s43016-023-00889-5",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Chemical nutrient cycling and food-system resilience are not validated metro network mechanistic priors."
+    },
+    {
+      "id": "R66-14",
+      "doi": "10.1038/s41598-025-29955-7",
+      "title": "Research on the resilience of ecological networks from the perspective of ecological security pattern: a case study of Wuhan metropolitan area",
+      "year": 2025,
+      "label": "unrelated",
+      "publisher_url": "https://doi.org/10.1038/s41598-025-29955-7",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "Metropolitan ecological landscape networks create a strong urban lexical confounder but not a rail transit model."
+    },
+    {
+      "id": "R66-15",
+      "doi": "10.1038/s41598-026-67177-7",
+      "title": "Quantifying temporal vulnerability of urban multi-modal transit networks under interdependent cascading failures",
+      "year": 2026,
+      "label": "source_self",
+      "publisher_url": "https://doi.org/10.1038/s41598-026-67177-7",
+      "annotation_status": "provisional_single_reviewer_from_publisher_page",
+      "reviewer_rationale": "This is the held-out benchmark source; it must not appear as an independent prior candidate."
+    }
+  ]
+}
