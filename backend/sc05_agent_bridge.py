@@ -394,8 +394,23 @@ def pair_preflight(db,owner,pair_id):
             next_action="review_gate"
             reason="The gate-on arm is not safe to submit; inspect its saved checkpoints and error."
     else:
-        next_action="blind_review"
-        reason="Both real A/B runs are complete. Retrieve anonymized reports, score them blindly, then unblind."
+        rating_ids=db.scalars(select(SC05Rating.run_id).where(
+            SC05Rating.member_id==owner.id,
+            SC05Rating.run_id.in_([baseline.id,gated.id])
+        )).all()
+        if len(set(rating_ids))<2:
+            next_action="blind_review"
+            reason="Both real A/B runs are complete. Score the two anonymized reports before unblinding."
+        else:
+            unblinded=db.scalar(select(AuditEntry.id).where(
+                AuditEntry.actor_id==owner.id,
+                AuditEntry.action=="sc05.ab_unblinded",
+                AuditEntry.target==pair_id
+            ).limit(1)) is not None
+            next_action="complete" if unblinded else "compare_ab_pair"
+            reason=("Both blind scores and unblinding are complete."
+                    if unblinded else
+                    "Two blind scores exist; unblind and compare the completed pair.")
     if baseline.status=="completed" and gated.status=="completed":
         pair_status="completed"
     elif any(row.status=="failed" for row in (baseline,gated)):
