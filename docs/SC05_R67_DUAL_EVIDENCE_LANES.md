@@ -27,7 +27,7 @@ retrieved papers → 现有领域与摘要筛选 → 论文-诊断关联审核 �
 
 **B / 跨领域方法（method-transfer lane）**
 
-检索候选中未通过领域匹配者 → 必须有真实摘要和明确、非泛化的算法/统计方法名称 → 候选队列，状态 unreviewed_method_candidate。
+检索候选中未通过领域匹配者 → 必须有真实摘要和明确、非泛化的算法/统计方法名称 → 候选队列，状态 unreviewed_method_candidate。查询阶段依据原有 need 字段区分：need=method 的搜索不追加源学科锚点，其余 theory/counterexample/validation 继续添加源领域锚点。最多7条检索请求，不增加 OpenAlex 请求数量。检索结果的领域与证据资格仍独立判断，不因检索意图自动认定可迁移。
 
 现有 research_redesign 模型调用可**选择性**提出方法迁移提案，但需要具体 route_id 与原 DOI/paper_id、源输入、目标输入、源输出、目标输出、关键不变性假设、最小对比实验、否证与终止条件，并逐字引用来源摘要作为最低证据。这些字段由确定性验证器检查：
 - 不存在的论文/路线 ID、空洞映射、假摘要都被拒绝并计入审计；
