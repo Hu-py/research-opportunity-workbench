@@ -579,6 +579,7 @@ def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace):
     res=call(client,access,"tools/call",{
         "name":"get_ab_pair_status","arguments":{"pair_id":pair_id}})
     assert res.status_code==200
+    assert json.loads(res.json()["result"]["content"][0]["text"])["next_action"]=="complete"
     listed=call(client,access,"tools/call",{
         "name":"list_experiment_rounds","arguments":{}})
     assert listed.json()["result"]["isError"] is False
