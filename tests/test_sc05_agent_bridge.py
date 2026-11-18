@@ -525,7 +525,7 @@ def test_cached_openalex_startup_probe_available_via_old_read_only_mcp_shape(wor
     assert "redacted-test-key" not in json.dumps(data)
 
 
-def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace):
+def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace,monkeypatch):
     """A completed scored/unblinded pair must not erase custom next steps."""
     from backend.sc05_agent_bridge import SC05ExperimentRound
     from backend.sc05_eval_api import SC05Case, SC05Rating
