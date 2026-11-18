@@ -535,6 +535,7 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
         # V2 represents relations per diagnosis: one paper can support D01
         # directly and challenge D02 as a counterexample.
         links=[]
+        discarded_unexplained=0
         if isinstance(item.get("diagnosis_links"),list):
             raw_links=item.get("diagnosis_links")
             if len(raw_links)>10:
@@ -552,9 +553,15 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
                 relation_type=link.get("relation_type")
                 if relation_type not in relation_types:
                     raise EvidenceError("Invalid literature relation type")
-                explanation=_limited(
-                    link.get("relation_explanation"),
-                    "literature relation explanation",700)
+                explanation=link.get("relation_explanation")
+                # A missing, blank, non-string or overlong explanation cannot
+                # establish ANY relation to a diagnosis. Drop that link and
+                # retain an audit count, never invent a replacement rationale.
+                if (not isinstance(explanation,str) or not explanation.strip()
+                    or len(explanation.strip())>700):
+                    discarded_unexplained+=1
+                    continue
+                explanation=explanation.strip()
                 links.append({
                     "diagnosis_id":diagnosis_id,
                     "relation_type":relation_type,
@@ -566,6 +573,8 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
                 # Missing or empty links never trigger a fabricated association.
                 reason=item.get("unlinked_reason")
                 unlinked_reason=(
+                    "模型提供的关系缺少可核验的解释；相关关联已丢弃。"
+                    if discarded_unexplained else
                     _limited(reason,"unlinked literature reason",500)
                     if isinstance(reason,str) and reason.strip()
                     else "模型未提供可核验的诊断关联；暂不推断关联。"
@@ -624,6 +633,7 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
                 link["relation_type"] for link in links)),
             "diagnosis_link_status":"linked" if links else "unlinked",
             "unlinked_reason":unlinked_reason,
+            "discarded_unexplained_relations":discarded_unexplained,
             "tested_problem":_limited(item.get("tested_problem"),"tested_problem"),
             "method":_limited(item.get("method"),"paper method"),
             "relevance":item["relevance"],
