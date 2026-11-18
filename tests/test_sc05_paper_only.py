@@ -677,3 +677,58 @@ def test_sc05_default_openalex_call_enables_relevance_sort_without_extra_request
     assert requests[0]["sort_by_relevance"] is True
     assert requests[0]["require_abstract"] is True
     assert requests[0]["since"]=="2020-01-01"
+
+
+def test_dual_lane_paper_run_uses_existing_stages_with_unapproved_transfer(monkeypatch,tmp_path):
+    """Method migration ideas never become near priors and add zero model calls."""
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"dual-lane-sha"))
+    cross = {
+        "id":"fixture:wildfire-method",
+        "doi":"fixture/wildfire-method",
+        "title":"Graph neural network forecast of wildfire hazard",
+        "url":"https://example.org/synthetic/wildfire",
+        "abstract":("A graph neural network maps ecological observations to predicted "
+                    "wildfire hazard under changing weather patterns."),
+        "published":"2025-01-01",
+        "venue":"Synthetic fixtures, not a published article",
+    }
+    mock_calls=[]
+    def guarded_mock(key,model,system,payload,max_tokens=3000):
+        stage=payload["sc05_stage"]
+        mock_calls.append(stage)
+        if stage=="research_redesign":
+            lead=payload["method_transfer_candidates"]
+            assert len(lead)==1
+            assert lead[0]["id"]==cross["id"]
+            assert "method_transfer_proposals" in payload["required_json_shape"]
+        returned,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if stage=="research_redesign":
+            from tests.test_sc05_method_transfer import valid_bridge
+            returned["method_transfer_proposals"]=[
+                valid_bridge(cross["id"],
+                "A graph neural network maps ecological observations")
+            ]
+        return returned,usage
+    def two_paper_provider(query,since,limit=7):
+        assert "early warning" in query
+        return [PAPER,cross]
+    report,record=run_paper(
+        tmp_path/"dual-lane.pdf","not-a-real-key",
+        model_call=guarded_mock,search_provider=two_paper_provider,max_calls=8)
+    assert len(mock_calls)==len(record["usage"])==8
+    assert len(record["external_papers"])==1
+    assert record["external_papers"][0]["id"]==PAPER["id"]
+    assert len(record["method_transfer_leads"])==1
+    assert record["method_transfer_leads"][0]["id"]==cross["id"]
+    assert record["method_transfer_leads"][0]["eligible_for_nearest_prior"] is False
+    assert len(record["method_transfer_bridges"])==1
+    assert record["method_transfer_bridges"][0]["approved"] is False
+    assert record["method_bridge_audit"]["human_approved"]==0
+    assert record["routes"][0]["closest_paper_ids"]==[]
+    assert record["quality"]["method_transfer_leads"]==1
+    assert record["quality"]["method_transfer_bridges_proposed"]==1
+    assert "跨领域方法迁移候选" in report
+    assert cross["url"] in report
+    assert "未经人工批准" in report
+    assert "not-a-real-key" not in json.dumps(record)
