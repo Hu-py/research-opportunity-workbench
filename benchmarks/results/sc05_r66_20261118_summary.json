@@ -20,6 +20,20 @@
       "source": "github_push",
       "openalex_requests": 15,
       "deepseek_calls": 0
+    },
+    {
+      "action_run_id": 44332784187,
+      "artifact_id": 14439862124,
+      "source": "github_pull_request_document_update",
+      "openalex_requests": 15,
+      "deepseek_calls": 0
+    },
+    {
+      "action_run_id": 44332939106,
+      "artifact_id": 14440990333,
+      "source": "github_pull_request_document_update",
+      "openalex_requests": 15,
+      "deepseek_calls": 0
     }
   ],
   "reproducibility": {
@@ -28,7 +42,11 @@
     "missing_abstract_doi": "10.1016/j.trd.2024.104587",
     "api_key_in_github_actions": false,
     "unverified_external_paper_citation_count": 0,
-    "no_raw_abstracts_or_pdfs_stored": true
+    "no_raw_abstracts_or_pdfs_stored": true,
+    "result_metrics_identical_in_four_runs": true,
+    "per_doi_screen_decisions_identical_in_four_runs": true,
+    "duplicate_run_trigger_corrected": true,
+    "total_provider_requests_recorded": 60
   },
   "counts": {
     "manifest_dois": 15,
@@ -75,7 +93,8 @@
     "It also admits 3 of 5 method-transfer candidates as domain candidates; same-domain candidate precision is low in this selected silver set.",
     "Unavailable OpenAlex abstract for 1 truly related article prevents complete-source inference; not a wrong DOI or evidence of research absence.",
     "Automated downstream nearest-prior semantic validation and true cross-paper scientific value are untested.",
-    "The silver benchmark is small and one-reviewer-labeled, cannot establish broad accuracy or causal gains over the prior version."
+    "The silver benchmark is small and one-reviewer-labeled, cannot establish broad accuracy or causal gains over the prior version.",
+    "Four bounded live PR/push runs executed due initial workflow trigger configuration, all returned the same incomplete coverage and candidate decisions; triggers were narrowed to avoid repeated PR-update queries."
   ],
   "next_decisions": [
     "Do not retune and rescore this same silver set as a fresh held-out test.",
