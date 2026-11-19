@@ -113,3 +113,13 @@ def test_method_with_domain_words_is_flagged_for_human_review_not_certified():
         for x in r["needs_human_adjudication"]
     )
     assert r["metrics_provisional_not_gold"]["closest_prior_semantic_accuracy"] is None
+
+
+def test_real_32_doi_manifest_is_valid_and_does_not_overlap_r66():
+    m = load_dev(Path("benchmarks/sc05_r67_real_dev_v01.json"))
+    assert len(m["items"]) == 32
+    assert {x["initial_label"] for x in m["items"]} == {
+        "domain_near", "domain_context", "method_transfer", "lexical_negative"}
+    assert m["label_status"] == "ai_assisted_provisional_not_gold"
+    assert any("2023WR" in x["doi"] for x in m["items"])
+    assert all(x["human_reviewer_status"] == "not_assigned" for x in m["items"])
