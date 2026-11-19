@@ -858,7 +858,13 @@ def _markdown(result: dict) -> str:
           "；**需要补齐的规划期刊通道**："+(
               "、".join(program_audit.get("planning_venue_gaps",[])) or "无（不代表机制查新完成）"),
           "研究路线的原模型test/hold/reject不代表已达到投稿论文标准。", ""]
+    query_audit=result.get("search_query_audit",{})
     buf+=["## 5. 问题驱动的外部证据与近邻工作", "",
+          "**检索过滤状态**："+
+          ("部分来源仍只能结果后筛选（期刊ID未解析："+",".join(
+              query_audit.get("unfiltered_fallback_tiers",[]))+"）"
+           if query_audit.get("unfiltered_fallback_tiers")
+           else "已对所用检索来源请求配置OpenAlex期刊ID约束（仍须核对返回元数据）"),
           "**来源政策**："+src_audit.get("policy_version","未提供")+
           "；A=城市规划场景（Cities/SCS），B=城市科学前沿（EPB/CEUS），"
           "C=经核准的计算机方法，D=研究领域直接先例。"
