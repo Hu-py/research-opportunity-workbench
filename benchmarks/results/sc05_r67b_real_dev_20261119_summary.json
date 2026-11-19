@@ -1,0 +1,106 @@
+{
+  "schema_version": "sc05-r67-real-dev-run-summary-v0.1",
+  "round_code": "R6.7-B",
+  "executed_utc": "2026-11-19",
+  "source_repo": "Hu-py/research-opportunity-workbench",
+  "manifest": "benchmarks/sc05_r67_real_dev_v01.json",
+  "initial_labels": "ai_assisted_provisional_not_gold",
+  "reviewer_B_status": "not_submitted",
+  "workflow_run": "https://github.com/Hu-py/research-opportunity-workbench/actions/runs/44447434583",
+  "artifact_id": 14493448130,
+  "prior_attempts": [
+    {
+      "id": 44447087176,
+      "status": "offline_test_failed",
+      "calls_openalex": 0,
+      "cause": "synthetic duplicate DOI fixture failed canonical link check"
+    },
+    {
+      "id": 44447220215,
+      "status": "live_preflight_blocked",
+      "calls_openalex": 0,
+      "cause": "source DOI mixed case incorrectly rejected by URL equality check"
+    }
+  ],
+  "current_run": {
+    "id": 44447434583,
+    "workflow_conclusion": "success",
+    "live_step_outcome": "failure_expected_due_to_strict_coverage",
+    "report_status": "partial_provider_coverage",
+    "openalex_http_requests": 32,
+    "deepseek_model_calls": 0
+  },
+  "data": {
+    "manifest_total": 32,
+    "resolved": 23,
+    "unresolved": 9,
+    "by_provisional_category": {
+      "domain_near": {
+        "total": 9,
+        "resolved": 3
+      },
+      "domain_context": {
+        "total": 5,
+        "resolved": 3
+      },
+      "method_transfer": {
+        "total": 9,
+        "resolved": 9
+      },
+      "lexical_negative": {
+        "total": 9,
+        "resolved": 8
+      }
+    }
+  },
+  "metrics_on_23_resolved_only": {
+    "openalex_coverage": 0.7188,
+    "same_domain_candidate_recall": 1,
+    "same_domain_candidate_precision": 0.8571,
+    "method_lead_recall": 0.4444,
+    "method_in_domain_leakage": 0.1111,
+    "unrelated_admission_rate": 0,
+    "human_approved_transfers": 0,
+    "actual_deepseek_calls": 0,
+    "closest_prior_semantic_accuracy": null,
+    "scientific_novelty_certified": false
+  },
+  "diagnostic_counts": {
+    "same_domain_candidates_resolved": 6,
+    "same_domain_candidates_kept": 6,
+    "domain_candidate_pool": 7,
+    "provisional_method_candidates_resolved": 9,
+    "method_leads_correctly_selected": 4,
+    "method_candidates_in_wrong_domain_lane": 1,
+    "method_candidates_not_recovered_as_any_lead": 4,
+    "lexical_negatives_resolved": 8,
+    "lexical_negatives_admitted": 0,
+    "needs_human_adjudication_count": 5
+  },
+  "unresolved_dois": [
+    "10.1016/j.physa.2026.131730",
+    "10.1016/j.physa.2025.131119",
+    "10.1016/j.aap.2025.108042",
+    "10.1016/j.physa.2026.131368",
+    "10.1016/j.tra.2024.104077",
+    "10.1016/j.tra.2023.103907",
+    "10.1016/j.jtrangeo.2025.104420",
+    "10.1007/s12469-024-00385-4",
+    "10.1038/s41583-024-00802-4"
+  ],
+  "limitations": [
+    "One reviewer AI-assisted provisional labels, not independent human gold.",
+    "Metadata coverage only 23/32; rates based on resolved items.",
+    "Curated DOI retrieval is not topic-search recall and not a generalization test.",
+    "Method lane only emits unapproved candidates, never certifies implementation feasibility.",
+    "Different R6.6 versus R6.7 corpus and code; direct numerical comparisons cannot establish improvement.",
+    "Workflow green because partial live step is nonblocking; exact live report status remains partial_provider_coverage."
+  ],
+  "next_actions": [
+    "Human reviewer B independently labels 32 DOI publisher abstracts in blank worksheet without seeing model decisions.",
+    "Resolve nine provider-unresolved DOIs using verified sources or document limits; do not fabricate abstracts.",
+    "After human review, decide whether current method vocabulary misses transfer techniques and form distinct new code policy version.",
+    "Freeze a brand-new held-out DOI/test-paper set before claiming accuracy change or scientific-quality gains.",
+    "Owner MCP issue #113 must be resolved before R6.7-B PostgreSQL ledger can be read back."
+  ]
+}
