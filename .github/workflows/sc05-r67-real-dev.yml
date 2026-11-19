@@ -10,6 +10,7 @@ on:
     paths:
       - 'benchmarks/sc05_r67_real_dev_v01.json'
       - 'benchmarks/sc05_r67_one_retry_20261119.trigger'
+      - 'benchmarks/sc05_r67_doi_casefix_retry_20261119.trigger'
 
 permissions:
   contents: read
@@ -55,6 +56,15 @@ jobs:
               else:
                   r=json.loads(file.read_text(encoding="utf-8"))
                   metrics=r["metrics_provisional_not_gold"]
+                  # Aggregate-only output can be retrieved from GitHub job logs
+                  # without exposing copyrighted abstracts or an API credential.
+                  print("SC05_R67_SAFE_METRICS="+json.dumps({
+                      "status":r["evaluation_status"],
+                      "counts":r["counts"],
+                      "metrics":metrics,
+                      "unresolved_dois":r["unresolved_dois"],
+                      "needs_human_adjudication_count":len(r["needs_human_adjudication"]),
+                  },sort_keys=True,separators=(",",":")))
                   f.write("Evaluation status: "+r["evaluation_status"]+"\n\n")
                   f.write("Records resolved: "+str(r["counts"]["resolved"])+"/"+str(r["counts"]["manifest"])+"\n\n")
                   f.write("Development labels: AI-assisted provisional; independent reviewers: none.\n\n")
