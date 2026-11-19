@@ -29,6 +29,8 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     transfer_bridges=record.get("method_transfer_bridges") or []
     transfer_audit=record.get("method_transfer_audit") or {}
     method_bridge_audit=record.get("method_bridge_audit") or {}
+    source_audit=record.get("source_policy_audit") or {}
+    research_program_audit=record.get("research_program_audit") or {}
     eligible_prior_ids=set(prior_audit.get("minimum_evidence_eligible_paper_ids",[]))
     relation_counts={
         relation:sum(
@@ -90,6 +92,23 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     if prior_audit.get("removed_reference_count",0):
         flags.append(str(prior_audit["removed_reference_count"])+
                      " 条模型宣称的最近先例缺少同领域摘要与直接机制关联核验，已撤销引用")
+    if source_audit:
+        if source_audit.get("unlisted_or_unverified_count",0):
+            flags.append(str(source_audit["unlisted_or_unverified_count"])+
+                         " 条检索结果不在已批准来源目录或来源缺失，隔离为待审核候选")
+        if source_audit.get("uncovered_planning_streams"):
+            flags.append("缺乏A/B规划场景或城市科学期刊的可用直接证据："+",".join(
+                         source_audit["uncovered_planning_streams"])+
+                         "；不可自动声称城市规划贡献已查新")
+    if research_program_audit:
+        incomplete=[
+            x for x in research_program_audit.get("routes",[])
+            if x["editorial_status"]!="provisional_independent_study_for_human_review"
+        ]
+        if incomplete:
+            flags.append(str(len(incomplete))+
+                         " 条路线尚不足以作为独立城市系统科研论文推荐；"
+                         "模型test判定不可代替论文尺度、近邻证据和治理贡献审核")
     if transfer_leads:
         flags.append(str(len(transfer_leads))+
                      " 条跨领域方法线索已分离为独立通道，未经审核，不能自动作为最近科学先例")
@@ -124,6 +143,15 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "external_candidates_before_domain_screen":relevance_audit.get("retrieved",len(papers)),
         "quarantined_out_of_domain_or_abstract_missing":relevance_audit.get("quarantined",0),
         "source_domain":relevance_audit.get("source_domain","unresolved"),
+        "source_catalog_version":source_audit.get("policy_version"),
+        "source_catalog_candidate_counts":source_audit.get("metadata_classified",{}),
+        "source_catalog_excluded":source_audit.get("unlisted_or_unverified_count",0),
+        "planning_stream_gaps":source_audit.get("uncovered_planning_streams",[]),
+        "independent_study_candidates_for_human_review":research_program_audit.get(
+            "recommended_for_human_independent_study_review",0),
+        "independent_study_proposals_structurally_complete":research_program_audit.get(
+            "possible_independent_study_proposals",0),
+        "research_program_review_required":bool(research_program_audit),
         "minimum_evidence_prior_papers":len(eligible_prior_ids),
         "revoked_nearest_prior_references":prior_audit.get("removed_reference_count",0),
         "method_transfer_leads":len(transfer_leads),
