@@ -9,6 +9,7 @@ on:
       - 'eval/sc05-r67-real-dev-literature-20261119'
     paths:
       - 'benchmarks/sc05_r67_real_dev_v01.json'
+      - 'benchmarks/sc05_r67_one_retry_20261119.trigger'
 
 permissions:
   contents: read
