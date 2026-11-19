@@ -46,6 +46,7 @@ def collect_transfer_leads(
     screen_audit: dict[str, Any],
     *,
     max_leads: int = 6,
+    forced_technical_ids: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Create a separate, unapproved method lane from domain-screen rejects.
 
@@ -60,6 +61,7 @@ def collect_transfer_leads(
         r.get("paper_id"): r.get("reason")
         for r in screen_audit.get("quarantined_records", [])
     }
+    forced_technical_ids = forced_technical_ids or set()
     leads: list[dict[str, Any]] = []
     considered = 0
     weak_only = 0
@@ -68,8 +70,14 @@ def collect_transfer_leads(
         pid = str(paper.get("id") or "")
         if not pid or pid in accepted_ids:
             continue
-        reason = rejected.get(pid, "")
-        if reason != "out_of_domain_or_unsupported_transfer":
+        reason = (
+            "curated_C_technical_method_not_domain_prior"
+            if pid in forced_technical_ids else rejected.get(pid, "")
+        )
+        if reason not in {
+            "out_of_domain_or_unsupported_transfer",
+            "curated_C_technical_method_not_domain_prior",
+        }:
             continue
         considered += 1
         abstract = _clean_text(paper.get("abstract"), length=2200)
@@ -96,6 +104,7 @@ def collect_transfer_leads(
             "url": url,
             "year": _clean_text(paper.get("year"), length=10),
             "venue": _clean_text(paper.get("venue"), length=200),
+            "source_tier": _clean_text(paper.get("source_tier"), length=20),
             "abstract": abstract[:1250],
             "method_signals": strong[:6],
             "review_status": "unreviewed_method_candidate",
