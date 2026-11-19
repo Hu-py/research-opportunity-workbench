@@ -70,6 +70,13 @@ def collect_transfer_leads(
         pid = str(paper.get("id") or "")
         if not pid or pid in accepted_ids:
             continue
+        # Never reintroduce the source article or missing-abstract item as
+        # an 'external method' merely because it belongs to an approved C venue.
+        if rejected.get(pid) in {
+            "source_paper_not_independent_prior",
+            "abstract_absent_cannot_verify",
+        }:
+            continue
         reason = (
             "curated_C_technical_method_not_domain_prior"
             if pid in forced_technical_ids else rejected.get(pid, "")
