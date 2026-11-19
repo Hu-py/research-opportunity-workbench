@@ -116,3 +116,51 @@ def test_without_both_planning_venues_even_full_text_cannot_be_promoted():
     assert audit["recommended_for_human_independent_study_review"]==0
     assert "planning_A_B_evidence_coverage_incomplete" in audit["routes"][0]["cautions"]
     assert not audit["routes"][0]["planning_A_B_coverage_sufficient"]
+
+
+def test_resolved_openalex_ids_are_not_invented_or_cross_domain():
+    from backend.sc05_source_policy import resolved_openalex_source_ids
+    rows=[
+        {"name":"Cities","openalex_source_id":"S101","enabled":True},
+        {"name":"Environment and Planning B","openalex_source_id":"https://openalex.org/S102"},
+        {"name":"NeurIPS","openalex_source_id":"S103"},
+        {"name":"Transportation Research Part D","openalex_source_id":"S104"},
+        {"name":"Journal of Transport Geography","openalex_source_id":"not-resolved"},
+        {"name":"Unknown Philosophy Press","openalex_source_id":"S106"},
+        {"name":"Sustainable Cities and Society","openalex_source_id":"S107","enabled":False},
+    ]
+    ids=resolved_openalex_source_ids(rows,"urban_transport")
+    assert ids=={"A":["S101"],"B":["S102"],"C":["S103"],"D":["S104"]}
+    assert "S106" not in str(ids)
+    assert resolved_openalex_source_ids(rows,"water_hydrology")["D"]==[]
+
+
+def test_openalex_query_uses_resolved_tier_filter_without_more_api_calls(monkeypatch):
+    import research_workbench.core as core
+    from backend.sc05_paper_only import openalex_search
+    requests=[]
+    def fake_query(q,since,limit=7,**opts):
+        requests.append({"query":q,"source_ids":opts.get("source_ids"),
+                         "relevance":opts.get("sort_by_relevance")})
+        return []
+    monkeypatch.setattr(core,"query_openalex",fake_query)
+    queries=[
+        {"query":"urban rail flood access","need":"application","source_tier_intent":"A"},
+        {"query":"city adaptation networks","need":"theory","source_tier_intent":"B"},
+        {"query":"graph neural network","need":"method","source_tier_intent":"C"},
+        {"query":"metro passenger reassignment","need":"validation","source_tier_intent":"D"},
+    ]
+    results,errors=openalex_search(queries,provider=None,
+        source_profile={"code":"urban_transport"},
+        source_ids_by_tier={"A":["S101"],"B":["S102"],"C":["S103"],"D":["S104"]})
+    assert results==errors==[]
+    assert len(requests)==4
+    assert [q["source_ids"] for q in requests]==[
+        ["S101"],["S102"],["S103"],["S104"]]
+    assert all(q["relevance"] for q in requests)
+    assert requests[2]["query"]=="graph neural network"
+
+
+def test_entire_offline_paper_workflow_freezes_catalog_for_gate_on(monkeypatch,tmp_path):
+    from backend.sc05_paper_only import run_paper
+    from backend.sc05_research_diagnosis import model_payload
