@@ -1,0 +1,78 @@
+name: SC05 R6.7-B real DOI DEV corpus (public OpenAlex, no DeepSeek)
+
+on:
+  workflow_dispatch:
+  # Intentional one-shot path: adding the frozen DOI manifest starts one run.
+  # Later docs/test changes never silently repeat provider requests.
+  push:
+    branches:
+      - 'eval/sc05-r67-real-dev-literature-20261119'
+    paths:
+      - 'benchmarks/sc05_r67_real_dev_v01.json'
+
+permissions:
+  contents: read
+
+jobs:
+  real-doi-dev:
+    name: Frozen DOI validation and provisional lane audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test-only Python requirements
+        run: python -m pip install -e '.[test]'
+      - name: Offline tests (no provider requests)
+        run: python -m pytest -q tests/test_sc05_r67_real_dev_eval.py tests/test_sc05_method_transfer.py
+      - name: Public OpenAlex DOI metadata only
+        id: live
+        continue-on-error: true
+        env:
+          OPENALEX_API_KEY: ''
+        run: |
+          mkdir -p artifacts
+          python -m scripts.sc05_r67_real_dev_eval \
+            --manifest benchmarks/sc05_r67_real_dev_v01.json \
+            --live --max-requests 38 --delay-seconds 1.10 \
+            --output artifacts/sc05_r67_real_dev_metrics.json \
+            --strict-coverage > artifacts/sc05_r67_real_dev_stdout.json
+      - name: Explicit coverage warning (never marks research quality passed)
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          file=Path("artifacts/sc05_r67_real_dev_metrics.json")
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as f:
+              f.write("## R6.7 real DOI development audit (not GOLD)\n\n")
+              if not file.exists():
+                  f.write("No provider output produced; live status blocked, not successful.\n")
+                  print("::warning::R6.7 no OpenAlex output, cannot claim live evaluation.")
+              else:
+                  r=json.loads(file.read_text(encoding="utf-8"))
+                  metrics=r["metrics_provisional_not_gold"]
+                  f.write("Evaluation status: "+r["evaluation_status"]+"\n\n")
+                  f.write("Records resolved: "+str(r["counts"]["resolved"])+"/"+str(r["counts"]["manifest"])+"\n\n")
+                  f.write("Development labels: AI-assisted provisional; independent reviewers: none.\n\n")
+                  f.write("DeepSeek calls: 0. Human-approved method transfers: 0.\n\n")
+                  for k in ["same_domain_candidate_recall","same_domain_candidate_precision",
+                            "method_lead_recall","method_in_domain_leakage",
+                            "unrelated_admission_rate"]:
+                      f.write(k+": "+str(metrics[k])+"\n\n")
+                  if r["unresolved_dois"]:
+                      print("::warning::R6.7 provider coverage incomplete; metrics exclude unresolved DOIs.")
+                  f.write("No novelty or end-to-end scientific-quality certification.\n")
+          PY
+      - name: Upload copyright-safe metadata/hash results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sc05-r67-real-dev
+          path: |
+            artifacts/sc05_r67_real_dev_metrics.json
+            artifacts/sc05_r67_real_dev_stdout.json
+          if-no-files-found: ignore
+          retention-days: 14
