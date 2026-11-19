@@ -85,12 +85,13 @@ def apply_source_governance(
     in_scope=[p for p in annotated if p["source_tier"] in {"A","B","C","D"}]
     domain_ids={p["id"] for p in domain_candidates}
     direct=[{
-        **by_id[pid],
+        **paper, **by_id[paper["id"]],
         "eligible_for_nearest_prior":True,
-    } for pid in domain_ids
-        if pid in by_id and by_id[pid]["source_tier"] in {"A","B","D"}]
+    } for paper in domain_candidates
+        if paper["id"] in by_id and by_id[paper["id"]]["source_tier"] in {"A","B","D"}]
     # Keep the relative search order, not unordered set iteration.
-    ordered_direct=[p for p in in_scope if p["id"] in {d["id"] for d in direct}]
+    direct_by_id={p["id"]:p for p in direct}
+    ordered_direct=[direct_by_id[p["id"]] for p in in_scope if p["id"] in direct_by_id]
     c_ids=[p["id"] for p in in_scope if p["source_tier"]=="C"]
     denied=[p for p in annotated if p["source_tier"] in {"unlisted","unverified"}]
     tally=Counter(p["source_tier"] for p in annotated)
