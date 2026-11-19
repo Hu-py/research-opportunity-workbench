@@ -102,7 +102,7 @@ METHOD_SCHEMA = {
 SEARCH_SCHEMA = {"queries": [{
     "diagnosis_ids": ["D01"],
     "query": "Specific independently searchable research question",
-    "need": "theory|method|counterexample|validation",
+    "need": "application|theory|method|counterexample|validation",
     "assumption_to_test": "What would change the conclusion",
 }]}
 ROUTE_SCHEMA = {"routes": [{
@@ -441,6 +441,7 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
     result = []
     aliases={
         "methods":"method", "methodology":"method",
+        "planning":"application", "planning_application":"application",
         "theoretical":"theory", "theoretical_framework":"theory",
         "empirical_validation":"validation", "evaluation":"validation",
         "counterexamples":"counterexample", "negative_evidence":"counterexample",
@@ -450,7 +451,7 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
             continue
         raw_need=str(item.get("need") or "").strip().lower().replace(" ","_")
         need=aliases.get(raw_need,raw_need)
-        if need not in ("theory","method","counterexample","validation"):
+        if need not in ("application","theory","method","counterexample","validation"):
             # A query is a retrieval suggestion, not an evidence finding.
             # Drop an unclassifiable suggestion rather than invent its meaning.
             continue
@@ -459,6 +460,8 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
                 "search diagnosis", allow_empty=True),
             "query": _limited(item.get("query"), "search query", 400),
             "need": need,
+            "source_tier_intent":{"application":"A","theory":"B","method":"C",
+                                  "validation":"D","counterexample":"D"}[need],
             "assumption_to_test": _limited(
                 item.get("assumption_to_test"), "search purpose", 450),
         })
@@ -522,6 +525,7 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
                     "cross_domain_method_discovery" if is_method_search
                     else "domain_evidence_search"
                 ),
+                "source_tier_intent":spec.get("source_tier_intent","unassigned"),
             })
         if len(papers) >= 35:
             break
@@ -554,6 +558,8 @@ def bounded_literature_context(papers: list[dict], *, max_papers: int = 12,
         "url": str(p.get("url") or "")[:1000],
         "year": str(p.get("year") or "")[:10],
         "venue": str(p.get("venue") or "")[:200],
+        "source_tier":str(p.get("source_tier") or "")[:20],
+        "canonical_venue":str(p.get("canonical_venue") or "")[:200],
         "abstract": str(p.get("abstract") or "")[:max_abstract_chars],
     } for p in selected]
 
@@ -1118,7 +1124,8 @@ def run_paper(
         scientific_triage={"issue_classifications":[],"scientific_questions":[]}
     question_raw=_run(model_call,api_key,"evidence_questions",
         "从scientific_questions及相关诊断出发提出最多7条科学检索查询。"
-        "检索意图必须覆盖同领域最接近的机制竞争研究、城市规划应用与前沿视角、"
+        "检索意图必须覆盖同领域最接近的机制竞争研究、城市规划应用与前沿视角。"
+        "至少尝试一条application(A类)与一条theory(B类)检索，另外覆盖"
         "可迁移算法、以及最可能否决新颖性的反例；"
         "优先匹配用户核准的A类Cities/SCS与B类EPB/CEUS，"
         "再查交通/水文/健康等领域直接先例和经批准的C类计算机方法来源。"
@@ -1251,6 +1258,9 @@ def run_paper(
         "search_queries":questions,
         "search_query_audit":{"proposed_count":len(raw_queries) if isinstance(raw_queries,list) else 0,
                               "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries,
+                              "intended_source_tiers":sorted({q["source_tier_intent"] for q in questions}),
+                              "missing_required_query_tiers":[t for t in ("A","B")
+                                  if not any(q["source_tier_intent"]==t for q in questions)],
                               "method_discovery_queries":sum(q.get("need")=="method" for q in questions),
                               "domain_evidence_queries":sum(q.get("need")!="method" for q in questions)},
         "external_papers":papers,"search_errors":search_errors,
