@@ -37,6 +37,8 @@ def audit_research_program(
     source_audit=source_audit or {}
     review_map={r["route_id"]:r for r in reviews}
     route_results=[]
+    planning_tiers=set(source_audit.get("direct_tiers_with_candidates",[]))
+    planning_evidence_ready={"A","B"}.issubset(planning_tiers)
     for route in routes:
         prog=route.get("research_program")
         if not isinstance(prog,dict):
@@ -49,12 +51,14 @@ def audit_research_program(
         scale_ready=(level in {"independent_study","system_program"} and not missing)
         near_papers=route.get("closest_paper_ids") or []
         # A route without actual comparable prior work is still a *hypothesis*.
-        evidence_ready=bool(near_papers)
+        evidence_ready=bool(near_papers) and planning_evidence_ready
         flagged=[]
         if not scale_ready:
             flagged.append("not_yet_independent_paper_scale")
-        if not evidence_ready:
+        if not near_papers:
             flagged.append("closest_scientific_prior_not_verified")
+        if not planning_evidence_ready:
+            flagged.append("planning_A_B_evidence_coverage_incomplete")
         if verdict=="reject":
             flagged.append("independent_critic_rejected")
         elif verdict=="hold":
@@ -66,7 +70,8 @@ def audit_research_program(
             "missing_program_dimensions":missing,
             "model_critic_verdict":verdict,
             "paper_scale_claim_supported_by_structure":scale_ready,
-            "nearest_prior_present":evidence_ready,
+            "nearest_prior_present":bool(near_papers),
+            "planning_A_B_coverage_sufficient":planning_evidence_ready,
             "editorial_status":(
                 "provisional_independent_study_for_human_review"
                 if scale_ready and evidence_ready and verdict=="test" else
