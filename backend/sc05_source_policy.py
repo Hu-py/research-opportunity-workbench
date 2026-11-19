@@ -60,6 +60,31 @@ def source_tier(venue: Any, source_domain: str) -> dict[str, str]:
             "venue_status":"manual_review_required"}
 
 
+def resolved_openalex_source_ids(
+    registry: list[dict[str, Any]] | None,
+    source_domain: str,
+) -> dict[str, list[str]]:
+    """Use approved catalog entries and *resolved* owner registry IDs only.
+
+    Do not invent OpenAlex IDs or make hidden API queries. The caller freezes
+    this mapping alongside common source facts so A/B arms search the same
+    journals even if the team edits its source registry between runs.
+    """
+    mapping={tier:[] for tier in ("A","B","C","D")}
+    for row in registry or []:
+        if not isinstance(row,dict) or row.get("enabled") is False:
+            continue
+        source_id=str(row.get("openalex_source_id") or "").strip()
+        if source_id.startswith("https://openalex.org/"):
+            source_id=source_id.rsplit("/",1)[-1]
+        if not re.fullmatch(r"S[0-9]+",source_id):
+            continue
+        tier=source_tier(row.get("name"),source_domain)["tier"]
+        if tier in mapping and source_id not in mapping[tier]:
+            mapping[tier].append(source_id)
+    return {name:sorted(ids) for name,ids in mapping.items()}
+
+
 def apply_source_governance(
     retrieved: list[dict[str, Any]],
     domain_candidates: list[dict[str, Any]],
