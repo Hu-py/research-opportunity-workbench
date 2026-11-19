@@ -1,0 +1,78 @@
+name: SC05 Real A-B Cloud Runner + R2 Checkpoints
+
+on:
+  push:
+    branches: [experiment/sc05-r2-cloud-ab-20261115]
+    paths:
+      - 'scripts/sc05_cloud_ab.py'
+      - 'backend/r2_storage.py'
+      - '.github/workflows/sc05-r2-real-ab.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preflight = archive existing checkpoints only; run = paid DeepSeek A/B'
+        type: choice
+        options: [preflight, run]
+        default: preflight
+      acknowledge_paid:
+        description: 'For run mode enter RUN_SC05_PAID to explicitly authorize model API billing'
+        required: false
+        type: string
+      pair_id:
+        description: 'Already-created SC05 pair ID; leave default to resume the first paper'
+        required: true
+        default: 'sc05pair_335281590c6d4d5f8fb5025de97a'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sc05-paid-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  sc05-real-cloud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install standalone cloud runner dependencies
+        run: python -m pip install 'boto3>=1.34,<2' 'httpx>=0.27,<1'
+      - name: Verify explicit approval for paid run
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'run' }}
+        shell: bash
+        env:
+          SC05_ACK: ${{ inputs.acknowledge_paid }}
+        run: |
+          test "$SC05_ACK" = 'RUN_SC05_PAID' || {
+            echo 'Paid execution not authorized: input must equal RUN_SC05_PAID'
+            exit 2
+          }
+      - name: SC05 preflight and archive existing checkpoints
+        if: ${{ github.event_name == 'push' || inputs.mode == 'preflight' }}
+        env:
+          SC05_API_BASE_URL: ${{ secrets.SC05_API_BASE_URL }}
+          SC05_API_BEARER_TOKEN: ${{ secrets.SC05_API_BEARER_TOKEN }}
+          SC05_OWNER_SESSION: ${{ secrets.SC05_OWNER_SESSION }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python -m scripts.sc05_cloud_ab --mode preflight
+      - name: Execute real DeepSeek A then B and archive each checkpoint
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'run' }}
+        env:
+          SC05_API_BASE_URL: ${{ secrets.SC05_API_BASE_URL }}
+          SC05_API_BEARER_TOKEN: ${{ secrets.SC05_API_BEARER_TOKEN }}
+          SC05_OWNER_SESSION: ${{ secrets.SC05_OWNER_SESSION }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SC05_PAIR_ID: ${{ inputs.pair_id }}
+        shell: bash
+        run: python -m scripts.sc05_cloud_ab --mode run --pair-id "$SC05_PAIR_ID" --acknowledge-paid
