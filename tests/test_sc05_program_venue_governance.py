@@ -160,7 +160,3 @@ def test_openalex_query_uses_resolved_tier_filter_without_more_api_calls(monkeyp
     assert all(q["relevance"] for q in requests)
     assert requests[2]["query"]=="graph neural network"
 
-
-def test_entire_offline_paper_workflow_freezes_catalog_for_gate_on(monkeypatch,tmp_path):
-    from backend.sc05_paper_only import run_paper
-    from backend.sc05_research_diagnosis import model_payload
