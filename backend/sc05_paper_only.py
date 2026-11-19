@@ -24,6 +24,10 @@ from backend.sc05_relevance import (
 from backend.sc05_method_transfer import (
     collect_transfer_leads, method_leads_for_model, screen_transfer_bridges,
 )
+from backend.sc05_source_policy import apply_source_governance, POLICY_VERSION as SOURCE_POLICY_VERSION
+from backend.sc05_research_program import (
+    PROGRAM_TEMPLATE, PROGRAM_FIELDS, audit_research_program,
+)
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
     required, text_items, validate_diagnosis, verify_facts,
@@ -116,6 +120,7 @@ ROUTE_SCHEMA = {"routes": [{
     "minimal_experiment": "Specific split, competing baselines, outcomes and checks",
     "negative_result": "A result that would reject or substantially weaken this idea",
     "unknowns": ["Missing evidence"],
+    "research_program": PROGRAM_TEMPLATE,
 }]}
 METHOD_TRANSFER_PROPOSAL_SHAPE = {"method_transfer_proposals": [{
     "route_id": "R01",
@@ -730,6 +735,12 @@ def research_routes(raw: dict, diagnosis: dict, external_papers: list[dict], tri
             "minimal_experiment": _limited(row.get("minimal_experiment"), "experiment"),
             "negative_result": _limited(row.get("negative_result"), "negative result"),
             "unknowns": text_items(row.get("unknowns"), "unknowns"),
+            # Missing program-level fields are an explicit incomplete proposal,
+            # not a reason to lose a fully paid/cached stage or invent meaning.
+            "research_program":{
+                key: str((row.get("research_program") or {}).get(key) or "")[:1500]
+                for key in ("contribution_level",*PROGRAM_FIELDS)
+            } if isinstance(row.get("research_program"),dict) else {},
         })
     return result
 
@@ -1061,6 +1072,10 @@ def run_paper(
         "没有开展另一种研究不代表原论文不严谨；认可论文针对原目标的合理选择。"
         "要从真实发现的系统规律和正面结果出发，探索新的相互作用、动态反馈、"
         "跨尺度机制、边界条件和科学解释。只补验证、敏感性或替换模型不能成为下一篇的中心研究问题。"
+        "必须区分三种层级：原论文审稿修补、可写入一篇论文的机制子实验、"
+        "足以作为独立论文的城市系统研究议程。新科学问题要能说明研究对象为何"
+        "可扩展至不同城市结构/基础设施/治理主体/极端事件，并明确规划政策取舍；"
+        "禁止为了让问题显得宏大而虚构城市迁移或可用数据。"
         "每条新科学问题必须给出原文证据、竞争机制、完整研究故事及可区分机制的实验。",
         {"facts":facts,"diagnoses":diagnosis["diagnoses"],
          "study_reconstruction":diagnosis["study_reconstruction"],
@@ -1070,9 +1085,13 @@ def run_paper(
     else:
         scientific_triage={"issue_classifications":[],"scientific_questions":[]}
     question_raw=_run(model_call,api_key,"evidence_questions",
-        "根据已有诊断及其竞争性解释提出最多7条科学检索查询，"
-        "优先为可迁移理论、失败条件、已有实现和反例。"
-        "不得提前宣布这些选题是创新。",
+        "从scientific_questions及相关诊断出发提出最多7条科学检索查询。"
+        "检索意图必须覆盖同领域最接近的机制竞争研究、城市规划应用与前沿视角、"
+        "可迁移算法、以及最可能否决新颖性的反例；"
+        "优先匹配用户核准的A类Cities/SCS与B类EPB/CEUS，"
+        "再查交通/水文/健康等领域直接先例和经批准的C类计算机方法来源。"
+        "查询应使用论文对象、过程机制、对照变量等具体词，而非抽象的"
+        "network、resilience、model等泛词。绝不将搜索不到当作创新证明。",
         {"diagnoses":diagnosis["diagnoses"],
          "scientific_questions":scientific_triage["scientific_questions"],
          "open_questions":diagnosis["open_questions"],
@@ -1083,12 +1102,18 @@ def run_paper(
     source_domain_profile=infer_source_domain(pages)
     retrieved_papers,search_errors=openalex_search(
         questions,provider=search_provider,source_profile=source_domain_profile)
-    papers,search_relevance_audit=screen_candidate_papers(
+    domain_screened,search_relevance_audit=screen_candidate_papers(
         retrieved_papers,source_domain_profile,source_doi=_source_doi(pages))
-    # Independent method-transfer lane: preserve promising cross-domain
-    # algorithms as unreviewed leads, never as nearest scientific precedents.
+    # A/B: user-approved planning sources; C: methods only; D: direct-domain
+    # specialists. Never put an unlisted or merely technical work into the
+    # nearest-prior prompt, even if it mentions the same generic keywords.
+    papers,approved_retrieved,source_policy_audit=apply_source_governance(
+        retrieved_papers,domain_screened,source_domain=source_domain_profile["code"])
     method_transfer_leads,method_transfer_audit=collect_transfer_leads(
-        retrieved_papers,papers,search_relevance_audit,max_leads=6)
+        approved_retrieved,papers,search_relevance_audit,max_leads=6,
+        forced_technical_ids={
+            p["id"] for p in approved_retrieved if p["source_tier"]=="C"
+        })
     transfer_context=method_leads_for_model(method_transfer_leads,max_leads=4)
     literature_context=bounded_literature_context(papers)
     literature=[]
@@ -1117,6 +1142,14 @@ def run_paper(
           if scientific_value_gate else "基于论文证据提出新路线，但不得宣称已经证明创新性。")+
         "每条路线须指明原文证据、"
         "已有最接近研究、具体差异、最低代价的可证伪实验和终止条件。"
+        "research_program必填：contribution_level只能是"
+        "robustness_fix/mechanism_substudy/independent_study/system_program之一，"
+        "并解释城市/规划重要问题、跨系统作用机制、规划理论与政策贡献、"
+        "涉及的治理主体及决策、跨城市/事件的适用边界、足以独立成篇的研究章节架构、"
+        "以及为什么它不是原论文一个补充实验。"
+        "像站点某一指标的显著性、单一环线的特殊现象等只可列为子实验；"
+        "不能通过加上‘宏观/耦合/相变’等修辞把子实验冒充新的论文。"
+        "若无法建立规划系统贡献，必须诚实归为robustness_fix或mechanism_substudy。"
         "使用literature_assessments时，只能把 evidence_status=abstract_quote_verified 的条目"
         "作为摘要证据；quote_unverified 或 metadata_only 只能作为待核查线索，不能支持事实性论断。"
         "对 diagnosis_links 中的 direct、indirect、counterexample 分别解释，不得把主题相似等同于直接证据。"
@@ -1132,6 +1165,8 @@ def run_paper(
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
+         "approved_source_policy":SOURCE_POLICY_VERSION,
+         "source_policy_audit":source_policy_audit,
          "papers":literature_context,
          "literature_assessments":literature,
          "method_transfer_candidates":transfer_context,
@@ -1141,7 +1176,7 @@ def run_paper(
               {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}],
                **METHOD_TRANSFER_PROPOSAL_SHAPE}
          )},
-         log,max_calls=max_calls,max_tokens=4100)
+         log,max_calls=max_calls,max_tokens=5400)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes_raw,prior_reference_audit=screen_route_prior_claims(
         routes_raw,papers,literature)
@@ -1160,6 +1195,9 @@ def run_paper(
         critic_raw=_run(model_call,api_key,"independent_critic",
             "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
             "证据不足、不可识别性、指标循环依赖与实施成本。"
+            "尤其审查研究问题是否具有独立论文尺度：能否解释跨城市系统结构、"
+            "跨情境机制或治理取舍；是否只是原论文的稳健性附录或一个局部机制小实验。"
+            "没有可信规划学与直接领域先例，不可宣称新颖性已核查。"
             "允许全部hold或reject。必要数据未知时不得声称真实可验证。",
             {"routes":routes,"diagnoses":diagnosis["diagnoses"],
              "scientific_triage":scientific_triage,
@@ -1171,6 +1209,7 @@ def run_paper(
         # request that would force the model to invent one.
         critic_raw={"reviews":[]}
     reviews=critique(critic_raw,routes)
+    research_program_audit=audit_research_program(routes,reviews,source_policy_audit)
     output = {
         "version":VERSION, "source":{"title":source_title or (Path(pdf).stem if pdf else "uploaded-paper"),
             "doi":_source_doi(pages),
@@ -1183,6 +1222,8 @@ def run_paper(
                               "method_discovery_queries":sum(q.get("need")=="method" for q in questions),
                               "domain_evidence_queries":sum(q.get("need")!="method" for q in questions)},
         "external_papers":papers,"search_errors":search_errors,
+        "source_policy_audit":source_policy_audit,
+        "research_program_audit":research_program_audit,
         "method_transfer_leads":method_transfer_leads,
         "method_transfer_audit":method_transfer_audit,
         "method_transfer_bridges":method_transfer_bridges,
@@ -1193,7 +1234,7 @@ def run_paper(
         "literature_selection_audit":{
             "retrieved":len(papers),"provided_to_model":len(literature_context),
             "per_paper_abstract_chars":1250,
-            "policy":"domain_screen_then_round_robin_by_search_query",
+            "policy":"domain_and_user_curated_venue_tiers_then_round_robin",
             "selected_ids":[p["id"] for p in literature_context],
         },
         "literature_assessments":literature,
