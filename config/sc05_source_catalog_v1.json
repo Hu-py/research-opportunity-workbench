@@ -1,0 +1,115 @@
+{
+  "schema_version": "sc05-source-catalog-v1.0",
+  "updated_at": "2026-11-20",
+  "policy": "A/B are user-selected planning discovery anchors; C is approved technical-method inspiration only; D is a per-domain direct-prior comparison pool. Unlisted items are auditable leads only, not published closest prior citations or proof of novelty. This is not an impact-factor or article-quality claim.",
+  "streams": {
+    "A": {
+      "label": "planning_application",
+      "description": "场景与规划实践",
+      "venues": [
+        "Cities",
+        "Sustainable Cities and Society"
+      ]
+    },
+    "B": {
+      "label": "urban_science_frontier",
+      "description": "城市系统与规划方法",
+      "venues": [
+        "Environment and Planning B: Urban Analytics and City Science",
+        "Computers, Environment and Urban Systems"
+      ]
+    },
+    "C": {
+      "label": "computational_methods",
+      "description": "经确认的算法与技术方法来源；不可直接充当规划问题近邻",
+      "venues": [
+        "Advances in Neural Information Processing Systems",
+        "International Conference on Machine Learning",
+        "International Conference on Learning Representations",
+        "Proceedings of the AAAI Conference on Artificial Intelligence",
+        "Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining",
+        "ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems",
+        "Journal of Machine Learning Research",
+        "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+        "IEEE Transactions on Knowledge and Data Engineering",
+        "Artificial Intelligence",
+        "IEEE Transactions on Neural Networks and Learning Systems"
+      ]
+    }
+  },
+  "direct_comparison_domain_pools": {
+    "urban_transport": [
+      "Transportation Research Part A: Policy and Practice",
+      "Transportation Research Part B: Methodological",
+      "Transportation Research Part C: Emerging Technologies",
+      "Transportation Research Part D: Transport and Environment",
+      "Transportation Research Part E: Logistics and Transportation Review",
+      "Journal of Transport Geography",
+      "Transportation",
+      "Transport Reviews",
+      "Transportation Research Record",
+      "IEEE Transactions on Intelligent Transportation Systems",
+      "International Journal of Transportation Science and Technology",
+      "Journal of Transportation Engineering, Part A: Systems",
+      "Transportation Research Interdisciplinary Perspectives",
+      "Research in Transportation Economics"
+    ],
+    "urban_environment": [
+      "Urban Studies",
+      "Landscape and Urban Planning",
+      "Journal of the American Planning Association",
+      "Applied Geography",
+      "Urban Climate",
+      "Environment and Planning A: Economy and Space",
+      "International Journal of Urban and Regional Research",
+      "Habitat International"
+    ],
+    "water_hydrology": [
+      "Journal of Hydrology",
+      "Water Resources Research",
+      "Water Research",
+      "Environmental Modelling & Software",
+      "International Journal of Disaster Risk Reduction",
+      "Natural Hazards"
+    ],
+    "health_epidemiology": [
+      "Health & Place",
+      "Social Science & Medicine",
+      "Environment International",
+      "International Journal of Epidemiology",
+      "Journal of Transport & Health"
+    ],
+    "housing_real_estate": [
+      "Urban Studies",
+      "Journal of Urban Economics",
+      "Regional Science and Urban Economics",
+      "Real Estate Economics",
+      "Journal of Housing Economics"
+    ]
+  },
+  "aliases": {
+    "Environment and Planning B": "Environment and Planning B: Urban Analytics and City Science",
+    "Computers Environment and Urban Systems": "Computers, Environment and Urban Systems",
+    "Transportation Research Part D": "Transportation Research Part D: Transport and Environment",
+    "Transportation Research Part C": "Transportation Research Part C: Emerging Technologies",
+    "Transportation Research Part A": "Transportation Research Part A: Policy and Practice",
+    "Transportation Research Part B": "Transportation Research Part B: Methodological",
+    "Transportation Research Part E": "Transportation Research Part E: Logistics and Transportation Review",
+    "Transport Research Part D": "Transportation Research Part D: Transport and Environment",
+    "NeurIPS": "Advances in Neural Information Processing Systems",
+    "ICML": "International Conference on Machine Learning",
+    "ICLR": "International Conference on Learning Representations",
+    "AAAI": "Proceedings of the AAAI Conference on Artificial Intelligence",
+    "SIGSPATIAL": "ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems",
+    "Journal of Transport and Health": "Journal of Transport & Health",
+    "Health and Place": "Health & Place",
+    "Social Science and Medicine": "Social Science & Medicine"
+  },
+  "exception_review": {
+    "allow_automatic_additions": false,
+    "unknown_venue_handling": "quarantine_not_closest_prior",
+    "other_domain_handling": "record_candidate_for_manual_venue_approval",
+    "human_approval_required": true,
+    "never_equate_venue_with_scientific_relevance": true
+  }
+}

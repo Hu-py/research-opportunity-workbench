@@ -24,9 +24,16 @@ from backend.sc05_relevance import (
 from backend.sc05_method_transfer import (
     collect_transfer_leads, method_leads_for_model, screen_transfer_bridges,
 )
+from backend.sc05_source_policy import (
+    apply_source_governance, resolved_openalex_source_ids,
+    POLICY_VERSION as SOURCE_POLICY_VERSION,
+)
+from backend.sc05_research_program import (
+    PROGRAM_TEMPLATE, PROGRAM_FIELDS, audit_research_program,
+)
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
-    required, text_items, validate_diagnosis, verify_facts,
+    required, text_items, validate_diagnosis, verify_facts, digest,
 )
 
 # Keep the prompt payload version stable so saved V0.2 paid checkpoints replay exactly.
@@ -98,7 +105,7 @@ METHOD_SCHEMA = {
 SEARCH_SCHEMA = {"queries": [{
     "diagnosis_ids": ["D01"],
     "query": "Specific independently searchable research question",
-    "need": "theory|method|counterexample|validation",
+    "need": "application|theory|method|counterexample|validation",
     "assumption_to_test": "What would change the conclusion",
 }]}
 ROUTE_SCHEMA = {"routes": [{
@@ -116,6 +123,7 @@ ROUTE_SCHEMA = {"routes": [{
     "minimal_experiment": "Specific split, competing baselines, outcomes and checks",
     "negative_result": "A result that would reject or substantially weaken this idea",
     "unknowns": ["Missing evidence"],
+    "research_program": PROGRAM_TEMPLATE,
 }]}
 METHOD_TRANSFER_PROPOSAL_SHAPE = {"method_transfer_proposals": [{
     "route_id": "R01",
@@ -436,6 +444,7 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
     result = []
     aliases={
         "methods":"method", "methodology":"method",
+        "planning":"application", "planning_application":"application",
         "theoretical":"theory", "theoretical_framework":"theory",
         "empirical_validation":"validation", "evaluation":"validation",
         "counterexamples":"counterexample", "negative_evidence":"counterexample",
@@ -445,7 +454,7 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
             continue
         raw_need=str(item.get("need") or "").strip().lower().replace(" ","_")
         need=aliases.get(raw_need,raw_need)
-        if need not in ("theory","method","counterexample","validation"):
+        if need not in ("application","theory","method","counterexample","validation"):
             # A query is a retrieval suggestion, not an evidence finding.
             # Drop an unclassifiable suggestion rather than invent its meaning.
             continue
@@ -454,6 +463,8 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
                 "search diagnosis", allow_empty=True),
             "query": _limited(item.get("query"), "search query", 400),
             "need": need,
+            "source_tier_intent":{"application":"A","theory":"B","method":"C",
+                                  "validation":"D","counterexample":"D"}[need],
             "assumption_to_test": _limited(
                 item.get("assumption_to_test"), "search purpose", 450),
         })
@@ -461,7 +472,9 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
 
 
 def openalex_search(queries: list[dict], *, provider: Callable | None = None,
-                    source_profile: dict | None = None) -> tuple[list[dict], list[str]]:
+                    source_profile: dict | None = None,
+                    source_ids_by_tier: dict[str, list[str]] | None = None
+                    ) -> tuple[list[dict], list[str]]:
     """Method- and counterexample-oriented discovery; not a false novelty proof."""
     from research_workbench.core import normalize_paper, query_openalex
     fn = provider or query_openalex
@@ -482,8 +495,14 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
             # workbench still uses date sort for weekly trends; SC05 explicitly
             # opts into relevance+abstract for nearest-neighbor searches.
             if provider is None:
-                found = fn(query, "2020-01-01", limit=7,
-                           sort_by_relevance=True, require_abstract=True)
+                tier=spec.get("source_tier_intent","")
+                selected_ids=(source_ids_by_tier or {}).get(tier) or None
+                # Restrict OpenAlex itself when verified catalog source IDs
+                # are available; no fake IDs and no hidden extra API requests.
+                options={"sort_by_relevance":True,"require_abstract":True}
+                if selected_ids:
+                    options["source_ids"]=selected_ids
+                found = fn(query, "2020-01-01", limit=7,**options)
             else:
                 found = fn(query, "2020-01-01", limit=7)
         except Exception as exc:
@@ -517,6 +536,7 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
                     "cross_domain_method_discovery" if is_method_search
                     else "domain_evidence_search"
                 ),
+                "source_tier_intent":spec.get("source_tier_intent","unassigned"),
             })
         if len(papers) >= 35:
             break
@@ -549,6 +569,8 @@ def bounded_literature_context(papers: list[dict], *, max_papers: int = 12,
         "url": str(p.get("url") or "")[:1000],
         "year": str(p.get("year") or "")[:10],
         "venue": str(p.get("venue") or "")[:200],
+        "source_tier":str(p.get("source_tier") or "")[:20],
+        "canonical_venue":str(p.get("canonical_venue") or "")[:200],
         "abstract": str(p.get("abstract") or "")[:max_abstract_chars],
     } for p in selected]
 
@@ -730,6 +752,12 @@ def research_routes(raw: dict, diagnosis: dict, external_papers: list[dict], tri
             "minimal_experiment": _limited(row.get("minimal_experiment"), "experiment"),
             "negative_result": _limited(row.get("negative_result"), "negative result"),
             "unknowns": text_items(row.get("unknowns"), "unknowns"),
+            # Missing program-level fields are an explicit incomplete proposal,
+            # not a reason to lose a fully paid/cached stage or invent meaning.
+            "research_program":{
+                key: str((row.get("research_program") or {}).get(key) or "")[:1500]
+                for key in ("contribution_level",*PROGRAM_FIELDS)
+            } if isinstance(row.get("research_program"),dict) else {},
         })
     return result
 
@@ -822,7 +850,31 @@ def _markdown(result: dict) -> str:
             "**验证与证伪**："+"；".join(issue["verification_tests"]),
             "**研究意义**："+issue["research_consequence"], "",
         ]
-    buf+=["## 5. 问题驱动的外部证据与近邻工作", ""]
+    src_audit=result.get("source_policy_audit",{})
+    program_audit=result.get("research_program_audit",{})
+    buf+=["## 0. 下一篇论文是否达到独立科研尺度？", "",
+          "此处为结构与证据审核，不是论文接收概率、已证实新颖性或模型分数。",
+          "**可供人工评估的独立研究候选**："+str(
+              program_audit.get("recommended_for_human_independent_study_review",0))+
+          "；**需要补齐的规划期刊通道**："+(
+              "、".join(program_audit.get("planning_venue_gaps",[])) or "无（不代表机制查新完成）"),
+          "研究路线的原模型test/hold/reject不代表已达到投稿论文标准。", ""]
+    query_audit=result.get("search_query_audit",{})
+    buf+=["## 5. 问题驱动的外部证据与近邻工作", "",
+          "**检索过滤状态**："+
+          ("部分来源仍只能结果后筛选（期刊ID未解析："+",".join(
+              query_audit.get("unfiltered_fallback_tiers",[]))+"）"
+           if query_audit.get("unfiltered_fallback_tiers")
+           else "已对所用检索来源请求配置OpenAlex期刊ID约束（仍须核对返回元数据）"),
+          "**来源政策**："+src_audit.get("policy_version","未提供")+
+          "；A=城市规划场景（Cities/SCS），B=城市科学前沿（EPB/CEUS），"
+          "C=经核准的计算机方法，D=研究领域直接先例。"
+          "来源资格与研究对象/机制的真实相关性必须分别审核。",
+          "**候选召回**："+str(src_audit.get("retrieved_total",len(papers)))+
+          "；进入同领域证据上下文："+str(src_audit.get("eligible_direct_context",len(papers)))+
+          "；期刊未核准/缺失而隔离："+str(
+              src_audit.get("unlisted_or_unverified_count",0))+
+          "。被隔离不等于论文不存在或没有科学价值，须另行审批加入来源目录。",""]
     if result["search_queries"]:
         for query in result["search_queries"]:
             buf += [
@@ -867,7 +919,8 @@ def _markdown(result: dict) -> str:
             else:
                 assessment_summary="仅定位到摘要或元数据，未作机制比较"
             buf.append("| ["+paper["title"].replace("|","／")+"]("+paper["url"]+
-                ") | "+paper["year"]+" / "+status+" | "+
+                ")（"+paper.get("source_tier","未分类")+"："+paper.get("canonical_venue",paper.get("venue",""))+"）"+
+                " | "+paper["year"]+" / "+status+" | "+
                 assessment_summary.replace("|","／").replace("\n"," ")+" |")
     if result["search_errors"]:
         buf+=["", "检索限制："+"；".join(result["search_errors"])]
@@ -915,6 +968,19 @@ def _markdown(result: dict) -> str:
             "**最小实验及评价**："+route["minimal_experiment"], "",
             "**否决条件**："+route["negative_result"], "",
             "**关键未知**："+"；".join(route["unknowns"]), "",
+            "**研究层级（模型自报，不等于认证）**："+route.get(
+                "research_program",{}).get("contribution_level","未提供"),
+            "**城市规划问题**："+route.get("research_program",{}).get("planning_problem","未提供"),
+            "**城市系统作用机制**："+route.get("research_program",{}).get("system_mechanism","未提供"),
+            "**规划理论与决策贡献**："+route.get("research_program",{}).get("planning_contribution","未提供"),
+            "**决策主体**："+route.get("research_program",{}).get("decision_stakeholders","未提供"),
+            "**跨情境适用边界**："+route.get("research_program",{}).get("generalization_boundary","未提供"),
+            "**独立论文章节结构**："+route.get("research_program",{}).get("paper_architecture","未提供"),
+            "**为什么不是补充实验**："+route.get("research_program",{}).get("why_not_a_subexperiment","未提供"),
+            "**论文尺度审查**："+next((
+                v["editorial_status"]+"；缺失："+",".join(v["missing_program_dimensions"])
+                for v in program_audit.get("routes",[]) if v["route_id"]==route["id"]
+            ),"旧版未进行结构审查"), "",
             "**独立反证**："+rev["reason"]+"；已有研究风险："+rev["existing_work_risk"],
             "**数据约束**："+rev["data_blocker"], "",
             "**修订后的最小实验**："+rev["minimum_test_revision"], "",
@@ -1008,6 +1074,7 @@ def run_paper(
     frozen_snapshot: dict | None = None,
     scientific_value_gate: bool = True,
     legacy_literature_checkpoint: bool = False,
+    source_registry: list[dict[str, Any]] | None = None,
 ) -> tuple[str, dict]:
     """Run one paper with an optional shared, verified fact snapshot for A/B."""
     if not api_key or not api_key.strip():
@@ -1029,6 +1096,7 @@ def run_paper(
         pdf_hash=source_sha or hashlib.sha256(
             __import__("json").dumps(pages,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
         source_kind="extracted_pdf_text"
+    source_domain_profile=infer_source_domain(pages)
     expected_calls=(0 if frozen_snapshot else len(_chunks(pages)))+(7 if scientific_value_gate else 6)
     if expected_calls>max_calls:
         raise EvidenceError("PDF exceeds maximum authorized model call budget")
@@ -1040,6 +1108,17 @@ def run_paper(
     else:
         ledger=extract_ledger(pages, api_key, model_call, log, max_calls=max_calls)
         snapshot=ledger["snapshot"]
+    if frozen_snapshot:
+        # Pair B must inherit the exact catalog IDs frozen by pair A.
+        # Legacy snapshots lacking this field remain valid without inventing
+        # a source-filter mapping or altering historical paid checkpoints.
+        approved_source_ids=snapshot.get("sc05_source_id_filter_snapshot",{})
+    else:
+        approved_source_ids=resolved_openalex_source_ids(
+            source_registry, source_domain_profile["code"])
+        canonical={k:v for k,v in snapshot.items() if k!="snapshot_sha256"}
+        canonical["sc05_source_id_filter_snapshot"]=approved_source_ids
+        snapshot={**canonical,"snapshot_sha256":digest(canonical)}
     facts = snapshot["observations"]
     lineage_raw = _run(model_call,api_key,"method_lineage",
         "独立整理数据→指标→模型/公式→验证/情景推演的完整依赖链。"
@@ -1061,6 +1140,10 @@ def run_paper(
         "没有开展另一种研究不代表原论文不严谨；认可论文针对原目标的合理选择。"
         "要从真实发现的系统规律和正面结果出发，探索新的相互作用、动态反馈、"
         "跨尺度机制、边界条件和科学解释。只补验证、敏感性或替换模型不能成为下一篇的中心研究问题。"
+        "必须区分三种层级：原论文审稿修补、可写入一篇论文的机制子实验、"
+        "足以作为独立论文的城市系统研究议程。新科学问题要能说明研究对象为何"
+        "可扩展至不同城市结构/基础设施/治理主体/极端事件，并明确规划政策取舍；"
+        "禁止为了让问题显得宏大而虚构城市迁移或可用数据。"
         "每条新科学问题必须给出原文证据、竞争机制、完整研究故事及可区分机制的实验。",
         {"facts":facts,"diagnoses":diagnosis["diagnoses"],
          "study_reconstruction":diagnosis["study_reconstruction"],
@@ -1070,9 +1153,14 @@ def run_paper(
     else:
         scientific_triage={"issue_classifications":[],"scientific_questions":[]}
     question_raw=_run(model_call,api_key,"evidence_questions",
-        "根据已有诊断及其竞争性解释提出最多7条科学检索查询，"
-        "优先为可迁移理论、失败条件、已有实现和反例。"
-        "不得提前宣布这些选题是创新。",
+        "从scientific_questions及相关诊断出发提出最多7条科学检索查询。"
+        "检索意图必须覆盖同领域最接近的机制竞争研究、城市规划应用与前沿视角。"
+        "至少尝试一条application(A类)与一条theory(B类)检索，另外覆盖"
+        "可迁移算法、以及最可能否决新颖性的反例；"
+        "优先匹配用户核准的A类Cities/SCS与B类EPB/CEUS，"
+        "再查交通/水文/健康等领域直接先例和经批准的C类计算机方法来源。"
+        "查询应使用论文对象、过程机制、对照变量等具体词，而非抽象的"
+        "network、resilience、model等泛词。绝不将搜索不到当作创新证明。",
         {"diagnoses":diagnosis["diagnoses"],
          "scientific_questions":scientific_triage["scientific_questions"],
          "open_questions":diagnosis["open_questions"],
@@ -1080,15 +1168,21 @@ def run_paper(
     questions=search_plan(question_raw,diagnosis["diagnoses"])
     raw_queries=question_raw.get("queries",[]) if isinstance(question_raw,dict) else []
     skipped_queries=max(0,min(len(raw_queries),7)-len(questions)) if isinstance(raw_queries,list) else 0
-    source_domain_profile=infer_source_domain(pages)
     retrieved_papers,search_errors=openalex_search(
-        questions,provider=search_provider,source_profile=source_domain_profile)
-    papers,search_relevance_audit=screen_candidate_papers(
+        questions,provider=search_provider,source_profile=source_domain_profile,
+        source_ids_by_tier=approved_source_ids)
+    domain_screened,search_relevance_audit=screen_candidate_papers(
         retrieved_papers,source_domain_profile,source_doi=_source_doi(pages))
-    # Independent method-transfer lane: preserve promising cross-domain
-    # algorithms as unreviewed leads, never as nearest scientific precedents.
+    # A/B: user-approved planning sources; C: methods only; D: direct-domain
+    # specialists. Never put an unlisted or merely technical work into the
+    # nearest-prior prompt, even if it mentions the same generic keywords.
+    papers,approved_retrieved,source_policy_audit=apply_source_governance(
+        retrieved_papers,domain_screened,source_domain=source_domain_profile["code"])
     method_transfer_leads,method_transfer_audit=collect_transfer_leads(
-        retrieved_papers,papers,search_relevance_audit,max_leads=6)
+        approved_retrieved,papers,search_relevance_audit,max_leads=6,
+        forced_technical_ids={
+            p["id"] for p in approved_retrieved if p["source_tier"]=="C"
+        })
     transfer_context=method_leads_for_model(method_transfer_leads,max_leads=4)
     literature_context=bounded_literature_context(papers)
     literature=[]
@@ -1117,6 +1211,14 @@ def run_paper(
           if scientific_value_gate else "基于论文证据提出新路线，但不得宣称已经证明创新性。")+
         "每条路线须指明原文证据、"
         "已有最接近研究、具体差异、最低代价的可证伪实验和终止条件。"
+        "research_program必填：contribution_level只能是"
+        "robustness_fix/mechanism_substudy/independent_study/system_program之一，"
+        "并解释城市/规划重要问题、跨系统作用机制、规划理论与政策贡献、"
+        "涉及的治理主体及决策、跨城市/事件的适用边界、足以独立成篇的研究章节架构、"
+        "以及为什么它不是原论文一个补充实验。"
+        "像站点某一指标的显著性、单一环线的特殊现象等只可列为子实验；"
+        "不能通过加上‘宏观/耦合/相变’等修辞把子实验冒充新的论文。"
+        "若无法建立规划系统贡献，必须诚实归为robustness_fix或mechanism_substudy。"
         "使用literature_assessments时，只能把 evidence_status=abstract_quote_verified 的条目"
         "作为摘要证据；quote_unverified 或 metadata_only 只能作为待核查线索，不能支持事实性论断。"
         "对 diagnosis_links 中的 direct、indirect、counterexample 分别解释，不得把主题相似等同于直接证据。"
@@ -1132,6 +1234,8 @@ def run_paper(
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
+         "approved_source_policy":SOURCE_POLICY_VERSION,
+         "source_policy_audit":source_policy_audit,
          "papers":literature_context,
          "literature_assessments":literature,
          "method_transfer_candidates":transfer_context,
@@ -1141,7 +1245,7 @@ def run_paper(
               {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}],
                **METHOD_TRANSFER_PROPOSAL_SHAPE}
          )},
-         log,max_calls=max_calls,max_tokens=4100)
+         log,max_calls=max_calls,max_tokens=5400)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes_raw,prior_reference_audit=screen_route_prior_claims(
         routes_raw,papers,literature)
@@ -1160,6 +1264,9 @@ def run_paper(
         critic_raw=_run(model_call,api_key,"independent_critic",
             "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
             "证据不足、不可识别性、指标循环依赖与实施成本。"
+            "尤其审查研究问题是否具有独立论文尺度：能否解释跨城市系统结构、"
+            "跨情境机制或治理取舍；是否只是原论文的稳健性附录或一个局部机制小实验。"
+            "没有可信规划学与直接领域先例，不可宣称新颖性已核查。"
             "允许全部hold或reject。必要数据未知时不得声称真实可验证。",
             {"routes":routes,"diagnoses":diagnosis["diagnoses"],
              "scientific_triage":scientific_triage,
@@ -1171,6 +1278,7 @@ def run_paper(
         # request that would force the model to invent one.
         critic_raw={"reviews":[]}
     reviews=critique(critic_raw,routes)
+    research_program_audit=audit_research_program(routes,reviews,source_policy_audit)
     output = {
         "version":VERSION, "source":{"title":source_title or (Path(pdf).stem if pdf else "uploaded-paper"),
             "doi":_source_doi(pages),
@@ -1180,9 +1288,22 @@ def run_paper(
         "search_queries":questions,
         "search_query_audit":{"proposed_count":len(raw_queries) if isinstance(raw_queries,list) else 0,
                               "accepted_count":len(questions),"unclassifiable_skipped":skipped_queries,
+                              "intended_source_tiers":sorted({q["source_tier_intent"] for q in questions}),
+                              "missing_required_query_tiers":[t for t in ("A","B")
+                                  if not any(q["source_tier_intent"]==t for q in questions)],
+                              "source_id_counts_by_tier":{
+                                  t:len(approved_source_ids.get(t,[]))
+                                  for t in ("A","B","C","D")
+                              },
+                              "unfiltered_fallback_tiers":sorted({
+                                  q["source_tier_intent"] for q in questions
+                                  if not approved_source_ids.get(q["source_tier_intent"])
+                              }),
                               "method_discovery_queries":sum(q.get("need")=="method" for q in questions),
                               "domain_evidence_queries":sum(q.get("need")!="method" for q in questions)},
         "external_papers":papers,"search_errors":search_errors,
+        "source_policy_audit":source_policy_audit,
+        "research_program_audit":research_program_audit,
         "method_transfer_leads":method_transfer_leads,
         "method_transfer_audit":method_transfer_audit,
         "method_transfer_bridges":method_transfer_bridges,
@@ -1193,7 +1314,7 @@ def run_paper(
         "literature_selection_audit":{
             "retrieved":len(papers),"provided_to_model":len(literature_context),
             "per_paper_abstract_chars":1250,
-            "policy":"domain_screen_then_round_robin_by_search_query",
+            "policy":"domain_and_user_curated_venue_tiers_then_round_robin",
             "selected_ids":[p["id"] for p in literature_context],
         },
         "literature_assessments":literature,
