@@ -24,13 +24,16 @@ from backend.sc05_relevance import (
 from backend.sc05_method_transfer import (
     collect_transfer_leads, method_leads_for_model, screen_transfer_bridges,
 )
-from backend.sc05_source_policy import apply_source_governance, POLICY_VERSION as SOURCE_POLICY_VERSION
+from backend.sc05_source_policy import (
+    apply_source_governance, resolved_openalex_source_ids,
+    POLICY_VERSION as SOURCE_POLICY_VERSION,
+)
 from backend.sc05_research_program import (
     PROGRAM_TEMPLATE, PROGRAM_FIELDS, audit_research_program,
 )
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
-    required, text_items, validate_diagnosis, verify_facts,
+    required, text_items, validate_diagnosis, verify_facts, digest,
 )
 
 # Keep the prompt payload version stable so saved V0.2 paid checkpoints replay exactly.
@@ -469,7 +472,9 @@ def search_plan(raw: dict, diagnoses: list[dict]) -> list[dict]:
 
 
 def openalex_search(queries: list[dict], *, provider: Callable | None = None,
-                    source_profile: dict | None = None) -> tuple[list[dict], list[str]]:
+                    source_profile: dict | None = None,
+                    source_ids_by_tier: dict[str, list[str]] | None = None
+                    ) -> tuple[list[dict], list[str]]:
     """Method- and counterexample-oriented discovery; not a false novelty proof."""
     from research_workbench.core import normalize_paper, query_openalex
     fn = provider or query_openalex
@@ -490,7 +495,12 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
             # workbench still uses date sort for weekly trends; SC05 explicitly
             # opts into relevance+abstract for nearest-neighbor searches.
             if provider is None:
+                tier=spec.get("source_tier_intent","")
+                selected_ids=(source_ids_by_tier or {}).get(tier) or None
+                # Restrict OpenAlex itself when verified catalog source IDs
+                # are available; no fake IDs and no hidden extra API requests.
                 found = fn(query, "2020-01-01", limit=7,
+                           source_ids=selected_ids,
                            sort_by_relevance=True, require_abstract=True)
             else:
                 found = fn(query, "2020-01-01", limit=7)
@@ -1057,6 +1067,7 @@ def run_paper(
     frozen_snapshot: dict | None = None,
     scientific_value_gate: bool = True,
     legacy_literature_checkpoint: bool = False,
+    source_registry: list[dict[str, Any]] | None = None,
 ) -> tuple[str, dict]:
     """Run one paper with an optional shared, verified fact snapshot for A/B."""
     if not api_key or not api_key.strip():
@@ -1078,6 +1089,7 @@ def run_paper(
         pdf_hash=source_sha or hashlib.sha256(
             __import__("json").dumps(pages,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
         source_kind="extracted_pdf_text"
+    source_domain_profile=infer_source_domain(pages)
     expected_calls=(0 if frozen_snapshot else len(_chunks(pages)))+(7 if scientific_value_gate else 6)
     if expected_calls>max_calls:
         raise EvidenceError("PDF exceeds maximum authorized model call budget")
@@ -1089,6 +1101,17 @@ def run_paper(
     else:
         ledger=extract_ledger(pages, api_key, model_call, log, max_calls=max_calls)
         snapshot=ledger["snapshot"]
+    if frozen_snapshot:
+        # Pair B must inherit the exact catalog IDs frozen by pair A.
+        # Legacy snapshots lacking this field remain valid without inventing
+        # a source-filter mapping or altering historical paid checkpoints.
+        approved_source_ids=snapshot.get("sc05_source_id_filter_snapshot",{})
+    else:
+        approved_source_ids=resolved_openalex_source_ids(
+            source_registry, source_domain_profile["code"])
+        canonical={k:v for k,v in snapshot.items() if k!="snapshot_sha256"}
+        canonical["sc05_source_id_filter_snapshot"]=approved_source_ids
+        snapshot={**canonical,"snapshot_sha256":digest(canonical)}
     facts = snapshot["observations"]
     lineage_raw = _run(model_call,api_key,"method_lineage",
         "独立整理数据→指标→模型/公式→验证/情景推演的完整依赖链。"
@@ -1138,9 +1161,9 @@ def run_paper(
     questions=search_plan(question_raw,diagnosis["diagnoses"])
     raw_queries=question_raw.get("queries",[]) if isinstance(question_raw,dict) else []
     skipped_queries=max(0,min(len(raw_queries),7)-len(questions)) if isinstance(raw_queries,list) else 0
-    source_domain_profile=infer_source_domain(pages)
     retrieved_papers,search_errors=openalex_search(
-        questions,provider=search_provider,source_profile=source_domain_profile)
+        questions,provider=search_provider,source_profile=source_domain_profile,
+        source_ids_by_tier=approved_source_ids)
     domain_screened,search_relevance_audit=screen_candidate_papers(
         retrieved_papers,source_domain_profile,source_doi=_source_doi(pages))
     # A/B: user-approved planning sources; C: methods only; D: direct-domain
@@ -1261,6 +1284,14 @@ def run_paper(
                               "intended_source_tiers":sorted({q["source_tier_intent"] for q in questions}),
                               "missing_required_query_tiers":[t for t in ("A","B")
                                   if not any(q["source_tier_intent"]==t for q in questions)],
+                              "source_id_counts_by_tier":{
+                                  t:len(approved_source_ids.get(t,[]))
+                                  for t in ("A","B","C","D")
+                              },
+                              "unfiltered_fallback_tiers":sorted({
+                                  q["source_tier_intent"] for q in questions
+                                  if not approved_source_ids.get(q["source_tier_intent"])
+                              }),
                               "method_discovery_queries":sum(q.get("need")=="method" for q in questions),
                               "domain_evidence_queries":sum(q.get("need")!="method" for q in questions)},
         "external_papers":papers,"search_errors":search_errors,
