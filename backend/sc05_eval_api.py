@@ -44,6 +44,9 @@ SC05_PIPELINE_DEPENDENCIES = (
     "backend/sc05_quality.py",
     "backend/sc05_relevance.py",
     "backend/sc05_method_transfer.py",
+    "backend/sc05_source_policy.py",
+    "backend/sc05_research_program.py",
+    "config/sc05_source_catalog_v1.json",
     "backend/openalex_errors.py",
     "research_workbench/core.py",
 )
