@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from research_workbench.core import Base, query_openalex
 from backend.team import TeamMember, add_audit
 from backend.model_gateway import ModelCallError, request_json
+from backend.research_sources import ResearchSource
 from backend.research_budget import reserve, record_usage, status as budget_status
 from backend.sc05_paper_only import (
     run_paper, page_texts_from_pdf, FUTURE_HEADING,
@@ -589,6 +590,15 @@ def execute(factory,run_id,*,claimed_by_worker=False):
             db.commit();return
         pages=load(doc.pages_json,{})
         snapshot=load(doc.shared_evidence_json)
+        # Read resolved, owner-approved source IDs only. Run_paper will freeze
+        # the resulting A/B/C/D mapping with the baseline shared evidence so
+        # a later catalog change cannot silently alter the second arm.
+        source_registry=[
+            {"name":source.name,
+             "openalex_source_id":source.openalex_source_id,
+             "enabled":source.enabled}
+            for source in db.scalars(select(ResearchSource)).all()
+        ]
         title=doc.title
         sha=doc.source_sha
         variant=row.variant
@@ -604,6 +614,7 @@ def execute(factory,run_id,*,claimed_by_worker=False):
             None,key,model_call=callback,source_title=title,
             pages_override=pages,source_sha=sha,frozen_snapshot=snapshot,
             scientific_value_gate=(variant=="science_gate_on"),
+            source_registry=source_registry,
             max_calls=40,
         )
         # The first fully source-verified extraction freezes the common facts.
