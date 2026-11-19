@@ -763,3 +763,60 @@ def test_method_discovery_query_does_not_force_source_domain_anchor():
     assert observed[0]=="graph neural network wildfire transfer model"
     assert observed[1].startswith("urban rail transit transportation")
     assert observed[2].startswith("urban rail transit transportation")
+
+
+def test_full_paper_to_report_freezes_source_catalog_and_marks_planning_gap(monkeypatch,tmp_path):
+    """Real model stages are all mocked, but all 8 SC05 steps execute together."""
+    import backend.sc05_paper_only as p
+    import backend.sc05_research_diagnosis as rd
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda _: (PAGES,"source-sha-immutable"))
+    registry_a=[
+        {"name":"Cities","openalex_source_id":"S1001","enabled":True},
+        {"name":"Environment and Planning B","openalex_source_id":"S1002","enabled":True},
+        {"name":"NeurIPS","openalex_source_id":"S1003","enabled":True},
+        {"name":"Transportation Research Part D","openalex_source_id":"S1004","enabled":True},
+    ]
+    registry_b=[
+        {"name":"Cities","openalex_source_id":"S9999","enabled":True},
+    ]
+    called=[]
+    def model_with_program(key,model,system,payload,max_tokens=2400):
+        called.append(payload["sc05_stage"])
+        result,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if payload["sc05_stage"]=="research_redesign":
+            result["routes"][0]["research_program"]={
+                "contribution_level":"system_program",
+                "planning_problem":"Extreme weather forces shifts between transit modes in dense cities",
+                "system_mechanism":"Transit service closure shifts demand to roads causing nonlinear capacity losses",
+                "planning_contribution":"Planning corridor investment and traffic management changes citywide losses",
+                "decision_stakeholders":"Urban transport planners and operational dispatchers allocate response budgets",
+                "generalization_boundary":"Compare polycentric and monocentric cities under equivalent transport disruptions",
+                "paper_architecture":"Link cross-modal demand transfer to congestion feedback then evaluate interventions",
+                "why_not_a_subexperiment":"An independent causal-feedback question beyond the source's index associations",
+            }
+        return result,usage
+    report,first=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=model_with_program,search_provider=search_mock,
+        source_registry=registry_a,max_calls=8)
+    assert len(called)==8
+    assert first["source"]["sha256"]=="source-sha-immutable"
+    assert first["snapshot"]["sc05_source_id_filter_snapshot"]=={
+        "A":["S1001"],"B":["S1002"],"C":["S1003"],"D":["S1004"]}
+    rd.model_payload(first["snapshot"])  # hash and exact source facts still verified
+    assert first["source_policy_audit"]["metadata_classified"]["D"]==1
+    assert first["source_policy_audit"]["uncovered_planning_streams"]==["A","B"]
+    assert first["quality"]["independent_study_candidates_for_human_review"]==0
+    assert "未提供" not in first["routes"][0]["research_program"]["planning_problem"]
+    assert "独立论文章节结构" in report and "城市系统作用机制" in report
+    assert "来源政策" in report and "期刊未核准/缺失而隔离" in report
+    assert first["quality"]["scientific_quality_certified"] is False
+    called.clear()
+    report2,second=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=model_with_program,search_provider=search_mock,
+        frozen_snapshot=first["snapshot"],source_registry=registry_b,max_calls=8)
+    assert len(called)==7
+    assert second["shared_frozen_evidence"] is True
+    assert second["snapshot"]==first["snapshot"]
+    assert second["search_query_audit"]["source_id_counts_by_tier"]["A"]==1
+    assert second["snapshot"]["sc05_source_id_filter_snapshot"]["A"]==["S1001"]
+    assert "S9999" not in json.dumps(second)
