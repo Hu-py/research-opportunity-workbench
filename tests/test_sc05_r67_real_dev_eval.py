@@ -41,6 +41,7 @@ def test_manifest_validation_does_not_allow_fabricated_human_review(tmp_path):
 def test_duplicate_doi_and_exposed_r66_are_blocked(tmp_path):
     manifest = synthetic_manifest()
     manifest["items"][0]["doi"] = manifest["items"][1]["doi"]
+    manifest["items"][0]["source_url"] = manifest["items"][1]["source_url"]
     path = tmp_path / "dev.json"
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError,match="Repeated"):
