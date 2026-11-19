@@ -833,7 +833,25 @@ def _markdown(result: dict) -> str:
             "**验证与证伪**："+"；".join(issue["verification_tests"]),
             "**研究意义**："+issue["research_consequence"], "",
         ]
-    buf+=["## 5. 问题驱动的外部证据与近邻工作", ""]
+    src_audit=result.get("source_policy_audit",{})
+    program_audit=result.get("research_program_audit",{})
+    buf+=["## 0. 下一篇论文是否达到独立科研尺度？", "",
+          "此处为结构与证据审核，不是论文接收概率、已证实新颖性或模型分数。",
+          "**可供人工评估的独立研究候选**："+str(
+              program_audit.get("recommended_for_human_independent_study_review",0))+
+          "；**需要补齐的规划期刊通道**："+(
+              "、".join(program_audit.get("planning_venue_gaps",[])) or "无（不代表机制查新完成）"),
+          "研究路线的原模型test/hold/reject不代表已达到投稿论文标准。", ""]
+    buf+=["## 5. 问题驱动的外部证据与近邻工作", "",
+          "**来源政策**："+src_audit.get("policy_version","未提供")+
+          "；A=城市规划场景（Cities/SCS），B=城市科学前沿（EPB/CEUS），"
+          "C=经核准的计算机方法，D=研究领域直接先例。"
+          "来源资格与研究对象/机制的真实相关性必须分别审核。",
+          "**候选召回**："+str(src_audit.get("retrieved_total",len(papers)))+
+          "；进入同领域证据上下文："+str(src_audit.get("eligible_direct_context",len(papers)))+
+          "；期刊未核准/缺失而隔离："+str(
+              src_audit.get("unlisted_or_unverified_count",0))+
+          "。被隔离不等于论文不存在或没有科学价值，须另行审批加入来源目录。",""]
     if result["search_queries"]:
         for query in result["search_queries"]:
             buf += [
@@ -878,7 +896,8 @@ def _markdown(result: dict) -> str:
             else:
                 assessment_summary="仅定位到摘要或元数据，未作机制比较"
             buf.append("| ["+paper["title"].replace("|","／")+"]("+paper["url"]+
-                ") | "+paper["year"]+" / "+status+" | "+
+                ")（"+paper.get("source_tier","未分类")+"："+paper.get("canonical_venue",paper.get("venue",""))+"）"+
+                " | "+paper["year"]+" / "+status+" | "+
                 assessment_summary.replace("|","／").replace("\n"," ")+" |")
     if result["search_errors"]:
         buf+=["", "检索限制："+"；".join(result["search_errors"])]
@@ -926,6 +945,19 @@ def _markdown(result: dict) -> str:
             "**最小实验及评价**："+route["minimal_experiment"], "",
             "**否决条件**："+route["negative_result"], "",
             "**关键未知**："+"；".join(route["unknowns"]), "",
+            "**研究层级（模型自报，不等于认证）**："+route.get(
+                "research_program",{}).get("contribution_level","未提供"),
+            "**城市规划问题**："+route.get("research_program",{}).get("planning_problem","未提供"),
+            "**城市系统作用机制**："+route.get("research_program",{}).get("system_mechanism","未提供"),
+            "**规划理论与决策贡献**："+route.get("research_program",{}).get("planning_contribution","未提供"),
+            "**决策主体**："+route.get("research_program",{}).get("decision_stakeholders","未提供"),
+            "**跨情境适用边界**："+route.get("research_program",{}).get("generalization_boundary","未提供"),
+            "**独立论文章节结构**："+route.get("research_program",{}).get("paper_architecture","未提供"),
+            "**为什么不是补充实验**："+route.get("research_program",{}).get("why_not_a_subexperiment","未提供"),
+            "**论文尺度审查**："+next((
+                v["editorial_status"]+"；缺失："+",".join(v["missing_program_dimensions"])
+                for v in program_audit.get("routes",[]) if v["route_id"]==route["id"]
+            ),"旧版未进行结构审查"), "",
             "**独立反证**："+rev["reason"]+"；已有研究风险："+rev["existing_work_risk"],
             "**数据约束**："+rev["data_blocker"], "",
             "**修订后的最小实验**："+rev["minimum_test_revision"], "",
