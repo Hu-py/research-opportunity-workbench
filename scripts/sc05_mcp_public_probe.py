@@ -31,7 +31,7 @@ def fetch(url: str, *, method: str = "GET", body: bytes | None = None,
         with urlopen(req, timeout=timeout, context=ssl.create_default_context()) as reply:
             status = reply.status
             data = reply.read(24576)
-            headers = dict(reply.headers.items())
+            headers = {k.lower(): v for k, v in reply.headers.items()}
     except HTTPError as exc:
         status = exc.code
         data = exc.read(24576)
@@ -44,8 +44,8 @@ def fetch(url: str, *, method: str = "GET", body: bytes | None = None,
     except (ValueError, UnicodeError):
         parsed = {}
     return status, parsed if isinstance(parsed, dict) else {}, {
-        "bearer_challenge": "bearer" in headers.get("WWW-Authenticate", "").lower(),
-        "content_type": headers.get("Content-Type", "").split(";")[0],
+        "bearer_challenge": "bearer" in headers.get("www-authenticate", "").lower(),
+        "content_type": headers.get("content-type", "").split(";")[0],
     }
 
 
