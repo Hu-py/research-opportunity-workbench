@@ -42,7 +42,7 @@ PAPER={
  "url":"https://doi.org/10.1000/precedent",
  "abstract":"We study dynamic disruption responses using agent-based transport routing and compare simulated traffic flows under closures. Independent operational records are not available.",
  "published":"2025-02-01",
- "venue":"Transportation Study",
+ "venue":"Transportation Research Part D: Transport and Environment",
 }
 
 
@@ -691,7 +691,7 @@ def test_dual_lane_paper_run_uses_existing_stages_with_unapproved_transfer(monke
         "abstract":("A graph neural network maps ecological observations to predicted "
                     "wildfire hazard under changing weather patterns."),
         "published":"2025-01-01",
-        "venue":"Synthetic fixtures, not a published article",
+        "venue":"Advances in Neural Information Processing Systems",
     }
     mock_calls=[]
     def guarded_mock(key,model,system,payload,max_tokens=3000):
