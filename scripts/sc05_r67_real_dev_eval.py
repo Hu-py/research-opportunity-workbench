@@ -46,7 +46,9 @@ def load_dev(path: Path) -> dict[str, Any]:
             raise ValueError("Unrecognized provisional category")
         if not row.get("title") or len(row["title"]) < 14:
             raise ValueError("Missing complete publisher title")
-        if row.get("source_url") != "https://doi.org/" + doi:
+        source_url = str(row.get("source_url") or "")
+        if (not source_url.casefold().startswith("https://doi.org/")
+                or normalize_doi(source_url) != doi):
             raise ValueError("Canonical DOI source link required")
         if row.get("annotation_status") != "ai_assisted_provisional":
             raise ValueError("Never invent independent human review")
