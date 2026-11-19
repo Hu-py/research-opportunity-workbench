@@ -499,9 +499,10 @@ def openalex_search(queries: list[dict], *, provider: Callable | None = None,
                 selected_ids=(source_ids_by_tier or {}).get(tier) or None
                 # Restrict OpenAlex itself when verified catalog source IDs
                 # are available; no fake IDs and no hidden extra API requests.
-                found = fn(query, "2020-01-01", limit=7,
-                           source_ids=selected_ids,
-                           sort_by_relevance=True, require_abstract=True)
+                options={"sort_by_relevance":True,"require_abstract":True}
+                if selected_ids:
+                    options["source_ids"]=selected_ids
+                found = fn(query, "2020-01-01", limit=7,**options)
             else:
                 found = fn(query, "2020-01-01", limit=7)
         except Exception as exc:
