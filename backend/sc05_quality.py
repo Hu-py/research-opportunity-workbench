@@ -30,6 +30,7 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     transfer_audit=record.get("method_transfer_audit") or {}
     method_bridge_audit=record.get("method_bridge_audit") or {}
     source_audit=record.get("source_policy_audit") or {}
+    query_audit=record.get("search_query_audit") or {}
     research_program_audit=record.get("research_program_audit") or {}
     eligible_prior_ids=set(prior_audit.get("minimum_evidence_eligible_paper_ids",[]))
     relation_counts={
@@ -92,6 +93,12 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     if prior_audit.get("removed_reference_count",0):
         flags.append(str(prior_audit["removed_reference_count"])+
                      " 条模型宣称的最近先例缺少同领域摘要与直接机制关联核验，已撤销引用")
+    if query_audit.get("missing_required_query_tiers"):
+        flags.append("模型没有提出覆盖A/B规划来源的完整检索问题："+",".join(
+            query_audit["missing_required_query_tiers"]))
+    if query_audit.get("unfiltered_fallback_tiers"):
+        flags.append("以下检索来源缺少已解析OpenAlex期刊ID；检索阶段未能限制来源，"
+            "只执行结果后的目录核验："+",".join(query_audit["unfiltered_fallback_tiers"]))
     if source_audit:
         if source_audit.get("unlisted_or_unverified_count",0):
             flags.append(str(source_audit["unlisted_or_unverified_count"])+
@@ -146,6 +153,9 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "source_catalog_version":source_audit.get("policy_version"),
         "source_catalog_candidate_counts":source_audit.get("metadata_classified",{}),
         "source_catalog_excluded":source_audit.get("unlisted_or_unverified_count",0),
+        "source_id_counts_by_tier":query_audit.get("source_id_counts_by_tier",{}),
+        "source_id_unfiltered_fallback_tiers":query_audit.get("unfiltered_fallback_tiers",[]),
+        "missing_required_query_tiers":query_audit.get("missing_required_query_tiers",[]),
         "planning_stream_gaps":source_audit.get("uncovered_planning_streams",[]),
         "independent_study_candidates_for_human_review":research_program_audit.get(
             "recommended_for_human_independent_study_review",0),
