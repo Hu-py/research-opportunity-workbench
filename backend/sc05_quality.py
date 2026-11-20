@@ -23,6 +23,7 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     unlinked=sum(1 for x in literature if x.get("diagnosis_link_status")=="unlinked")
     discarded_relations=sum(int(x.get("discarded_unexplained_relations") or 0) for x in literature)
     unverified_quotes=sum(1 for x in literature if x.get("evidence_status")=="quote_unverified")
+    invalid_scope_fields=sum(len(x.get("invalid_scope_fields") or []) for x in literature)
     relevance_audit=record.get("search_relevance_audit") or {}
     prior_audit=record.get("prior_reference_audit") or {}
     transfer_leads=record.get("method_transfer_leads") or []
@@ -85,6 +86,8 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         flags.append(str(unlinked)+" 篇文献暂未关联到具体诊断；不作为诊断关联证据")
     if unverified_quotes:
         flags.append(str(unverified_quotes)+" 篇文献的摘要引文未通过逐字核验；不作为已核验摘要证据")
+    if invalid_scope_fields:
+        flags.append(str(invalid_scope_fields)+" 个模型文献描述字段无效；已明确降级为未核实，保留可核验的摘要原文")
     if relevance_audit.get("quarantined",0):
         flags.append(str(relevance_audit["quarantined"])+
                      " 篇候选文献未通过研究领域/摘要筛选，已隔离且不作为直接先例")
@@ -174,6 +177,7 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "unlinked_literature_assessments":unlinked,
         "discarded_unexplained_literature_relations":discarded_relations,
         "unverified_literature_quotes":unverified_quotes,
+        "invalid_literature_scope_fields":invalid_scope_fields,
         "literature_relation_counts":relation_counts,
         "routes":len(routes),
         "routes_with_prior_papers":routes_with_nearest,
