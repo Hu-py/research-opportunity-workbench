@@ -4,6 +4,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY research_workbench ./research_workbench
 COPY backend ./backend
+COPY config ./config
 COPY skills ./skills
 COPY scripts ./scripts
 RUN pip install --no-cache-dir '.[postgres,ai,paper,storage]'
