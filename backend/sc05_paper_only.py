@@ -809,6 +809,64 @@ def critique(raw: dict, routes: list[dict]) -> list[dict]:
     return result
 
 
+def critique_conservatively(raw: dict, routes: list[dict]) -> tuple[list[dict], dict]:
+    """Preserve valid independent reviews and HOLD every unreviewed route.
+
+    An incomplete reviewer response is NOT evidence that a route merits
+    approval. This is an explicit no-promotion fallback, not model-generated
+    criticism or a repair of scientific evidence.
+    """
+    items = raw.get("reviews") if isinstance(raw, dict) else None
+    if isinstance(items, list):
+        try:
+            exact = critique({"reviews": items}, routes)
+            return exact, {"policy": "strict_complete", "imputed_hold_count": 0,
+                           "invalid_model_reviews": 0, "missing_route_ids": []}
+        except EvidenceError:
+            pass
+    else:
+        items = []
+
+    allowed = {route["id"]: route for route in routes}
+    valid = {}
+    invalid_count = 0
+    for item in items[:15]:
+        rid = item.get("route_id") if isinstance(item, dict) else None
+        if rid not in allowed or rid in valid:
+            invalid_count += 1
+            continue
+        try:
+            parsed = critique({"reviews": [item]}, [allowed[rid]])[0]
+        except EvidenceError:
+            invalid_count += 1
+            continue
+        valid[rid] = parsed
+
+    missing = [route["id"] for route in routes if route["id"] not in valid]
+    result = []
+    for route in routes:
+        rid = route["id"]
+        if rid in valid:
+            result.append({**valid[rid], "review_origin": "model_independent_critic"})
+        else:
+            result.append({
+                "route_id": rid,
+                "verdict": "hold",
+                "reason": "独立审稿未覆盖此路线；系统保守暂缓，不应据此推荐独立论文。",
+                "existing_work_risk": "未完成最近先例独立审查；不允许宣称新颖性。",
+                "data_blocker": "未完成独立可行性审查；关键数据与识别性未知。",
+                "minimum_test_revision": "补齐真实文献、数据可得性与竞争机制后重新独立评审。",
+                "review_origin": "system_imputed_hold_due_to_missing_critic",
+            })
+    return result, {
+        "policy": "conservative_hold_on_missing_or_invalid_critic",
+        "imputed_hold_count": len(missing),
+        "invalid_model_reviews": invalid_count + max(0, len(items) - 15),
+        "missing_route_ids": missing,
+        "note": "Fallback HOLD is not a real independent model review and cannot certify merit.",
+    }
+
+
 def _markdown(result: dict) -> str:
     """Source-linked report, grounded in actual model outputs."""
     source = result["source"]
@@ -1038,6 +1096,7 @@ def _markdown(result: dict) -> str:
                 for v in program_audit.get("routes",[]) if v["route_id"]==route["id"]
             ),"旧版未进行结构审查"), "",
             "**独立反证**："+rev["reason"]+"；已有研究风险："+rev["existing_work_risk"],
+            "**独立审稿来源**："+rev.get("review_origin","legacy_unmarked"),
             "**数据约束**："+rev["data_blocker"], "",
             "**修订后的最小实验**："+rev["minimum_test_revision"], "",
         ]
@@ -1440,7 +1499,7 @@ def run_paper(
         # With no proposed routes there is no review target. Avoid a paid
         # request that would force the model to invent one.
         critic_raw={"reviews":[],"agenda_reviews":[]}
-    reviews=critique(critic_raw,routes)
+    reviews,critic_completion_audit=critique_conservatively(critic_raw,routes)
     research_agenda_reviews,agenda_review_audit=validate_agenda_reviews(
         critic_raw.get("agenda_reviews"),research_agendas)
     research_agenda_audit=audit_agendas(
@@ -1493,7 +1552,7 @@ def run_paper(
         },
         "literature_assessments":literature,
         "routes":routes,"route_generation_audit":route_generation_audit,
-        "reviews":reviews,"usage":log,
+        "reviews":reviews,"critic_completion_audit":critic_completion_audit,"usage":log,
         "is_paid_model_output":model_call is request_json,
         "experiment_variant":("scientific_value_gate_on" if scientific_value_gate else "scientific_value_gate_off"),
         "shared_frozen_evidence":frozen_snapshot is not None,
