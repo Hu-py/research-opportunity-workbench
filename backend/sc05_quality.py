@@ -33,6 +33,7 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     source_audit=record.get("source_policy_audit") or {}
     query_audit=record.get("search_query_audit") or {}
     research_program_audit=record.get("research_program_audit") or {}
+    critic_completion_audit=record.get("critic_completion_audit") or {}
     eligible_prior_ids=set(prior_audit.get("minimum_evidence_eligible_paper_ids",[]))
     relation_counts={
         relation:sum(
@@ -128,6 +129,12 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
     if method_bridge_audit.get("rejected"):
         flags.append(str(len(method_bridge_audit["rejected"]))+
                      " 条方法迁移提案证据或结构不足，已隔离，不进行自动补全")
+    if critic_completion_audit.get("imputed_hold_count",0):
+        flags.append(str(critic_completion_audit["imputed_hold_count"])+
+                     " 条路线未获得完整独立模型审稿，已按保守策略HOLD；不属于真实审稿结论")
+    if critic_completion_audit.get("invalid_model_reviews",0):
+        flags.append(str(critic_completion_audit["invalid_model_reviews"])+
+                     " 条无效独立审稿被隔离，没有自动修复或批准")
     if routes and routes_with_checked_nearest<len(routes):
         flags.append("部分研究路线缺少经过摘要核验的近邻研究")
     if routes and not routes_with_nearest:
@@ -183,6 +190,9 @@ def inspect_report(record: dict[str, Any]) -> dict[str, Any]:
         "routes_with_prior_papers":routes_with_nearest,
         "routes_with_assessed_prior_papers":routes_with_checked_nearest,
         "critic_coverage":len(reviews)==len(routes),
+        "independent_model_critic_coverage":len(routes)-critic_completion_audit.get("imputed_hold_count",0),
+        "imputed_critic_holds":critic_completion_audit.get("imputed_hold_count",0),
+        "rejected_invalid_critic_reviews":critic_completion_audit.get("invalid_model_reviews",0),
         "warnings":flags,
         "structural_status":"needs_review" if flags else "structurally_complete",
         "scientific_quality_certified":False,
