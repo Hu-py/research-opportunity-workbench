@@ -28,6 +28,7 @@ from backend.sc05_source_policy import (
     apply_source_governance, resolved_openalex_source_ids,
     POLICY_VERSION as SOURCE_POLICY_VERSION,
 )
+from backend.sc05_source_resolution import resolve_sources
 from backend.sc05_research_program import (
     PROGRAM_TEMPLATE, PROGRAM_FIELDS, audit_research_program,
 )
@@ -973,7 +974,12 @@ def _markdown(result: dict) -> str:
               "**候选状态**："+verdict.get("editorial_status","unreviewed")+
               "；阻断："+",".join(verdict.get("blocking_codes",[])),""]
     if not result.get("research_agendas"):
+        rejected_audits=result.get("research_agenda_generation_audit",{}).get("rejected",[])
         buf+=["未形成结构完整且证据可追溯的综合科研议程，不应强行推荐。",""]
+        if rejected_audits:
+            buf+=["**生成议程拒绝原因**："+", ".join(
+                str(x.get("code","unclassified")) for x in rejected_audits
+            ),""]
     buf+=["", "## 6.1 候选研究路线：增量、实验与否决", ""]
     if not result["routes"]:
         buf+=["目前证据不足以形成可靠的下一篇方案。建议先核查上面的关键缺口。", ""]
@@ -1095,6 +1101,83 @@ def screen_scientific_route_refs(raw: dict, triage: dict) -> tuple[dict, dict]:
     }
 
 
+RECOVERY_SEEDS = {
+    "urban_transport": {
+        "A": "urban transit resilience extreme weather",
+        "B": "urban mobility network disruption",
+        "D": "metro passenger flow disruption resilience",
+    },
+    "water_hydrology": {
+        "A": "urban flood water resilience",
+        "B": "urban water infrastructure risk",
+        "D": "flood hydrology water management",
+    },
+    "health_epidemiology": {
+        "A": "urban health exposure",
+        "B": "urban environment health",
+        "D": "environment health epidemiology",
+    },
+    "housing_real_estate": {
+        "A": "housing markets urban change",
+        "B": "housing urban spatial structure",
+        "D": "house prices urban economics",
+    },
+    "urban_environment": {
+        "A": "urban planning built environment",
+        "B": "urban spatial analysis",
+        "D": "land use urban morphology",
+    },
+}
+
+
+def recover_coverage_papers(
+    retrieved: list[dict], domain_profile: dict,
+    source_ids_by_tier: dict[str, list[str]], *,
+    source_doi: str = "", retriever: Callable | None = None,
+) -> tuple[list[dict], list[str], dict]:
+    """Run <=3 additional logged, source-ID-filtered OpenAlex searches.
+
+    This recovers underrepresented A/B/D streams without any model call or
+    out-of-catalog source promotion. All found papers still pass normal gates.
+    """
+    domain = domain_profile.get("code", "")
+    seeds = RECOVERY_SEEDS.get(domain, {})
+    previous = len(retrieved)
+    accepted, _ = screen_candidate_papers(
+        retrieved, domain_profile, source_doi=source_doi)
+    direct, _, _ = apply_source_governance(
+        retrieved, accepted, source_domain=domain)
+    have = {p["source_tier"] for p in direct}
+    seen = {p["id"] for p in retrieved}
+    errors, fallback = [], []
+    fn = retriever or openalex_search
+    for tier in ("A", "B", "D"):
+        if tier in have or not source_ids_by_tier.get(tier) or tier not in seeds:
+            continue
+        spec = {"query": seeds[tier], "source_tier_intent":tier,
+                "need":{"A":"application","B":"theory","D":"counterexample"}[tier]}
+        found, err = fn([spec], source_profile=domain_profile,
+                        source_ids_by_tier=source_ids_by_tier)
+        errors.extend(err)
+        new = 0
+        for row in found[:7]:
+            if not isinstance(row, dict) or not row.get("id") or row["id"] in seen:
+                continue
+            seen.add(row["id"])
+            retrieved.append(row)
+            new += 1
+        fallback.append({"tier":tier, "query":spec["query"],
+                         "added_unverified_candidates":new})
+    return retrieved, errors, {
+        "policy":"exact_source_id_bounded_recovery",
+        "original_candidates":previous,
+        "total_candidates":len(retrieved),
+        "added_papers":len(retrieved)-previous,
+        "fallback_queries":fallback,
+        "note":"All recovery papers remain subject to domain, venue and abstract gates.",
+    }
+
+
 def run_paper(
     pdf: str | Path | None, api_key: str, *, model_call: Callable = request_json,
     search_provider: Callable | None = None, max_calls: int = 18,
@@ -1143,11 +1226,19 @@ def run_paper(
         # Legacy snapshots lacking this field remain valid without inventing
         # a source-filter mapping or altering historical paid checkpoints.
         approved_source_ids=snapshot.get("sc05_source_id_filter_snapshot",{})
+        source_id_resolution_audit=snapshot.get(
+            "sc05_source_id_resolution_audit",{"status":"legacy_no_resolution_audit"})
     else:
-        approved_source_ids=resolved_openalex_source_ids(
-            source_registry, source_domain_profile["code"])
+        if search_provider is None:
+            approved_source_ids,source_id_resolution_audit=resolve_sources(
+                source_registry, source_domain_profile["code"])
+        else:
+            approved_source_ids=resolved_openalex_source_ids(
+                source_registry, source_domain_profile["code"])
+            source_id_resolution_audit={"status":"injected_provider_no_lookup"}
         canonical={k:v for k,v in snapshot.items() if k!="snapshot_sha256"}
         canonical["sc05_source_id_filter_snapshot"]=approved_source_ids
+        canonical["sc05_source_id_resolution_audit"]=source_id_resolution_audit
         snapshot={**canonical,"snapshot_sha256":digest(canonical)}
     facts = snapshot["observations"]
     lineage_raw = _run(model_call,api_key,"method_lineage",
@@ -1201,6 +1292,14 @@ def run_paper(
     retrieved_papers,search_errors=openalex_search(
         questions,provider=search_provider,source_profile=source_domain_profile,
         source_ids_by_tier=approved_source_ids)
+    if search_provider is None:
+        retrieved_papers,extra_errors,tier_recovery_audit=recover_coverage_papers(
+            retrieved_papers,source_domain_profile,approved_source_ids,
+            source_doi=_source_doi(pages))
+        search_errors.extend(extra_errors)
+    else:
+        tier_recovery_audit={"status":"mock_provider_no_recovery",
+                             "fallback_queries":[],"added_papers":0}
     domain_screened,search_relevance_audit=screen_candidate_papers(
         retrieved_papers,source_domain_profile,source_doi=_source_doi(pages))
     # A/B: user-approved planning sources; C: methods only; D: direct-domain
@@ -1265,7 +1364,11 @@ def run_paper(
          "额外输出research_agendas最多2条，允许为空。每条组织单一中心科学主张，不是多条并列小选题。"
          "只引用已存在的route_ids和原文fact_ids，安排2到4项互补研究；"
          "必须区分竞争机制并说明研究之间的因果论证关系、共同否证条件和规划决策贡献。"
-         "不能通过增加城市范围、假定新数据或宏大表述冒充创新。",
+         "不能通过增加城市范围、假定新数据或宏大表述冒充创新。"
+         "一条整合议程必须回答值得独立论文研究的新系统机制、解释框架或规划决策问题，"
+         "至少关联一条independent_study或system_program研究路线。"
+         "不能将原论文的指标效度检验、稳健性、模拟假设或替换算法包装为新论文。"
+         "无法查证真实直接先例时必须HOLD且解释缺口。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
          "approved_source_policy":SOURCE_POLICY_VERSION,
@@ -1347,6 +1450,8 @@ def run_paper(
                               "domain_evidence_queries":sum(q.get("need")!="method" for q in questions)},
         "external_papers":papers,"search_errors":search_errors,
         "source_policy_audit":source_policy_audit,
+        "source_id_resolution_audit":source_id_resolution_audit,
+        "source_tier_recovery_audit":tier_recovery_audit,
         "research_program_audit":research_program_audit,
          "research_agendas":research_agendas,
          "research_agenda_generation_audit":agenda_generation_audit,

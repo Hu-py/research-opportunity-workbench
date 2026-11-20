@@ -5,7 +5,8 @@ from backend.sc05_research_agenda import (
 
 FACTS = [{"fact_id": "F001"}, {"fact_id": "F002"}]
 ROUTES = [
-    {"id": "R01", "closest_paper_ids": ["doi:10.1000/precedent"]},
+    {"id": "R01", "closest_paper_ids": ["doi:10.1000/precedent"],
+     "research_program": {"contribution_level": "independent_study"}},
     {"id": "R02", "closest_paper_ids": []},
 ]
 STUDIES = [
@@ -127,3 +128,15 @@ def test_extra_and_duplicate_agendas_rejected():
     rows, audit = validate_agenda_proposals(bad, ROUTES, FACTS)
     assert len(rows) == 1
     assert audit["rejected"][0]["code"] == "AGENDA_ID_INVALID_OR_DUPLICATE"
+
+
+def test_a_quality_only_bundle_cannot_become_full_paper():
+    only_quality = [
+        {"id": "R01", "closest_paper_ids": ["doi:10.1000/precedent"],
+         "research_program": {"contribution_level": "robustness_fix"}},
+        {"id": "R02", "closest_paper_ids": [],
+         "research_program": {"contribution_level": "mechanism_substudy"}},
+    ]
+    rows, audit = validate_agenda_proposals([AGENDA], only_quality, FACTS)
+    assert rows == []
+    assert audit["rejected"][0]["code"] == "AGENDA_ONLY_QUALITY_OR_SUBSTUDIES"
