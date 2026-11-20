@@ -5,7 +5,7 @@ COPY pyproject.toml ./
 COPY research_workbench ./research_workbench
 COPY backend ./backend
 COPY skills ./skills
-RUN pip install --no-cache-dir '.[postgres,ai]'
+RUN pip install --no-cache-dir '.[postgres,ai,storage]'
 RUN useradd --create-home --uid 10001 researcher
 USER researcher
 CMD ["python","-m","backend.worker"]

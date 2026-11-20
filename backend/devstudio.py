@@ -153,6 +153,10 @@ class IssueRequest(BaseModel):
     severity: Literal["low", "medium", "high"] = "medium"
 
 
+class IssueStatusRequest(BaseModel):
+    status: Literal["open", "in_progress", "blocked", "resolved"]
+
+
 class ChangeRequest(BaseModel):
     module_id: str
     kind: Literal["source", "document", "workflow", "code", "other"]
@@ -315,6 +319,22 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
         db.commit()
         return to_dict(row)
 
+    @router.patch("/issues/{issue_id}")
+    def update_issue_status(issue_id: str, data: IssueStatusRequest,
+                            db: Session = Depends(get_db),
+                            actor: TeamMember = Depends(write)):
+        issue = db.execute(select(DevIssue).where(
+            DevIssue.id == issue_id).with_for_update()).scalar_one_or_none()
+        if issue is None:
+            raise HTTPException(404, "Issue not found")
+        if issue.status != data.status:
+            before = issue.status
+            issue.status = data.status
+            add_audit(db, "devstudio.issue_status_changed", actor.id, issue.id,
+                      "from=" + before + ";to=" + data.status)
+            db.commit()
+        return to_dict(issue)
+
     @router.get("/changes")
     def changes(db: Session = Depends(get_db), actor: TeamMember = Depends(read)):
         rows = db.scalars(select(DevChange).order_by(DevChange.created_at.desc()).limit(250)).all()
@@ -422,10 +442,19 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
             raise HTTPException(422, "Use a verified-format GitHub Actions Run URL from this repository")
         if data.kind == "internal" and not data.external_url.startswith("/api/tasks/"):
             raise HTTPException(422, "Internal runs must refer to a task resource")
+        # Signed CI metadata can arrive before a user links this run.
+        status_from_ci = "unverified"
+        if data.kind == "github_actions":
+            from backend.devstudio_github_sync import DevGithubActivity, event_to_ci_status
+            found = re.search(r"/actions/runs/(\d+)/?$", data.external_url)
+            if found:
+                activity = db.get(DevGithubActivity, "workflow_run:" + found.group(1))
+                if activity:
+                    status_from_ci = event_to_ci_status(activity.status)
         row = DevRunRef(id=new_id("run"), experiment_id=experiment_id, kind=data.kind,
                         external_url=data.external_url, code_sha=data.code_sha,
                         input_hash=data.input_hash, note=data.note, registered_by=actor.id,
-                        status="unverified")
+                        status=status_from_ci)
         db.add(row)
         add_audit(db, "devstudio.run_linked", actor.id, row.id, data.external_url[:170])
         db.commit()
@@ -479,4 +508,17 @@ def mount(app, *, get_db, require_actor, require_editor, require_admin, team_aut
             "note": "Links are explicitly recorded. Time order alone does not prove causation or deployment.",
         }
 
+    # V0.4 experiment registry extends legacy rows without changing their columns.
+    from backend.experiment_management import mount as mount_experiment_management
+    mount_experiment_management(
+        router, get_db=get_db, read=read, write=write,
+        validate_module=validate_module, to_dict=to_dict, new_id=new_id,
+        DevExperiment=DevExperiment, DevChange=DevChange,
+        DevRunRef=DevRunRef, DevEvaluation=DevEvaluation, encode=encode,
+    )
+
     app.include_router(router)
+    # Import and register GitHub tables before API lifespan creates the DB.
+    from backend.devstudio_github_sync import mount as mount_github_sync
+    mount_github_sync(app, get_db=get_db, require_actor=require_actor,
+                      team_auth_enabled=team_auth_enabled)

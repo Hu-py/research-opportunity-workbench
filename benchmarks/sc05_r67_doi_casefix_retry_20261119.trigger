@@ -1,0 +1,1 @@
+Third and final attempt to run public OpenAlex DOI metadata evaluation, after case-insensitive DOI validator repair and full-manifest regression test. Initial run 44447087176 failed synthetic duplicate fixture; second run 44447220215 failed DOI casefold validation before any OpenAlex requests. This retry caps public requests at 38 and is NOT authorization for DeepSeek.

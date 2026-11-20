@@ -1,0 +1,30 @@
+# Isolated test service: does not adopt or update existing Render services.
+# The existing test Postgres is referenced, not added to a managed databases list.
+# A dedicated schema is selected and verified by scripts/devstudio_postgres_e2e.py.
+services:
+  - type: web
+    name: research-atlas-devstudio-e2e
+    runtime: docker
+    repo: https://github.com/Hu-py/research-opportunity-workbench
+    branch: experiment/devstudio-postgres-e2e-20261114
+    dockerfilePath: ./Dockerfile.devstudio-e2e
+    dockerContext: .
+    region: singapore
+    plan: free
+    autoDeployTrigger: off
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: research-atlas-test-db
+          property: connectionString
+      - key: APP_ENV
+        value: production
+      - key: TEAM_AUTH_ENABLED
+        value: "true"
+      - key: WORKER_MODE
+        value: queue
+      - key: DEVSTUDIO_E2E_ISOLATED
+        value: "1"
+      - key: API_BEARER_TOKEN
+        generateValue: true

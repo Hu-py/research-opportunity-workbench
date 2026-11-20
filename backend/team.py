@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, Session
 from research_workbench.core import Base, Profile, get_profile, set_profile
 
 PASSWORD = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=2)
-ROLES = ("admin", "researcher", "viewer")
+ROLES = ("owner", "admin", "researcher", "viewer")
 SESSION_SECONDS = 7 * 24 * 60 * 60
 
 def timestamp() -> datetime:
@@ -80,6 +80,7 @@ def create_member(db: Session, email: str, name: str, password: str, role: str="
     if not 2 <= len(name.strip()) <= 140:raise ValueError("Name must be 2..140 characters")
     if len(password) < 12 or len(password) > 256:raise ValueError("Password must be 12..256 characters")
     if role not in ROLES:raise ValueError("Invalid role")
+    if role == "owner":raise ValueError("Owner must be claimed through verified email onboarding")
     if initial:
         count=db.scalar(select(func.count()).select_from(TeamMember))
         if count:raise ValueError("Team already initialized; invite using authenticated admin API")
@@ -150,7 +151,10 @@ def revoke_session(db: Session,raw: str,actor_id:str|None=None):
 def set_member_status(db:Session,member:TeamMember,*,active:bool|None=None,
                       role:str|None=None,actor_id:str):
     if role is not None and role not in ROLES:raise ValueError("Invalid role")
-    if role is not None and role!=member.role or active is False and member.active:
+    if role == "owner":raise ValueError("Owner role is assigned only through verified onboarding")
+    if member.role == "owner" and (role is not None and role != "owner" or active is False):
+        raise ValueError("Owner cannot be downgraded or deactivated by the member API")
+    if (role is not None and role != member.role) or (active is False and member.active):
         if member.role=="admin":
             active_admins=db.scalar(select(func.count()).select_from(TeamMember).where(
                 TeamMember.role=="admin",TeamMember.active.is_(True))) or 0

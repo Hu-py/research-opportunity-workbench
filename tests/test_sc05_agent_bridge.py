@@ -1,0 +1,615 @@
+"""Offline SC05 MCP + OAuth PKCE security and queue integration tests.
+
+No real provider requests, external logins, browser automation or billable calls.
+"""
+import base64
+import hashlib
+import json
+from urllib.parse import parse_qs, urlparse
+
+import pytest
+from fastapi.testclient import TestClient
+
+import backend.api as api
+from backend.sc05_agent_bridge import CLIENT, REDIRECT
+from backend.team import create_member
+from backend.sc05_eval_api import SC05Run
+from research_workbench.core import session_factory
+
+ORIGIN="https://research-atlas-devstudio-e2e-ejmh.onrender.com"
+MCP=ORIGIN+"/mcp"
+VERIFIER="v"*64
+CHALLENGE=base64.urlsafe_b64encode(hashlib.sha256(VERIFIER.encode()).digest()).decode().rstrip("=")
+SERVICE="testing-sc05-service-token"
+
+
+@pytest.fixture
+def workspace(tmp_path,monkeypatch):
+    monkeypatch.setenv("TEAM_AUTH_ENABLED","true")
+    monkeypatch.setenv("APP_ENV","development")
+    monkeypatch.setenv("API_BEARER_TOKEN",SERVICE)
+    monkeypatch.setenv("SC05_MCP_ENABLED","true")
+    monkeypatch.setenv("SC05_MCP_RUN_SCOPE_ENABLED","true")
+    monkeypatch.setenv("SC05_MCP_ENFORCE_WORKER_READINESS","false")
+    monkeypatch.setenv("SC05_MCP_PUBLIC_URL",ORIGIN)
+    monkeypatch.setenv("SC05_EXECUTION_MODE","worker")
+    monkeypatch.setenv("SC04_DEEPSEEK_API_KEY","fake-provider-key-never-paid")
+    factory=session_factory("sqlite:///"+str(tmp_path/"mcp.db"))
+    monkeypatch.setattr(api,"get_factory",lambda:factory)
+    with factory() as db:
+        owner=create_member(db,"owner@example.invalid","Owner",
+                            "test-verified-owner-222222",role="admin",initial=True)
+        create_member(db,"viewer@example.invalid","Viewer",
+                      "test-verified-viewer-333333",role="viewer")
+        owner.role="owner"
+        db.commit()
+    with TestClient(api.app) as client:
+        yield client,factory
+
+
+def oauth_form(scope="experiments:read experiments:run"):
+    return {"response_type":"code","client_id":CLIENT,"redirect_uri":REDIRECT,
+            "resource":MCP,"code_challenge":CHALLENGE,
+            "code_challenge_method":"S256","scope":scope,"state":"mcp-state-1234"}
+
+
+def connect(client,scope="experiments:read experiments:run",email="owner@example.invalid",
+            password="test-verified-owner-222222"):
+    data={**oauth_form(scope),"email":email,"password":password}
+    response=client.post("/oauth/authorize",data=data,follow_redirects=False)
+    assert response.status_code==303,response.text
+    url=urlparse(response.headers["location"])
+    assert url.scheme=="https" and url.netloc=="chatgpt.com"
+    assert url.path=="/connector_platform_oauth_redirect"
+    parsed=parse_qs(url.query)
+    assert parsed["state"]==["mcp-state-1234"]
+    assert parsed["iss"]==[ORIGIN]
+    code=parsed["code"][0]
+    token_data={"grant_type":"authorization_code","client_id":CLIENT,
+                "redirect_uri":REDIRECT,"resource":MCP,
+                "code_verifier":VERIFIER,"code":code}
+    result=client.post("/oauth/token",data=token_data)
+    assert result.status_code==200,result.text
+    return result.json(),token_data
+
+
+def call(client,token,method,params=None,identifier=1):
+    return client.post("/mcp",headers={"Authorization":"Bearer "+token},
+       json={"jsonrpc":"2.0","id":identifier,"method":method,
+             "params":params or {}})
+
+
+def api_session(client):
+    response=client.post("/api/auth/login",headers={"Authorization":"Bearer "+SERVICE},
+       json={"email":"owner@example.invalid","password":"test-verified-owner-222222"})
+    assert response.status_code==200
+    return {"Authorization":"Bearer "+SERVICE,
+            "X-Research-Session":response.json()["token"]}
+
+
+def test_discovery_pkce_and_replay_protection(workspace):
+    client,_=workspace
+    resource=client.get("/.well-known/oauth-protected-resource")
+    assert resource.status_code==200
+    assert resource.json()["resource"]==MCP
+    assert client.get("/.well-known/oauth-authorization-server").json()[
+        "code_challenge_methods_supported"]==["S256"]
+    initial=client.get("/mcp")
+    assert initial.status_code==401
+    assert 'scope="experiments:read experiments:run"' in initial.headers["www-authenticate"]
+    assert "resource_metadata" in client.get("/mcp").headers["www-authenticate"]
+    assert client.get("/oauth/authorize",params={**oauth_form(),"redirect_uri":"https://evil.invalid"}).status_code==400
+    assert client.get("/oauth/authorize",params={**oauth_form(),"code_challenge_method":"plain"}).status_code==400
+    page=client.get("/oauth/authorize",params=oauth_form())
+    assert page.status_code==200
+    assert "Authorize ChatGPT" in page.text
+    # Browsers enforce form-action on a POST's 303 redirect chain.
+    # Without the explicit verified callback origin, Chrome and Edge silently
+    # leave the consent form visible although POST /oauth/authorize returns 303.
+    csp=page.headers["content-security-policy"]
+    assert "form-action 'self' https://chatgpt.com;" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "default-src 'none'" in csp
+    assert "https://evil.invalid" not in csp
+    assert page.headers["referrer-policy"]=="no-referrer"
+    tokens,data=connect(client)
+    assert client.post("/oauth/token",data=data).status_code==400
+    init=call(client,tokens["access_token"],"initialize")
+    assert init.status_code==200
+    assert init.json()["result"]["serverInfo"]["name"]=="research-atlas-sc05"
+    names=call(client,tokens["access_token"],"tools/list").json()["result"]["tools"]
+    assert {"list_experiments","create_ab_pair","prepare_experiment","start_experiment",
+            "get_experiment_status","get_experiment_result","get_executor_status",
+            "prepare_ab_pair","get_ab_pair_status","start_ab_pair","get_ab_pair_result",
+            "record_blind_review","compare_ab_pair","list_experiment_rounds",
+            "record_experiment_round","get_model_config_status","probe_model_connection"} <= {x["name"] for x in names}
+    probe_tool=next(x for x in names if x["name"]=="probe_model_connection")
+    assert probe_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
+    assert probe_tool["annotations"]["readOnlyHint"] is False
+    config_tool=next(x for x in names if x["name"]=="get_model_config_status")
+    assert config_tool["annotations"]["readOnlyHint"] is True
+    create_tool=next(x for x in names if x["name"]=="create_ab_pair")
+    assert create_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
+    assert create_tool["_meta"]["securitySchemes"]==create_tool["securitySchemes"]
+    assert create_tool["annotations"]["readOnlyHint"] is False
+    write_tool=next(x for x in names if x["name"]=="start_experiment")
+    assert write_tool["securitySchemes"]==[{"type":"oauth2","scopes":["experiments:read","experiments:run"]}]
+    assert write_tool["_meta"]["securitySchemes"]==write_tool["securitySchemes"]
+    assert write_tool["annotations"]["readOnlyHint"] is False
+    assert next(x for x in names if x["name"]=="list_experiments")["annotations"]["readOnlyHint"] is True
+    assert call(client,tokens["access_token"],"tools/call",{
+        "name":"list_experiments","arguments":{}}).json()["result"]["isError"] is False
+    assert call(client,tokens["access_token"],"tools/list").status_code==200
+    assert client.post("/mcp",headers={"Authorization":"Bearer "+tokens["access_token"],
+                       "Origin":"https://evil.invalid"},json={"jsonrpc":"2.0","id":5,
+                        "method":"tools/list"}).status_code==403
+    new=client.post("/oauth/token",data={"grant_type":"refresh_token",
+        "refresh_token":tokens["refresh_token"],"resource":MCP,"client_id":CLIENT})
+    assert new.status_code==200
+    assert call(client,tokens["access_token"],"tools/list").status_code==401
+    assert call(client,new.json()["access_token"],"tools/list").status_code==200
+
+
+
+def test_model_config_status_is_read_only_and_never_discloses_key(workspace):
+    client,_=workspace
+    tokens,_=connect(client)
+    reply=call(client,tokens["access_token"],"tools/call",{
+        "name":"get_model_config_status","arguments":{}})
+    assert reply.json()["result"]["isError"] is False
+    data=json.loads(reply.json()["result"]["content"][0]["text"])
+    assert data["direct_env_key_available"] is True
+    assert data["credential_source"]=="environment"
+    assert data["provider_calls"]==0
+    assert "fake-provider-key-never-paid" not in json.dumps(data)
+
+
+def test_paid_model_connection_probe_records_usage_and_safe_error(workspace,monkeypatch):
+    from backend.model_gateway import ModelCallError
+    import backend.sc05_agent_bridge as bridge
+    monkeypatch.setenv("SC05_MCP_PAID_ENABLED","true")
+    client,factory=workspace
+    tokens,_=connect(client)
+    calls=[]
+    def fake_provider(key,model,system,payload,max_tokens=96):
+        calls.append({"model":model,"stage":payload["sc05_stage"],"max_tokens":max_tokens})
+        return {"ok":True},{"input_tokens":11,"output_tokens":3}
+    monkeypatch.setattr(bridge,"request_json",fake_provider)
+    reply=call(client,tokens["access_token"],"tools/call",{
+        "name":"probe_model_connection","arguments":{"confirm_paid":True}})
+    assert reply.json()["result"]["isError"] is False,reply.text
+    data=json.loads(reply.json()["result"]["content"][0]["text"])
+    assert data["ok"] is True
+    assert data["provider_calls"]==1
+    assert data["usage"]=={"input_tokens":11,"output_tokens":3}
+    assert calls==[{"model":"deepseek-flash","stage":"connection_probe","max_tokens":96}]
+    with factory() as db:
+        from backend.research_budget import ResearchDailyBudget
+        from datetime import datetime,timezone
+        row=db.get(ResearchDailyBudget,datetime.now(timezone.utc).date().isoformat())
+        assert row.reserved_calls==1 and row.reserved_tokens==256
+        assert row.actual_input_tokens==11 and row.actual_output_tokens==3
+
+    def failed_provider(*args,**kwargs):
+        raise ModelCallError("DeepSeek HTTP 401：密钥无效")
+    monkeypatch.setattr(bridge,"request_json",failed_provider)
+    failed=call(client,tokens["access_token"],"tools/call",{
+        "name":"probe_model_connection","arguments":{"confirm_paid":True}})
+    assert failed.json()["result"]["isError"] is True
+    failure=json.loads(failed.json()["result"]["content"][0]["text"])
+    assert failure["error"]=="DeepSeek HTTP 401：密钥无效"
+    assert "fake-provider-key-never-paid" not in json.dumps(failure)
+
+
+
+def test_read_only_token_cannot_run_paid_and_disabled_switch(workspace):
+    client,_=workspace
+    tokens,_=connect(client,scope="experiments:read")
+    reply=call(client,tokens["access_token"],"tools/call",{
+        "name":"start_experiment","arguments":{"run_id":"sc05run_"+"a"*28,"confirm_paid":True}})
+    assert reply.status_code==200
+    assert reply.json()["result"]["isError"] is True
+    result=reply.json()["result"]
+    assert "authorize experiments:run" in str(result)
+    assert result["_meta"]["mcp/www_authenticate"]
+    assert "insufficient_scope" in str(result)
+    assert "experiments:run" in str(result)
+    create=call(client,tokens["access_token"],"tools/call",{
+        "name":"create_ab_pair","arguments":{"case_id":"sc05case_"+"b"*28,"confirm_create":True}})
+    assert create.status_code==200
+    assert create.json()["result"]["isError"] is True
+    assert create.json()["result"]["_meta"]["mcp/www_authenticate"]
+
+
+def test_owner_auth_required_and_activation_flag(workspace,monkeypatch):
+    client,_=workspace
+    unauth=client.post("/oauth/authorize",data={**oauth_form(),
+        "email":"viewer@example.invalid","password":"test-verified-viewer-333333"})
+    assert unauth.status_code==403
+    monkeypatch.setenv("SC05_MCP_ENABLED","false")
+    assert client.get("/.well-known/oauth-protected-resource").status_code==404
+    assert client.get("/mcp").status_code==404
+
+
+def test_owner_mcp_create_ab_pair_is_zero_cost_and_owner_scoped(workspace):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert case.status_code==201,case.text
+    from backend.sc05_eval_api import SC05Case
+    with factory() as db:
+        original=db.get(SC05Case,case.json()["id"])
+        original.shared_evidence_json='{"old_snapshot":"must remain untouched"}'
+        db.commit()
+
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    before=call(client,access,"tools/call",{
+        "name":"list_experiments","arguments":{}})
+    assert before.json()["result"]["isError"] is False
+    before_data=json.loads(before.json()["result"]["content"][0]["text"])
+    before_calls=before_data["budget"]["used"]["model_calls"]
+
+    created=call(client,access,"tools/call",{
+        "name":"create_ab_pair","arguments":{
+            "case_id":case.json()["id"],"fresh_copy":True,"confirm_create":True
+        }})
+    assert created.status_code==200
+    assert created.json()["result"]["isError"] is False,created.text
+    payload=json.loads(created.json()["result"]["content"][0]["text"])
+    assert payload["source_case"]["id"]==case.json()["id"]
+    assert payload["case"]["id"]!=case.json()["id"]
+    assert payload["fresh_copy"] is True
+    assert payload["case"]["sha256"]==case.json()["sha256"]
+    assert payload["case"]["pages"]==case.json()["pages"]
+    assert payload["case"]["shared_evidence_ready"] is False
+    assert payload["model_calls"]==0
+    assert [x["variant"] for x in payload["runs"]]==[
+        "science_gate_off","science_gate_on"
+    ]
+    assert all(x["status"]=="prepared" and x["model_calls"]==0
+               for x in payload["runs"])
+    assert payload["runs"][0]["pair_id"]==payload["runs"][1]["pair_id"]==payload["pair_id"]
+
+    after=call(client,access,"tools/call",{
+        "name":"list_experiments","arguments":{}})
+    after_data=json.loads(after.json()["result"]["content"][0]["text"])
+    assert after_data["budget"]["used"]["model_calls"]==before_calls
+    with factory() as db:
+        rows=[db.get(SC05Run,x["id"]) for x in payload["runs"]]
+        original=db.get(SC05Case,case.json()["id"])
+        cloned=db.get(SC05Case,payload["case"]["id"])
+        assert all(row is not None and row.status=="prepared" and row.calls==0 for row in rows)
+        assert rows[0].case_id==rows[1].case_id==payload["case"]["id"]
+        assert original.shared_evidence_json=='{"old_snapshot":"must remain untouched"}'
+        assert not cloned.shared_evidence_json
+        assert original.pages_json==cloned.pages_json
+        assert original.source_sha==cloned.source_sha
+
+
+def test_owner_mcp_reauthorizes_validated_needs_review_queue(workspace,monkeypatch):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert case.status_code==201,case.text
+    pair=client.post("/api/personal-research/me/sc05/cases/"+case.json()["id"]+"/ab",
+                     headers=session)
+    assert pair.status_code==201,pair.text
+    run=next(x for x in pair.json()["runs"] if x["variant"]=="science_gate_on")
+
+    from backend.sc05_eval_api import SC05Case
+    from backend.sc05_worker import SC05DelegatedAuthorization
+    with factory() as db:
+        row=db.get(SC05Run,run["id"])
+        doc=db.get(SC05Case,row.case_id)
+        doc.shared_evidence_json='{"observations":[]}'
+        row.status="queued"
+        row.stage="queued"
+        row.error=""
+        row.calls=5
+        row.checkpoints_json='[{"stage":"method_lineage"},{"stage":"diagnosis"},{"stage":"scientific_value_triage"},{"stage":"evidence_questions"},{"stage":"literature_assessment"}]'
+        db.add(SC05DelegatedAuthorization(
+            run_id=row.id,member_id=row.member_id,status="needs_review"
+        ))
+        db.commit()
+
+    monkeypatch.setattr(
+        "backend.sc05_agent_bridge.check_literature_diagnosis_resume",
+        lambda row,paper,allow_queued=False: {
+            "cached_stages":5,"prompt_hashes_verified":True,
+            "assessment_count":13,"unlinked_assessments":6,
+            "paid_calls_on_check":0,
+        } if allow_queued else (_ for _ in ()).throw(AssertionError("queued retry must request allow_queued")),
+    )
+    monkeypatch.setenv("SC05_MCP_PAID_ENABLED","true")
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    ready=call(client,access,"tools/call",{"name":"prepare_experiment",
+        "arguments":{"run_id":run["id"]}})
+    assert ready.json()["result"]["isError"] is False
+    ready_data=json.loads(ready.json()["result"]["content"][0]["text"])
+    assert ready_data["safe_to_submit"] is True
+    paid=call(client,access,"tools/call",{"name":"start_experiment",
+        "arguments":{"run_id":run["id"],"confirm_paid":True}})
+    assert paid.json()["result"]["isError"] is False,paid.text
+    with factory() as db:
+        row=db.get(SC05Run,run["id"])
+        auth=db.get(SC05DelegatedAuthorization,run["id"])
+        assert row.status=="queued"
+        assert row.calls==5
+        assert auth.status=="approved"
+        assert auth.processed_at is None
+
+
+def test_owner_mcp_pair_preflight_and_round_ledger_are_chatgpt_tools(workspace):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert case.status_code==201,case.text
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    created=call(client,access,"tools/call",{"name":"create_ab_pair","arguments":{
+        "case_id":case.json()["id"],"fresh_copy":True,"confirm_create":True}})
+    assert created.json()["result"]["isError"] is False,created.text
+    pair=json.loads(created.json()["result"]["content"][0]["text"])
+    pair_id=pair["pair_id"]
+    prepared=call(client,access,"tools/call",{"name":"prepare_ab_pair","arguments":{"pair_id":pair_id}})
+    assert prepared.json()["result"]["isError"] is False
+    state=json.loads(prepared.json()["result"]["content"][0]["text"])
+    assert state["next_action"]=="start_baseline"
+    assert state["can_start_next"] is True
+    round_result=call(client,access,"tools/call",{"name":"record_experiment_round","arguments":{
+        "round_code":"R6.3","category_code":"◆01","category_label":"工作流完整性",
+        "problem":"验证 ChatGPT 是否可以完整管理一组 A/B 实验",
+        "method":"MCP 成对预检、顺序启动、盲评和持久化记录",
+        "experiment_content":"创建 clean A/B pair，先运行 gate-off，再运行 gate-on",
+        "pair_id":pair_id,"status":"planned",
+        "detailed_record":{"acceptance":["pair preflight","round ledger"]}}})
+    assert round_result.json()["result"]["isError"] is False,round_result.text
+    rounds=call(client,access,"tools/call",{"name":"list_experiment_rounds","arguments":{}})
+    assert rounds.json()["result"]["isError"] is False
+    data=json.loads(rounds.json()["result"]["content"][0]["text"])
+    assert any(x["round_code"]=="R6.3" and x["pair_id"]==pair_id for x in data["rounds"])
+    names={x["name"] for x in call(client,access,"tools/list").json()["result"]["tools"]}
+    assert {"prepare_ab_pair","get_ab_pair_status","start_ab_pair","get_ab_pair_result",
+            "record_blind_review","compare_ab_pair","list_experiment_rounds",
+            "record_experiment_round"} <= names
+
+
+def test_owner_mcp_start_enqueues_once_and_registers_in_devstudio(workspace,monkeypatch):
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    case=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert case.status_code==201,case.text
+    pair=client.post("/api/personal-research/me/sc05/cases/"+case.json()["id"]+"/ab",
+                     headers=session)
+    assert pair.status_code==201,pair.text
+    run=next(x for x in pair.json()["runs"] if x["variant"]=="science_gate_off")
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    ready=call(client,access,"tools/call",{"name":"prepare_experiment",
+        "arguments":{"run_id":run["id"]}})
+    assert ready.json()["result"]["isError"] is False
+    denied=call(client,access,"tools/call",{"name":"start_experiment",
+        "arguments":{"run_id":run["id"],"confirm_paid":False}})
+    assert denied.json()["result"]["isError"] is True
+    monkeypatch.setenv("SC05_MCP_PAID_ENABLED","true")
+    from fastapi.routing import iter_route_contexts
+    routes=list(iter_route_contexts(api.app.routes))
+    assert any(ctx.path=="/api/personal-research/me/sc05/runs/{run_id}/start"
+               for ctx in routes)
+    paid=call(client,access,"tools/call",{"name":"start_experiment",
+        "arguments":{"run_id":run["id"],"confirm_paid":True}})
+    assert paid.json()["result"]["isError"] is False,paid.text
+    with factory() as db:
+        from backend.sc05_worker import SC05DelegatedAuthorization
+        assert db.get(SC05Run,run["id"]).status=="queued"
+        assert db.get(SC05Run,run["id"]).calls==0
+        assert db.get(SC05DelegatedAuthorization,run["id"]).status=="approved"
+    again=call(client,access,"tools/call",{"name":"start_experiment",
+        "arguments":{"run_id":run["id"],"confirm_paid":True}})
+    assert again.json()["result"]["isError"] is True
+    status=call(client,access,"tools/call",{"name":"get_experiment_status",
+        "arguments":{"run_id":run["id"]}})
+    assert status.json()["result"]["isError"] is False
+    devstudio=client.get("/api/devstudio/experiments",headers=session)
+    assert devstudio.status_code==200
+    assert any("SC05" in x["title"] for x in devstudio.json()["items"])
+
+
+def test_executor_shows_openalex_config_without_leaking_key(workspace,monkeypatch):
+    client,_=workspace
+    tokens,_=connect(client)
+    monkeypatch.delenv("OPENALEX_API_KEY",raising=False)
+    def status():
+        reply=call(client,tokens["access_token"],"tools/call",{
+            "name":"get_executor_status","arguments":{}})
+        assert reply.status_code==200
+        assert reply.json()["result"]["isError"] is False
+        return json.loads(reply.json()["result"]["content"][0]["text"])
+    missing=status()["academic_retrieval"]
+    assert missing["status"]=="missing_api_key"
+    assert missing["provider_calls_on_check"]==0
+    monkeypatch.setenv("OPENALEX_API_KEY","do-not-leak-this-value")
+    reported=status()
+    configured=reported["academic_retrieval"]
+    assert configured["status"]=="configured_unverified"
+    assert configured["connection_tested"] is False
+    assert "do-not-leak-this-value" not in json.dumps(reported)
+
+
+def test_openalex_live_probe_needs_scope_and_opt_in(workspace,monkeypatch):
+    client,_=workspace
+    reader,_=connect(client,scope="experiments:read")
+    monkeypatch.setenv("OPENALEX_API_KEY","fake-private-openalex-key")
+    calls=[]
+    def search(query,since,limit=15,client=None,source_ids=None):
+        calls.append((query,since,limit))
+        return [{"title":"Network resilience under urban disruptions","id":"https://openalex.org/W123"}]
+    monkeypatch.setattr("research_workbench.core.query_openalex",search)
+    without_consent=call(client,reader["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{}})
+    assert without_consent.json()["result"]["isError"] is False
+    assert calls==[]
+    denied=call(client,reader["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{"probe_openalex":True}})
+    assert denied.status_code==200
+    assert calls==[]
+    assert "mcp/www_authenticate" in denied.json()["result"]["_meta"]
+
+    owner,_=connect(client)
+    checked=call(client,owner["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{"probe_openalex":True}})
+    assert checked.status_code==200
+    data=json.loads(checked.json()["result"]["content"][0]["text"])
+    retrieved=data["academic_retrieval"]
+    assert retrieved["status"]=="query_succeeded"
+    assert retrieved["connection_tested"] is True
+    assert retrieved["works_returned"]==1
+    assert retrieved["sample_titles"]==["Network resilience under urban disruptions"]
+    assert calls==[("urban transit resilience","2020-01-01",2)]
+    assert "fake-private-openalex-key" not in json.dumps(data)
+
+
+def test_openalex_probe_reports_safe_provider_failure(workspace,monkeypatch):
+    import httpx
+    client,_=workspace
+    owner,_=connect(client)
+    monkeypatch.setenv("OPENALEX_API_KEY","never-leak-this-key")
+    def search(*args,**kwargs):
+        req=httpx.Request("GET","https://api.openalex.org/works?api_key=never-leak-this-key")
+        raise httpx.HTTPStatusError("secret request failed",request=req,
+                                   response=httpx.Response(409,request=req))
+    monkeypatch.setattr("research_workbench.core.query_openalex",search)
+    checked=call(client,owner["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{"probe_openalex":True}})
+    assert checked.status_code==200
+    data=json.loads(checked.json()["result"]["content"][0]["text"])
+    retrieved=data["academic_retrieval"]
+    assert retrieved["status"]=="query_failed"
+    assert retrieved["connection_tested"] is True
+    assert "OpenAlex HTTP 409" in retrieved["error"]
+    assert "never-leak-this-key" not in json.dumps(data)
+
+
+def test_cached_openalex_startup_probe_available_via_old_read_only_mcp_shape(workspace,monkeypatch):
+    from backend.sc05_worker import SC05WorkerProbe
+    from datetime import datetime,timezone
+    client,factory=workspace
+    tokens,_=connect(client)
+    marker="sc05probe_openalex_research_20261117"
+    monkeypatch.setenv("SC05_OPENALEX_ONCE_ID",marker)
+    monkeypatch.setenv("OPENALEX_API_KEY","redacted-test-key")
+    with factory() as db:
+        db.add(SC05WorkerProbe(
+            id=marker,status="openalex_ready_2",
+            completed_at=datetime.now(timezone.utc)))
+        db.commit()
+    reply=call(client,tokens["access_token"],"tools/call",{
+        "name":"get_executor_status","arguments":{}})
+    assert reply.status_code==200
+    data=json.loads(reply.json()["result"]["content"][0]["text"])
+    academic=data["academic_retrieval"]
+    assert academic["connection_tested"] is True
+    assert academic["status"]=="query_succeeded"
+    assert academic["works_returned"]==2
+    assert academic["provider_calls_on_check"]==0
+    assert "redacted-test-key" not in json.dumps(data)
+
+
+def test_pair_round_keeps_final_review_scores_after_read_only_sync(workspace,monkeypatch):
+    """A completed scored/unblinded pair must not erase custom next steps."""
+    from backend.sc05_agent_bridge import SC05ExperimentRound
+    from backend.sc05_eval_api import SC05Case, SC05Rating
+    from backend.team import AuditEntry
+
+    client,factory=workspace
+    session=api_session(client)
+    pages={"page_01":"This paper provides a long reproducible transportation network study. "*4}
+    created=client.post("/api/personal-research/me/sc05/cases",headers=session,
+        json={"title":"Published urban transport study","pages":pages})
+    assert created.status_code==201
+    pair=client.post("/api/personal-research/me/sc05/cases/"+created.json()["id"]+"/ab",
+        headers=session)
+    assert pair.status_code==201
+    pair_id=pair.json()["pair_id"]
+    with factory() as db:
+        rows=db.query(SC05Run).filter(SC05Run.pair_id==pair_id).all()
+        assert len(rows)==2
+        member_id=rows[0].member_id
+        doc=db.get(SC05Case,rows[0].case_id)
+        doc.shared_evidence_json='{"observations":[]}'
+        for index,row in enumerate(rows,1):
+            row.status="completed"
+            row.stage="complete"
+            db.add(SC05Rating(
+                id="sc05rating_mock_"+str(index),member_id=member_id,
+                run_id=row.id,accuracy=4,science_value=3,narrative=3,
+                literature=2,feasibility=3,
+            ))
+        db.add(AuditEntry(actor_id=member_id,action="sc05.ab_unblinded",
+                          target=pair_id))
+        db.commit()
+    tokens,_=connect(client)
+    access=tokens["access_token"]
+    args={"round_code":"R6.4.5","category_code":"◆01",
+          "category_label":"完整科研工作流",
+          "problem":"Validate completed A/B records and preserve blind scores",
+          "method":"Use real pair state plus researcher-authored evaluation",
+          "experiment_content":"The two model arms finished and blind scores were recorded",
+          "status":"completed",
+          "brief_result":"Gate-on 70 versus gate-off 38, +32 blind points",
+          "next_step":"Audit nearby-paper relevance before running a held-out paper",
+          "detailed_record":{"grade":{"gate_on":70,"gate_off":38},
+                             "scientific_novelty_certified":False},
+          "pair_id":pair_id}
+    saved=call(client,access,"tools/call",{
+        "name":"record_experiment_round","arguments":args})
+    assert saved.status_code==200
+    assert saved.json()["result"]["isError"] is False,saved.text
+    # A status read triggers server-side sync. It must not overwrite review.
+    res=call(client,access,"tools/call",{
+        "name":"get_ab_pair_status","arguments":{"pair_id":pair_id}})
+    assert res.status_code==200
+    assert json.loads(res.json()["result"]["content"][0]["text"])["next_action"]=="complete"
+    listed=call(client,access,"tools/call",{
+        "name":"list_experiment_rounds","arguments":{}})
+    assert listed.json()["result"]["isError"] is False
+    data=json.loads(listed.json()["result"]["content"][0]["text"])
+    row=next(x for x in data["rounds"] if x["round_code"]=="R6.4.5")
+    assert row["status"]=="completed"
+    assert row["brief_result"]==args["brief_result"]
+    assert row["next_step"]==args["next_step"]
+    assert row["detailed_record"]["grade"]==args["detailed_record"]["grade"]
+    assert row["detailed_record"]["baseline"]["status"]=="completed"
+    assert row["detailed_record"]["gate"]["status"]=="completed"
+    assert row["detailed_record"]["_final_review"]["brief_result"]==args["brief_result"]
+    # A newer deployment must not retroactively turn an archived, scored,
+    # internally consistent pair back into an unfinished experiment.
+    monkeypatch.setattr("backend.sc05_agent_bridge.pipeline_sha",
+                        lambda:"9"*64)
+    historical=call(client,access,"tools/call",{
+        "name":"get_ab_pair_status","arguments":{"pair_id":pair_id}})
+    assert historical.status_code==200
+    hist=json.loads(historical.json()["result"]["content"][0]["text"])
+    assert hist["pair_status"]=="completed"
+    assert hist["next_action"]=="complete"
+    assert hist["pipeline_hashes_consistent"] is True
+    assert hist["pipeline_hashes_current"] is False
+    assert hist["can_start_next"] is False
+    assert hist["current_pipeline_sha256"] == "9"*64
+    assert hist["pipeline_sha256"] != hist["current_pipeline_sha256"]
+    rounds_after=call(client,access,"tools/call",{
+        "name":"list_experiment_rounds","arguments":{}})
+    saved_rows=json.loads(rounds_after.json()["result"]["content"][0]["text"])
+    saved=next(x for x in saved_rows["rounds"] if x["round_code"]=="R6.4.5")
+    assert saved["pipeline_sha256"] == hist["pipeline_sha256"]
+    assert saved["detailed_record"]["current_pipeline_sha256"] == "9"*64

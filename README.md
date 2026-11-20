@@ -36,6 +36,12 @@ See [development studio and acceptance checklist](docs/DEVELOPMENT_STUDIO.md).
 
 **Important:** This codebase is a tested development MVP, not an already-deployed website or verified multi-agent research service. Academic novelty must be evaluated by reading primary sources.
 
+## User onboarding & permissions
+
+For a single current reference covering **Owner / Admin / Researcher / Viewer**, initial verification, invitations, passwords, member lifecycle, access to Development Studio, audit, and known implementation gaps, see [Research Atlas user onboarding and permissions policy](docs/USER_ONBOARDING_AND_PERMISSIONS.md).
+
+This policy is tracked in **Draft PR #65**; new Owner and invitation flows are not production-released until actual email delivery and browser acceptance pass. The older [team setup document](docs/TEAM_SETUP.md) is retained as a historical migration/legacy bootstrap guide.
+
 ## Shared 10-member laboratory mode
 
 **One research profile + one shared paper/idea corpus for the entire lab.** The team edition adds separate member accounts (admin, researcher and viewer), Argon2 password hashing, revocable sessions, role-checked APIs, profile revision history, member audit logs and team admin UI. Inactive members lose access immediately.
@@ -81,6 +87,17 @@ The local database defaults to \`data/research.db\` (git-ignored); it persists b
 ## Production / Cloud deployment
 
 Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAPI/Worker and private PostgreSQL configuration, security boundaries and secrets. The repository is public as of development; **never commit API keys, researcher CVs, unpublished manuscripts, participant data or private PDFs.**
+
+## Repository map and active / legacy components
+
+Use [Repository map and maintenance policy](docs/REPOSITORY_MAP.md) as the current source of truth for which folders are active, staging-only, compatibility/legacy or historical. Legacy files are retained until imports, deployments and tests prove they can be retired; no source files are deleted as part of this cleanup.
+
+## ChatGPT-managed SC05 experiments
+
+The isolated staging branch includes an OAuth-protected MCP bridge so ChatGPT can create, preflight, sequentially run, track, blind-review and compare SC05 A/B experiments, while maintaining a persistent experiment-round ledger in PostgreSQL.
+
+- [SC05 ChatGPT end-to-end acceptance](docs/SC05_CHATGPT_ACCEPTANCE.md) — the final acceptance criteria. The workflow is not accepted until software/security, cloud runtime and actual ChatGPT connection gates all pass.
+- [SC05 MCP Owner bridge implementation notes](docs/SC05_CHATGPT_MCP_OWNER_BRIDGE.md) — OAuth and staging security details.
 
 ## Architecture and tests
 

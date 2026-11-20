@@ -21,26 +21,115 @@ def _error(exc):
         hints={401:"密钥无效",402:"账户余额不足",403:"密钥权限不足",
                429:"超过服务限流",400:"请求或模型参数不兼容",
                422:"请求格式不符合要求"}
-        return "DeepSeek HTTP "+str(code)+"："+hints.get(code,"请求失败，请查看 DeepSeek 服务状态")
+        reason=""
+        if code==400:
+            # Never include arbitrary upstream response text: it may contain
+            # user prompt fragments or credentials. Expose only allowlisted
+            # categories to distinguish context, format and safety failures.
+            try:
+                body=exc.response.json()
+                err=body.get("error",{}) if isinstance(body,dict) else {}
+                message=str(err.get("message") or "").lower()
+                machine=str(err.get("code") or "").lower()
+                combined=message+" "+machine
+                if "content exists risk" in combined or "content_risk" in combined:
+                    reason="（内容审核拒绝；禁止自动重试）"
+                elif any(t in combined for t in ("context length","context_length","maximum context","too many tokens","input is too long")):
+                    reason="（上下文长度超限）"
+                elif any(t in combined for t in ("response_format","json_object","json mode")):
+                    reason="（JSON 输出格式参数问题）"
+                elif any(t in combined for t in ("thinking","unsupported parameter","unsupported_parameter")):
+                    reason="（模型请求参数不兼容）"
+            except (ValueError,TypeError,AttributeError):
+                pass
+        return "DeepSeek HTTP "+str(code)+"："+hints.get(code,"请求失败，请查看 DeepSeek 服务状态")+reason
     return "模型返回或验证失败："+type(exc).__name__
 
-def request_json(api_key,model,system,payload,client=None,max_tokens=2000):
-    """Return (strict JSON object, token usage), never a plain free-form answer."""
+def _parse_json_object(content: str) -> dict:
+    """Parse a JSON object even when a provider wraps it in fences or prose.
+
+    Only syntax-level repairs are allowed: locate the first JSON object and
+    remove trailing commas outside strings. Never invent missing keys/values.
+    """
+    text=content.strip()
+    try:
+        parsed=json.loads(text)
+    except (ValueError,TypeError):
+        start=text.find("{")
+        if start<0:
+            raise ModelCallError("模型未返回有效 JSON")
+        candidate=text[start:]
+        decoder=json.JSONDecoder()
+        try:
+            parsed,_=decoder.raw_decode(candidate)
+        except (ValueError,TypeError):
+            # Remove trailing commas only when they occur outside JSON strings.
+            cleaned=[]
+            in_string=False
+            escaped=False
+            i=0
+            while i<len(candidate):
+                ch=candidate[i]
+                if in_string:
+                    cleaned.append(ch)
+                    if escaped:
+                        escaped=False
+                    elif ch=="\\":
+                        escaped=True
+                    elif ch=='"':
+                        in_string=False
+                    i+=1
+                    continue
+                if ch=='"':
+                    in_string=True
+                    cleaned.append(ch)
+                    i+=1
+                    continue
+                if ch==",":
+                    j=i+1
+                    while j<len(candidate) and candidate[j].isspace():
+                        j+=1
+                    if j<len(candidate) and candidate[j] in "}]":
+                        i+=1
+                        continue
+                cleaned.append(ch)
+                i+=1
+            try:
+                parsed,_=decoder.raw_decode("".join(cleaned))
+            except (ValueError,TypeError) as exc:
+                raise ModelCallError("模型未返回有效 JSON") from exc
+    if not isinstance(parsed,dict):
+        raise ModelCallError("模型输出必须是 JSON 对象")
+    return parsed
+
+
+def request_json(api_key,model,system,payload,client=None,max_tokens=2000,
+                 response_mode="json_object"):
+    """Return a validated JSON object, regardless of the provider response mode.
+
+    JSON mode can occasionally produce whitespace or invalid JSON even with
+    a valid prompt (provider docs). The caller may reserve a SECOND, bounded
+    request in plain-text mode; the exact same JSON parser still applies.
+    """
     if model not in ("deepseek-flash","deepseek-v4-pro"):
         raise ModelCallError("模型类型不在许可列表中")
+    if response_mode not in ("json_object","plain_text"):
+        raise ModelCallError("不支持的模型响应模式")
     http=client or httpx.Client(timeout=75.0,follow_redirects=False)
     close=client is None
+    body={"model":model,
+          "messages":[{"role":"system","content":system+
+                       "\n只输出一个有效的 JSON 对象，不要 Markdown 或其他文字。"},
+                      {"role":"user","content":json.dumps(payload,ensure_ascii=False)}],
+          "thinking":{"type":"disabled"},
+          "max_tokens":max_tokens,
+          "stream":False}
+    if response_mode=="json_object":
+        body["response_format"]={"type":"json_object"}
     try:
         response=http.post(DEEPSEEK_URL,headers={
             "Authorization":"Bearer "+api_key,"Content-Type":"application/json"},
-            json={"model":model,
-                  "messages":[{"role":"system","content":system+
-                               "\n只输出一个有效的 JSON 对象，不要 Markdown 或其他文字。"},
-                              {"role":"user","content":json.dumps(payload,ensure_ascii=False)}],
-                  "response_format":{"type":"json_object"},
-                  "thinking":{"type":"disabled"},
-                  "max_tokens":max_tokens,
-                  "stream":False})
+            json=body)
         response.raise_for_status()
         raw=response.json()
         options=raw.get("choices") or []
@@ -51,12 +140,7 @@ def request_json(api_key,model,system,payload,client=None,max_tokens=2000):
         content=(choice.get("message") or {}).get("content") or ""
         if not content.strip():
             raise ModelCallError("模型返回空内容，请重试或调整模型配置")
-        try:
-            parsed=json.loads(content)
-        except (ValueError,TypeError) as exc:
-            raise ModelCallError("模型未返回有效 JSON") from exc
-        if not isinstance(parsed,dict):
-            raise ModelCallError("模型输出必须是 JSON 对象")
+        parsed=_parse_json_object(content)
         usage=raw.get("usage") or {}
         return parsed,{"input_tokens":max(0,int(usage.get("prompt_tokens") or 0)),
                        "output_tokens":max(0,int(usage.get("completion_tokens") or 0))}

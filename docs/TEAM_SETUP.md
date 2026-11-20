@@ -1,5 +1,7 @@
 # Shared Team Workspace · 10-member laboratory setup
 
+> **历史指南（Legacy）**：此文记录三角色与一次性管理员密码初始化流程，**不再作为 V0.1 正式账户开通与权限的唯一依据**。请优先参阅 [用户开通、使用与权限管理规范](USER_ONBOARDING_AND_PERMISSIONS.md)；Owner 邮箱验证与邀请实现细节参见 [Owner / Invitations V0.1](OWNER_AND_INVITATIONS_V01.md)。当前 Owner/邀请仍在 Draft PR #65，未完成真实邮件激活与生产发布。
+
 **Status:** Render free PostgreSQL and free FastAPI test service exist, and Vercel can read/write the database in legacy shared-password mode. Team sign-in remains disabled pending first-admin initialization.
 
 This system stores exactly **one shared research profile** and one shared paper/idea corpus for the lab. Each human has a distinct account and role for permissions and an audit trail. This is not ten isolated personal knowledge stores.

@@ -1,0 +1,939 @@
+"""Offline end-to-end SC05 tests; no actual model calls, no network."""
+import json
+from pathlib import Path
+
+import pytest
+
+from backend.sc05_research_diagnosis import EvidenceError
+from backend.sc05_paper_only import (
+    _chunks, critique, extract_ledger, literature_assessments, method_lineage,
+    limit_route_candidates, openalex_search, research_routes, run_paper,
+)
+
+PAGES = {
+ "page_01": (
+  "This paper examines time-dependent movement under simulated disruptions. "
+  "The scientific objective is to quantify network vulnerability from actual observations "
+  "and distinguish local node capacity from network flow redistribution. "
+  "The study builds a station-level mobility assessment and compares disruptions."
+ ),
+ "page_02": (
+  "We collected hourly origin destination counts for the study network. "
+  "Observed mobility records represent demand, but actual edge-level routes "
+  "are not available from the data provider. We simulate routes using "
+  "the minimum generalized travel time and a fixed transfer penalty. "
+  "The resulting segment counts are computed estimates rather than direct observations. "
+  "The analysis compares pre-event baseline flows with estimated flows during disruption."
+ ),
+ "page_03": (
+  "Our results show that several central corridors experience a marked load shift. "
+  "Weighted connectivity is correlated with subsequent simulated index changes. "
+  "The evaluation reports correlations at multiple time lags. "
+  "Emergency closure simulations show sensitivity to assumed alternative links. "
+  "No independent train/test split was reported for forecast accuracy."
+ ),
+}
+
+
+PAPER={
+ "id":"doi:10.1000/precedent",
+ "title":"Transport network stress under stochastic mobility",
+ "doi":"10.1000/precedent",
+ "url":"https://doi.org/10.1000/precedent",
+ "abstract":"We study dynamic disruption responses using agent-based transport routing and compare simulated traffic flows under closures. Independent operational records are not available.",
+ "published":"2025-02-01",
+ "venue":"Transportation Research Part D: Transport and Environment",
+}
+
+
+def model_mock(key,model,system,payload,max_tokens=2400):
+    assert key=="not-a-real-key"
+    assert model=="deepseek-flash"
+    stage=payload["sc05_stage"]
+    if stage=="evidence_extraction":
+        batch = payload["pages"]
+        facts=[]
+        for page in batch:
+            if page["page"]=="page_01":
+                facts.append({"page":"page_01","fact_type":"objective",
+                     "statement":"The paper assesses network vulnerability and distinguishes node and flow vulnerability",
+                     "verbatim_excerpt":"The scientific objective is to quantify network vulnerability from actual observations"})
+            if page["page"]=="page_02":
+                facts.extend([
+                  {"page":"page_02","fact_type":"data",
+                   "statement":"Hourly OD demand records were collected",
+                   "verbatim_excerpt":"We collected hourly origin destination counts for the study network."},
+                  {"page":"page_02","fact_type":"method",
+                   "statement":"Routes were assigned with a fixed transfer penalty and minimum cost",
+                   "verbatim_excerpt":"We simulate routes using the minimum generalized travel time and a fixed transfer penalty."}
+                ])
+            if page["page"]=="page_03":
+                facts.append({"page":"page_03","fact_type":"evaluation",
+                   "statement":"The authors report lag correlations rather than independent predictive validation",
+                   "verbatim_excerpt":"The evaluation reports correlations at multiple time lags."})
+        return {"facts":facts},{"input_tokens":200,"output_tokens":140}
+    if stage=="method_lineage":
+        return {"links":[{
+            "component":"Flow assignment","fact_ids":["F002","F003"],
+            "input":"Hourly observed OD demand",
+            "transformation":"Static shortest paths with transfer penalty",
+            "output":"Simulated edge flow estimates",
+            "measurement_status":"simulated",
+            "critical_assumption":"Route choices remain consistent with the fixed cost rule",
+            "conclusion_supported":"Network stress patterns, not independently measured edge loads",
+        }],"claim_checks":[{
+            "claim":"Whether early changes truly forecast failures",
+            "fact_ids":["F004"],
+            "unverified_link":"No independent operational target",
+            "smallest_check":"Use an independent set of observed operations",
+        }]},{"input_tokens":120,"output_tokens":140}
+    if stage=="diagnosis":
+        return {
+         "study_reconstruction":{
+            "question":"Does observed and simulated transit flow characterize network disruption?",
+            "evidence_fact_ids":["F001","F002","F004"],
+            "claimed_contribution":"Network resilience assessment",
+            "what_is_actually_tested":"Descriptive associations and stylized simulation",
+         },
+         "diagnoses":[{
+            "id":"D01","issue_class":"validation",
+            "problem":"Early warning may be confused with correlated derived outcomes",
+            "fact_ids":["F004"],"epistemic_status":"hypothesis",
+            "rival_explanations":["Correlations may still contain genuine new future information"],
+            "verification_tests":["Compare to independent outcome under chronological holdout"],
+            "research_consequence":"Forecasting claims require a different outcome",
+            "confidence":"medium",
+         }],
+         "open_questions":["Are independent disruption event logs available?"],
+        },{"input_tokens":180,"output_tokens":130}
+    if stage=="scientific_value_triage":
+        return {"issue_classifications":[{
+            "diagnosis_id":"D01","lane":"quality_review",
+            "scope_status":"unknown",
+            "reason":"The original study asks about diagnostic description, not operational forecasting.",
+        }],"scientific_questions":[{
+            "id":"Q01","fact_ids":["F001","F002"],
+            "related_diagnosis_ids":[],
+            "motivating_observation":"The study separates local station load from propagated network stress.",
+            "scientific_question":"How do infrastructure systems redistribute demand across interdependent components under disruption?",
+            "mechanism_hypothesis":"Flow substitution may produce nonlinear load transfer between subsystems.",
+            "scope_change":"From descriptive network indicators to coupled system behavior and intervention decisions.",
+            "why_not_just_a_quality_fix":"The question examines feedback and system-level adaptation beyond improved validation.",
+            "discriminating_test":"Compare dynamic redistribution and static loading across intervention policies.",
+            "narrative_arc":"Localized load -> network adaptation -> new congestion -> system-level intervention tradeoff.",
+        }]},{"input_tokens":170,"output_tokens":145}
+    if stage=="evidence_questions":
+        return {"queries":[{
+            "diagnosis_ids":["D01"],"query":"early warning network vulnerability independent labels",
+            "need":"validation",
+            "assumption_to_test":"Independent outcomes contain information not contained by index construction",
+        }]},{"input_tokens":120,"output_tokens":80}
+    if stage=="literature_assessment":
+        assert payload["papers"][0]["id"]==PAPER["id"]
+        assert "diagnosis_links" in payload["required_json_shape"]["assessments"][0]
+        assert "unlinked_reason" in payload["required_json_shape"]["assessments"][0]
+        return {"assessments":[{
+            "paper_id":PAPER["id"],"diagnosis_ids":["D01"],
+            "tested_problem":"Response of transport flow to closure",
+            "method":"Agent-based routing",
+            "relevance":"partial",
+            "conditional_transfer":"Route behavior must be validated for the target event",
+            "unresolved":"No observed operational labels to validate alerts",
+            "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+        }]},{"input_tokens":200,"output_tokens":130}
+    if stage=="research_redesign":
+        assert payload["literature_assessments"]
+        return {"routes":[{
+            "id":"R01","frontier_ids":["Q01"],"title":"Dynamic load transfers between infrastructure subsystems",
+            "change_kind":"evaluation","diagnosis_ids":["D01"],
+            "research_question":"Does traffic-derived stress forecast externally measured shutdowns?",
+            "new_mechanism":"Out-of-sample independent operational validation",
+            "why_previous_study_cannot_answer":"Reported lag correlations do not independently measure errors",
+            "closest_paper_ids":[PAPER["id"]],
+            "difference_from_prior_work":"Tests observed events rather than simulated congestion only",
+            "feasibility":"Need time-stamped fault observations; otherwise hold",
+            "minimal_experiment":"Chronological or leave-event-out train and test; compare persistence and rainfall baselines",
+            "negative_result":"No gain versus strong persistence baseline",
+            "unknowns":["Operations labels not in supplied article"],
+        }]},{"input_tokens":170,"output_tokens":180}
+    if stage=="independent_critic":
+        return {"reviews":[{
+            "route_id":"R01","verdict":"hold",
+            "reason":"Independent labels not available from supplied PDF",
+            "existing_work_risk":"Another paper already studies dynamic routing",
+            "data_blocker":"No station-specific observed failures",
+            "minimum_test_revision":"Request only an aggregated event log if available",
+        }]},{"input_tokens":90,"output_tokens":100}
+    raise AssertionError("Unexpected stage: "+stage)
+
+
+def search_mock(query,since,limit=7):
+    assert "early warning" in query
+    assert since=="2020-01-01"
+    return [PAPER]
+
+
+def test_paper_only_full_pipeline_and_audit(monkeypatch,tmp_path):
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"test-sha-123"))
+    report,record=run_paper(tmp_path/"demo.pdf","not-a-real-key",
+      model_call=model_mock,search_provider=search_mock,max_calls=8)
+    assert record["version"].startswith("sc05-paper-only")
+    assert record["source"]["sha256"]=="test-sha-123"
+    assert len(record["snapshot"]["observations"])==4
+    assert len(record["usage"])==8
+    assert [x["stage"] for x in record["usage"]]==[
+      "evidence_extraction","method_lineage","diagnosis","scientific_value_triage","evidence_questions",
+      "literature_assessment","research_redesign","independent_critic"]
+    assert record["diagnosis"]["diagnoses"][0]["epistemic_status"]=="hypothesis"
+    assert len(record["literature_assessments"])==1
+    assert record["literature_assessments"][0]["diagnosis_link_status"]=="linked"
+    assert record["literature_assessments"][0]["relation_types"]==["direct"]
+    assert record["reviews"][0]["verdict"]=="hold"
+    assert record["scientific_triage"]["issue_classifications"][0]["lane"]=="quality_review"
+    assert record["routes"][0]["frontier_ids"]==["Q01"]
+    assert "PDF page_02" in report
+    assert PAPER["url"] in report
+    assert "研究结论与证据之间的缺口" in report
+    assert "严谨性审查与新科学问题分流" in report
+    assert "否决条件" in report
+    assert "test-sha-123" in report
+    assert "not-a-real-key" not in report and "not-a-real-key" not in json.dumps(record)
+
+
+
+def test_route_candidates_are_capped_and_overflow_is_audited():
+    raw={"routes":[{"id":f"R{i:02d}"} for i in range(1,7)]}
+    normalized,audit=limit_route_candidates(raw)
+    assert [x["id"] for x in normalized["routes"]]==["R01","R02","R03","R04","R05"]
+    assert audit["model_returned_route_count"]==6
+    assert audit["accepted_route_count"]==5
+    assert audit["truncated_route_count"]==1
+    with pytest.raises(EvidenceError,match="must be a list"):
+        limit_route_candidates({"routes":"not-a-list"})
+
+
+
+
+def test_independent_critic_accepts_empty_route_set_without_reviews():
+    assert critique({"reviews":[]},[])==[]
+    with pytest.raises(EvidenceError,match="Critic must cover each route"):
+        critique({"reviews":[{"route_id":"R01"}]},[])
+
+
+
+def test_no_llm_when_key_is_missing(monkeypatch,tmp_path):
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"hash"))
+    with pytest.raises(EvidenceError,match="key unavailable"):
+        run_paper(tmp_path/"paper.pdf","",model_call=model_mock,
+                  search_provider=search_mock)
+
+
+def test_fabricated_source_fact_is_blocked():
+    def bad_mock(key,model,system,payload,max_tokens=3000):
+        return {"facts":[{
+            "page":"page_01","fact_type":"result",
+            "statement":"The model proves a 99% performance improvement",
+            "verbatim_excerpt":"This fabricated number never occurred in the original paper.",
+        }]},{"input_tokens":1,"output_tokens":1}
+    with pytest.raises(EvidenceError,match="No factual excerpts passed page verification"):
+        extract_ledger(PAGES,"fake",bad_mock,[],max_calls=10)
+
+
+def test_unverified_literature_quote_is_downgraded_not_fabricated():
+    diagnosis={"diagnoses":[{"id":"D01"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],"diagnosis_ids":["D01"],
+        "tested_problem":"Flow","method":"Network simulation",
+        "relevance":"close","conditional_transfer":"Same setting needed",
+        "unresolved":"Unknown operational response",
+        "abstract_excerpt":"This abstract fragment was never published",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_link_status"]=="linked"
+    assert parsed["diagnosis_links"][0]["relation_type"]=="direct"
+    assert parsed["abstract_quote_status"]=="rejected"
+    assert parsed["evidence_status"]=="quote_unverified"
+    assert parsed["abstract_excerpt"]==""
+    with pytest.raises(EvidenceError,match="unknown/duplicate paper"):
+        literature_assessments({"assessments":[{
+            **raw["assessments"][0],"paper_id":"doi:10.1000/fabricated"
+        }]},[PAPER],diagnosis)
+    with pytest.raises(EvidenceError,match="Fabricated reference"):
+        method_lineage({"links":[{
+            "component":"Fake computation","fact_ids":["F999"],
+            "input":"data","transformation":"algorithm","output":"prediction",
+            "measurement_status":"observed","critical_assumption":"x",
+            "conclusion_supported":"y",
+        }],"claim_checks":[]},[{"fact_id":"F001"}])
+
+
+def test_literature_can_link_different_diagnoses_with_different_relation_types():
+    diagnosis={"diagnoses":[{"id":"D01"},{"id":"D02"},{"id":"D03"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],
+        "diagnosis_links":[
+            {"diagnosis_id":"D01","relation_type":"direct",
+             "relation_explanation":"It studies the same network stress outcome."},
+            {"diagnosis_id":"D02","relation_type":"indirect",
+             "relation_explanation":"The transfer mechanism links local route substitution to system-level load redistribution."},
+            {"diagnosis_id":"D03","relation_type":"counterexample",
+             "relation_explanation":"Its independent event records contradict the assumption that no external validation is possible."},
+        ],
+        "tested_problem":"Flow","method":"Network simulation",
+        "relevance":"partial","conditional_transfer":"Comparable network structure is required",
+        "unresolved":"Transfer to other transport systems remains unknown",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_ids"]==["D01","D02","D03"]
+    assert parsed["relation_types"]==["direct","indirect","counterexample"]
+    assert parsed["diagnosis_link_status"]=="linked"
+    assert parsed["evidence_status"]=="abstract_quote_verified"
+
+
+def test_missing_diagnosis_links_are_explicitly_unlinked():
+    diagnosis={"diagnoses":[{"id":"D01"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],"diagnosis_links":[],
+        "unlinked_reason":"The abstract concerns a different outcome and no mechanism bridge is supported.",
+        "tested_problem":"A different topic","method":"Survey",
+        "relevance":"low","conditional_transfer":"No justified transfer",
+        "unresolved":"No relation to the current diagnosis can be established",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_link_status"]=="unlinked"
+    assert parsed["diagnosis_ids"]==[]
+    assert parsed["unlinked_reason"].startswith("The abstract concerns")
+
+
+def test_unsafe_cost_budget_is_refused_before_calls(monkeypatch,tmp_path):
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"hash"))
+    with pytest.raises(EvidenceError,match="maximum authorized"):
+        run_paper(tmp_path/"paper.pdf","not-a-real-key",
+                  model_call=model_mock,search_provider=search_mock,max_calls=7)
+
+
+def test_pdf_holdout_discussion_and_references(monkeypatch,tmp_path):
+    fitz=pytest.importorskip("fitz")
+    import backend.sc05_paper_only as p
+    path=tmp_path/"paper.pdf"
+    d=fitz.open()
+    first=d.new_page();first.insert_text((50,70),
+          "Research question and methods. Data were collected using hourly origin counts. "+
+          "Results show differences between networks.",fontsize=9)
+    second=d.new_page()
+    second.insert_text((50,70),
+          "6.1. Conclusion\nThe observed changes are larger than routine variability.\n"
+          "6.2. Discussion\nFuture work should use the exact answer blueprint.",
+          fontsize=9)
+    d.save(path);d.close()
+    pages,sha=p.page_texts_from_pdf(path)
+    assert pages["page_01"]
+    assert "Conclusion" in pages["page_02"]
+    assert "exact answer blueprint" not in str(pages)
+    assert len(sha)==64
+
+def test_whitespace_only_pdf_quote_normalization_is_traced_to_literal_source():
+    from backend.sc05_paper_only import _verified_excerpt
+    source="We observe that the model uses a data-driven\n route allocation.\nAny other result is unverified."
+    matched=_verified_excerpt(source,"model uses a data-driven route allocation.")
+    assert matched=="model uses a data-driven\n route allocation."
+    with pytest.raises(EvidenceError,match="source fragment"):
+        _verified_excerpt(source,"the model guarantees no failures")
+
+def test_quality_only_route_is_rejected():
+    from backend.sc05_science_gate import enforce_route_frontiers, validate_scientific_triage
+    from backend.sc05_paper_only import research_routes
+    diagnoses=[{"id":"D01"}]
+    facts=[{"fact_id":"F001"}]
+    triage=validate_scientific_triage({
+      "issue_classifications":[{
+        "diagnosis_id":"D01","lane":"quality_review",
+        "scope_status":"acknowledged",
+        "reason":"This is a sensitivity review, not a scientific finding.",
+      }],"scientific_questions":[]
+    },diagnoses,facts)
+    raw={"routes":[{
+        "frontier_ids":[],"title":"Add more sensitivity analysis",
+        "change_kind":"evaluation","diagnosis_ids":["D01"],
+    }]}
+    with pytest.raises(EvidenceError,match="quality-only"):
+        research_routes(raw,{"diagnoses":diagnoses},[],triage)
+
+
+
+def test_unknown_paper_scope_label_is_preserved_and_conservatively_normalized():
+    from backend.sc05_science_gate import validate_scientific_triage
+    result=validate_scientific_triage({
+      "issue_classifications":[{
+        "diagnosis_id":"D01","lane":"scientific_frontier",
+        "scope_status":"not_explicitly_addressed",
+        "reason":"The model used unfamiliar wording for the scope status.",
+      }],"scientific_questions":[]
+    },[{"id":"D01"}],[])
+    row=result["issue_classifications"][0]
+    assert row["scope_status"]=="unknown"
+    assert row["raw_scope_status"]=="not_explicitly_addressed"
+    assert row["scope_status_normalized"] is True
+
+
+
+def test_scientific_question_must_cite_real_paper_and_distinct_story():
+    from backend.sc05_science_gate import validate_scientific_triage
+    with pytest.raises(EvidenceError,match="Invented"):
+        validate_scientific_triage({
+            "issue_classifications":[],
+            "scientific_questions":[{
+                "id":"Q01","fact_ids":["F999"],"related_diagnosis_ids":[],
+                "motivating_observation":"Observed effect",
+                "scientific_question":"New question",
+                "mechanism_hypothesis":"Competing process",
+                "scope_change":"Cross system",
+                "why_not_just_a_quality_fix":"New mechanism, not a test",
+                "discriminating_test":"Compare two processes",
+                "narrative_arc":"Observation to contradiction to explanation",
+            }],
+        },[],[{"fact_id":"F001"}])
+
+def test_unexpected_model_fact_label_preserves_verified_quote_and_records_alias():
+    from backend.sc05_paper_only import extract_ledger, normalize_fact_kind
+    page={"page_01":PAGES["page_01"]}
+    assert normalize_fact_kind("finding")[0]=="result"
+    assert normalize_fact_kind("research_question")[0]=="objective"
+    assert normalize_fact_kind("unexpected_new_science_category")[0]=="other"
+    quote="The scientific objective is to quantify network vulnerability from actual observations"
+    def cached_model(key,model,system,payload,max_tokens=2700):
+        assert payload["sc05_stage"]=="evidence_extraction"
+        return {"facts":[{"page":"page_01",
+                "fact_type":"unexpected_new_science_category",
+                "statement":"This paper assesses network vulnerability",
+                "verbatim_excerpt":quote}]},{"input_tokens":1013,"output_tokens":372}
+    log=[]
+    result=extract_ledger(page,"dummy-key",cached_model,log,max_calls=8)
+    obs=result["snapshot"]["observations"][0]
+    assert obs["fact_type"]=="other"
+    assert obs["verbatim_excerpt"]==quote
+    assert result["source_note"][0]["raw_type"]=="unexpected_new_science_category"
+    assert result["source_note"][0]["normalized_type"]=="other"
+    assert len(log)==1
+
+
+def test_unclassified_model_label_still_cannot_fabricate_quotation():
+    from backend.sc05_paper_only import extract_ledger
+    def cached_model(key,model,system,payload,max_tokens=2700):
+        return {"facts":[{"page":"page_01","fact_type":"some-new-type",
+                          "statement":"Claim",
+                          "verbatim_excerpt":"A fictitious experimental improvement of 900%"}]},{}
+    with pytest.raises(EvidenceError,match="No factual excerpts passed page verification"):
+        extract_ledger({"page_01":PAGES["page_01"]},"dummy-key",
+                       cached_model,[],max_calls=8)
+
+
+def test_mixed_extraction_drops_non_source_quote_but_retains_verified_fact():
+    """A hallucinated quote is quarantined without discarding independently verified evidence."""
+    from backend.sc05_paper_only import extract_ledger
+    valid="The scientific objective is to quantify network vulnerability from actual observations"
+    calls=[]
+    def cached_response(key,model,system,payload,max_tokens=2700):
+        calls.append(payload["sc05_stage"])
+        return {"facts":[
+            {"page":"page_01","fact_type":"objective",
+             "statement":"Assesses vulnerability","verbatim_excerpt":valid},
+            {"page":"page_01","fact_type":"result",
+             "statement":"A fictional result","verbatim_excerpt":"The metro teleported all trains."},
+        ]},{"input_tokens":100,"output_tokens":50}
+    result=extract_ledger({"page_01":PAGES["page_01"]},"cached",cached_response,[],max_calls=8)
+    assert len(calls)==1
+    assert len(result["snapshot"]["observations"])==1
+    assert result["snapshot"]["observations"][0]["verbatim_excerpt"]==valid
+    assert any(x.get("rule")=="unverified_source_quote_rejected" for x in result["source_note"])
+
+
+def test_search_plan_caps_excess_queries_in_model_priority_order():
+    from backend.sc05_paper_only import search_plan
+    diagnoses=[{"id":"D01"}]
+    raw={"queries":[
+      {"diagnosis_ids":["D01"],"query":f"query {i}","need":"validation",
+       "assumption_to_test":"Check reproducibility"}
+      for i in range(9)
+    ]}
+    result=search_plan(raw,diagnoses)
+    assert len(result)==7
+    assert [x["query"] for x in result]==[f"query {i}" for i in range(7)]
+
+
+def test_search_plan_preserves_valid_queries_and_omits_unknown_needs():
+    from backend.sc05_paper_only import search_plan
+    diagnostics=[{"id":"D01"}]
+    raw={"queries":[
+       {"diagnosis_ids":["D01"],"query":"prior method comparison",
+        "need":"methodology","assumption_to_test":"Compare techniques"},
+       {"diagnosis_ids":["D01"],"query":"unclassified literature",
+        "need":"general_background","assumption_to_test":"No ungrounded classification"},
+       {"diagnosis_ids":["D01"],"query":"independent observational tests",
+        "need":"empirical_validation","assumption_to_test":"Independent outcome"},
+    ]}
+    result=search_plan(raw,diagnostics)
+    assert len(result)==2
+    assert [x["need"] for x in result]==["method","validation"]
+    assert [x["query"] for x in result]==[
+        "prior method comparison","independent observational tests"]
+
+
+def test_openalex_api_failure_keeps_http_status_but_never_provider_secrets():
+    """A blocked provider must be visible to the researcher without leaking URLs."""
+    import httpx
+    request=httpx.Request("GET", "https://api.openalex.org/works?api_key=secret-key")
+    response=httpx.Response(409,request=request)
+    def unauthorized(*args,**kwargs):
+        raise httpx.HTTPStatusError(
+            "Unauthorized search with secret-key",request=request,response=response)
+    papers,errors=openalex_search([{"query":"metro network resilience"}],
+                                  provider=unauthorized)
+    assert papers==[]
+    assert len(errors)==1
+    assert "OpenAlex HTTP 409" in errors[0]
+    assert "OPENALEX_API_KEY" in errors[0]
+    assert "secret-key" not in errors[0]
+    assert "https://api.openalex.org" not in errors[0]
+
+
+def test_openalex_transport_failure_is_reported_without_raw_exception():
+    import httpx
+    def unavailable(*args,**kwargs):
+        raise httpx.ConnectError("api.openalex.org token-should-not-appear")
+    papers,errors=openalex_search([{"query":"interdependent network disruptions"}],
+                                  provider=unavailable)
+    assert papers==[]
+    assert len(errors)==1
+    assert "网络连接失败" in errors[0]
+    assert "token-should-not-appear" not in errors[0]
+
+
+def test_bounded_literature_context_balances_queries_without_mutating_sources():
+    from backend.sc05_paper_only import bounded_literature_context
+    papers=[]
+    for query in ["q1","q2","q3"]:
+        for index in range(7):
+            papers.append({"search_query":query,"id":query+str(index),
+                           "title":"Paper "+query+str(index),"doi":"","url":"https://example.invalid/",
+                           "year":"2026","venue":"Test","abstract":"abstract text "*200})
+    out=bounded_literature_context(papers,max_papers=7,max_abstract_chars=120)
+    assert [x["id"] for x in out]==["q10","q20","q30","q11","q21","q31","q12"]
+    assert all(len(x["abstract"])<=120 for x in out)
+    assert all(len(x["abstract"])>0 for x in out)
+    assert len(papers)==21
+    assert len(papers[0]["abstract"])>120
+    assert len({x["id"] for x in out})==7
+
+
+def test_bounded_literature_context_handles_empty_candidates():
+    from backend.sc05_paper_only import bounded_literature_context
+    assert bounded_literature_context([])==[]
+
+
+def test_literature_link_without_explanation_is_discarded_not_fabricated():
+    from backend.sc05_quality import inspect_report
+    diagnosis={"diagnoses":[{"id":"D01"},{"id":"D02"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],
+        "diagnosis_links":[
+            {"diagnosis_id":"D01","relation_type":"direct","relation_explanation":""},
+            {"diagnosis_id":"D02","relation_type":"indirect",
+             "relation_explanation":"The paper's route-choice results affect load redistribution."},
+        ],
+        "tested_problem":"Flow","method":"Network simulation",
+        "relevance":"partial","conditional_transfer":"Similar multimodal networks",
+        "unresolved":"Event generalization remains unresolved",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_ids"]==["D02"]
+    assert parsed["relation_types"]==["indirect"]
+    assert parsed["discarded_unexplained_relations"]==1
+    assert all(link["diagnosis_id"]!="D01" for link in parsed["diagnosis_links"])
+    record={
+        "snapshot":{"observations":[{"fact_id":"F001","fact_type":"objective",
+                                      "section":"page_01","verbatim_excerpt":"actual quoted source text"}]},
+        "diagnosis":{"diagnoses":[]},"method_lineage":{"links":[]},
+        "routes":[],"reviews":[],"external_papers":[PAPER],
+        "literature_assessments":[parsed],
+    }
+    quality=inspect_report(record)
+    assert quality["discarded_unexplained_literature_relations"]==1
+    assert quality["literature_relation_counts"]["direct"]==0
+    assert any("已丢弃" in warning for warning in quality["warnings"])
+    assert quality["novelty_certified"] is False
+
+
+def test_all_missing_relation_explanations_become_unlinked():
+    diagnosis={"diagnoses":[{"id":"D01"}]}
+    raw={"assessments":[{
+        "paper_id":PAPER["id"],
+        "diagnosis_links":[{"diagnosis_id":"D01","relation_type":"direct",
+                             "relation_explanation":None}],
+        "tested_problem":"Flow","method":"Network simulation",
+        "relevance":"partial","conditional_transfer":"Comparable data",
+        "unresolved":"No independent mechanism evidence",
+        "abstract_excerpt":"We study dynamic disruption responses using agent-based transport routing",
+    }]}
+    parsed=literature_assessments(raw,[PAPER],diagnosis)[0]
+    assert parsed["diagnosis_links"]==[]
+    assert parsed["diagnosis_link_status"]=="unlinked"
+    assert "缺少可核验的解释" in parsed["unlinked_reason"]
+    assert parsed["discarded_unexplained_relations"]==1
+
+
+def test_scientific_route_screen_excludes_missing_q_ids_without_relabeling():
+    from backend.sc05_paper_only import screen_scientific_route_refs
+    triage={"scientific_questions":[{"id":"Q01"},{"id":"Q03"}]}
+    proposed={"routes":[
+        {"id":"R01","title":"Valid mechanism","frontier_ids":["Q01"]},
+        {"id":"R02","title":"Hallucinated frontier","frontier_ids":["Q99"]},
+        {"id":"R03","title":"Mixed valid and fake","frontier_ids":["Q03","Q88"]},
+        {"id":"R04","title":"Missing scientific question","frontier_ids":[]},
+        {"id":"R05","title":"Another valid mechanism","frontier_ids":["Q03"]},
+    ]}
+    cleaned,audit=screen_scientific_route_refs(proposed,triage)
+    assert [r["title"] for r in cleaned["routes"]]==[
+        "Valid mechanism","Another valid mechanism"]
+    assert audit["rejected_unlinked_frontier_count"]==3
+    assert audit["rejected_route_positions"]==[2,3,4]
+    assert audit["accepted_scientific_routes"]==2
+    assert proposed["routes"][1]["frontier_ids"]==["Q99"]
+    assert all(set(r["frontier_ids"]) <= {"Q01","Q03"} for r in cleaned["routes"])
+
+
+def test_scientific_route_screen_does_not_promote_quality_fix_when_no_frontiers():
+    from backend.sc05_paper_only import screen_scientific_route_refs,research_routes
+    triage={"scientific_questions":[]}
+    raw={"routes":[
+        {"title":"Do sensitivity analysis","frontier_ids":["Q01"]},
+        {"title":"Validate index","frontier_ids":[]},
+    ]}
+    cleaned,audit=screen_scientific_route_refs(raw,triage)
+    assert cleaned["routes"]==[]
+    assert audit["rejected_unlinked_frontier_count"]==2
+    assert research_routes(cleaned,{"diagnoses":[{"id":"D01"}]},[],triage)==[]
+
+
+def test_scientific_route_screen_fails_on_missing_json_structure():
+    from backend.sc05_paper_only import screen_scientific_route_refs
+    with pytest.raises(EvidenceError,match="routes must be a list"):
+        screen_scientific_route_refs({"routes":None},{"scientific_questions":[]})
+
+
+def test_paper_pipeline_quarantines_cross_domain_hit_and_never_calls_it_nearest(monkeypatch,tmp_path):
+    """Offline end-to-end: exact abstract alone never proves a scientific neighbor."""
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"test-sha-123"))
+    rejected={
+        "id":"doi:10.1000/metaphysics","title":"Metaphysics of Narrative Forms",
+        "doi":"10.1000/metaphysics","url":"https://doi.org/10.1000/metaphysics",
+        "abstract":"This article studies philosophy of language and poetic form.",
+        "published":"2026-02-01","venue":"Journal of Ontology",
+    }
+    def mixed_provider(query,since,limit=7):
+        assert "early warning" in query
+        return [PAPER,rejected]
+    report,record=run_paper(tmp_path/"published.pdf","not-a-real-key",
+        model_call=model_mock,search_provider=mixed_provider,max_calls=8)
+    assert record["source_domain_profile"]["code"]=="urban_transport"
+    assert record["search_relevance_audit"]["retrieved"]==2
+    assert record["search_relevance_audit"]["quarantined"]==1
+    assert record["external_papers"][0]["id"]==PAPER["id"]
+    assert len(record["external_papers"])==1
+    # Existing V1 mock yields only an indirect/legacy relation. It must not
+    # silently satisfy the newly stricter nearest-paper conditions.
+    assert record["routes"][0]["closest_paper_ids"]==[]
+    assert record["prior_reference_audit"]["removed_reference_count"]==1
+    assert record["quality"]["revoked_nearest_prior_references"]==1
+    assert record["quality"]["quarantined_out_of_domain_or_abstract_missing"]==1
+    assert "无经过同领域" in report
+    assert rejected["title"] not in report
+
+
+def test_sc05_default_openalex_call_enables_relevance_sort_without_extra_requests(monkeypatch):
+    import research_workbench.core as core
+    from backend.sc05_paper_only import openalex_search
+    from backend.sc05_relevance import infer_source_domain
+    requests=[]
+    def fake(query,since,limit=7,*,sort_by_relevance=False,require_abstract=False):
+        requests.append({"query":query,"since":since,"limit":limit,
+                         "sort_by_relevance":sort_by_relevance,
+                         "require_abstract":require_abstract})
+        return []
+    monkeypatch.setattr(core,"query_openalex",fake)
+    profile=infer_source_domain(PAGES)
+    papers,errors=openalex_search(
+        [{"query":"network disruption response"}],
+        source_profile=profile)
+    assert papers==[] and errors==[]
+    assert len(requests)==1
+    assert requests[0]["sort_by_relevance"] is True
+    assert requests[0]["require_abstract"] is True
+    assert requests[0]["since"]=="2020-01-01"
+
+
+def test_dual_lane_paper_run_uses_existing_stages_with_unapproved_transfer(monkeypatch,tmp_path):
+    """Method migration ideas never become near priors and add zero model calls."""
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"dual-lane-sha"))
+    cross = {
+        "id":"fixture:wildfire-method",
+        "doi":"fixture/wildfire-method",
+        "title":"Graph neural network forecast of wildfire hazard",
+        "url":"https://example.org/synthetic/wildfire",
+        "abstract":("A graph neural network maps ecological observations to predicted "
+                    "wildfire hazard under changing weather patterns."),
+        "published":"2025-01-01",
+        "venue":"Advances in Neural Information Processing Systems",
+    }
+    mock_calls=[]
+    def guarded_mock(key,model,system,payload,max_tokens=3000):
+        stage=payload["sc05_stage"]
+        mock_calls.append(stage)
+        if stage=="research_redesign":
+            lead=payload["method_transfer_candidates"]
+            assert len(lead)==1
+            assert lead[0]["id"]==cross["id"]
+            assert "method_transfer_proposals" in payload["required_json_shape"]
+        returned,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if stage=="research_redesign":
+            returned["method_transfer_proposals"]=[{
+                "route_id":"R01","paper_id":cross["id"],
+                "method_name":"Graph neural network for learning cross-domain spatial dependencies",
+                "source_input":"Observed wildfire measurements attached to spatial grid nodes",
+                "target_input":"Observed passenger loads and station topology at event timestamps",
+                "source_output":"Predicted wildfire hazard on a structured environmental grid",
+                "target_output":"Predicted demand redistribution between metro stations during closures",
+                "invariance_assumption":"Spatial message-passing biases must retain predictive validity under transport constraints",
+                "discriminating_test":"Compare to chronological XGBoost and mean-aggregation baselines on unseen closures",
+                "failure_condition":"Reject when held-out performance or calibration is worse than simple baselines",
+                "abstract_excerpt":"A graph neural network maps ecological observations",
+            }]
+        return returned,usage
+    def two_paper_provider(query,since,limit=7):
+        assert "early warning" in query
+        return [PAPER,cross]
+    report,record=run_paper(
+        tmp_path/"dual-lane.pdf","not-a-real-key",
+        model_call=guarded_mock,search_provider=two_paper_provider,max_calls=8)
+    assert len(mock_calls)==len(record["usage"])==8
+    assert len(record["external_papers"])==1
+    assert record["external_papers"][0]["id"]==PAPER["id"]
+    assert len(record["method_transfer_leads"])==1
+    assert record["method_transfer_leads"][0]["id"]==cross["id"]
+    assert record["method_transfer_leads"][0]["eligible_for_nearest_prior"] is False
+    assert len(record["method_transfer_bridges"])==1
+    assert record["method_transfer_bridges"][0]["approved"] is False
+    assert record["method_bridge_audit"]["human_approved"]==0
+    assert record["routes"][0]["closest_paper_ids"]==[]
+    assert record["quality"]["method_transfer_leads"]==1
+    assert record["quality"]["method_transfer_bridges_proposed"]==1
+    assert "跨领域方法迁移候选" in report
+    assert cross["url"] in report
+    assert "未经人工批准" in report
+    assert "not-a-real-key" not in json.dumps(record)
+
+
+def test_method_discovery_query_does_not_force_source_domain_anchor():
+    """A method-first search reaches other fields without spending extra API calls."""
+    from backend.sc05_relevance import infer_source_domain
+    profile=infer_source_domain({
+        "page_01":"Urban rail subway passenger flow disruptions in metro networks.",
+        "page_02":"Transportation network resilience uses passenger station demand.",
+    })
+    assert profile["code"] == "urban_transport"
+    observed=[]
+    def provider(query,since,limit=7):
+        observed.append(query)
+        return []
+    papers,errors=openalex_search([
+        {"need":"method","query":"graph neural network wildfire transfer model"},
+        {"need":"counterexample","query":"flow failure under disruption"},
+        {"need":"theory","query":"station demand redistribution"},
+    ],provider=provider,source_profile=profile)
+    assert papers==[] and errors==[]
+    assert len(observed)==3
+    assert observed[0]=="graph neural network wildfire transfer model"
+    assert observed[1].startswith("urban rail transit transportation")
+    assert observed[2].startswith("urban rail transit transportation")
+
+
+def test_full_paper_to_report_freezes_source_catalog_and_marks_planning_gap(monkeypatch,tmp_path):
+    """Real model stages are all mocked, but all 8 SC05 steps execute together."""
+    import backend.sc05_paper_only as p
+    import backend.sc05_research_diagnosis as rd
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda _: (PAGES,"source-sha-immutable"))
+    registry_a=[
+        {"name":"Cities","openalex_source_id":"S1001","enabled":True},
+        {"name":"Environment and Planning B","openalex_source_id":"S1002","enabled":True},
+        {"name":"NeurIPS","openalex_source_id":"S1003","enabled":True},
+        {"name":"Transportation Research Part D","openalex_source_id":"S1004","enabled":True},
+    ]
+    registry_b=[
+        {"name":"Cities","openalex_source_id":"S9999","enabled":True},
+    ]
+    called=[]
+    def model_with_program(key,model,system,payload,max_tokens=2400):
+        called.append(payload["sc05_stage"])
+        result,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if payload["sc05_stage"]=="research_redesign":
+            result["routes"][0]["research_program"]={
+                "contribution_level":"system_program",
+                "planning_problem":"Extreme weather forces shifts between transit modes in dense cities",
+                "system_mechanism":"Transit service closure shifts demand to roads causing nonlinear capacity losses",
+                "planning_contribution":"Planning corridor investment and traffic management changes citywide losses",
+                "decision_stakeholders":"Urban transport planners and operational dispatchers allocate response budgets",
+                "generalization_boundary":"Compare polycentric and monocentric cities under equivalent transport disruptions",
+                "paper_architecture":"Link cross-modal demand transfer to congestion feedback then evaluate interventions",
+                "why_not_a_subexperiment":"An independent causal-feedback question beyond the source's index associations",
+            }
+        return result,usage
+    report,first=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=model_with_program,search_provider=search_mock,
+        source_registry=registry_a,max_calls=8)
+    assert len(called)==8
+    assert first["source"]["sha256"]=="source-sha-immutable"
+    assert first["snapshot"]["sc05_source_id_filter_snapshot"]=={
+        "A":["S1001"],"B":["S1002"],"C":["S1003"],"D":["S1004"]}
+    rd.model_payload(first["snapshot"])  # hash and exact source facts still verified
+    assert first["source_policy_audit"]["metadata_classified"]["D"]==1
+    assert first["source_policy_audit"]["uncovered_planning_streams"]==["A","B"]
+    assert first["quality"]["independent_study_candidates_for_human_review"]==0
+    assert "未提供" not in first["routes"][0]["research_program"]["planning_problem"]
+    assert "独立论文章节结构" in report and "城市系统作用机制" in report
+    assert "来源政策" in report and "期刊未核准/缺失而隔离" in report
+    assert first["quality"]["scientific_quality_certified"] is False
+    called.clear()
+    report2,second=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=model_with_program,search_provider=search_mock,
+        frozen_snapshot=first["snapshot"],source_registry=registry_b,max_calls=8)
+    assert len(called)==7
+    assert second["shared_frozen_evidence"] is True
+    assert second["snapshot"]==first["snapshot"]
+    assert second["search_query_audit"]["source_id_counts_by_tier"]["A"]==1
+    assert second["snapshot"]["sc05_source_id_filter_snapshot"]["A"]==["S1001"]
+    assert "S9999" not in json.dumps(second)
+
+
+def test_r721_long_json_stages_have_explicit_budget_and_bounded_query_prompt(monkeypatch,tmp_path):
+    """Replay offline paper workflow: no paid provider; guard the truncation fix."""
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"r721-budget-test"))
+    seen={}
+    def spy(key,model,system,payload,max_tokens=3000):
+        stage=payload["sc05_stage"]
+        seen[stage]={"max_tokens":max_tokens,"system":system}
+        return model_mock(key,model,system,payload,max_tokens=max_tokens)
+    report,record=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=spy,search_provider=search_mock,max_calls=8)
+    assert seen["evidence_questions"]["max_tokens"]==4800
+    assert "最多5条" in seen["evidence_questions"]["system"]
+    assert seen["literature_assessment"]["max_tokens"]==5200
+    assert seen["research_redesign"]["max_tokens"]==7200
+    assert seen["independent_critic"]["max_tokens"]==4100
+    assert len(record["usage"])==8
+    assert "报告性质" in report
+
+
+
+def test_r723_missing_reviewer_is_imputed_hold_not_autopromoted():
+    from backend.sc05_paper_only import critique_conservatively
+    routes=[{"id":"R01"},{"id":"R02"}]
+    out,audit=critique_conservatively({
+        "reviews":[{
+            "route_id":"R01","verdict":"test",
+            "reason":"Mechanism distinction could be tested",
+            "existing_work_risk":"Prior literature might already identify this mechanism",
+            "data_blocker":"Measured operational outcomes are unavailable",
+            "minimum_test_revision":"Obtain independent operational labels",
+        }]},routes)
+    assert [x["verdict"] for x in out]==["test","hold"]
+    assert out[1]["review_origin"]=="system_imputed_hold_due_to_missing_critic"
+    assert audit["imputed_hold_count"]==1
+    assert audit["missing_route_ids"]==["R02"]
+
+
+def test_r723_hallucinated_review_reference_never_autoapproves_route():
+    from backend.sc05_paper_only import critique_conservatively
+    out,audit=critique_conservatively({
+        "reviews":[{
+            "route_id":"R99","verdict":"test",
+            "reason":"Unknown route",
+            "existing_work_risk":"Unknown",
+            "data_blocker":"Unknown",
+            "minimum_test_revision":"Unknown",
+        }]},[{"id":"R01"}])
+    assert out[0]["verdict"]=="hold"
+    assert audit["imputed_hold_count"]==1
+    assert audit["invalid_model_reviews"]==1
+
+
+def test_r723_end_to_end_with_incomplete_critic_still_delivers_auditable_report(monkeypatch,tmp_path):
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"r723-sha"))
+    def partial_review_model(key,model,system,payload,max_tokens=3000):
+        out,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if payload["sc05_stage"]=="independent_critic":
+            out={"reviews":[]}
+        return out,usage
+    report,record=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=partial_review_model,search_provider=search_mock,max_calls=8)
+    assert len(record["usage"])==8
+    assert record["reviews"][0]["verdict"]=="hold"
+    assert record["quality"]["imputed_critic_holds"]==1
+    assert record["quality"]["independent_model_critic_coverage"]==0
+    assert "独立审稿来源" in report
+    assert record["research_program_audit"]["recommended_for_human_independent_study_review"]==0
+
+
+def test_r723_exact_complete_critic_retains_prior_strict_semantics():
+    from backend.sc05_paper_only import critique_conservatively
+    items=[{
+        "route_id":"R01","verdict":"test",
+        "reason":"Could explain a new mechanism",
+        "existing_work_risk":"Nearest verified paper may overlap",
+        "data_blocker":"Outcome records uncertain",
+        "minimum_test_revision":"Identify measured competing mechanism",
+    }]
+    out,audit=critique_conservatively({"reviews":items},[{"id":"R01"}])
+    assert out==[{"route_id":"R01","verdict":"test",
+                  "reason":"Could explain a new mechanism",
+                  "existing_work_risk":"Nearest verified paper may overlap",
+                  "data_blocker":"Outcome records uncertain",
+                  "minimum_test_revision":"Identify measured competing mechanism"}]
+    assert audit["policy"]=="strict_complete"
+
+
+
+def test_r724_ungated_fake_scientific_question_id_does_not_kill_paid_report(monkeypatch,tmp_path):
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"r724-source"))
+    def mock_with_phantom_q(key,model,system,payload,max_tokens=3000):
+        out,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if payload["sc05_stage"]=="research_redesign":
+            out["routes"][0]["frontier_ids"]=["Q999"]
+        return out,usage
+    report,record=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=mock_with_phantom_q,search_provider=search_mock,
+        scientific_value_gate=False,max_calls=8)
+    assert record["routes"][0]["frontier_ids"]==[]
+    assert record["route_generation_audit"]["ignored_ungated_frontier_refs"]==1
+    assert record["quality"]["ignored_ungated_frontier_refs"]==1
+    assert "model-invented scientific-question" in str(record["quality"]["warnings"])
+    assert "Q999" not in report
+
+
+def test_r724_gated_route_cannot_still_reference_unknown_scientific_question():
+    from backend.sc05_paper_only import screen_scientific_route_refs
+    raw={"routes":[{"id":"R01","frontier_ids":["Q999"]}]}
+    gated={"scientific_questions":[{"id":"Q01"}]}
+    result,audit=screen_scientific_route_refs(raw,gated)
+    assert result["routes"]==[]
+    assert audit["rejected_unlinked_frontier_count"]==1

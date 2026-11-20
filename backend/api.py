@@ -151,12 +151,12 @@ def require_actor(request:Request,db:Session=Depends(get_db)):
     return member
 
 def require_editor(actor:TeamMember|None=Depends(require_actor)):
-    if team_auth_enabled() and (actor is None or actor.role not in ("admin","researcher")):
+    if team_auth_enabled() and (actor is None or actor.role not in ("owner","admin","researcher")):
         raise HTTPException(403,"Editor or admin role required")
     return actor
 
 def require_admin(actor:TeamMember|None=Depends(require_actor)):
-    if team_auth_enabled() and (actor is None or actor.role!="admin"):
+    if team_auth_enabled() and (actor is None or actor.role not in ("owner","admin")):
         raise HTTPException(403,"Administrator role required")
     return actor
 
@@ -211,6 +211,17 @@ async def lifespan(app:FastAPI):
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
     )
+    # Only when explicitly configured on isolated staging, test the real
+    # OpenAlex key once and persist the result in the existing probe table.
+    # The DB marker prevents automatic retries across Render restarts.
+    openalex_once_id = os.getenv("SC05_OPENALEX_ONCE_ID", "").strip()
+    if openalex_once_id:
+        from threading import Thread
+        from backend.sc05_worker import run_openalex_probe_once
+        Thread(
+            target=run_openalex_probe_once, args=(factory, openalex_once_id),
+            daemon=True, name="sc05-openalex-one-shot"
+        ).start()
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
     trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
@@ -239,7 +250,42 @@ async def lifespan(app:FastAPI):
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
         )
+    # Opt-in on-demand SC05 queue consumer on the existing *isolated*
+    # Render web instance. No new paid Render Worker resource is created.
+    # A free web instance may sleep; an in-flight provider call is NEVER
+    # automatically retried after restart to prevent duplicate charges.
+    from backend.sc05_worker import flag as _sc05_flag
+    _sc05_stop = None
+    if _sc05_flag("SC05_INLINE_WORKER_ENABLED"):
+        from threading import Event, Thread
+        from backend.sc05_worker import (
+            require_postgres, queue_smoke_probe, inline_worker_loop
+        )
+        require_postgres(factory)
+        if _sc05_flag("SC05_WORKER_SMOKE_ON_STARTUP"):
+            probe_id = os.getenv(
+                "SC05_WORKER_SMOKE_ID", "sc05probe_isolated_staging_20261116"
+            )
+            created = queue_smoke_probe(factory, probe_id)
+            logging.getLogger("uvicorn.error").info(
+                "SC05 WORKER PROBE queued=%s id=%s; paid_calls=0",
+                created, probe_id
+            )
+        _sc05_stop = Event()
+        _sc05_thread = Thread(
+            target=inline_worker_loop, args=(factory,_sc05_stop),
+            daemon=True, name="sc05-inline-staging-worker"
+        )
+        _sc05_thread.start()
+        app.state.sc05_worker_thread = _sc05_thread
+        logging.getLogger("uvicorn.error").info(
+            "SC05 inline worker started; live_deepseek_enabled=%s",
+            _sc05_flag("SC05_INLINE_WORKER_LIVE_ENABLED")
+            and _sc05_flag("SC05_MCP_PAID_ENABLED")
+        )
     yield
+    if _sc05_stop is not None:
+        _sc05_stop.set()
 
 app=FastAPI(
     title="Research Opportunity Workbench API",
@@ -466,6 +512,17 @@ def team_members(db:Session=Depends(get_db)):
 def team_add_member(data:MemberRequest,actor:TeamMember|None=Depends(require_admin),
                     db:Session=Depends(get_db)):
     if not team_auth_enabled():raise HTTPException(404,"Team member management is disabled")
+    # Legacy direct-password creation remains available in development only;
+    # production onboarding must send a verified invite instead.
+    if os.getenv("APP_ENV", "development").lower() == "production" and (
+        os.getenv("TEAM_LEGACY_DIRECT_CREATE_ENABLED", "false").lower() not in ("1","true","yes")
+    ):
+        raise HTTPException(410, "请使用邮箱邀请流程创建成员")
+    if data.role == "admin" and (actor is None or actor.role != "owner"):
+        # In development, old bootstrap admins may create other admins only
+        # before the Owner claim is enabled.
+        if os.getenv("TEAM_OWNER_SETUP_ENABLED", "false").lower() in ("1","true","yes"):
+            raise HTTPException(403, "只有 Owner 可以创建管理员")
     try:
         m=create_member(db,data.email,data.name,data.temporary_password,data.role,
                         actor_id=actor.id if actor else None)
@@ -478,6 +535,12 @@ def team_update_member(member_id:str,data:MemberUpdateRequest,
     if not team_auth_enabled():raise HTTPException(404,"Team member management is disabled")
     m=db.get(TeamMember,member_id)
     if not m:raise HTTPException(404,"Member not found")
+    if data.role == "admin" and (actor is None or actor.role != "owner"):
+        raise HTTPException(403, "只有 Owner 可以授予管理员角色")
+    if m.role == "admin" and actor is not None and actor.role != "owner" and actor.id != m.id and (
+        data.active is False or data.role not in (None, "admin")
+    ):
+        raise HTTPException(403, "只有 Owner 可以修改其他管理员")
     try:set_member_status(db,m,active=data.active,role=data.role,actor_id=actor.id if actor else "")
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
     return public_member(m)
@@ -1378,6 +1441,13 @@ _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
                        team_auth_enabled=team_auth_enabled)
 
 
+# Email-verified single-team Owner, invitations and password recovery.
+from backend.account_onboarding import mount as _mount_account_onboarding
+_mount_account_onboarding(
+    app, get_db=get_db, authenticate=authenticate, require_actor=require_actor,
+    require_admin=require_admin, team_auth_enabled=team_auth_enabled,
+)
+
 # Research Atlas unified, team-authenticated developer governance.
 from backend.devstudio import mount as _mount_devstudio_routes
 _mount_devstudio_routes(
@@ -1385,3 +1455,38 @@ _mount_devstudio_routes(
     require_editor=require_editor, require_admin=require_admin,
     team_auth_enabled=team_auth_enabled,
 )
+
+# Authenticated personal research profile/results, separate from team portrait
+# and the shared Development Studio experiment registry. Import registers ORM.
+from backend.personal_research import mount as _mount_personal_research
+_mount_personal_research(app, get_db=get_db, require_actor=require_actor,
+                         team_auth_enabled=team_auth_enabled)
+
+# First topic-specific academic journal discovery and human-approved extension.
+# Separate DB tables; never mutates the global academic source registry.
+from backend.task_venue_radar import mount as _mount_task_venue_radar
+_mount_task_venue_radar(app, get_db=get_db, require_actor=require_actor,
+                       team_auth_enabled=team_auth_enabled,
+                       get_factory=lambda: get_factory())
+
+# SC04 personal study evolution is separated from the legacy team-wide
+# research_evolution engine and never changes shared team achievements.
+from backend.sc04_evolution import mount as _mount_sc04_evolution
+_mount_sc04_evolution(app, get_db=get_db, require_actor=require_actor,
+                      team_auth_enabled=team_auth_enabled,
+                      get_factory=lambda: get_factory())
+
+# SC05: Owner-only, paper-input A/B scientific-agent evaluation.
+# Importing registers PostgreSQL tables before the API lifespan creates schema.
+from backend.sc05_eval_api import mount as _mount_sc05_eval
+_mount_sc05_eval(
+    app, get_db=get_db, require_actor=require_actor,
+    team_auth_enabled=team_auth_enabled, get_factory=lambda: get_factory(),
+)
+
+
+# OAuth-protected ChatGPT MCP bridge. Registers its tables without changing
+# SC05's source-pinned pipeline or existing Owner route semantics. Disabled
+# unless SC05_MCP_ENABLED=true on the explicitly intended staging deployment.
+from backend.sc05_agent_bridge import mount as _mount_sc05_agent_bridge
+_mount_sc05_agent_bridge(app, get_db=get_db, get_factory=get_factory)

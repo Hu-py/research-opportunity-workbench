@@ -1,0 +1,67 @@
+name: Development Studio GitHub sync
+
+on:
+  push:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, closed, ready_for_review, converted_to_draft]
+  issues:
+    types: [opened, reopened, edited, closed]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  forward-metadata:
+    if: github.repository == 'Hu-py/research-opportunity-workbench'
+    runs-on: ubuntu-latest
+    steps:
+      # Intentionally no checkout, dependencies or execution of PR content.
+      # In particular pull_request_target must never execute fork code.
+      - name: Forward signed GitHub event to Development Studio
+        env:
+          DEVSTUDIO_SYNC_URL: ${{ secrets.DEVSTUDIO_SYNC_URL }}
+          DEVSTUDIO_SYNC_SECRET: ${{ secrets.DEVSTUDIO_SYNC_SECRET }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import hmac
+          import json
+          import os
+          import sys
+          from urllib.request import Request, urlopen
+
+          url = os.environ.get("DEVSTUDIO_SYNC_URL", "").strip()
+          secret = os.environ.get("DEVSTUDIO_SYNC_SECRET", "")
+          if not url or not secret:
+              print("GitHub sync not activated: add DEVSTUDIO_SYNC_URL and DEVSTUDIO_SYNC_SECRET in repository Actions secrets.")
+              sys.exit(0)
+          if not url.startswith("https://") or len(secret) < 32:
+              print("Invalid sync configuration; refusing to forward.")
+              sys.exit(1)
+          event = os.environ.get("GITHUB_EVENT_NAME", "")
+          event = "pull_request" if event == "pull_request_target" else event
+          if event not in {"push", "pull_request", "issues", "workflow_run"}:
+              print("Unsupported GitHub event; skipped.")
+              sys.exit(0)
+          with open(os.environ["GITHUB_EVENT_PATH"], "rb") as f:
+              body = f.read()
+          if len(body) > 1024 * 1024:
+              print("Event exceeds 1MB and cannot be forwarded.")
+              sys.exit(1)
+          # Convert the GitHub event file into a conventional webhook shape,
+          # preserving all original properties and authenticating exact bytes.
+          signature = "sha256=" + hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+          delivery = os.environ.get("GITHUB_RUN_ID", "unknown") + "-" + os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+          req = Request(url, data=body, method="POST", headers={
+              "Content-Type": "application/json",
+              "X-Hub-Signature-256": signature,
+              "X-GitHub-Event": event,
+              "X-GitHub-Delivery": delivery,
+          })
+          with urlopen(req, timeout=25) as response:
+              data = json.load(response)
+          print("Development Studio sync:", data.get("state", "unknown"), "stored_events:", data.get("events", 0))
+          PY
