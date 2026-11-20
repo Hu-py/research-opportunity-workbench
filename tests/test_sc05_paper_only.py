@@ -840,3 +840,72 @@ def test_r721_long_json_stages_have_explicit_budget_and_bounded_query_prompt(mon
     assert seen["independent_critic"]["max_tokens"]==4100
     assert len(record["usage"])==8
     assert "报告性质" in report
+
+
+
+def test_r723_missing_reviewer_is_imputed_hold_not_autopromoted():
+    from backend.sc05_paper_only import critique_conservatively
+    routes=[{"id":"R01"},{"id":"R02"}]
+    out,audit=critique_conservatively({
+        "reviews":[{
+            "route_id":"R01","verdict":"test",
+            "reason":"Mechanism distinction could be tested",
+            "existing_work_risk":"Prior literature might already identify this mechanism",
+            "data_blocker":"Measured operational outcomes are unavailable",
+            "minimum_test_revision":"Obtain independent operational labels",
+        }]},routes)
+    assert [x["verdict"] for x in out]==["test","hold"]
+    assert out[1]["review_origin"]=="system_imputed_hold_due_to_missing_critic"
+    assert audit["imputed_hold_count"]==1
+    assert audit["missing_route_ids"]==["R02"]
+
+
+def test_r723_hallucinated_review_reference_never_autoapproves_route():
+    from backend.sc05_paper_only import critique_conservatively
+    out,audit=critique_conservatively({
+        "reviews":[{
+            "route_id":"R99","verdict":"test",
+            "reason":"Unknown route",
+            "existing_work_risk":"Unknown",
+            "data_blocker":"Unknown",
+            "minimum_test_revision":"Unknown",
+        }]},[{"id":"R01"}])
+    assert out[0]["verdict"]=="hold"
+    assert audit["imputed_hold_count"]==1
+    assert audit["invalid_model_reviews"]==1
+
+
+def test_r723_end_to_end_with_incomplete_critic_still_delivers_auditable_report(monkeypatch,tmp_path):
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"r723-sha"))
+    def partial_review_model(key,model,system,payload,max_tokens=3000):
+        out,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if payload["sc05_stage"]=="independent_critic":
+            out={"reviews":[]}
+        return out,usage
+    report,record=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=partial_review_model,search_provider=search_mock,max_calls=8)
+    assert len(record["usage"])==8
+    assert record["reviews"][0]["verdict"]=="hold"
+    assert record["quality"]["imputed_critic_holds"]==1
+    assert record["quality"]["independent_model_critic_coverage"]==0
+    assert "独立审稿来源" in report
+    assert record["research_program_audit"]["recommended_for_human_independent_study_review"]==0
+
+
+def test_r723_exact_complete_critic_retains_prior_strict_semantics():
+    from backend.sc05_paper_only import critique_conservatively
+    items=[{
+        "route_id":"R01","verdict":"test",
+        "reason":"Could explain a new mechanism",
+        "existing_work_risk":"Nearest verified paper may overlap",
+        "data_blocker":"Outcome records uncertain",
+        "minimum_test_revision":"Identify measured competing mechanism",
+    }]
+    out,audit=critique_conservatively({"reviews":items},[{"id":"R01"}])
+    assert out==[{"route_id":"R01","verdict":"test",
+                  "reason":"Could explain a new mechanism",
+                  "existing_work_risk":"Nearest verified paper may overlap",
+                  "data_blocker":"Outcome records uncertain",
+                  "minimum_test_revision":"Identify measured competing mechanism"}]
+    assert audit["policy"]=="strict_complete"
