@@ -763,8 +763,8 @@ def research_routes(raw: dict, diagnosis: dict, external_papers: list[dict], tri
             "change_kind": row["change_kind"],
             "diagnosis_ids": _references(row.get("diagnosis_ids"), ids,
                 "route diagnosis", allow_empty=True),
-            "frontier_ids": _references(row.get("frontier_ids", []), frontier_ids,
-                "route scientific question",allow_empty=triage is None),
+            "frontier_ids": (_references(row.get("frontier_ids", []), frontier_ids,
+                "route scientific question") if triage is not None else []),
             "research_question": _limited(row.get("research_question"), "research question"),
             "new_mechanism": _limited(row.get("new_mechanism"), "new mechanism"),
             "why_previous_study_cannot_answer": _limited(
@@ -1465,6 +1465,15 @@ def run_paper(
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes_raw,prior_reference_audit=screen_route_prior_claims(
         routes_raw,papers,literature)
+    if not scientific_value_gate:
+        # The ungated control never generates Q## records. Preserve the
+        # model's raw output in checkpoints, but never treat its Q IDs as
+        # actual scientific-frontier references or fail paid report assembly.
+        route_generation_audit["ignored_ungated_frontier_refs"]=sum(
+            len(row.get("frontier_ids") or [])
+            for row in routes_raw.get("routes",[]) if isinstance(row,dict)
+            and isinstance(row.get("frontier_ids"),list)
+        )
     if scientific_value_gate:
         routes_raw,frontier_screen_audit=screen_scientific_route_refs(
             routes_raw, scientific_triage)
@@ -1574,6 +1583,14 @@ def run_paper(
             " model-proposed research route(s) exceeded the five-route limit; "+
             "only the first five were retained in model order."
         )
+    if route_generation_audit.get("ignored_ungated_frontier_refs"):
+        output["quality"].setdefault("warnings",[]).append(
+            str(route_generation_audit["ignored_ungated_frontier_refs"])+
+            " model-invented scientific-question reference(s) were ignored in ungated control; "
+            "no scientific frontier was fabricated."
+        )
+        output["quality"]["ignored_ungated_frontier_refs"]=(
+            route_generation_audit["ignored_ungated_frontier_refs"])
     if route_generation_audit.get("rejected_unlinked_frontier_count"):
         output["quality"].setdefault("warnings",[]).append(
             str(route_generation_audit["rejected_unlinked_frontier_count"])+
