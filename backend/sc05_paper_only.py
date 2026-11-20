@@ -158,7 +158,8 @@ LITERATURE_ASSESSMENT_SYSTEM_V1 = (
     "你是独立文献查新辅助员。仅凭以下真实OpenAlex摘要，逐篇核查"
     "其研究对象、实际方法、与诊断的关系、可转移的前提及未解问题。"
     "严格引用paper_id，且必须逐字摘录12-150字符原始摘要。"
-    "本批最多评估20篇。不得假称阅读全文，不得宣布创新性已证实。"
+    "本批最多评估20篇；每篇优先只关联1至2个确有机制证据的诊断，避免输出冗余关联。" 
+    "不得假称阅读全文，不得宣布创新性已证实。"
 )
 LITERATURE_SCHEMA = {"assessments": [{
     "paper_id": "doi:10.xxxx/yyyy",
@@ -1274,7 +1275,7 @@ def run_paper(
     else:
         scientific_triage={"issue_classifications":[],"scientific_questions":[]}
     question_raw=_run(model_call,api_key,"evidence_questions",
-        "从scientific_questions及相关诊断出发提出最多7条科学检索查询。"
+        "从scientific_questions及相关诊断出发提出最多5条高信息量的科学检索查询。每条简短，用5至12个关键英语词，避免生成长篇解释。"
         "检索意图必须覆盖同领域最接近的机制竞争研究、城市规划应用与前沿视角。"
         "至少尝试一条application(A类)与一条theory(B类)检索，另外覆盖"
         "可迁移算法、以及最可能否决新颖性的反例；"
@@ -1285,7 +1286,7 @@ def run_paper(
         {"diagnoses":diagnosis["diagnoses"],
          "scientific_questions":scientific_triage["scientific_questions"],
          "open_questions":diagnosis["open_questions"],
-         "required_json_shape":SEARCH_SCHEMA},log,max_calls=max_calls)
+         "required_json_shape":SEARCH_SCHEMA},log,max_calls=max_calls,max_tokens=4800)
     questions=search_plan(question_raw,diagnosis["diagnoses"])
     raw_queries=question_raw.get("queries",[]) if isinstance(question_raw,dict) else []
     skipped_queries=max(0,min(len(raw_queries),7)-len(questions)) if isinstance(raw_queries,list) else 0
@@ -1329,10 +1330,10 @@ def run_paper(
             {"diagnosis":diagnosis["diagnoses"],
              "papers":literature_context,
              "required_json_shape":literature_schema},log,max_calls=max_calls,
-            max_tokens=4100)
+            max_tokens=5200)
         literature=literature_assessments(assessed_raw,papers,diagnosis)
     routes_raw=_run(model_call,api_key,"research_redesign",
-        "现在才允许提出研究路线。至少比较算法、数据、评价体系、"
+        "现在才允许提出研究路线。最多3条高度凝练、机制各异的路线，允许0条，不要为填数量编造小修补。至少比较算法、数据、评价体系、"
         "研究问题重构的适用性，但无需每类各出一个。"+
         ("仅能从新科学问题创建下一篇研究路线；不可将严谨性修补直接推荐为研究主题。"
          "frontier_ids只能引用scientific_triage.scientific_questions中真实存在的Q编号，"
@@ -1361,7 +1362,7 @@ def run_paper(
         "没有具体可核查映射则method_transfer_proposals为空；"
         "即使有映射也只是需人工审查的技术假设，不能当作独立创新或已获批准方法。"
         "如果证据不足，允许输出空routes。不得声称系统查新已完成。"
-         "额外输出research_agendas最多2条，允许为空。每条组织单一中心科学主张，不是多条并列小选题。"
+         "优先输出1条有多项互补研究的综合research_agenda，最多2条，允许为空。每条围绕单一中心科学主张，不是多条并列小选题。"
          "只引用已存在的route_ids和原文fact_ids，安排2到4项互补研究；"
          "必须区分竞争机制并说明研究之间的因果论证关系、共同否证条件和规划决策贡献。"
          "不能通过增加城市范围、假定新数据或宏大表述冒充创新。"
@@ -1382,7 +1383,7 @@ def run_paper(
               {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}],
                **METHOD_TRANSFER_PROPOSAL_SHAPE,**AGENDA_SCHEMA}
          )},
-         log,max_calls=max_calls,max_tokens=6800)
+         log,max_calls=max_calls,max_tokens=7200)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes_raw,prior_reference_audit=screen_route_prior_claims(
         routes_raw,papers,literature)
@@ -1415,7 +1416,7 @@ def run_paper(
              "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in literature_context],
              "unapproved_method_transfer_hypotheses":method_transfer_bridges,
               "research_agendas":research_agendas,
-             "required_json_shape":{**CRITIC_SCHEMA,**AGENDA_REVIEW_SCHEMA}},log,max_calls=max_calls,max_tokens=3000)
+             "required_json_shape":{**CRITIC_SCHEMA,**AGENDA_REVIEW_SCHEMA}},log,max_calls=max_calls,max_tokens=4100)
     else:
         # With no proposed routes there is no review target. Avoid a paid
         # request that would force the model to invent one.

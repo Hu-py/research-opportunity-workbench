@@ -820,3 +820,23 @@ def test_full_paper_to_report_freezes_source_catalog_and_marks_planning_gap(monk
     assert second["search_query_audit"]["source_id_counts_by_tier"]["A"]==1
     assert second["snapshot"]["sc05_source_id_filter_snapshot"]["A"]==["S1001"]
     assert "S9999" not in json.dumps(second)
+
+
+def test_r721_long_json_stages_have_explicit_budget_and_bounded_query_prompt(monkeypatch,tmp_path):
+    """Replay offline paper workflow: no paid provider; guard the truncation fix."""
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"r721-budget-test"))
+    seen={}
+    def spy(key,model,system,payload,max_tokens=3000):
+        stage=payload["sc05_stage"]
+        seen[stage]={"max_tokens":max_tokens,"system":system}
+        return model_mock(key,model,system,payload,max_tokens=max_tokens)
+    report,record=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=spy,search_provider=search_mock,max_calls=8)
+    assert seen["evidence_questions"]["max_tokens"]==4800
+    assert "最多5条" in seen["evidence_questions"]["system"]
+    assert seen["literature_assessment"]["max_tokens"]==5200
+    assert seen["research_redesign"]["max_tokens"]==7200
+    assert seen["independent_critic"]["max_tokens"]==4100
+    assert len(record["usage"])==8
+    assert "报告性质" in report
