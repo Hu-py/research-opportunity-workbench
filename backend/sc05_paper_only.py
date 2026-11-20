@@ -31,6 +31,10 @@ from backend.sc05_source_policy import (
 from backend.sc05_research_program import (
     PROGRAM_TEMPLATE, PROGRAM_FIELDS, audit_research_program,
 )
+from backend.sc05_research_agenda import (
+    AGENDA_SCHEMA, AGENDA_REVIEW_SCHEMA, validate_agenda_proposals,
+    validate_agenda_reviews, audit_agendas,
+)
 from backend.sc05_research_diagnosis import (
     EvidenceError, SYSTEM_PROMPT, freeze_blind_input, model_payload,
     required, text_items, validate_diagnosis, verify_facts, digest,
@@ -944,7 +948,33 @@ def _markdown(result: dict) -> str:
                   "；否证试验："+transfer["discriminating_test"]+
                   "；终止条件："+transfer["failure_condition"]+
                   "；**未经人工批准，不能称为可行或新颖方法**。", ""]
-    buf+=["", "## 6. 候选研究路线：增量、实验与否决", ""]
+    agenda_reviews={r["agenda_id"]:r for r in result.get("research_agenda_reviews",[])}
+    audit=result.get("research_agenda_audit",{})
+    buf+=["", "## 6. 跨路线综合科研议程（需要人工评审）", ""]
+    for agenda in result.get("research_agendas",[]):
+        review=agenda_reviews.get(agenda["id"],{})
+        verdict=next((x for x in audit.get("agendas",[])
+                       if x["agenda_id"]==agenda["id"]),{})
+        buf+=["### "+agenda["id"]+"｜"+agenda["title"],"",
+              "**核心问题**："+agenda["central_question"],
+              "**真实原文依据**："+links(agenda["source_fact_ids"]),
+              "**现象与矛盾**："+agenda["empirical_tension"],
+              "**竞争机制**："+agenda["mechanism_synthesis"],
+              "**整合理由**："+agenda["integration_rationale"],
+              "**独立论文贡献**："+agenda["why_independent_paper"],
+              "**规划决策**："+agenda["planning_decision"],
+              "**适用边界**："+agenda["boundary_conditions"],
+              "**整体否证条件**："+agenda["failure_condition"],""]
+        for study in agenda["study_sequence"]:
+            buf.append("- "+study["route_id"]+" / "+study["role"]+"："+
+                       study["discriminating_test"]+"；科学贡献："+study["contributes_to_claim"])
+        buf+=["**独立审查**："+review.get("verdict","unreviewed")+
+              "；最强异议："+review.get("strongest_objection","未评估"),
+              "**候选状态**："+verdict.get("editorial_status","unreviewed")+
+              "；阻断："+",".join(verdict.get("blocking_codes",[])),""]
+    if not result.get("research_agendas"):
+        buf+=["未形成结构完整且证据可追溯的综合科研议程，不应强行推荐。",""]
+    buf+=["", "## 6.1 候选研究路线：增量、实验与否决", ""]
     if not result["routes"]:
         buf+=["目前证据不足以形成可靠的下一篇方案。建议先核查上面的关键缺口。", ""]
     for route in result["routes"]:
@@ -1231,7 +1261,11 @@ def run_paper(
         "必须保持的机制假设、最小竞争基线试验及否决条件，给出来源摘要12-150字符原文。"
         "没有具体可核查映射则method_transfer_proposals为空；"
         "即使有映射也只是需人工审查的技术假设，不能当作独立创新或已获批准方法。"
-        "如果证据不足，允许输出空routes。不得声称系统查新已完成。",
+        "如果证据不足，允许输出空routes。不得声称系统查新已完成。"
+         "额外输出research_agendas最多2条，允许为空。每条组织单一中心科学主张，不是多条并列小选题。"
+         "只引用已存在的route_ids和原文fact_ids，安排2到4项互补研究；"
+         "必须区分竞争机制并说明研究之间的因果论证关系、共同否证条件和规划决策贡献。"
+         "不能通过增加城市范围、假定新数据或宏大表述冒充创新。",
         {"diagnosis":diagnosis,"scientific_triage":scientific_triage,
          "method_lineage":lineage,
          "approved_source_policy":SOURCE_POLICY_VERSION,
@@ -1240,12 +1274,12 @@ def run_paper(
          "literature_assessments":literature,
          "method_transfer_candidates":transfer_context,
          "required_json_shape":(
-              {**ROUTE_SCHEMA,**METHOD_TRANSFER_PROPOSAL_SHAPE}
+              {**ROUTE_SCHEMA,**METHOD_TRANSFER_PROPOSAL_SHAPE,**AGENDA_SCHEMA}
               if scientific_value_gate else
               {"routes":[{**ROUTE_SCHEMA["routes"][0],"frontier_ids":[]}],
-               **METHOD_TRANSFER_PROPOSAL_SHAPE}
+               **METHOD_TRANSFER_PROPOSAL_SHAPE,**AGENDA_SCHEMA}
          )},
-         log,max_calls=max_calls,max_tokens=5400)
+         log,max_calls=max_calls,max_tokens=6800)
     routes_raw,route_generation_audit=limit_route_candidates(routes_raw)
     routes_raw,prior_reference_audit=screen_route_prior_claims(
         routes_raw,papers,literature)
@@ -1260,6 +1294,8 @@ def run_paper(
         routes_raw.get("method_transfer_proposals"),
         [p for p in method_transfer_leads if p["id"] in visible_transfer_ids],
         {route["id"] for route in routes})
+    research_agendas,agenda_generation_audit=validate_agenda_proposals(
+        routes_raw.get("research_agendas"),routes,facts)
     if routes:
         critic_raw=_run(model_call,api_key,"independent_critic",
             "独立科学审稿人：不要附和上一个模型。检查近邻重合、"
@@ -1267,17 +1303,25 @@ def run_paper(
             "尤其审查研究问题是否具有独立论文尺度：能否解释跨城市系统结构、"
             "跨情境机制或治理取舍；是否只是原论文的稳健性附录或一个局部机制小实验。"
             "没有可信规划学与直接领域先例，不可宣称新颖性已核查。"
-            "允许全部hold或reject。必要数据未知时不得声称真实可验证。",
+            "允许全部hold或reject。必要数据未知时不得声称真实可验证。"
+             "针对research_agendas独立审议整篇科学问题的价值、路线是否构成可证伪的整体、"
+             "最近先例、不可区分的竞争机制和实际可行性。指出最强反对意见和最小区分证据。"
+             "不可因结构完整而自动批准，允许全部hold或reject。",
             {"routes":routes,"diagnoses":diagnosis["diagnoses"],
              "scientific_triage":scientific_triage,
              "external_papers":[{k:p[k] for k in ("id","title","abstract")} for p in literature_context],
              "unapproved_method_transfer_hypotheses":method_transfer_bridges,
-             "required_json_shape":CRITIC_SCHEMA},log,max_calls=max_calls,max_tokens=3000)
+              "research_agendas":research_agendas,
+             "required_json_shape":{**CRITIC_SCHEMA,**AGENDA_REVIEW_SCHEMA}},log,max_calls=max_calls,max_tokens=3000)
     else:
         # With no proposed routes there is no review target. Avoid a paid
         # request that would force the model to invent one.
-        critic_raw={"reviews":[]}
+        critic_raw={"reviews":[],"agenda_reviews":[]}
     reviews=critique(critic_raw,routes)
+    research_agenda_reviews,agenda_review_audit=validate_agenda_reviews(
+        critic_raw.get("agenda_reviews"),research_agendas)
+    research_agenda_audit=audit_agendas(
+        research_agendas,research_agenda_reviews,routes,reviews,source_policy_audit)
     research_program_audit=audit_research_program(routes,reviews,source_policy_audit)
     output = {
         "version":VERSION, "source":{"title":source_title or (Path(pdf).stem if pdf else "uploaded-paper"),
@@ -1304,6 +1348,11 @@ def run_paper(
         "external_papers":papers,"search_errors":search_errors,
         "source_policy_audit":source_policy_audit,
         "research_program_audit":research_program_audit,
+         "research_agendas":research_agendas,
+         "research_agenda_generation_audit":agenda_generation_audit,
+         "research_agenda_reviews":research_agenda_reviews,
+         "research_agenda_review_audit":agenda_review_audit,
+         "research_agenda_audit":research_agenda_audit,
         "method_transfer_leads":method_transfer_leads,
         "method_transfer_audit":method_transfer_audit,
         "method_transfer_bridges":method_transfer_bridges,
