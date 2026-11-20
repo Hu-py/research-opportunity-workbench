@@ -98,6 +98,20 @@ def validate_agenda_proposals(
                 or not set(fact_ids) <= known_facts):
             rejected.append({"position": pos, "code": "AGENDA_SOURCE_FACT_INVALID"})
             continue
+        # R7.1 failure: a technically coherent bundle of robustness checks
+        # was still proposed as an independent paper. Require at least one
+        # linked route with a research-question-scale claim; self-declared
+        # status remains unverified and independent review is still required.
+        independent_levels = {"independent_study", "system_program"}
+        route_by_id = {r["id"]: r for r in routes}
+        if not any(
+            (route_by_id[rid].get("research_program") or {}).get(
+                "contribution_level") in independent_levels for rid in route_ids
+        ):
+            rejected.append({
+                "position": pos, "code": "AGENDA_ONLY_QUALITY_OR_SUBSTUDIES"
+            })
+            continue
         if any(not _text(item.get(key)) for key in AGENDA_FIELDS):
             rejected.append({"position": pos, "code": "AGENDA_STORY_INCOMPLETE"})
             continue
