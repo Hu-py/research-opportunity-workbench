@@ -909,3 +909,31 @@ def test_r723_exact_complete_critic_retains_prior_strict_semantics():
                   "data_blocker":"Outcome records uncertain",
                   "minimum_test_revision":"Identify measured competing mechanism"}]
     assert audit["policy"]=="strict_complete"
+
+
+
+def test_r724_ungated_fake_scientific_question_id_does_not_kill_paid_report(monkeypatch,tmp_path):
+    import backend.sc05_paper_only as p
+    monkeypatch.setattr(p,"page_texts_from_pdf",lambda file:(PAGES,"r724-source"))
+    def mock_with_phantom_q(key,model,system,payload,max_tokens=3000):
+        out,usage=model_mock(key,model,system,payload,max_tokens=max_tokens)
+        if payload["sc05_stage"]=="research_redesign":
+            out["routes"][0]["frontier_ids"]=["Q999"]
+        return out,usage
+    report,record=run_paper(tmp_path/"source.pdf","not-a-real-key",
+        model_call=mock_with_phantom_q,search_provider=search_mock,
+        scientific_value_gate=False,max_calls=8)
+    assert record["routes"][0]["frontier_ids"]==[]
+    assert record["route_generation_audit"]["ignored_ungated_frontier_refs"]==1
+    assert record["quality"]["ignored_ungated_frontier_refs"]==1
+    assert "model-invented scientific-question" in str(record["quality"]["warnings"])
+    assert "Q999" not in report
+
+
+def test_r724_gated_route_cannot_still_reference_unknown_scientific_question():
+    from backend.sc05_paper_only import screen_scientific_route_refs
+    raw={"routes":[{"id":"R01","frontier_ids":["Q999"]}]}
+    gated={"scientific_questions":[{"id":"Q01"}]}
+    result,audit=screen_scientific_route_refs(raw,gated)
+    assert result["routes"]==[]
+    assert audit["rejected_unlinked_frontier_count"]==1
