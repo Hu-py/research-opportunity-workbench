@@ -581,6 +581,18 @@ def bounded_literature_context(papers: list[dict], *, max_papers: int = 12,
     } for p in selected]
 
 
+def _literature_scope_text(value: Any, *, field: str, max_chars: int = 1800) -> tuple[str, bool]:
+    """Mark a model's incomplete/oversized narrative as unknown, without a new claim.
+
+    Identity, diagnosis IDs, abstract excerpts and quote matching remain subject
+    to strict verification. Incomplete ancillary prose must not destroy a paid,
+    verifiable literature-assessment checkpoint.
+    """
+    if isinstance(value, str) and value.strip() and len(value) <= max_chars:
+        return value.strip(), False
+    return "摘要证据不足或模型未提供有效描述；不可据此推断。", True
+
+
 def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: dict) -> list[dict]:
     """Validate literature identity, typed diagnosis links and abstract provenance."""
     rows=raw.get("assessments")
@@ -688,6 +700,12 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
         elif not abstract and excerpt not in ("",None):
             excerpt_status="rejected"
 
+        checked_fields = {}
+        unknown_scope_fields = []
+        for key in ("tested_problem", "method", "conditional_transfer", "unresolved"):
+            checked_fields[key], invalid = _literature_scope_text(item.get(key), field=key)
+            if invalid:
+                unknown_scope_fields.append(key)
         evidence_status=(
             "abstract_quote_verified"
             if excerpt_status in ("verified","verified_whitespace_normalized")
@@ -703,11 +721,12 @@ def literature_assessments(raw: dict, external_papers: list[dict], diagnosis: di
             "diagnosis_link_status":"linked" if links else "unlinked",
             "unlinked_reason":unlinked_reason,
             "discarded_unexplained_relations":discarded_unexplained,
-            "tested_problem":_limited(item.get("tested_problem"),"tested_problem"),
-            "method":_limited(item.get("method"),"paper method"),
+            "tested_problem":checked_fields["tested_problem"],
+            "method":checked_fields["method"],
             "relevance":item["relevance"],
-            "conditional_transfer":_limited(item.get("conditional_transfer"),"transfer"),
-            "unresolved":_limited(item.get("unresolved"),"literature scope"),
+            "conditional_transfer":checked_fields["conditional_transfer"],
+            "unresolved":checked_fields["unresolved"],
+            "invalid_scope_fields":unknown_scope_fields,
             # Never expose a model-provided excerpt that failed exact source checking.
             "abstract_excerpt":verified_excerpt,
             "abstract_quote_status":excerpt_status,
