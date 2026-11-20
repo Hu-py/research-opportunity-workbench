@@ -974,7 +974,12 @@ def _markdown(result: dict) -> str:
               "**候选状态**："+verdict.get("editorial_status","unreviewed")+
               "；阻断："+",".join(verdict.get("blocking_codes",[])),""]
     if not result.get("research_agendas"):
+        rejected_audits=result.get("research_agenda_generation_audit",{}).get("rejected",[])
         buf+=["未形成结构完整且证据可追溯的综合科研议程，不应强行推荐。",""]
+        if rejected_audits:
+            buf+=["**生成议程拒绝原因**："+", ".join(
+                str(x.get("code","unclassified")) for x in rejected_audits
+            ),""]
     buf+=["", "## 6.1 候选研究路线：增量、实验与否决", ""]
     if not result["routes"]:
         buf+=["目前证据不足以形成可靠的下一篇方案。建议先核查上面的关键缺口。", ""]
