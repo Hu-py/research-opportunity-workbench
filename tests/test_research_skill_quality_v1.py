@@ -13,7 +13,7 @@ def test_default_loader_includes_synthesis_and_templates():
     assert "report_templates" in ALLOWED
     loaded = load_skills()
     assert "single-paper observation" in loaded
-    assert "SC03 / UC01 research opportunity report template" in loaded
+    assert "Template D — SC03 / UC01 research opportunity report" in loaded
 
 
 def test_explicit_capabilities_load_required_skills():
