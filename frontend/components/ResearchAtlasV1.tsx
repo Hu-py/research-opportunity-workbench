@@ -193,9 +193,13 @@ export default function ResearchAtlasV1() {
       .then(data => {
         setTeamMode(Boolean(data.team));
         setMember(data.member || null);
+        setError(data.connection_error ? (data.detail || "团队认证服务暂不可用") : "");
         setAuth(Boolean(data.authenticated));
       })
-      .catch(() => setAuth(false));
+      .catch(() => {
+        setError("无法连接登录状态服务。请检查网络后重试；Render 免费实例首次唤醒可能需要约 40–60 秒。");
+        setAuth(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -451,7 +455,7 @@ export default function ResearchAtlasV1() {
   }
 
   if (auth === null) {
-    return <div className={styles.loadingScreen}><Loader2 className={styles.spin} size={22} />正在连接研究空间…</div>;
+    return <div className={styles.loadingScreen}><Loader2 className={styles.spin} size={22} /><span>正在连接研究空间…<small>首次唤醒认证服务可能需要约 40–60 秒</small></span></div>;
   }
 
   if (!auth) {
@@ -470,10 +474,10 @@ export default function ResearchAtlasV1() {
           </label>
           {error && <div className={styles.inlineError}><AlertCircle size={15} />{error}</div>}
           <button className={styles.primaryButton} type="submit" disabled={loginBusy}>
-            {loginBusy ? <Loader2 className={styles.spin} size={16} /> : null}登录
+            {loginBusy ? <Loader2 className={styles.spin} size={16} /> : null}{loginBusy ? "正在连接认证服务…" : "登录"}
           </button>
         </form>
-        <div className={styles.loginFoot}>科研资料按账户权限访问。请勿在公共设备保存登录状态。</div>
+        <div className={styles.loginFoot}>{teamMode ? "首次连接时，Render 免费后端可能需要约 40–60 秒唤醒。请耐心等待，不要连续重复提交。" : "科研资料按账户权限访问。请勿在公共设备保存登录状态。"}</div>
       </div>
     </div>;
   }
