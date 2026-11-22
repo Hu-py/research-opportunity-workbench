@@ -29,6 +29,10 @@ from backend.research_sources import (
     ResearchSource, seed_default_sources, list_sources, create_source,
     update_source, delete_source, resolve_sources, domain_counts,
 )
+from backend.task_source_scopes import (
+    TaskSourceScope, TaskSourceSnapshot, SCOPES, read_scope, write_scope,
+    snapshot_task, _validate_groups,
+)
 from backend.worker import run_task
 from backend.radar_trial import (
     RadarTrialRun, latest_trial, create_trial, execute_trial,
@@ -253,6 +257,8 @@ app=FastAPI(
 class TaskRequest(BaseModel):
     kind:Literal["explore","sync","weekly"]="explore"
     query:str=Field(default="",max_length=2000)
+    # Optional strict source list for this run only, always snapshotted.
+    source_override:dict[str,list[str]]|None=None
 
 class FeedbackRequest(BaseModel):
     status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
@@ -322,6 +328,12 @@ class InterestPatchRequest(BaseModel):
     keywords:list[str]|None=Field(default=None,max_length=12)
     queries:list[str]|None=Field(default=None,min_length=1,max_length=4)
     venues:list[str]|None=Field(default=None,max_length=12)
+
+class TaskSourceScopeRequest(BaseModel):
+    groups:dict[str,list[str]]
+    enforced:bool=False
+    expected_version:int=Field(default=0,ge=0)
+
 
 class SourceCreateRequest(BaseModel):
     name:str=Field(min_length=3,max_length=260)
@@ -1163,6 +1175,48 @@ def cusp_opportunities_api(db:Session=Depends(get_db)):
             "note":"规则推断的研究问题，不是 LLM 验证的创新性或数据可行性结论"}
 
 
+@app.get("/api/task-source-scopes",dependencies=[Depends(require_actor)])
+def task_source_scopes(actor:TeamMember|None=Depends(require_actor),
+                       db:Session=Depends(get_db)):
+    """Per-scene source lists. The personal list is visible only to its owner."""
+    personal_available = actor is not None
+    return {"items":[
+        read_scope(db, "team_weekly"),
+        read_scope(db, "personal_weekly", actor.id) if personal_available
+            else {"scene":"personal_weekly","available":False,
+                  "groups":{"A":[],"B":[],"C":[]},"configured":False,
+                  "enforced":False,"version":0},
+        read_scope(db, "directed_research"),
+    ], "personal_available":personal_available}
+
+
+@app.put("/api/task-source-scopes/{scene}",dependencies=[Depends(require_actor)])
+def task_source_scope_update(scene:str, data:TaskSourceScopeRequest,
+                             actor:TeamMember|None=Depends(require_editor),
+                             db:Session=Depends(get_db)):
+    if scene not in SCOPES:
+        raise HTTPException(404,"Unknown task source scope")
+    if scene=="personal_weekly":
+        if actor is None:
+            raise HTTPException(409,"个人来源配置需要独立团队成员账号")
+        owner_id=actor.id
+    else:
+        if actor is not None and actor.role!="admin":
+            raise HTTPException(403,"仅管理员可以修改团队与定向任务的默认期刊清单")
+        owner_id=""
+    try:
+        result=write_scope(db,scene,groups=data.groups,enforced=data.enforced,
+                           expected_version=data.expected_version,
+                           actor_id=actor.id if actor else "",owner_id=owner_id)
+    except ValueError as exc:
+        raise HTTPException(409 if "refresh" in str(exc) else 422,str(exc)) from exc
+    if actor is not None:
+        add_audit(db,"task_source_scope.updated",actor.id,scene,
+                  "version="+str(result["version"])+" enforced="+str(result["enforced"]))
+        db.commit()
+    return result
+
+
 @app.get("/api/research-sources",dependencies=[Depends(require_actor)])
 def research_sources(domain:str="",kind:str="",enabled_only:bool=False,db:Session=Depends(get_db)):
     return {"items":list_sources(db,domain=domain,kind=kind,enabled_only=enabled_only),
@@ -1280,15 +1334,35 @@ def tasks_start(data:TaskRequest,background:BackgroundTasks,db:Session=Depends(g
                 actor:TeamMember|None=Depends(require_editor)):
     if data.kind=="explore" and len(data.query.strip())<6:
         raise HTTPException(422,"请输入更具体的研究问题（至少 6 个字符）")
+    if data.source_override is not None:
+        if data.kind!="explore":
+            raise HTTPException(422,"仅定向科研任务支持单次自定义期刊清单")
+        try:_validate_groups(db,data.source_override)
+        except ValueError as exc:raise HTTPException(422,str(exc)) from exc
     task=enqueue(db,data.kind,data.query)
-    add_audit(db,"task.created",actor.id if actor else None,task.id,"kind="+data.kind)
+    try:
+        source_state=snapshot_task(
+            db,task.id,kind=data.kind,
+            owner_id=actor.id if actor else "",
+            override=data.source_override,
+        )
+    except ValueError as exc:
+        # enqueue commits by design. Do not leave a queued, unsnapshotted task.
+        db.delete(task)
+        db.commit()
+        raise HTTPException(422,str(exc)) from exc
+    add_audit(db,"task.created",actor.id if actor else None,task.id,
+              "kind="+data.kind+" sources="+str(source_state["enforced"]) +
+              " v="+str(source_state["scope_version"]))
     db.commit()
     # Opt-in fallback for free-host evaluation, NOT a durable worker.
     # An interrupted process may leave a task queued/running. Never claim
     # production-grade reliability without a separate worker.
     if inline_worker_enabled():
         background.add_task(run_task,get_factory(),task.id)
-    return as_dict(task)
+    result=as_dict(task)
+    result["source_scope"]=source_state
+    return result
 
 @app.post("/api/tasks/{task_id}/dispatch",dependencies=[Depends(require_actor)])
 def dispatch_queued_task(task_id:str,background:BackgroundTasks,
@@ -1309,7 +1383,16 @@ def dispatch_queued_task(task_id:str,background:BackgroundTasks,
 def task_detail(task_id:str,db:Session=Depends(get_db)):
     task=db.get(ResearchTask,task_id)
     if not task:raise HTTPException(404,"Task not found")
-    return as_dict(task)
+    result=as_dict(task)
+    snapshot=db.get(TaskSourceSnapshot,task_id)
+    if snapshot:
+        result["source_scope"]={
+            "scene":snapshot.scene,
+            "groups":json.loads(snapshot.groups_json),
+            "enforced":snapshot.enforced,
+            "scope_version":snapshot.scope_version,
+        }
+    return result
 
 
 @app.get("/api/radar",dependencies=[Depends(require_actor)])
