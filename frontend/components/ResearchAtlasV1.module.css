@@ -270,3 +270,39 @@
   .taskToolbar{align-items:stretch}
   .searchInput{width:100%}
 }
+
+/* Keep embedded settings tools within the V1.0 monochrome visual system. */
+.settingsContent :global(.page-header){margin:0 0 18px}
+.settingsContent :global(.page-header h1){font-size:20px;letter-spacing:-.5px;color:#222;margin:6px 0}
+.settingsContent :global(.page-header p),.settingsContent :global(.dev-sectionbar p){color:#888;font-size:10px;line-height:1.75}
+.settingsContent :global(.eyebrow),.settingsContent :global(.panel-kicker){color:#999;letter-spacing:1.4px}
+.settingsContent :global(.panel){border:1px solid #e8e8e5;border-radius:7px;box-shadow:none;padding:18px}
+.settingsContent :global(.btn){border:1px solid #deded8;border-radius:5px;background:#fff;color:#333;box-shadow:none;font-weight:600}
+.settingsContent :global(.btn:hover){border-color:#999;color:#111}
+.settingsContent :global(.btn.primary),.settingsContent :global(.btn-primary){background:#171717;border-color:#171717;color:#fff}
+.settingsContent :global(.btn.primary:hover),.settingsContent :global(.btn-primary:hover){background:#333;border-color:#333;color:#fff}
+.settingsContent :global(.stat-card){border:1px solid #e8e8e5;border-radius:6px;box-shadow:none;padding:15px}
+.settingsContent :global(.stat-card span),.settingsContent :global(.stat-card small){color:#999}
+.settingsContent :global(.stat-card strong){color:#222;font-size:22px}
+.settingsContent :global(.source-table th){background:#f7f7f5;color:#777;font-weight:600}
+.settingsContent :global(.source-table td a){color:#555}
+.settingsContent :global(.tag){border-radius:4px;background:#f5f5f2;color:#666;border:1px solid #e7e7e1}
+.settingsContent :global(.tag.good),.settingsContent :global(.tag.warn){background:#f5f5f2;color:#666;border-color:#e7e7e1}
+.settingsContent :global(.source-modal){border:1px solid #e2e2dc;border-radius:7px;box-shadow:0 18px 60px rgba(0,0,0,.13)}
+.settingsContent :global(.source-modal .modal-head),.settingsContent :global(.source-modal .modal-foot){border-color:#e8e8e5}
+.settingsContent :global(.source-modal .field){color:#666}
+.settingsContent :global(.source-modal .field input),.settingsContent :global(.source-modal .field select),.settingsContent :global(.source-modal .field textarea){border-radius:5px;border-color:#deded8;color:#333}
+.settingsContent :global(.dev-studio){gap:15px}
+.settingsContent :global(.dev-studio h2),.settingsContent :global(.dev-watch-card h3),.settingsContent :global(.dev-cs-card h3){color:#222}
+.settingsContent :global(.dev-sectionbar){margin:0 0 12px}
+.settingsContent :global(.dev-summary>div),.settingsContent :global(.dev-watch-card),.settingsContent :global(.dev-cs-card){border:1px solid #e8e8e5;border-radius:6px;box-shadow:none}
+.settingsContent :global(.dev-summary strong){color:#222}
+.settingsContent :global(.dev-watch-card>p),.settingsContent :global(.dev-watch-card>small),.settingsContent :global(.dev-query){color:#888}
+.settingsContent :global(.dev-watch-top span),.settingsContent :global(.dev-cs-card>span){color:#888}
+.settingsContent :global(.dev-watch-top .dev-watch-on),.settingsContent :global(.dev-watch-top .dev-watch-off){background:#f5f5f2;color:#666;border-radius:4px}
+.settingsContent :global(.dev-tags span),.settingsContent :global(.dev-tags small){background:#f7f7f5;border-color:#e8e8e5;color:#777;border-radius:4px}
+.settingsContent :global(.dev-interest-form){background:#fff;border-color:#e8e8e5}
+.settingsContent :global(.dev-interest-form h3){color:#222}
+.settingsContent :global(.dev-interest-form label){color:#666}
+.settingsContent :global(.dev-interest-form input),.settingsContent :global(.dev-interest-form textarea),.settingsContent :global(.dev-interest-form select){border-color:#deded8;border-radius:5px;color:#333}
+.settingsContent :global(.dev-final-note){color:#888}
