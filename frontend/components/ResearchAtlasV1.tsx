@@ -127,6 +127,7 @@ export default function ResearchAtlasV1() {
   const [section, setSection] = useState<Section>("chat");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [chatScope, setChatScope] = useState<ChatScope>("private");
+  const [chatMode, setChatMode] = useState<"gpt" | "research">("research");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -570,7 +571,21 @@ export default function ResearchAtlasV1() {
               <ShieldCheck size={16} />
               <span>当前已连接真实 Research Agent，但后端仍以单次研究任务保存结果；独立私人多轮会话和私有数据隔离尚未完成。请勿将需要严格保密的内容视为私人存储。</span>
             </div>
-            <div className={styles.chatWorkspace}>
+            <div className={styles.modeSwitch}>
+              <button className={chatMode === "gpt" ? styles.modeActive : ""} onClick={() => setChatMode("gpt")}>
+                GPT 调用 <small>通用对话 · 待接入</small>
+              </button>
+              <button className={chatMode === "research" ? styles.modeActive : ""} onClick={() => setChatMode("research")}>
+                深度研究 <small>Research Agent · 当前可用</small>
+              </button>
+            </div>
+            {chatMode === "gpt" ? <div className={styles.teamChatPending}>
+              <div className={styles.pendingIcon}><MessageCircle size={23} /></div>
+              <div className={styles.eyebrow}>GPT CONVERSATION</div>
+              <h2>通用 GPT 多轮对话尚未接入</h2>
+              <p>当前后端提供的是定向 Research Agent 任务接口，尚未提供可持续保存的通用 GPT 对话接口。切换到「深度研究」即可使用现有真实科研任务能力。</p>
+              <button className={styles.secondaryButton} onClick={() => setChatMode("research")}>进入深度研究 <ArrowUpRight size={14} /></button>
+            </div> : <div className={styles.chatWorkspace}>
               <div className={styles.chatMain}>
                 {selectedExploreTask ? <div className={styles.chatResult}>
                   <div className={styles.messageUser}>
@@ -612,7 +627,7 @@ export default function ResearchAtlasV1() {
                   </div>
                 </form>
               </div>
-            </div>
+            </div>}
           </> : <div className={styles.teamChatPending}>
             <div className={styles.pendingIcon}><Users size={24} /></div>
             <div className={styles.eyebrow}>TEAM CONVERSATION</div>
