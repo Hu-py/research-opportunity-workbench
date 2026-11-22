@@ -32,7 +32,7 @@ TOOLS = [
      "parameters":{"type":"object","properties":{"query":{"type":"string"}},
                    "required":["query"],"additionalProperties":False}},
     {"type":"function","name":"search_live_papers",
-     "description":"Query OpenAlex for up to 6 recent papers and their bibliographic metadata. Conference status is unverified.",
+     "description":"Query OpenAlex for up to 20 recent papers and their bibliographic metadata. Conference status is unverified.",
      "strict":True,
      "parameters":{"type":"object","properties":{"query":{"type":"string"}},
                    "required":["query"],"additionalProperties":False}},
@@ -83,7 +83,7 @@ class ResearchAgent:
 
     def dispatch(self, name, args):
         self.usage["tool_calls"] += 1
-        if self.usage["tool_calls"] > 9:
+        if self.usage["tool_calls"] > 18:
             return {"error":"Tool call budget exceeded"}
         if name == "get_research_profile":
             return get_profile(self.db) or {"research_lines":[],"note":"Profile not yet supplied"}
@@ -127,7 +127,7 @@ class ResearchAgent:
             self.log("paper_search",f"OpenAlex 检索：{q}")
             try:
                 rows=query_openalex(q,(date.today()-timedelta(days=730)).isoformat(),
-                                    limit=6,client=self.openalex_client)
+                                    limit=20,client=self.openalex_client)
                 return self._papers([normalize_paper(x) for x in rows if x.get("title")])
             except Exception as exc:
                 self.log("paper_search_error",str(exc)[:160])
@@ -159,12 +159,12 @@ class ResearchAgent:
                 from openai import OpenAI
                 self.model_client=OpenAI(timeout=50,max_retries=1)
             messages=[{"role":"user","content":prompt[:2000]}]
-            for turn in range(4):
+            for turn in range(8):
                 self.usage["model_rounds"]+=1
-                self.log("reasoning",f"科研智能体分析步骤 {turn+1}/4")
+                self.log("reasoning",f"科研智能体分析步骤 {turn+1}/8")
                 response=self.model_client.responses.create(
                     model=os.getenv("OPENAI_MODEL","gpt-4.1-mini"),
-                    instructions=SYSTEM+"\n\nResearch skills:\n"+(load_skills(self.skill_names) if self.skill_names is not None else load_skills()),tools=TOOLS,input=messages,max_output_tokens=1400
+                    instructions=SYSTEM+"\n\nResearch skills:\n"+(load_skills(self.skill_names) if self.skill_names is not None else load_skills()),tools=TOOLS,input=messages,max_output_tokens=4500
                 )
                 messages.extend(response.output)
                 calls=[item for item in response.output if getattr(item,"type","")=="function_call"]
