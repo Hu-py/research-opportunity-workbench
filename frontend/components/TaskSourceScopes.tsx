@@ -116,8 +116,8 @@ export function SourceGroupPicker({sources,groups,onChange,disabled=false,compac
  </div>;
 }
 
-export default function TaskSourceScopeSettings({canAdmin,canEdit}:{
- canAdmin:boolean;canEdit:boolean;
+export default function TaskSourceScopeSettings({canAdmin,canEdit,onSaved}:{
+ canAdmin:boolean;canEdit:boolean;onSaved?:(scope:Scope)=>void;
 }){
  const [scopes,setScopes]=useState<Scope[]>([]);
  const [sources,setSources]=useState<Source[]>([]);
@@ -168,6 +168,7 @@ export default function TaskSourceScopeSettings({canAdmin,canEdit}:{
     body:JSON.stringify({groups,enforced,expected_version:current.version})
    });
    setScopes(xs=>xs.map(x=>x.scene===scene?updated:x));
+   onSaved?.(updated);
    setNotice("该科研场景的专属来源清单已保存，未修改其他场景的配置。");
   }catch(cause){setError(cause instanceof Error?cause.message:"保存失败");}
   finally{setBusy(false);}
@@ -257,7 +258,7 @@ export function TaskSourceRunPicker({disabled,onChange}:{
  return <div className={styles.runPicker}>
    <button type="button" className={styles.runPickerHead} onClick={()=>setOpen(!open)}>
      <SlidersHorizontal size={14}/><strong>本次文献来源</strong>
-     <span>{custom?"仅本次自定义严格来源":configured?.enforced?"使用定向研究严格清单":"沿用当前默认检索范围"}</span>
+     <span>{custom?"仅本次自定义严格来源":configured?.enforced?"使用定向研究严格清单":"沿用当前默认检索范围"}{configured ? " · A"+(custom?groups.A.length:configured.groups.A.length)+"/B"+(custom?groups.B.length:configured.groups.B.length)+"/C"+(custom?groups.C.length:configured.groups.C.length) : ""}</span>
      {open?<ChevronDown size={13}/>:<ChevronRight size={13}/>}
    </button>
    {open&&<div className={styles.runPickerBody}>
