@@ -61,6 +61,7 @@
 .alertSuccess{border-color:#d9e3d9;background:#fbfdfb;color:#486348}
 .alertError span,.alertSuccess span{flex:1}
 .alertError button,.alertSuccess button{border:0;background:transparent;color:inherit;display:grid;place-items:center}
+.chatPage{min-width:0}
 .capabilityNotice{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;background:#f7f7f4;border:1px solid var(--line);border-radius:6px;color:#73736d;font-size:10px;line-height:1.7;margin-bottom:16px}
 .capabilityNotice svg{flex:none;margin-top:1px;color:#666}
 .chatWorkspace{background:#fff;border:1px solid var(--line);border-radius:8px;min-height:560px;display:flex;overflow:hidden}
