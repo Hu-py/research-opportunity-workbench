@@ -3,6 +3,7 @@
 import {useCallback,useEffect,useMemo,useState} from "react";
 import {AlertCircle,BookOpen,Check,ChevronDown,ChevronRight,Loader2,LockKeyhole,Plus,RefreshCw,Search,ShieldCheck,SlidersHorizontal,X} from "lucide-react";
 import {api} from "@/lib/api";
+import type {ResearchSourceLabel, TaskSourceScope} from "@/lib/types";
 import styles from "./TaskSourceScopes.module.css";
 
 export type SourceBand="A"|"B"|"C";
@@ -270,4 +271,72 @@ export function TaskSourceRunPicker({disabled,onChange}:{
      </>}
    </div>}
  </div>;
+}
+
+
+/**
+ * Compact, on-page journal scope summary used beside SC01, SC02 and SC03.
+ * Task pages pass immutable source_scope snapshots from task history,
+ * rather than today's default task settings.
+ */
+export function SourceScopeInline({scope,sources,label,onEdit,missingNote}:{
+ scope:TaskSourceScope|null|undefined;
+ sources:ResearchSourceLabel[];
+ label:string;
+ onEdit?:()=>void;
+ missingNote?:string;
+}){
+ const [expanded,setExpanded]=useState(false);
+ const names=useMemo(()=>new Map(sources.map(s=>[s.id,s])),[sources]);
+ const groups=scope?.groups;
+ const counts={A:groups?.A?.length||0,B:groups?.B?.length||0,C:groups?.C?.length||0};
+ const total=counts.A+counts.B+counts.C;
+ const version=scope?.scope_version??scope?.version;
+ return <div className={styles.scopeInline}>
+   <div className={styles.scopeInlineRow}>
+     <span className={styles.scopeInlineLabel}><BookOpen size={14}/><strong>{label}</strong></span>
+     {scope ? <>
+      <span className={styles.inlineCounts}>A {counts.A} <i/> B {counts.B} <i/> C {counts.C}</span>
+      <span className={styles.inlineMode}>
+       {scope.enforced?"严格检索":"参考清单（未限制检索）"}
+       {version ? " · V"+version : ""}
+      </span>
+     </> : <span className={styles.inlineMode}>{missingNote||"期刊清单未接入当前服务"}</span>}
+     <span className={styles.inlineActions}>
+       {scope&&<button type="button" onClick={()=>setExpanded(value=>!value)}
+         aria-expanded={expanded} title="展开或收起该任务的完整期刊清单">
+         {expanded?"收起清单":"查看清单"} <ChevronDown size={13}/>
+       </button>}
+       {onEdit&&<button type="button" onClick={onEdit} title="打开该科研场景的专属期刊设置">
+         编辑清单 <ChevronRight size={13}/>
+       </button>}
+     </span>
+   </div>
+   {scope&&expanded&&<div className={styles.scopeInlineExpanded}>
+    {(["A","B","C"] as SourceBand[]).map(band=><div key={band}>
+      <h4>{bands[band].title} <small>{counts[band]} 项</small></h4>
+      {groups?.[band]?.length ? <div className={styles.scopeInlineChips}>
+       {groups[band].map(id=>{
+         const source=names.get(id);
+         return <span key={id} title={source?.name||"已存档的来源 ID："+id}>
+          {source?.name||id}
+         </span>;
+       })}
+      </div>:<p>此类别未选来源</p>}
+    </div>)}
+    <p className={styles.scopeInlineNote}>
+     {scope.enforced
+      ? "严格模式：实际检索只使用核验后的选定来源。历史任务的来源 ID 与配置版本已冻结。"
+      : total>0
+       ? "参考列表：该任务没有开启严格来源限制，请勿把这些期刊误当作实际检索范围。"
+       : "尚未保存严格来源范围。"}
+    </p>
+   </div>}
+ </div>;
+}
+
+export function sourceScopeShort(scope?:TaskSourceScope|null):string{
+ if(!scope)return "历史任务：无来源快照";
+ const {A=[],B=[],C=[]}=scope.groups||{};
+ return "期刊 "+(scope.enforced?"严格 ":"参考 ")+"A"+A.length+"/B"+B.length+"/C"+C.length;
 }
