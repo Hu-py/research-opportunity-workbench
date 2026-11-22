@@ -173,15 +173,24 @@ def query_openalex(query,since,limit=15,client=None,source_ids=None):
     finally:
         if own:http.close()
 
-def ingest(db,profile,days=14,limit=15,client=None):
+def ingest(db,profile,days=14,limit=15,client=None,source_ids_by_mode=None):
     if not 1<=days<=3650:raise ValueError("days must be within 1..3650")
     since=(date.today()-timedelta(days=days)).isoformat()
     excluded=[str(x).lower() for x in profile.get("excluded_terms",[]) if str(x).strip()]
     new=0;matched=0;errors=[]
     for line in profile["research_lines"]:
-        for q in dict.fromkeys(line["search_queries"]+line["method_queries"]):
+        for mode, queries in (
+            ("direct", line["search_queries"]),
+            ("method", line["method_queries"]),
+        ):
+          selected_ids = None if source_ids_by_mode is None else source_ids_by_mode.get(mode, [])
+          # A strictly selected scope may leave one of its A/B/C bands empty.
+          # Never turn an empty source ID list into an unrestricted OpenAlex query.
+          if selected_ids is not None and not selected_ids:
+              continue
+          for q in dict.fromkeys(queries):
             try:
-                works=query_openalex(q,since,limit,client)
+                works=query_openalex(q,since,limit,client,source_ids=selected_ids)
             except (httpx.HTTPError,ValueError) as ex:
                 errors.append({"query":q,"error":str(ex)[:200]});continue
             for work in works:
@@ -257,10 +266,15 @@ def feedback(db,idea_id,status,note=""):
                  detail=json.dumps({"status":status,"note":note},ensure_ascii=False)))
     db.commit()
 
-def weekly_report(db,profile,days=7):
+def weekly_report(db,profile,days=7,allowed_venues=None,include_team_ideas=True,include_interests=True):
     cutoff=(date.today()-timedelta(days=days)).isoformat()
-    papers=db.scalars(select(Paper).where(Paper.published>=cutoff).order_by(Paper.published.desc()).limit(20)).all()
-    ideas=db.scalars(select(Idea).order_by(Idea.score.desc()).limit(10)).all()
+    papers=db.scalars(select(Paper).where(Paper.published>=cutoff).order_by(Paper.published.desc()).limit(120)).all()
+    if allowed_venues is not None:
+        from backend.research_sources import _norm
+        papers=[paper for paper in papers if _norm(paper.venue) in allowed_venues]
+    papers=papers[:20]
+    ideas=(db.scalars(select(Idea).order_by(Idea.score.desc()).limit(10)).all()
+           if include_team_ideas else [])
     report=["# Research Opportunity Brief — "+date.today().isoformat(),"",
             "> Evidence-based triage, NOT verified novelty. Dates reflect publication, not indexing.","",
             "## Recent indexed papers",""]
@@ -275,7 +289,11 @@ def weekly_report(db,profile,days=7):
             p=db.get(Paper,pid)
             if p:report.append("- ["+p.title+"]("+p.url+")")
         report.append("")
-    from backend.interests import interest_brief_section
-    report.extend(interest_brief_section(db,days=days))
+    if include_interests:
+        from backend.interests import interest_brief_section
+        report.extend(interest_brief_section(db,days=days))
+    elif allowed_venues is not None:
+        report.extend(["", "> This report uses a task-specific journal whitelist. "
+                       "Independent interest feeds and global Radar topics are excluded."])
     report+=["## Recommended next steps","","1. Read primary source papers.","2. Search prior art and competing baselines.","3. Update idea status and record experiment outcomes."]
     return "\n".join(report)
