@@ -23,12 +23,24 @@ class ResearchTask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
-def enqueue(db, kind: str, query: str = "") -> ResearchTask:
+def enqueue(db, kind: str, query: str = "", *,
+            owner_id: str = "", source_override: dict | None = None) -> ResearchTask:
+    """Create a durable task and immutable source snapshot atomically.
+
+    This also covers weekly tasks enqueued by the scheduler, not only the API.
+    """
     if kind not in ("explore", "sync", "weekly"):
         raise ValueError("Unknown task kind")
+    from backend.task_source_scopes import snapshot_task
     task = ResearchTask(id=str(uuid.uuid4()), kind=kind, query=query.strip())
     db.add(task)
-    db.commit()
+    try:
+        db.flush()
+        snapshot_task(db, task.id, kind=kind,
+                      owner_id=owner_id, override=source_override)
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(task)
     return task
 
