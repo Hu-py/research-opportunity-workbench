@@ -72,6 +72,7 @@ def session_factory(url=None):
     engine = create_engine(url, pool_pre_ping=True)
     from backend import interests as _registered_interests  # watchlist tables before create_all
     from backend import research_sources as _registered_sources  # academic source registry
+    from backend import task_source_scopes as _registered_task_scopes  # per-task source profiles and snapshots
     Base.metadata.create_all(engine)
     factory=sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as db:
