@@ -160,6 +160,11 @@ def test_api_dedicated_scopes_and_single_run_override(tmp_path,monkeypatch):
                               "source_override":custom})
     assert created.status_code==202,created.text
     ident=created.json()["id"]
+    task_list=client.get("/api/tasks",headers=HEADERS)
+    assert task_list.status_code==200
+    listed_task=next(item for item in task_list.json()["items"] if item["id"]==ident)
+    assert listed_task["source_scope"]["groups"]==custom
+    assert listed_task["source_scope"]["enforced"] is True
     detail=client.get("/api/tasks/"+ident,headers=HEADERS)
     assert detail.status_code==200
     assert detail.json()["source_scope"]["groups"]==custom
