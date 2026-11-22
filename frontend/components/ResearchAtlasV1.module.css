@@ -306,3 +306,10 @@
 .settingsContent :global(.dev-interest-form label){color:#666}
 .settingsContent :global(.dev-interest-form input),.settingsContent :global(.dev-interest-form textarea),.settingsContent :global(.dev-interest-form select){border-color:#deded8;border-radius:5px;color:#333}
 .settingsContent :global(.dev-final-note){color:#888}
+
+.modeSwitch{display:flex;gap:8px;margin:0 0 14px}
+.modeSwitch button{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:9px 12px;color:#777;font-size:10px}
+.modeSwitch button small{color:#aaa;font-size:9px}
+.modeSwitch .modeActive{border-color:#222;color:#222;background:#f8f8f6}
+.modeSwitch .modeActive small{color:#777}
+@media(max-width:700px){.modeSwitch{display:grid;grid-template-columns:1fr 1fr}.modeSwitch button{justify-content:center;flex-direction:column;gap:4px}}
