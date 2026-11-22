@@ -198,6 +198,12 @@ def ingest(db,profile,days=14,limit=15,client=None,source_ids_by_mode=None):
                   errors.append({"query":q,"error":str(ex)[:200]})
                   continue
               for work in works:
+                  if selected_ids is not None:
+                      source=((work.get("primary_location") or {}).get("source") or {})
+                      openalex_id=str(source.get("id") or "").rsplit("/",1)[-1]
+                      allowed={str(value).rsplit("/",1)[-1] for value in selected_ids}
+                      if openalex_id not in allowed:
+                          continue
                   data=normalize_paper(work)
                   if not data["title"] or any(x in (data["title"]+" "+data["abstract"]).lower() for x in excluded):
                       continue
