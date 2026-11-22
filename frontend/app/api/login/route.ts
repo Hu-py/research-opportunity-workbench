@@ -22,7 +22,21 @@ export async function POST(request:Request) {
         headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
         body:JSON.stringify({email:json.email,password:json.password}),
       });
-      if(!response.ok)return NextResponse.json({detail:response.status===401?"邮箱或密码错误":"身份服务暂不可用"},{status:response.status});
+      if(!response.ok){
+        const backendError=await response.json().catch(()=>({}));
+        const backendDetail=typeof backendError.detail==="string"?backendError.detail:"";
+        const detail=backendDetail==="Authentication required"
+          ? "Vercel 与 Render 的 API_BEARER_TOKEN 不匹配，请检查两端服务端配置。"
+          : backendDetail==="API auth is not configured"
+            ? "Render API 尚未配置 API_BEARER_TOKEN。"
+            : backendDetail==="Team authentication is disabled"
+              ? "Render API 尚未开启 TEAM_AUTH_ENABLED。"
+              : backendDetail==="Invalid credentials"
+                ? "邮箱或密码错误。"
+                : response.status===401 ? "认证失败，请检查团队账号或服务端认证配置。"
+                : "身份服务暂不可用。";
+        return NextResponse.json({detail},{status:response.status});
+      }
       const data=await response.json();
       if(typeof data.token!=="string" || !data.token)return NextResponse.json({detail:"登录会话无效"},{status:502});
       await setTeamToken(data.token,Number(data.expires_in)||604800);
