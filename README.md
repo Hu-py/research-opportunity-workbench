@@ -82,6 +82,14 @@ The local database defaults to \`data/research.db\` (git-ignored); it persists b
 
 Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAPI/Worker and private PostgreSQL configuration, security boundaries and secrets. The repository is public as of development; **never commit API keys, researcher CVs, unpublished manuscripts, participant data or private PDFs.**
 
+## Research workflow specification
+
+- [Research Opportunity Skill V1.0 — workflow, evidence rules, quality gates and report templates](docs/RESEARCH_OPPORTUNITY_SKILL_V1.md)
+- [Executable Research Opportunity Skill](skills/research_opportunity/SKILL.md)
+- [Cross-paper L1 synthesis](skills/cross_paper_synthesis/SKILL.md) · [Report templates](skills/report_templates/SKILL.md)
+
+The V1.0 specification is the versioned engineering counterpart of the [shared Research Atlas Space page](https://chatgpt.com/space/page_cab2ba222c0c81919f5ec6f6508d84e3). The shared Page is the discussion/design baseline; GitHub docs and Skills are the versioned implementation artifacts. Changes should be reviewed in a PR and then reflected back to the Space page.
+
 ## Architecture and tests
 
 - [Architecture, API and data/agent boundaries](docs/ARCHITECTURE.md)
