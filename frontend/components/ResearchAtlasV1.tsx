@@ -770,7 +770,7 @@ export default function ResearchAtlasV1() {
                 <SourceScopeInline scope={selectedTask.source_scope} sources={sourceCatalog}
                   label="本次任务 · 期刊清单快照"
                   missingNote="该历史任务未记录专属来源快照，不能推断其当时限制了哪些期刊" />
-                {selectedTask.error && <div className={styles.inlineError}><AlertCircle size={15} />{selectedTask.error}</div>
+                {selectedTask.error && <div className={styles.inlineError}><AlertCircle size={15} />{selectedTask.error}</div>}
                 {selectedTask.result?.answer && <ReportBody markdown={selectedTask.result.answer} />}
                 {selectedTask.result?.sources?.length ? <div className={styles.sourceList}>
                   <div className={styles.sourceHeading}>引用来源</div>
