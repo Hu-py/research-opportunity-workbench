@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle, ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check,
-  CheckCircle2, ChevronDown, ChevronRight, Clock3, Download, FileText,
+  AlertCircle, ArrowUpRight, BookOpen, Check,
+  CheckCircle2, ChevronDown, ChevronRight, Download, FileText,
   Loader2, LogOut, Menu, MessageCircle, Plus, RefreshCw, Search, Send,
   Settings2, ShieldCheck, UserRound, Users, X,
 } from "lucide-react";
@@ -134,7 +134,6 @@ export default function ResearchAtlasV1() {
   const [profileDraft, setProfileDraft] = useState<Profile>(emptyProfile);
   const [profileVersion, setProfileVersion] = useState(0);
   const [brief, setBrief] = useState("");
-  const [briefReady, setBriefReady] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [question, setQuestion] = useState("");
   const [taskQuery, setTaskQuery] = useState("");
@@ -177,7 +176,6 @@ export default function ResearchAtlasV1() {
     }
     if (briefResult.status === "fulfilled") {
       setBrief(briefResult.value.markdown || "");
-      setBriefReady(Boolean(briefResult.value.profile_ready));
     }
     const failed = results.find(x => x.status === "rejected");
     if (failed?.status === "rejected") {
@@ -476,7 +474,7 @@ export default function ResearchAtlasV1() {
   }
 
   const pageName = sectionNames[section];
-  const privateTasks = exploreTasks.slice(0, 8);
+  const recentExploreTasks = exploreTasks.slice(0, 8);
 
   return <div className={styles.appShell}>
     {mobileNavOpen && <button className={styles.scrim} onClick={() => setMobileNavOpen(false)} aria-label="关闭导航" />}
@@ -518,9 +516,9 @@ export default function ResearchAtlasV1() {
         </div>
         <div className={styles.sideSectionLabel + " " + styles.sideSectionWithAction}>
           最近研究任务
-          <span>{privateTasks.length}</span>
+          <span>{recentExploreTasks.length}</span>
         </div>
-        {privateTasks.length ? privateTasks.map(task => (
+        {recentExploreTasks.length ? recentExploreTasks.map(task => (
           <button key={task.id} className={styles.taskNavItem + (selectedTaskId === task.id ? " " + styles.taskNavActive : "")}
             onClick={() => { setSelectedTaskId(task.id); setChatScope("private"); setMobileNavOpen(false); }}>
             <FileText size={15} />
