@@ -240,6 +240,10 @@ export default function ResearchAtlasV1() {
   const selectedTask = tasks.find(task => task.id === selectedTaskId) || null;
   const selectedExploreTask = selectedTask?.kind === "explore" ? selectedTask : null;
   const latestWeeklyTask = weeklyTasks[0] || null;
+  const displayedWeeklyTask = selectedTask?.kind === "weekly" ? selectedTask : latestWeeklyTask;
+  const displayedWeeklyReport = selectedTask?.kind === "weekly"
+    ? (selectedTask.result?.answer || "")
+    : (latestWeeklyTask?.result?.answer || brief);
   const visibleTasks = tasks.filter(task => {
     const matchesType = taskFilter === "all"
       || (taskFilter === "explore" && task.kind === "explore")
@@ -653,11 +657,11 @@ export default function ResearchAtlasV1() {
             <article className={styles.reportPanel}>
               <div className={styles.panelHeading}>
                 <div><div className={styles.eyebrow}>LATEST REPORT</div><h2>最新一期</h2></div>
-                <button className={styles.iconAction} onClick={() => downloadReport(latestWeeklyTask?.result?.answer || brief, "research-atlas-team-weekly.md")}
-                  disabled={!(latestWeeklyTask?.result?.answer || brief)} title="下载 Markdown"><Download size={16} /></button>
+                <button className={styles.iconAction} onClick={() => downloadReport(displayedWeeklyReport, "research-atlas-team-weekly.md")}
+                  disabled={!displayedWeeklyReport} title="下载 Markdown"><Download size={16} /></button>
               </div>
-              <ReportBody markdown={latestWeeklyTask?.result?.answer || brief} />
-              {latestWeeklyTask?.status === "running" && <div className={styles.runningState}><Loader2 size={16} className={styles.spin} />周报生成中，完成后会更新报告内容。</div>}
+              <ReportBody markdown={displayedWeeklyReport} />
+              {displayedWeeklyTask?.status === "running" && <div className={styles.runningState}><Loader2 size={16} className={styles.spin} />周报生成中，完成后会更新报告内容。</div>}
             </article>
             <aside className={styles.historyPanel}>
               <div className={styles.panelHeading}><div><div className={styles.eyebrow}>ARCHIVE</div><h2>历史周报</h2></div><span>{weeklyTasks.length}</span></div>
