@@ -1339,18 +1339,19 @@ def tasks_start(data:TaskRequest,background:BackgroundTasks,db:Session=Depends(g
             raise HTTPException(422,"仅定向科研任务支持单次自定义期刊清单")
         try:_validate_groups(db,data.source_override)
         except ValueError as exc:raise HTTPException(422,str(exc)) from exc
-    task=enqueue(db,data.kind,data.query)
     try:
-        source_state=snapshot_task(
-            db,task.id,kind=data.kind,
-            owner_id=actor.id if actor else "",
-            override=data.source_override,
-        )
+        task=enqueue(db,data.kind,data.query,
+                     owner_id=actor.id if actor else "",
+                     source_override=data.source_override)
     except ValueError as exc:
-        # enqueue commits by design. Do not leave a queued, unsnapshotted task.
-        db.delete(task)
-        db.commit()
         raise HTTPException(422,str(exc)) from exc
+    snapshot=db.get(TaskSourceSnapshot,task.id)
+    source_state={
+        "scene":snapshot.scene,
+        "groups":json.loads(snapshot.groups_json),
+        "enforced":snapshot.enforced,
+        "scope_version":snapshot.scope_version,
+    }
     add_audit(db,"task.created",actor.id if actor else None,task.id,
               "kind="+data.kind+" sources="+str(source_state["enforced"]) +
               " v="+str(source_state["scope_version"]))
