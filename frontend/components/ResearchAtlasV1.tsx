@@ -651,9 +651,12 @@ export default function ResearchAtlasV1() {
 
         {section === "team-weekly" && <section>
           <PageHeader eyebrow="SC01 · TEAM RESEARCH BRIEF" title="团队周报" description="持续扫描团队关注的研究来源，整理值得团队跟进的论文、方法和研究问题。"
-            action={<button className={styles.primaryButton} onClick={() => void submitTask("weekly")} disabled={!canEdit || busy || !profile}>
-              {busy ? <Loader2 size={15} className={styles.spin} /> : <RefreshCw size={15} />}生成本期周报
-            </button>} />
+            action={<>
+              <button className={styles.secondaryButton} onClick={() => {setSettingsTab("task-sources");changeSection("settings");}}><BookOpen size={15}/>专属期刊清单</button>
+              <button className={styles.primaryButton} onClick={() => void submitTask("weekly")} disabled={!canEdit || busy || !profile}>
+                {busy ? <Loader2 size={15} className={styles.spin} /> : <RefreshCw size={15} />}生成本期周报
+              </button>
+            </>} />
           <div className={styles.reportMetaRow}>
             <div><span>团队研究画像</span><strong>{profile?.team?.name || "尚未建立"}</strong></div>
             <div><span>最近一次生成</span><strong>{shortDate(latestWeeklyTask?.updated_at || latestWeeklyTask?.created_at)}</strong></div>
@@ -689,7 +692,8 @@ export default function ResearchAtlasV1() {
         </section>}
 
         {section === "personal-weekly" && <section>
-          <PageHeader eyebrow="SC02 · PERSONAL RESEARCH BRIEF" title="个人周报" description="根据个人研究画像和关注范围，持续发现与你当前研究相关的新论文、方法与研究机会。" />
+          <PageHeader eyebrow="SC02 · PERSONAL RESEARCH BRIEF" title="个人周报" description="根据个人研究画像和关注范围，持续发现与你当前研究相关的新论文、方法与研究机会。"
+            action={<button className={styles.secondaryButton} onClick={() => {setSettingsTab("task-sources");changeSection("settings");}}><BookOpen size={15}/>个人专属期刊</button>} />
           <div className={styles.personalIntro}>
             <div className={styles.personalIcon}><UserRound size={22} /></div>
             <div><div className={styles.eyebrow}>PERSONAL RESEARCH</div><h2>个人研究动态</h2>
@@ -712,7 +716,10 @@ export default function ResearchAtlasV1() {
 
         {section === "tasks" && <section>
           <PageHeader eyebrow="SC03 · DIRECTED RESEARCH" title="定向科研任务" description="针对具体研究问题开展文献检索、方法迁移和证据审查，并保存完整研究报告。"
-            action={<button className={styles.primaryButton} onClick={() => { setSection("chat"); setChatScope("private"); }}><Plus size={15} />新建任务</button>} />
+            action={<>
+              <button className={styles.secondaryButton} onClick={() => {setSettingsTab("task-sources");changeSection("settings");}}><BookOpen size={15}/>默认来源配置</button>
+              <button className={styles.primaryButton} onClick={() => { setSection("chat"); setChatScope("private"); }}><Plus size={15} />新建任务</button>
+            </>} />
           <div className={styles.taskToolbar}>
             <div className={styles.taskFilters}>
               <button className={taskFilter === "all" ? styles.filterActive : ""} onClick={() => setTaskFilter("all")}>全部</button>
