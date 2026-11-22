@@ -16,5 +16,5 @@ def load_skills(names=ALLOWED) -> str:
         file = ROOT / name / "SKILL.md"
         if not file.exists():
             continue
-        parts.append("### " + name + "\\n" + file.read_text(encoding="utf-8"))
-    return "\\n\\n".join(parts)
+        parts.append("### " + name + "\n" + file.read_text(encoding="utf-8"))
+    return "\n\n".join(parts)
