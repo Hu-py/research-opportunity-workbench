@@ -183,27 +183,36 @@ def ingest(db,profile,days=14,limit=15,client=None,source_ids_by_mode=None):
             ("direct", line["search_queries"]),
             ("method", line["method_queries"]),
         ):
-          selected_ids = None if source_ids_by_mode is None else source_ids_by_mode.get(mode, [])
-          # A strictly selected scope may leave one of its A/B/C bands empty.
-          # Never turn an empty source ID list into an unrestricted OpenAlex query.
-          if selected_ids is not None and not selected_ids:
-              continue
-          for q in dict.fromkeys(queries):
-            try:
-                works=query_openalex(q,since,limit,client,source_ids=selected_ids)
-            except (httpx.HTTPError,ValueError) as ex:
-                errors.append({"query":q,"error":str(ex)[:200]});continue
-            for work in works:
-                data=normalize_paper(work)
-                if not data["title"] or any(x in (data["title"]+" "+data["abstract"]).lower() for x in excluded):continue
-                matched+=1
-                p=db.get(Paper,data["id"])
-                if p is None:
-                    db.add(Paper(**data,line_ids=json.dumps([line["id"]])));new+=1
+            selected_ids = None if source_ids_by_mode is None else source_ids_by_mode.get(mode, [])
+            # A strictly selected scope may leave one band empty.
+            # Never turn an empty source list into an unrestricted query.
+            if selected_ids is not None and not selected_ids:
+                continue
+            for q in dict.fromkeys(queries):
+              try:
+                if selected_ids is None:
+                    works=query_openalex(q,since,limit,client)
                 else:
-                    ids=set(json.loads(p.line_ids));ids.add(line["id"]);p.line_ids=json.dumps(sorted(ids))
-                    for key,value in data.items():
-                        if key!="id" and value:setattr(p,key,value)
+                    works=query_openalex(q,since,limit,client,source_ids=selected_ids)
+              except (httpx.HTTPError,ValueError) as ex:
+                  errors.append({"query":q,"error":str(ex)[:200]})
+                  continue
+              for work in works:
+                  data=normalize_paper(work)
+                  if not data["title"] or any(x in (data["title"]+" "+data["abstract"]).lower() for x in excluded):
+                      continue
+                  matched+=1
+                  p=db.get(Paper,data["id"])
+                  if p is None:
+                      db.add(Paper(**data,line_ids=json.dumps([line["id"]])))
+                      new+=1
+                  else:
+                      ids=set(json.loads(p.line_ids))
+                      ids.add(line["id"])
+                      p.line_ids=json.dumps(sorted(ids))
+                      for key,value in data.items():
+                          if key!="id" and value:
+                              setattr(p,key,value)
     db.commit()
     return {"new_papers":new,"matches":matched,"failed_queries":errors,"since":since}
 
@@ -268,7 +277,8 @@ def feedback(db,idea_id,status,note=""):
 
 def weekly_report(db,profile,days=7,allowed_venues=None,include_team_ideas=True,include_interests=True):
     cutoff=(date.today()-timedelta(days=days)).isoformat()
-    papers=db.scalars(select(Paper).where(Paper.published>=cutoff).order_by(Paper.published.desc()).limit(120)).all()
+    paper_limit=120 if allowed_venues is not None else 20
+    papers=db.scalars(select(Paper).where(Paper.published>=cutoff).order_by(Paper.published.desc()).limit(paper_limit)).all()
     if allowed_venues is not None:
         from backend.research_sources import _norm
         papers=[paper for paper in papers if _norm(paper.venue) in allowed_venues]
