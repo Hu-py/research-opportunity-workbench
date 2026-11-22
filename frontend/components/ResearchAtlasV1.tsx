@@ -8,10 +8,10 @@ import {
   Settings2, ShieldCheck, SlidersHorizontal, UserRound, Users, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Profile, ResearchLine, Task, TeamAudit, TeamMember } from "@/lib/types";
+import type { Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import InterestWatchlist from "@/components/InterestWatchlist";
-import TaskSourceScopeSettings, {TaskSourceRunPicker} from "@/components/TaskSourceScopes";
+import TaskSourceScopeSettings, {TaskSourceRunPicker, SourceScopeInline, sourceScopeShort} from "@/components/TaskSourceScopes";
 import type {SourceGroups} from "@/components/TaskSourceScopes";
 import styles from "./ResearchAtlasV1.module.css";
 
@@ -133,6 +133,8 @@ export default function ResearchAtlasV1() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [sourceScopes, setSourceScopes] = useState<TaskSourceScope[]>([]);
+  const [sourceCatalog, setSourceCatalog] = useState<ResearchSourceLabel[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileDraft, setProfileDraft] = useState<Profile>(emptyProfile);
   const [profileVersion, setProfileVersion] = useState(0);
@@ -164,8 +166,10 @@ export default function ResearchAtlasV1() {
       api<{ items: Task[] }>("tasks"),
       api<{ profile: Profile | null; version?: number }>("profile"),
       api<{ markdown: string; profile_ready?: boolean }>("brief"),
+      api<{ items: TaskSourceScope[] }>("task-source-scopes"),
+      api<{ items: ResearchSourceLabel[] }>("research-sources"),
     ]);
-    const [taskResult, profileResult, briefResult] = results;
+    const [taskResult, profileResult, briefResult, scopeResult, catalogResult] = results;
     if (taskResult.status === "fulfilled") setTasks(taskResult.value.items);
     if (profileResult.status === "fulfilled") {
       const nextProfile = profileResult.value.profile;
@@ -181,7 +185,11 @@ export default function ResearchAtlasV1() {
     if (briefResult.status === "fulfilled") {
       setBrief(briefResult.value.markdown || "");
     }
-    const failed = results.find(x => x.status === "rejected");
+    if (scopeResult.status === "fulfilled") setSourceScopes(scopeResult.value.items);
+    if (catalogResult.status === "fulfilled") setSourceCatalog(catalogResult.value.items);
+    // Older Render backends do not expose task-source-scopes yet; this must
+    // not block existing chat and report workspaces.
+    const failed = results.slice(0, 3).find(x => x.status === "rejected");
     if (failed?.status === "rejected") {
       setError(failed.reason instanceof Error ? failed.reason.message : "部分数据加载失败");
     } else {
@@ -294,6 +302,8 @@ export default function ResearchAtlasV1() {
     setAuth(false);
     setMember(null);
     setTasks([]);
+    setSourceScopes([]);
+    setSourceCatalog([]);
     setProfile(null);
     setMembers([]);
   }
@@ -653,12 +663,13 @@ export default function ResearchAtlasV1() {
 
         {section === "team-weekly" && <section>
           <PageHeader eyebrow="SC01 · TEAM RESEARCH BRIEF" title="团队周报" description="持续扫描团队关注的研究来源，整理值得团队跟进的论文、方法和研究问题。"
-            action={<>
-              <button className={styles.secondaryButton} onClick={() => {setSettingsTab("task-sources");changeSection("settings");}}><BookOpen size={15}/>专属期刊清单</button>
-              <button className={styles.primaryButton} onClick={() => void submitTask("weekly")} disabled={!canEdit || busy || !profile}>
-                {busy ? <Loader2 size={15} className={styles.spin} /> : <RefreshCw size={15} />}生成本期周报
-              </button>
-            </>} />
+            action={<button className={styles.primaryButton} onClick={() => void submitTask("weekly")} disabled={!canEdit || busy || !profile}>
+              {busy ? <Loader2 size={15} className={styles.spin} /> : <RefreshCw size={15} />}生成本期周报
+            </button>} />
+          <SourceScopeInline scope={sourceScopes.find(scope => scope.scene === "team_weekly")}
+            sources={sourceCatalog} label="团队周报 · 默认期刊"
+            onEdit={() => {setSettingsTab("task-sources");changeSection("settings");}}
+            missingNote="尚未连接团队周报的专属来源配置" />
           <div className={styles.reportMetaRow}>
             <div><span>团队研究画像</span><strong>{profile?.team?.name || "尚未建立"}</strong></div>
             <div><span>最近一次生成</span><strong>{shortDate(latestWeeklyTask?.updated_at || latestWeeklyTask?.created_at)}</strong></div>
@@ -673,6 +684,9 @@ export default function ResearchAtlasV1() {
                 <button className={styles.iconAction} onClick={() => downloadReport(displayedWeeklyReport, "research-atlas-team-weekly.md")}
                   disabled={!displayedWeeklyReport} title="下载 Markdown"><Download size={16} /></button>
               </div>
+              <SourceScopeInline scope={displayedWeeklyTask?.source_scope}
+                sources={sourceCatalog} label="本期周报 · 实际来源快照"
+                missingNote={displayedWeeklyTask ? "历史周报未记录来源范围" : "尚无可查看的历史周报"} />
               <ReportBody markdown={displayedWeeklyReport} />
               {displayedWeeklyTask?.status === "running" && <div className={styles.runningState}><Loader2 size={16} className={styles.spin} />周报生成中，完成后会更新报告内容。</div>}
             </article>
@@ -681,7 +695,7 @@ export default function ResearchAtlasV1() {
               {weeklyTasks.length ? weeklyTasks.map(task => <button key={task.id} className={styles.historyItem}
                 onClick={() => setSelectedTaskId(task.id)}>
                 <span className={styles.historyIcon}><FileText size={15} /></span>
-                <span><strong>{shortDate(task.created_at)} · 团队周报</strong><small>{statusText(task.status)} · {task.id.slice(0, 8)}</small></span>
+                <span><strong>{shortDate(task.created_at)} · 团队周报</strong><small>{statusText(task.status)} · {sourceScopeShort(task.source_scope)}</small></span>
                 <ChevronRight size={15} />
               </button>) : <div className={styles.sideEmpty}>完成首次生成后，历史周报会保存在这里。</div>}
               {selectedTask?.kind === "weekly" && <div className={styles.selectedHistory}>
@@ -694,8 +708,11 @@ export default function ResearchAtlasV1() {
         </section>}
 
         {section === "personal-weekly" && <section>
-          <PageHeader eyebrow="SC02 · PERSONAL RESEARCH BRIEF" title="个人周报" description="根据个人研究画像和关注范围，持续发现与你当前研究相关的新论文、方法与研究机会。"
-            action={<button className={styles.secondaryButton} onClick={() => {setSettingsTab("task-sources");changeSection("settings");}}><BookOpen size={15}/>个人专属期刊</button>} />
+          <PageHeader eyebrow="SC02 · PERSONAL RESEARCH BRIEF" title="个人周报" description="根据个人研究画像和关注范围，持续发现与你当前研究相关的新论文、方法与研究机会。" />
+          <SourceScopeInline scope={sourceScopes.find(scope => scope.scene === "personal_weekly")}
+            sources={sourceCatalog} label="个人周报 · 我的期刊清单"
+            onEdit={() => {setSettingsTab("task-sources");changeSection("settings");}}
+            missingNote="尚未连接个人周报来源配置" />
           <div className={styles.personalIntro}>
             <div className={styles.personalIcon}><UserRound size={22} /></div>
             <div><div className={styles.eyebrow}>PERSONAL RESEARCH</div><h2>个人研究动态</h2>
@@ -718,10 +735,11 @@ export default function ResearchAtlasV1() {
 
         {section === "tasks" && <section>
           <PageHeader eyebrow="SC03 · DIRECTED RESEARCH" title="定向科研任务" description="针对具体研究问题开展文献检索、方法迁移和证据审查，并保存完整研究报告。"
-            action={<>
-              <button className={styles.secondaryButton} onClick={() => {setSettingsTab("task-sources");changeSection("settings");}}><BookOpen size={15}/>默认来源配置</button>
-              <button className={styles.primaryButton} onClick={() => { setSection("chat"); setChatScope("private"); }}><Plus size={15} />新建任务</button>
-            </>} />
+            action={<button className={styles.primaryButton} onClick={() => { setSection("chat"); setChatScope("private"); }}><Plus size={15} />新建任务</button>} />
+          <SourceScopeInline scope={sourceScopes.find(scope => scope.scene === "directed_research")}
+            sources={sourceCatalog} label="定向科研 · 默认期刊"
+            onEdit={() => {setSettingsTab("task-sources");changeSection("settings");}}
+            missingNote="尚未连接定向任务来源配置" />
           <div className={styles.taskToolbar}>
             <div className={styles.taskFilters}>
               <button className={taskFilter === "all" ? styles.filterActive : ""} onClick={() => setTaskFilter("all")}>全部</button>
@@ -737,6 +755,7 @@ export default function ResearchAtlasV1() {
                 onClick={() => setSelectedTaskId(task.id)}>
                 <div className={styles.taskListTop}><span>{task.kind === "weekly" ? "团队周报" : task.kind === "sync" ? "文献更新" : "定向研究"}</span><Status status={task.status} /></div>
                 <strong>{task.query || (task.kind === "weekly" ? "团队科研周报" : "未命名任务")}</strong>
+                <span className={styles.taskSourceHint}><BookOpen size={12} />{sourceScopeShort(task.source_scope)} · 点击查看清单</span>
                 <small>{dateTime(task.created_at)}</small>
               </button>) : <EmptyState icon={Search} title="没有匹配的任务" description="调整筛选条件，或从对话创建一项新的定向研究任务。" />}
             </div>
@@ -748,7 +767,10 @@ export default function ResearchAtlasV1() {
                   <Status status={selectedTask.status} />
                 </div>
                 <div className={styles.taskDetailMeta}><span>创建于 {dateTime(selectedTask.created_at)}</span><span>更新于 {dateTime(selectedTask.updated_at)}</span></div>
-                {selectedTask.error && <div className={styles.inlineError}><AlertCircle size={15} />{selectedTask.error}</div>}
+                <SourceScopeInline scope={selectedTask.source_scope} sources={sourceCatalog}
+                  label="本次任务 · 期刊清单快照"
+                  missingNote="该历史任务未记录专属来源快照，不能推断其当时限制了哪些期刊" />
+                {selectedTask.error && <div className={styles.inlineError}><AlertCircle size={15} />{selectedTask.error}</div>
                 {selectedTask.result?.answer && <ReportBody markdown={selectedTask.result.answer} />}
                 {selectedTask.result?.sources?.length ? <div className={styles.sourceList}>
                   <div className={styles.sourceHeading}>引用来源</div>
