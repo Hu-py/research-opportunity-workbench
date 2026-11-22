@@ -313,3 +313,9 @@
 .modeSwitch .modeActive{border-color:#222;color:#222;background:#f8f8f6}
 .modeSwitch .modeActive small{color:#777}
 @media(max-width:700px){.modeSwitch{display:grid;grid-template-columns:1fr 1fr}.modeSwitch button{justify-content:center;flex-direction:column;gap:4px}}
+
+/* Each task row exposes its source-scope status without expanding a long list. */
+.taskSourceHint{display:inline-flex;align-items:center;gap:5px;max-width:100%;
+  color:#70706a;font-size:9px;line-height:1.6;padding:5px 7px;margin-top:8px;
+  background:#f7f7f4;border:1px solid #edede8;border-radius:4px}
+.taskSourceHint svg{flex:none;color:#898982}
