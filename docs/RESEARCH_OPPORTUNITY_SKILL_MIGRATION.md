@@ -1,4 +1,6 @@
-# Research Atlas — Research Opportunity Skill migration V0.1
+# Research Atlas — Research Opportunity Skill migration V0.1 (historical bridge)
+
+> **Superseded for capability design by [Research Opportunity Skill V1.0](RESEARCH_OPPORTUNITY_SKILL_V1.md).** This document remains as the migration record for the initial V0.1 adapter and its original constraints; do not use it as the current quality specification.
 
 > Status: **experimental draft branch**, not production. This bridge does not implement V0.6 private/team chat, nor the unmerged L1 multi-paper signal pipeline.
 
