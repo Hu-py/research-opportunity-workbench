@@ -163,7 +163,7 @@ def snapshot_task(db, task_id: str, *, kind: str, owner_id: str = "",
     scene = "team_weekly" if kind == "weekly" else "directed_research"
     record = read_scope(db, scene)
     groups = _validate_groups(db, override) if override is not None else record["groups"]
-    enforced = override is not None or record["enforced"]
+    enforced = (override is not None or record["enforced"]) if kind != "sync" else False
     if enforced and not any(groups.values()):
         raise ValueError("Strict task source list cannot be empty")
     if db.get(TaskSourceSnapshot, task_id) is not None:
