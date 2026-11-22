@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 TASK_KIND = "research_opportunity"
 SCOPE = "team_shared"
 
@@ -17,25 +17,25 @@ CAPABILITIES = {
     "paper_discovery": {
         "label": "论文发现",
         "description": "检索已保存论文与 OpenAlex 元数据，保留真实来源与检索限制。",
-        "skills": ("literature_discovery", "paper_reader", "research_opportunity"),
+        "skills": ("literature_discovery", "paper_reader", "cross_paper_synthesis", "report_templates", "research_opportunity"),
         "instruction": "先列出检索证据，区分已检查摘要与仅有元数据。不得从少量论文推断领域增长趋势。",
     },
     "evidence_review": {
         "label": "证据审查",
         "description": "审阅研究问题、方法、结果主张和证据级别，不冒充全文阅读。",
-        "skills": ("paper_reader", "research_opportunity"),
+        "skills": ("paper_reader", "report_templates", "research_opportunity"),
         "instruction": "逐篇给出问题、方法、作者主张、局限和未核验细节；不得推断摘要没有说明的实验结果。",
     },
     "method_transfer": {
         "label": "方法迁移",
         "description": "将计算方法映射到城市问题，识别假设、基线、数据合同与失败条件。",
-        "skills": ("literature_discovery", "method_transfer", "research_opportunity"),
+        "skills": ("literature_discovery", "method_transfer", "report_templates", "research_opportunity"),
         "instruction": "按照问题瓶颈、方法能力、输入输出、简化基线、验证指标和失效条件提出最小实验。",
     },
     "idea_review": {
         "label": "科研选题批判性评估",
         "description": "将研究假设与最近相关工作比较；建议可以为零，不自动认定创新。",
-        "skills": ("idea_discovery", "idea_critic", "research_opportunity"),
+        "skills": ("literature_discovery", "cross_paper_synthesis", "idea_discovery", "idea_critic", "method_transfer", "report_templates", "research_opportunity"),
         "instruction": "首先提出最接近的现有工作与反证，再给出至多三个可证伪假设与 GO/HOLD/REJECT 理由。",
     },
 }
@@ -46,7 +46,7 @@ def catalog() -> dict[str, Any]:
         "id": "research_opportunity",
         "version": VERSION,
         "scope": SCOPE,
-        "status": "experimental_adapter",
+        "status": "quality_v1_draft",
         "entrypoint": TASK_KIND,
         "capabilities": [
             {"id": code, "label": spec["label"], "description": spec["description"]}
@@ -54,7 +54,7 @@ def catalog() -> dict[str, Any]:
         ],
         "limits": [
             "团队共享科研任务，不允许用于私聊或敏感个体记录",
-            "只调用当前受限科研 Agent；完整 ROR V3.1 与三来源 L1 尚未接入",
+            "三源采集与来源强制过滤仍需独立执行链路集成；当前仅为质量规范与Skill装配升级",
             "科研结果是待审草案，不自动批准、发表或更改研究资产",
             "未配置模型密钥时明确显示无模型的文献证据预览",
         ],
