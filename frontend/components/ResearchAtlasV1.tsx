@@ -5,16 +5,18 @@ import {
   AlertCircle, ArrowUpRight, BookOpen, Check,
   CheckCircle2, ChevronDown, ChevronRight, Download, FileText,
   Loader2, LogOut, Menu, MessageCircle, Plus, RefreshCw, Search, Send,
-  Settings2, ShieldCheck, UserRound, Users, X,
+  Settings2, ShieldCheck, SlidersHorizontal, UserRound, Users, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Profile, ResearchLine, Task, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import InterestWatchlist from "@/components/InterestWatchlist";
+import TaskSourceScopeSettings, {TaskSourceRunPicker} from "@/components/TaskSourceScopes";
+import type {SourceGroups} from "@/components/TaskSourceScopes";
 import styles from "./ResearchAtlasV1.module.css";
 
 type Section = "chat" | "team-weekly" | "personal-weekly" | "tasks" | "settings";
-type SettingsTab = "profile" | "sources" | "interests" | "members";
+type SettingsTab = "profile" | "task-sources" | "sources" | "interests" | "members";
 type ChatScope = "private" | "team";
 
 const emptyProfile: Profile = {
@@ -137,6 +139,7 @@ export default function ResearchAtlasV1() {
   const [brief, setBrief] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [question, setQuestion] = useState("");
+  const [taskSourceOverride, setTaskSourceOverride] = useState<SourceGroups|null>(null);
   const [taskQuery, setTaskQuery] = useState("");
   const [taskFilter, setTaskFilter] = useState<"all" | "explore" | "weekly">("all");
   const [showTrace, setShowTrace] = useState(false);
@@ -300,7 +303,7 @@ export default function ResearchAtlasV1() {
     try {
       const task = await api<Task>("tasks", {
         method: "POST",
-        body: JSON.stringify({ kind, query }),
+        body: JSON.stringify({ kind, query, ...(kind === "explore" && taskSourceOverride ? {source_override:taskSourceOverride} : {}) }),
       });
       setTasks(current => [task, ...current.filter(item => item.id !== task.id)]);
       setSelectedTaskId(task.id);
@@ -627,6 +630,7 @@ export default function ResearchAtlasV1() {
                 <form className={styles.composer} onSubmit={event => { event.preventDefault(); void submitTask("explore", question); }}>
                   <textarea value={question} onChange={event => setQuestion(event.target.value)} maxLength={2000}
                     rows={3} placeholder="例如：基于我现有的研究，哪些跨学科方法可能解决当前的泛化瓶颈？" disabled={!canEdit || busy} />
+                  <TaskSourceRunPicker disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
                   <div className={styles.composerBottom}>
                     <span>{question.length}/2000 · 每次提交创建一项独立科研任务</span>
                     <button className={styles.primaryButton} type="submit" disabled={!canEdit || busy || question.trim().length < 6}>
@@ -759,7 +763,8 @@ export default function ResearchAtlasV1() {
           <div className={styles.settingsLayout}>
             <nav className={styles.settingsTabs}>
               <button className={settingsTab === "profile" ? styles.settingsTabActive : ""} onClick={() => setSettingsTab("profile")}><UserRound size={16} />研究画像</button>
-              <button className={settingsTab === "sources" ? styles.settingsTabActive : ""} onClick={() => setSettingsTab("sources")}><BookOpen size={16} />文献来源</button>
+              <button className={settingsTab === "task-sources" ? styles.settingsTabActive : ""} onClick={() => setSettingsTab("task-sources")}><SlidersHorizontal size={16} />任务期刊清单</button>
+              <button className={settingsTab === "sources" ? styles.settingsTabActive : ""} onClick={() => setSettingsTab("sources")}><BookOpen size={16} />来源总目录</button>
               <button className={settingsTab === "interests" ? styles.settingsTabActive : ""} onClick={() => setSettingsTab("interests")}><Search size={16} />关注主题</button>
               {teamMode && <button className={settingsTab === "members" ? styles.settingsTabActive : ""} onClick={() => setSettingsTab("members")}><Users size={16} />成员权限</button>}
             </nav>
@@ -804,6 +809,7 @@ export default function ResearchAtlasV1() {
               </section>
             </div>}
 
+            {settingsTab === "task-sources" && <div className={styles.settingsContent}><TaskSourceScopeSettings canAdmin={canAdmin} canEdit={canEdit} /></div>}
             {settingsTab === "sources" && <div className={styles.settingsContent}><AcademicSourceRegistry canAdmin={canAdmin} /></div>}
             {settingsTab === "interests" && <div className={styles.settingsContent}><InterestWatchlist canEdit={canEdit} /></div>}
             {settingsTab === "members" && <div className={styles.settingsContent}>
