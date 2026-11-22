@@ -1327,7 +1327,23 @@ def profile_update(data:ProfileRequest,db:Session=Depends(get_db),
 @app.get("/api/tasks",dependencies=[Depends(require_actor)])
 def tasks(db:Session=Depends(get_db)):
     rows=db.scalars(select(ResearchTask).order_by(ResearchTask.created_at.desc()).limit(40)).all()
-    return {"items":[as_dict(t) for t in rows]}
+    snapshots=db.scalars(
+        select(TaskSourceSnapshot).where(TaskSourceSnapshot.task_id.in_([t.id for t in rows]))
+    ).all() if rows else []
+    scope_by_task={snapshot.task_id:snapshot for snapshot in snapshots}
+    items=[]
+    for task in rows:
+        item=as_dict(task)
+        snapshot=scope_by_task.get(task.id)
+        if snapshot:
+            item["source_scope"]={
+                "scene":snapshot.scene,
+                "groups":json.loads(snapshot.groups_json),
+                "enforced":snapshot.enforced,
+                "scope_version":snapshot.scope_version,
+            }
+        items.append(item)
+    return {"items":items}
 
 @app.post("/api/tasks",status_code=status.HTTP_202_ACCEPTED,dependencies=[Depends(require_actor)])
 def tasks_start(data:TaskRequest,background:BackgroundTasks,db:Session=Depends(get_db),
