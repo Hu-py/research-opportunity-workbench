@@ -9,7 +9,7 @@ from backend.research_opportunity_skill import (
 def test_catalog_and_scope():
     result = catalog()
     assert result["id"] == "research_opportunity"
-    assert result["status"] == "experimental_adapter"
+    assert result["status"] == "quality_v1_draft"
     assert result["scope"] == "team_shared"
     assert set(i["id"] for i in result["capabilities"]) == set(CAPABILITIES)
 
