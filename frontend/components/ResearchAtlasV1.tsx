@@ -250,7 +250,9 @@ export default function ResearchAtlasV1() {
   const displayedWeeklyTask = selectedTask?.kind === "weekly" ? selectedTask : latestWeeklyTask;
   const displayedWeeklyReport = selectedTask?.kind === "weekly"
     ? (selectedTask.result?.answer || "")
-    : (latestWeeklyTask?.result?.answer || brief);
+    : latestWeeklyTask
+      ? (latestWeeklyTask.result?.answer || "")
+      : brief;
   const visibleTasks = tasks.filter(task => {
     const matchesType = taskFilter === "all"
       || (taskFilter === "explore" && task.kind === "explore")
@@ -308,7 +310,7 @@ export default function ResearchAtlasV1() {
       setTasks(current => [task, ...current.filter(item => item.id !== task.id)]);
       setSelectedTaskId(task.id);
       setQuestion("");
-      if (kind === "explore") changeSection("chat");
+      if (kind === "explore") { setTaskSourceOverride(null); changeSection("chat"); }
       setNotice(kind === "weekly"
         ? "团队周报任务已提交。完成后会自动更新报告。"
         : "定向科研任务已提交。可在任务记录中查看进度和结果。");
@@ -630,7 +632,7 @@ export default function ResearchAtlasV1() {
                 <form className={styles.composer} onSubmit={event => { event.preventDefault(); void submitTask("explore", question); }}>
                   <textarea value={question} onChange={event => setQuestion(event.target.value)} maxLength={2000}
                     rows={3} placeholder="例如：基于我现有的研究，哪些跨学科方法可能解决当前的泛化瓶颈？" disabled={!canEdit || busy} />
-                  <TaskSourceRunPicker disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
+                  <TaskSourceRunPicker key={selectedTaskId || "new-research"} disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
                   <div className={styles.composerBottom}>
                     <span>{question.length}/2000 · 每次提交创建一项独立科研任务</span>
                     <button className={styles.primaryButton} type="submit" disabled={!canEdit || busy || question.trim().length < 6}>
