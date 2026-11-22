@@ -755,7 +755,7 @@ export default function ResearchAtlasV1() {
                 onClick={() => setSelectedTaskId(task.id)}>
                 <div className={styles.taskListTop}><span>{task.kind === "weekly" ? "团队周报" : task.kind === "sync" ? "文献更新" : "定向研究"}</span><Status status={task.status} /></div>
                 <strong>{task.query || (task.kind === "weekly" ? "团队科研周报" : "未命名任务")}</strong>
-                <span className={styles.taskSourceHint}><BookOpen size={12} />{sourceScopeShort(task.source_scope)} · 点击查看清单</span>
+                <span className={styles.taskSourceHint}><BookOpen size={12} />{sourceScopeShort(task.source_scope)} · {task.source_scope ? "点击查看清单" : "未记录清单"}</span>
                 <small>{dateTime(task.created_at)}</small>
               </button>) : <EmptyState icon={Search} title="没有匹配的任务" description="调整筛选条件，或从对话创建一项新的定向研究任务。" />}
             </div>
@@ -840,7 +840,12 @@ export default function ResearchAtlasV1() {
               </section>
             </div>}
 
-            {settingsTab === "task-sources" && <div className={styles.settingsContent}><TaskSourceScopeSettings canAdmin={canAdmin} canEdit={canEdit} /></div>}
+            {settingsTab === "task-sources" && <div className={styles.settingsContent}><TaskSourceScopeSettings canAdmin={canAdmin} canEdit={canEdit}
+              onSaved={scope => setSourceScopes(current =>
+                current.some(item => item.scene === scope.scene)
+                  ? current.map(item => item.scene === scope.scene ? scope : item)
+                  : [...current, scope]
+              )} /></div>}
             {settingsTab === "sources" && <div className={styles.settingsContent}><AcademicSourceRegistry canAdmin={canAdmin} /></div>}
             {settingsTab === "interests" && <div className={styles.settingsContent}><InterestWatchlist canEdit={canEdit} /></div>}
             {settingsTab === "members" && <div className={styles.settingsContent}>
