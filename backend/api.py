@@ -191,6 +191,34 @@ def _resolve_directed_sources_background(factory):
                 for band in ("A", "B", "C")
                 for source_id in scope["groups"].get(band, [])
             ))
+            # OpenAlex stores the NeurIPS series under "Neural Information
+            # Processing Systems" (alternate title: "Advances in neural
+            # information processing systems"), not the longer local label.
+            # Add these exact catalogue aliases and retry only that reviewed row.
+            if source_ids:
+                selected_rows = db.scalars(
+                    select(ResearchSource).where(ResearchSource.id.in_(source_ids))
+                ).all()
+                for row in selected_rows:
+                    if row.name == "Conference on Neural Information Processing Systems":
+                        try:
+                            aliases = json.loads(row.aliases_json or "[]")
+                        except (TypeError, ValueError):
+                            aliases = []
+                        for alias in (
+                            "Neural Information Processing Systems",
+                            "Advances in Neural Information Processing Systems",
+                        ):
+                            if alias.casefold() not in {
+                                str(value).casefold() for value in aliases
+                                if isinstance(value, str)
+                            }:
+                                aliases.append(alias)
+                        row.aliases_json = json.dumps(aliases, ensure_ascii=False)
+                        if row.resolution_status == "not_found":
+                            row.resolution_status = "unresolved"
+                            row.resolution_note = "Added exact OpenAlex display-name aliases; retry pending"
+                        db.commit()
             summary = resolve_sources(db, source_ids) if source_ids else {
                 "checked": 0, "resolved": 0, "ambiguous": 0,
                 "not_found": 0, "errors": 0,
