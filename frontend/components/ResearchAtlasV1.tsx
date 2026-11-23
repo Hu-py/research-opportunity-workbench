@@ -697,10 +697,32 @@ export default function ResearchAtlasV1() {
             sources={sourceCatalog} label="定向科研 · 默认期刊"
             onEdit={() => {setSettingsTab("task-sources");changeSection("settings");}}
             missingNote="尚未连接定向任务来源配置" />
+          <div className={styles.opportunityComposer}>
+            <div className={styles.opportunityComposerHeader}>
+              <div><strong>科研发现任务</strong><span>Research Opportunity Skill V1.0 · 论文级问题发现与批判审查</span></div>
+              <select value={opportunityCapability} onChange={event => setOpportunityCapability(event.target.value as typeof opportunityCapability)} disabled={!canEdit || busy}>
+                <option value="idea_review">完整科研发现与选题审查</option>
+                <option value="paper_discovery">文献发现</option>
+                <option value="evidence_review">证据审查</option>
+                <option value="method_transfer">方法迁移</option>
+              </select>
+            </div>
+            <textarea value={question} onChange={event => setQuestion(event.target.value)} maxLength={1500} rows={3}
+              placeholder="输入研究问题、种子论文（可填写题名或 DOI）及希望发现的研究机会。例如：基于 Shen et al. 2026 TRD，独立诊断其研究并寻找足以支撑下一篇论文的研究问题。"
+              disabled={!canEdit || busy} />
+            <TaskSourceRunPicker key="opportunity-source-scope" disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
+            <div className={styles.opportunityComposerBottom}>
+              <span>{question.length}/1500 · 任务会冻结本次 A/B/C 来源清单并保存执行记录</span>
+              <button className={styles.primaryButton} onClick={() => void submitOpportunity()} disabled={!canEdit || busy || question.trim().length < 6}>
+                {busy ? <Loader2 size={15} className={styles.spin} /> : <Search size={15} />}启动科研发现
+              </button>
+            </div>
+          </div>
           <div className={styles.taskToolbar}>
             <div className={styles.taskFilters}>
               <button className={taskFilter === "all" ? styles.filterActive : ""} onClick={() => setTaskFilter("all")}>全部</button>
-              <button className={taskFilter === "explore" ? styles.filterActive : ""} onClick={() => setTaskFilter("explore")}>定向研究</button>
+              <button className={taskFilter === "explore" ? styles.filterActive : ""} onClick={() => setTaskFilter("explore")}>普通定向研究</button>
+              <button className={taskFilter === "research_opportunity" ? styles.filterActive : ""} onClick={() => setTaskFilter("research_opportunity")}>科研发现</button>
               <button className={taskFilter === "weekly" ? styles.filterActive : ""} onClick={() => setTaskFilter("weekly")}>周报任务</button>
             </div>
             <label className={styles.searchInput}><Search size={15} /><input value={taskQuery} onChange={event => setTaskQuery(event.target.value)} placeholder="搜索任务问题或结果" /></label>
@@ -710,7 +732,7 @@ export default function ResearchAtlasV1() {
               {visibleTasks.length ? visibleTasks.map(task => <button key={task.id}
                 className={styles.taskListItem + (selectedTaskId === task.id ? " " + styles.taskListSelected : "")}
                 onClick={() => setSelectedTaskId(task.id)}>
-                <div className={styles.taskListTop}><span>{task.kind === "weekly" ? "团队周报" : task.kind === "sync" ? "文献更新" : "定向研究"}</span><Status status={task.status} /></div>
+                <div className={styles.taskListTop}><span>{task.kind === "weekly" ? "团队周报" : task.kind === "sync" ? "文献更新" : task.kind === "research_opportunity" ? "科研发现" : "定向研究"}</span><Status status={task.status} /></div>
                 <strong>{task.query || (task.kind === "weekly" ? "团队科研周报" : "未命名任务")}</strong>
                 <span className={styles.taskSourceHint}><BookOpen size={12} />{sourceScopeShort(task.source_scope)} · {task.source_scope ? "点击查看清单" : "未记录清单"}</span>
                 <small>{dateTime(task.created_at)}</small>
@@ -720,7 +742,7 @@ export default function ResearchAtlasV1() {
               {selectedTask ? <>
                 <div className={styles.panelHeading}>
                   <div><div className={styles.eyebrow}>TASK DETAIL · {selectedTask.id.slice(0, 8)}</div>
-                    <h2>{selectedTask.query || (selectedTask.kind === "weekly" ? "团队科研周报" : "任务详情")}</h2></div>
+                    <h2>{selectedTask.query || (selectedTask.kind === "weekly" ? "团队科研周报" : selectedTask.kind === "research_opportunity" ? "科研发现任务" : "任务详情")}</h2></div>
                   <Status status={selectedTask.status} />
                 </div>
                 <div className={styles.taskDetailMeta}><span>创建于 {dateTime(selectedTask.created_at)}</span><span>更新于 {dateTime(selectedTask.updated_at)}</span></div>
