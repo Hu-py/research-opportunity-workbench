@@ -191,6 +191,9 @@ export default function PersonalResearchLibrary({
     </div>
     <label className={styles.full}>原始链接<input value={draft.url} onChange={e=>setDraft(x=>({...x,url:e.target.value}))} placeholder="https://..."/></label>
     <label className={styles.full}>摘要 / 主要结果<textarea rows={3} value={draft.summary} onChange={e=>setDraft(x=>({...x,summary:e.target.value}))} placeholder="记录研究贡献、实验设置、核心结果或证据状态"/></label>
+    <label className={styles.full}>结构化元数据（JSON，可选）
+     <textarea rows={3} value={metadataText} onChange={e=>setMetadataText(e.target.value)} placeholder='{"blind_score":70,"status":"hold"}'/>
+    </label>
     <div className={styles.subhead}><h3>关联个人研究主线</h3><span>可多选</span></div>
     <div className={styles.lineChoices}>
      {lines.map(line=><label key={line.id}><input type="checkbox" checked={draft.line_ids.includes(line.id)} onChange={()=>toggleLine(line.id)}/><span>{line.name}</span></label>)}
