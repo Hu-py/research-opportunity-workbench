@@ -105,6 +105,7 @@ def _build_session_factory(url):
     engine=create_engine(url,**options)
     from backend import interests as _registered_interests
     from backend import research_sources as _registered_sources
+    from backend import task_source_scopes as _registered_task_scopes
     Base.metadata.create_all(engine)
     factory=sessionmaker(bind=engine,expire_on_commit=False)
     with factory() as db:
