@@ -1,5 +1,12 @@
 # Research Atlas 前端设计与产品范围变更记录
 
+## 个人资料库前端合并与发布门槛 — 2026-11-23
+
+- Personal Research Library 前端 PR #139 已合并至 `main`（commit `4bba4374`），GitHub CI 通过。
+- Vercel 生产发布工作流已从 `main` 触发，但在凭证预检阶段停止：GitHub Actions 仓库缺少 `VERCEL_TOKEN` Secret。没有开始 Vercel link/pull/build/deploy，正式域名仍指向旧前端。
+- 只需由仓库所有者在 GitHub Settings → Secrets and variables → Actions 添加 `VERCEL_TOKEN`（Vercel team token），然后重新运行 `Deploy Research Atlas to Vercel Production` 工作流。
+- Token 不应通过聊天发送；前端发布后，用户登录自己的团队成员账号，进入「研究设置 → 研究画像」，检查三条预填主线并点击「保存到我的账号」，初始 Shen 论文与 R6.4.5 报告会随画像保存自动进入个人科研资料库。
+
 ## 个人科研资料库 — 2026-11-23
 
 - 后端 PR #138 已合并至 Render API 分支，Render `research-atlas-api-test` 已部署 commit `3875aaf`；新增 `personal_research_assets` 与 `personal_research_asset_lines`，并提供个人资料 CRUD、论文/任务导入接口。
