@@ -79,7 +79,7 @@ export default function PersistentChat({scope,member,canEdit,onError}:Props){
     </header>
     <div className={styles.messages}>
      {ordered.length?ordered.map(m=><article key={m.id} className={styles.message+(m.role==="assistant"?" "+styles.assistant:" "+styles.user)}>
-      <div className={styles.avatar}>{m.role==="assistant"?<Bot size={16>}/>:(m.sender_name||member?.name||"我").slice(0,1)}</div>
+      <div className={styles.avatar}>{m.role==="assistant"?<Bot size={16}/>:(m.sender_name||member?.name||"我").slice(0,1)}</div>
       <div className={styles.body}><div className={styles.meta}><strong>{m.role==="assistant"?"Research Atlas":m.sender_name||"成员"}</strong><time>{timeLabel(m.created_at)}</time>{m.trigger_type==="mention"&&<span>@GPT</span>}</div>
        <div className={styles.content}>{m.content}</div>{m.ai_status==="failed"&&<div className={styles.error}><AlertCircle size={13}/>{m.ai_error||"AI 回复失败"}</div>}
       </div>
