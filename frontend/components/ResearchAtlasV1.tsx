@@ -299,8 +299,9 @@ export default function ResearchAtlasV1() {
       api<{ items: TaskSourceScope[] }>("task-source-scopes"),
       api<{ items: ResearchSourceLabel[] }>("research-sources"),
       api<{ profile: PersonalResearchProfile | null; version: number }>("personal-profile"),
+      api<{ items: PersonalResearchAsset[] }>("personal-assets"),
     ]);
-    const [taskResult, profileResult, briefResult, scopeResult, catalogResult, personalProfileResult] = results;
+    const [taskResult, profileResult, briefResult, scopeResult, catalogResult, personalProfileResult, personalAssetsResult] = results;
     if (taskResult.status === "fulfilled") setTasks(taskResult.value.items);
     if (profileResult.status === "fulfilled") {
       const nextProfile = profileResult.value.profile;
@@ -318,6 +319,13 @@ export default function ResearchAtlasV1() {
     }
     if (scopeResult.status === "fulfilled") setSourceScopes(scopeResult.value.items);
     if (catalogResult.status === "fulfilled") setSourceCatalog(catalogResult.value.items);
+    if (personalAssetsResult.status === "fulfilled") {
+      setPersonalAssets(personalAssetsResult.value.items || []);
+      setPersonalAssetsLoaded(true);
+    } else {
+      setPersonalAssets([]);
+      setPersonalAssetsLoaded(false);
+    }
     if (personalProfileResult.status === "fulfilled") {
       const saved = personalProfileResult.value.profile;
       const next = saved ? {
