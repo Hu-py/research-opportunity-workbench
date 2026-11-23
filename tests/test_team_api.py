@@ -117,7 +117,14 @@ def test_personal_profile_is_private_to_each_member_and_versioned(team_client):
         "profile":admin_profile,"expected_version":0})
     assert saved.status_code==200,saved.text
     assert saved.json()["version"]==1
-    assert saved.json()["profile"]==admin_profile
+    expected_profile={key:value for key,value in admin_profile.items() if key!="evidence"}
+    assert saved.json()["profile"]==expected_profile
+    seeded=client.get("/api/personal-assets",headers=service(admin))
+    assert seeded.status_code==200
+    assert len(seeded.json()["items"])==1
+    assert seeded.json()["items"][0]["kind"]=="publication"
+    assert seeded.json()["items"][0]["line_ids"]==["metro_resilience"]
+    assert seeded.json()["items"][0]["source_type"]=="doi"
 
     # A different authenticated member has a separate empty profile.
     assert client.get("/api/personal-profile",headers=service(researcher)).json()=={
