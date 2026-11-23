@@ -8,9 +8,10 @@ import {
   Settings2, ShieldCheck, SlidersHorizontal, UserRound, Users, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { PersonalResearchProfile, Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
+import type { PersonalResearchAsset, PersonalResearchProfile, Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import InterestWatchlist from "@/components/InterestWatchlist";
+import PersonalResearchLibrary from "@/components/PersonalResearchLibrary";
 import TaskSourceScopeSettings, {TaskSourceRunPicker, SourceScopeInline, sourceScopeShort} from "@/components/TaskSourceScopes";
 import type {SourceGroups} from "@/components/TaskSourceScopes";
 import styles from "./ResearchAtlasV1.module.css";
@@ -251,6 +252,23 @@ export default function ResearchAtlasV1() {
   const [personalProfileDraft, setPersonalProfileDraft] = useState<PersonalResearchProfile>(initialPersonalProfile);
   const [personalProfileVersion, setPersonalProfileVersion] = useState(0);
   const [personalProfileLoaded, setPersonalProfileLoaded] = useState(false);
+  const [personalAssets, setPersonalAssets] = useState<PersonalResearchAsset[]>([]);
+  const [personalAssetsLoaded, setPersonalAssetsLoaded] = useState(false);
+  const [assetFormOpen, setAssetFormOpen] = useState(false);
+  const [assetBusy, setAssetBusy] = useState(false);
+  const [assetFilter, setAssetFilter] = useState<"all"|"publication"|"agent_report"|"experiment_result">("all");
+  const [assetImportDoi, setAssetImportDoi] = useState("");
+  const [assetImportTaskId, setAssetImportTaskId] = useState("");
+  const [assetDraft, setAssetDraft] = useState({
+    kind: "publication" as PersonalResearchAsset["kind"],
+    title: "",
+    summary: "",
+    url: "",
+    source_type: "manual",
+    source_id: "",
+    metadata: {} as Record<string, unknown>,
+    line_ids: [] as string[],
+  });
   const [brief, setBrief] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [question, setQuestion] = useState("");
@@ -282,8 +300,9 @@ export default function ResearchAtlasV1() {
       api<{ items: TaskSourceScope[] }>("task-source-scopes"),
       api<{ items: ResearchSourceLabel[] }>("research-sources"),
       api<{ profile: PersonalResearchProfile | null; version: number }>("personal-profile"),
+      api<{ items: PersonalResearchAsset[] }>("personal-assets"),
     ]);
-    const [taskResult, profileResult, briefResult, scopeResult, catalogResult, personalProfileResult] = results;
+    const [taskResult, profileResult, briefResult, scopeResult, catalogResult, personalProfileResult, personalAssetsResult] = results;
     if (taskResult.status === "fulfilled") setTasks(taskResult.value.items);
     if (profileResult.status === "fulfilled") {
       const nextProfile = profileResult.value.profile;
@@ -301,6 +320,13 @@ export default function ResearchAtlasV1() {
     }
     if (scopeResult.status === "fulfilled") setSourceScopes(scopeResult.value.items);
     if (catalogResult.status === "fulfilled") setSourceCatalog(catalogResult.value.items);
+    if (personalAssetsResult.status === "fulfilled") {
+      setPersonalAssets(personalAssetsResult.value.items || []);
+      setPersonalAssetsLoaded(true);
+    } else {
+      setPersonalAssets([]);
+      setPersonalAssetsLoaded(false);
+    }
     if (personalProfileResult.status === "fulfilled") {
       const saved = personalProfileResult.value.profile;
       const next = saved ? {
@@ -434,6 +460,11 @@ export default function ResearchAtlasV1() {
     setTasks([]);
     setSourceScopes([]);
     setSourceCatalog([]);
+    setPersonalAssets([]);
+    setPersonalAssetsLoaded(false);
+    setPersonalProfileDraft(initialPersonalProfile);
+    setPersonalProfileVersion(0);
+    setPersonalProfileLoaded(false);
     setProfile(null);
     setMembers([]);
   }
@@ -614,12 +645,125 @@ export default function ResearchAtlasV1() {
         evidence: result.profile.evidence || [],
       });
       setPersonalProfileVersion(result.version);
-      setNotice("个人研究画像已保存到当前登录账号，与团队画像独立存储。");
+      await refreshPersonalAssets();
+      setNotice("个人研究画像和关联论文/报告已保存到当前账号，与团队画像独立存储。");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "个人画像保存失败");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function refreshPersonalAssets() {
+    const result = await api<{ items: PersonalResearchAsset[] }>("personal-assets");
+    setPersonalAssets(result.items || []);
+    setPersonalAssetsLoaded(true);
+  }
+
+  async function savePersonalAsset() {
+    if (!personalProfileVersion) {
+      setError("请先保存个人研究画像，再录入关联资料。");
+      return;
+    }
+    if (!assetDraft.title.trim()) {
+      setError("请先填写资料标题。");
+      return;
+    }
+    setAssetBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api<PersonalResearchAsset>("personal-assets", {
+        method: "POST",
+        body: JSON.stringify(assetDraft),
+      });
+      setPersonalAssets(current => [result, ...current.filter(item => item.id !== result.id)]);
+      setAssetDraft({
+        kind: "publication", title: "", summary: "", url: "",
+        source_type: "manual", source_id: "", metadata: {}, line_ids: [],
+      });
+      setAssetFormOpen(false);
+      setNotice("科研资料已保存到当前账号的个人资料库。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "科研资料保存失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  async function importPersonalPaper() {
+    if (!assetImportDoi.trim()) return;
+    if (!personalProfileVersion) {
+      setError("请先保存个人研究画像，再导入论文。");
+      return;
+    }
+    setAssetBusy(true);
+    setError("");
+    try {
+      const result = await api<PersonalResearchAsset>("personal-assets/import-paper", {
+        method: "POST",
+        body: JSON.stringify({
+          doi: assetImportDoi.trim(),
+          line_ids: assetDraft.line_ids,
+        }),
+      });
+      setPersonalAssets(current => [result, ...current.filter(item => item.id !== result.id)]);
+      setAssetImportDoi("");
+      setNotice("已从共用文献库导入论文，并建立个人资料引用。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "论文导入失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  async function importPersonalTask() {
+    if (!assetImportTaskId.trim()) return;
+    if (!personalProfileVersion) {
+      setError("请先保存个人研究画像，再导入研究报告。");
+      return;
+    }
+    setAssetBusy(true);
+    setError("");
+    try {
+      const result = await api<PersonalResearchAsset>("personal-assets/import-task", {
+        method: "POST",
+        body: JSON.stringify({
+          task_id: assetImportTaskId.trim(),
+          line_ids: assetDraft.line_ids,
+        }),
+      });
+      setPersonalAssets(current => [result, ...current.filter(item => item.id !== result.id)]);
+      setAssetImportTaskId("");
+      setNotice("已将研究任务结果快照加入个人资料库。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "研究报告导入失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  async function archivePersonalAsset(assetId: string) {
+    setAssetBusy(true);
+    setError("");
+    try {
+      await api("personal-assets/" + assetId, { method: "DELETE" });
+      setPersonalAssets(current => current.filter(item => item.id !== assetId));
+      setNotice("资料已从当前个人资料库归档；原始论文或报告没有被删除。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "资料归档失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  function toggleAssetLine(lineId: string) {
+    setAssetDraft(current => ({
+      ...current,
+      line_ids: current.line_ids.includes(lineId)
+        ? current.line_ids.filter(id => id !== lineId)
+        : [...current.line_ids, lineId],
+    }));
   }
 
   async function inviteMember() {
@@ -1055,7 +1199,7 @@ export default function ResearchAtlasV1() {
                   </label>
                   <div className={styles.sectionSubhead}><h3>个人研究主线</h3><span>{personalProfileDraft.research_lines.length} 条</span></div>
                   {personalProfileDraft.research_lines.map((line, index) => {
-                    const linkedEvidence = personalProfileDraft.evidence.filter(item => item.line_id === line.id);
+                    const linkedEvidence = personalAssets.filter(item => item.line_ids.includes(line.id));
                     return <div className={styles.lineEditor} key={line.id}>
                       <div className={styles.lineEditorTop}>
                         <strong>个人主线 {index + 1}</strong>
@@ -1072,11 +1216,13 @@ export default function ResearchAtlasV1() {
                           onChange={event => updatePersonalResearchLine(index, { method_queries: event.target.value.split("\n").map(x => x.trim()).filter(Boolean) })} /></label>
                       </div>
                       {linkedEvidence.length > 0 && <div className={styles.personalEvidenceList}>
-                        <span>关联论文与研究报告</span>
-                        {linkedEvidence.map(item => <a key={item.id} href={item.url} target="_blank" rel="noreferrer">
-                          <span>{item.title}</span><ArrowUpRight size={13} />
-                          {item.note && <small>{item.note}</small>}
-                        </a>)}
+                        <span>个人资料库中关联的成果 · {linkedEvidence.length} 项</span>
+                        {linkedEvidence.map(item => <div className={styles.personalEvidenceItem} key={item.id}>
+                          {item.url
+                            ? <a href={item.url} target="_blank" rel="noreferrer"><span>{item.title}</span><ArrowUpRight size={13} /></a>
+                            : <strong>{item.title}</strong>}
+                          <small>{item.summary || item.kind}</small>
+                        </div>)}
                       </div>}
                     </div>;
                   })}
@@ -1088,6 +1234,14 @@ export default function ResearchAtlasV1() {
                   </div>
                 </>}
               </section>
+
+              <PersonalResearchLibrary
+                assets={personalAssets}
+                loaded={personalAssetsLoaded}
+                profileSaved={personalProfileVersion>0}
+                lines={personalProfileDraft.research_lines}
+                onChange={setPersonalAssets}
+              />
 
               <section className={styles.settingsCard}>
                 <div className={styles.panelHeading}><div><div className={styles.eyebrow}>REPORT SCHEDULE</div><h2>周报周期</h2></div><span className={styles.pendingLabel}>网页端暂未开放</span></div>
