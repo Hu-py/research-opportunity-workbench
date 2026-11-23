@@ -144,3 +144,30 @@ def test_stale_ai_lock_is_recovered_and_new_private_message_completes(db, monkey
     assert conv.active_ai_call_id == ""
     assert result["assistant_message"]["content"].startswith("已收到")
     assert result["ai_call"]["status"] == "completed"
+
+def test_private_chat_receives_own_profile_and_shared_team_profile(db, monkeypatch):
+    member = add_member(db, "Alice")
+    conversation = chat_service.create_conversation(db, member, "private")
+    monkeypatch.setattr(chat_service, "get_shared_team_profile", lambda _db: {"research_lines": [{"name": "Team line"}]})
+    monkeypatch.setattr(chat_service, "read_personal_profile", lambda _db, member_id: {"profile": {"research_lines": [{"name": "My line"}]}})
+    monkeypatch.setattr(chat_service, "list_personal_assets", lambda _db, member_id, **kwargs: [{"kind": "report", "title": "My private report", "summary": "Private summary", "url": "https://example.test/report", "line_ids": ["line-1"]}])
+    history = chat_service._build_history(db, db.get(chat_models.ChatConversation, conversation["id"]), 0, member.id)
+    system = history[0]["content"]
+    assert "Team line" in system
+    assert "My line" in system
+    assert "My private report" in system
+
+
+def test_team_chat_receives_shared_profile_but_never_personal_profile_or_assets(db, monkeypatch):
+    owner = add_member(db, "Owner")
+    conversation = chat_service.create_conversation(db, owner, "team")
+    monkeypatch.setattr(chat_service, "get_shared_team_profile", lambda _db: {"research_lines": [{"name": "Team line"}]})
+    def forbidden_personal(*args, **kwargs):
+        raise AssertionError("team chat must not read personal profiles or assets")
+    monkeypatch.setattr(chat_service, "read_personal_profile", forbidden_personal)
+    monkeypatch.setattr(chat_service, "list_personal_assets", forbidden_personal)
+    history = chat_service._build_history(db, db.get(chat_models.ChatConversation, conversation["id"]), 0, owner.id)
+    system = history[0]["content"]
+    assert "Team line" in system
+    assert "当前用户的个人科研档案" not in system
+    assert "个人科研资料库" not in system
