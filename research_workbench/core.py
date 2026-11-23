@@ -106,6 +106,8 @@ def _build_session_factory(url):
     from backend import interests as _registered_interests
     from backend import research_sources as _registered_sources
     from backend import task_source_scopes as _registered_task_scopes
+    from backend import team as _registered_team
+    from backend import chat_models as _registered_chat_models
     Base.metadata.create_all(engine)
     factory=sessionmaker(bind=engine,expire_on_commit=False)
     with factory() as db:

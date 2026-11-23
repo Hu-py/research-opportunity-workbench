@@ -29,7 +29,19 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
                     "本次任务已锁定专属期刊清单 V" + str(source_context["scope_version"]) +
                     "，A/B/C 共 " + str(sum(len(v) for v in source_context["groups"].values())) +
                     " 个来源。")
-            if task.kind=="explore":
+            if task.kind=="research_opportunity":
+                from backend.research_opportunity_skill import execute
+                result=execute(
+                    db, task.query, log=log, openalex_client=client,
+                    model_client=model_client, source_context=source_context,
+                )
+                if source_context:
+                    result["source_scope"]={
+                        "groups":source_context["groups"],
+                        "version":source_context["scope_version"],
+                        "enforced":True,
+                    }
+            elif task.kind=="explore":
                 result=ResearchAgent(
                     db,log=log,openalex_client=client,model_client=model_client,
                     source_context=source_context,
