@@ -21,6 +21,7 @@ from research_workbench.core import (
     session_factory,
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
+from backend.research_opportunity_skill import catalog as opportunity_catalog, make_payload as opportunity_payload
 from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
     recent_papers as interest_papers, ingest_interests,
@@ -258,6 +259,11 @@ class TaskRequest(BaseModel):
     kind:Literal["explore","sync","weekly"]="explore"
     query:str=Field(default="",max_length=2000)
     # Optional strict source list for this run only, always snapshotted.
+    source_override:dict[str,list[str]]|None=None
+
+class ResearchOpportunityRunRequest(BaseModel):
+    capability:Literal["paper_discovery","evidence_review","method_transfer","idea_review"]="idea_review"
+    question:str=Field(min_length=6,max_length=1500)
     source_override:dict[str,list[str]]|None=None
 
 class FeedbackRequest(BaseModel):
@@ -1323,6 +1329,56 @@ def profile_update(data:ProfileRequest,db:Session=Depends(get_db),
             version=current_profile_version(db)
     except ValueError as exc:raise HTTPException(409 if "changed by another" in str(exc) else 422,str(exc)) from exc
     return {"profile":get_profile(db),"version":version}
+
+def require_research_opportunity_enabled():
+    if not team_auth_enabled():
+        raise HTTPException(503,"Research Opportunity requires team authentication")
+    if os.getenv("RESEARCH_OPPORTUNITY_SKILL_ENABLED","").strip().lower() not in ("1","true","yes"):
+        raise HTTPException(503,"Research Opportunity Skill is not enabled")
+
+
+@app.get("/api/skills/research-opportunity",dependencies=[Depends(require_actor)])
+def research_opportunity_catalog():
+    require_research_opportunity_enabled()
+    return opportunity_catalog()
+
+
+@app.post("/api/skills/research-opportunity/runs",status_code=status.HTTP_202_ACCEPTED,
+          dependencies=[Depends(require_actor)])
+def research_opportunity_start(data:ResearchOpportunityRunRequest,
+                               background:BackgroundTasks,
+                               db:Session=Depends(get_db),
+                               actor:TeamMember|None=Depends(require_editor)):
+    require_research_opportunity_enabled()
+    if data.source_override is not None:
+        try:
+            _validate_groups(db,data.source_override)
+        except ValueError as exc:
+            raise HTTPException(422,str(exc)) from exc
+    try:
+        payload=opportunity_payload(data.capability,data.question)
+        task=enqueue(db,"research_opportunity",payload,
+                     owner_id=actor.id if actor else "",
+                     source_override=data.source_override)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    snapshot=db.get(TaskSourceSnapshot,task.id)
+    source_state={
+        "scene":snapshot.scene,
+        "groups":json.loads(snapshot.groups_json),
+        "enforced":snapshot.enforced,
+        "scope_version":snapshot.scope_version,
+    }
+    add_audit(db,"skill.research_opportunity.started",actor.id,task.id,
+              "capability="+data.capability+";sources="+str(source_state["enforced"]))
+    db.commit()
+    if inline_worker_enabled():
+        background.add_task(run_task,get_factory(),task.id)
+    result=as_dict(task)
+    result["source_scope"]=source_state
+    result["capability"]=data.capability
+    return result
+
 
 @app.get("/api/tasks",dependencies=[Depends(require_actor)])
 def tasks(db:Session=Depends(get_db)):
