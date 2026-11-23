@@ -319,3 +319,12 @@
   color:#70706a;font-size:9px;line-height:1.6;padding:5px 7px;margin-top:8px;
   background:#f7f7f4;border:1px solid #edede8;border-radius:4px}
 .taskSourceHint svg{flex:none;color:#898982}
+
+
+.personalEvidenceList{border-top:1px solid #efefec;margin-top:13px;padding-top:10px}
+.personalEvidenceList>span{display:block;color:#999;font-size:9px;margin-bottom:5px}
+.personalEvidenceList a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;padding:8px 2px;border-bottom:1px solid #f3f3f0;color:#555;text-decoration:none;font-size:10px}
+.personalEvidenceList a:hover{color:#111}
+.personalEvidenceList a>span{min-width:0;line-height:1.6}
+.personalEvidenceList a>svg{color:#999;grid-column:2;grid-row:1}
+.personalEvidenceList a>small{grid-column:1 / -1;color:#999;font-size:9px;line-height:1.6}
