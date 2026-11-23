@@ -7,7 +7,7 @@ services:
     name: research-atlas-task-worker-test
     runtime: docker
     repo: https://github.com/Hu-py/research-opportunity-workbench
-    branch: feat/shared-team-workspace
+    branch: feat/research-atlas-v1-fullstack-preview-20261123
     dockerfilePath: ./Dockerfile.api
     dockerCommand: python -m backend.worker --interval 4
     plan: 0.5c-512mb
