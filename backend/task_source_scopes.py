@@ -209,16 +209,24 @@ def task_source_context(db, task_id: str) -> dict | None:
             by_id[source_id].openalex_source_id
             for band in bands for source_id in groups[band]
         ))
-    allowed_names = {
-        _norm(name) for row in rows for name in
-        [row.name, row.abbreviation, *_aliases(row)] if name.strip()
+    allowed_names_by_lane = {
+        band: {
+            _norm(name) for source_id in groups[band]
+            for row in [by_id[source_id]]
+            for name in [row.name, row.abbreviation, *_aliases(row)] if name.strip()
+        }
+        for band in BANDS
     }
+    allowed_names = set().union(*allowed_names_by_lane.values())
+    source_ids_by_lane = {band: openalex_ids((band,)) for band in BANDS}
     return {
         "groups": groups,
         "direct_ids": openalex_ids(("A", "B")),
         "method_ids": openalex_ids(("C",)),
         "all_ids": openalex_ids(BANDS),
+        "source_ids_by_lane": source_ids_by_lane,
         "allowed_venues": allowed_names,
+        "allowed_venues_by_lane": allowed_names_by_lane,
         "scope_version": snap.scope_version,
         "scene": snap.scene,
     }
