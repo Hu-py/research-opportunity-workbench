@@ -17,6 +17,14 @@ export type Profile = {
   datasets?:{name:string;description?:string;access?:string}[];
   methods?:string[];
 };
+export type PersonalProfileEvidence = {
+  id:string;line_id:string;kind:"publication"|"agent_report"|"project"|"dataset";
+  title:string;url:string;note?:string;
+};
+export type PersonalResearchProfile = {
+  research_lines:ResearchLine[];goals:string;methods:string[];
+  excluded_terms:string[];evidence:PersonalProfileEvidence[];
+};
 export type TaskSourceScope = {
   scene:string;groups:{A:string[];B:string[];C:string[]};
   enforced:boolean;scope_version?:number;version?:number;configured?:boolean;
