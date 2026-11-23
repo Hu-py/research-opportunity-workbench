@@ -1464,7 +1464,7 @@ def chat_ai_reply(conversation_id:str,data:ChatAIReplyRequest,
 
 
 @app.post("/api/chats/{conversation_id}/members",
-          dependencies=[Depends(require_admin)])
+          dependencies=[Depends(require_team_actor), Depends(require_admin)])
 def chat_member_add(conversation_id:str,data:ChatMemberAddRequest,
                     actor:TeamMember=Depends(require_admin),
                     db:Session=Depends(get_db)):
