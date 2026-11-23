@@ -124,6 +124,7 @@ from backend.personal_library import (
     PersonalResearchAsset, upsert_personal_asset, list_personal_assets,
     archive_personal_asset, prune_personal_asset_line_links,
 )
+
 from backend.chat_service import (
     ChatServiceError, list_conversations, create_conversation, list_messages,
     send_message as send_chat_message, request_ai_reply, add_conversation_member,
@@ -181,11 +182,99 @@ def require_team_actor(actor:TeamMember|None=Depends(require_actor)):
         raise HTTPException(503,"持久化对话需要启用团队身份认证")
     return actor
 
+def _resolve_directed_sources_background(factory):
+    """Resolve only the currently selected SC03 sources by exact OpenAlex match."""
+    logger = logging.getLogger("uvicorn.error")
+    try:
+        # httpx logs full request URLs at INFO, which would expose OpenAlex
+        # query-string credentials. Keep transport logs at warning or above.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        with factory() as db:
+            scope = read_scope(db, "directed_research")
+            source_ids = list(dict.fromkeys(
+                source_id
+                for band in ("A", "B", "C")
+                for source_id in scope["groups"].get(band, [])
+            ))
+            # OpenAlex stores the NeurIPS series under "Neural Information
+            # Processing Systems" (alternate title: "Advances in neural
+            # information processing systems"), not the longer local label.
+            # Add these exact catalogue aliases and retry only that reviewed row.
+            if source_ids:
+                selected_rows = db.scalars(
+                    select(ResearchSource).where(ResearchSource.id.in_(source_ids))
+                ).all()
+                for row in selected_rows:
+                    if row.name == "Conference on Neural Information Processing Systems":
+                        try:
+                            aliases = json.loads(row.aliases_json or "[]")
+                        except (TypeError, ValueError):
+                            aliases = []
+                        for alias in (
+                            "Neural Information Processing Systems",
+                            "Advances in Neural Information Processing Systems",
+                        ):
+                            if alias.casefold() not in {
+                                str(value).casefold() for value in aliases
+                                if isinstance(value, str)
+                            }:
+                                aliases.append(alias)
+                        row.aliases_json = json.dumps(aliases, ensure_ascii=False)
+                        if row.resolution_status == "not_found":
+                            row.resolution_status = "unresolved"
+                            row.resolution_note = "Added exact OpenAlex display-name aliases; retry pending"
+                        db.commit()
+            summary = resolve_sources(db, source_ids) if source_ids else {
+                "checked": 0, "resolved": 0, "ambiguous": 0,
+                "not_found": 0, "errors": 0,
+            }
+            updated = read_scope(db, "directed_research")
+            unresolved = db.scalars(
+                select(ResearchSource).where(
+                    ResearchSource.id.in_(source_ids),
+                    ResearchSource.resolution_status != "resolved",
+                )
+            ).all() if source_ids else []
+            unresolved_names = ",".join(
+                f"{row.name}:{row.resolution_status}" for row in unresolved
+            ) or "none"
+        logger.info(
+            "Research Opportunity source resolution: checked=%s resolved_now=%s "
+            "ambiguous=%s not_found=%s errors=%s; readiness=%s/%s; unresolved=%s",
+            summary["checked"], summary["resolved"], summary["ambiguous"],
+            summary["not_found"], summary["errors"],
+            updated["resolved_count"], updated["selected_count"], unresolved_names,
+        )
+    except Exception:
+        logger.warning("Research Opportunity source resolution: failed")
+
+
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     if os.getenv("APP_ENV","development").lower()=="production" and not os.getenv("API_BEARER_TOKEN"):
         raise RuntimeError("Set API_BEARER_TOKEN before production deployment")
+    # One-shot content integrity gate BEFORE creating any app sessions on the
+    # new database. A failed Render deploy leaves the old service live.
+    if (os.getenv("RESEARCH_DATABASE_PROVIDER","render").strip().lower()=="supabase"
+            and os.getenv("MIGRATION_CUTOVER_GUARD","").strip()=="1"):
+        from backend.managed_migration import precutover_verify, _cfg
+        try:
+            result=precutover_verify(
+                _cfg(os.getenv("DATABASE_URL","")),
+                _cfg(os.getenv("MIGRATION_TARGET_DATABASE_URL","")))
+            if result.get("result")!="ready":
+                raise RuntimeError("Cutover integrity gate failed")
+            logging.getLogger("uvicorn.error").info(
+                "DATABASE_CUTOVER_INTEGRITY_PASSED tables=%s",result["tables"])
+        except Exception:
+            logging.getLogger("uvicorn.error").error(
+                "DATABASE_CUTOVER_INTEGRITY_FAILED; refusing new app startup")
+            raise RuntimeError("Cannot switch database: integrity verification failed") from None
     factory=get_factory()
+    # New Business Agent tables remain private and RLS-protected at startup.
+    from backend.business_memory import secure_new_tables
+    with factory() as _business_security_db:
+        secure_new_tables(_business_security_db)
     bootstrap_admin_from_env(factory)
     with factory() as db:
         imported=seed_verified(db)
@@ -228,10 +317,108 @@ async def lifespan(app:FastAPI):
         if os.getenv("PROFILE_AUDIT_ON_STARTUP","").strip()=="1":
             from backend.profile_audit import emit_log_report
             emit_log_report(db,logging.getLogger("uvicorn.error"))
+    # Optional, read-only, one-off Supabase migration target check.
+    # Never log DB URLs, credentials, hostnames, users, or error causes.
+    if os.getenv("MIGRATION_PREFLIGHT_ON_STARTUP", "").strip() == "1":
+        from backend.migration_preflight import inspect_target
+        try:
+            probe = inspect_target(
+                os.getenv("DATABASE_URL", ""),
+                os.getenv("MIGRATION_TARGET_DATABASE_URL", ""),
+            )
+            logging.getLogger("uvicorn.error").info(
+                "MIGRATION_PREFLIGHT_RESULT %s",
+                json.dumps(probe, sort_keys=True),
+            )
+        except (ValueError, RuntimeError) as exc:
+            # inspect_target wraps all connection exceptions in fixed, non-sensitive
+            # messages, so categorize rather than emitting raw provider exceptions.
+            detail = str(exc)
+            categories = {
+                "Migration target is not configured": "target_missing",
+                "Source database is not configured": "source_missing",
+                "Invalid PostgreSQL connection configuration": "invalid_uri",
+                "The target is identical to the source; no migration allowed": "same_database",
+                "Target connection failed; check private connection string, SSL and network": "connection_failed",
+            }
+            if detail.startswith("migration_target_"):
+                candidate = detail[len("migration_target_"):]
+                permitted = {
+                    "authentication_failed", "database_not_found",
+                    "role_or_access_rejected", "dns_resolution_failed",
+                    "network_timeout", "connection_refused",
+                    "other_connection_error",
+                }
+                category = candidate if candidate in permitted else "unknown"
+            else:
+                category = categories.get(detail, "unknown")
+            logging.getLogger("uvicorn.error").warning(
+                "MIGRATION_PREFLIGHT_FAILED category=%s", category
+            )
+    # Optional migration source inventory: only sizes and trusted table counts.
+    # Never returns research records, passwords, hostnames or connection strings.
+    if os.getenv("MIGRATION_SOURCE_AUDIT_ON_STARTUP", "").strip() == "1":
+        from backend.migration_preflight import source_inventory
+        try:
+            with factory() as source_db:
+                inventory = source_inventory(source_db)
+            logging.getLogger("uvicorn.error").info(
+                "MIGRATION_SOURCE_INVENTORY %s", json.dumps(inventory, sort_keys=True)
+            )
+        except (ValueError, Exception):
+            logging.getLogger("uvicorn.error").warning(
+                "MIGRATION_SOURCE_INVENTORY_FAILED"
+            )
+    # Explicit one-shot server-side migration, never on by default.
+    # Executes only on Render with MANAGED_MIGRATION_PHASE=backup|restore.
+    # Restores only to a separate isolated target and never changes DATABASE_URL.
+    if os.getenv("MANAGED_MIGRATION_PHASE","").strip() in ("backup","restore","verify","precutover"):
+        from backend.managed_migration import execute_from_env
+        execute_from_env()
     logging.getLogger("uvicorn.error").info(
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
     )
+    # Report only credential readiness, never key values or encrypted blobs.
+    direct_deepseek = bool(
+        os.getenv("DEEPSEEK_API_KEY","").strip()
+        or os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
+    )
+    try:
+        with factory() as credential_db:
+            vault_status = model_status(credential_db)
+        if direct_deepseek:
+            deepseek_source = "environment"
+        elif vault_status["configured"] and vault_status["vault_ready"]:
+            deepseek_source = "encrypted_vault"
+        else:
+            deepseek_source = "missing"
+    except Exception:
+        deepseek_source = "unknown"
+    logging.getLogger("uvicorn.error").info(
+        "DeepSeek runtime credential source: %s", deepseek_source
+    )
+    try:
+        with factory() as scope_db:
+            source_readiness = read_scope(scope_db, "directed_research")
+        logging.getLogger("uvicorn.error").info(
+            "Research Opportunity source readiness: selected=%s resolved=%s unresolved=%s",
+            source_readiness["selected_count"],
+            source_readiness["resolved_count"],
+            source_readiness["missing_or_unresolved"],
+        )
+    except Exception:
+        logging.getLogger("uvicorn.error").warning(
+            "Research Opportunity source readiness: unavailable"
+        )
+    if os.getenv("RESEARCH_SOURCE_AUTO_RESOLVE_ON_STARTUP","").strip().lower() in ("1","true","yes"):
+        from threading import Thread
+        Thread(
+            target=_resolve_directed_sources_background,
+            args=(factory,),
+            daemon=True,
+            name="research-source-resolver",
+        ).start()
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
     trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
@@ -260,7 +447,14 @@ async def lifespan(app:FastAPI):
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
         )
-    yield
+    # The mounted OAuth MCP session manager has its own ASGI lifespan.
+    # Never run or expose it unless the owner explicitly enabled the MCP app.
+    managed_mcp=getattr(app.state,"research_advisor_mcp",None)
+    if managed_mcp is not None:
+        async with managed_mcp.session_manager.run():
+            yield
+    else:
+        yield
 
 app=FastAPI(
     title="Research Opportunity Workbench API",
@@ -271,10 +465,22 @@ app=FastAPI(
     redoc_url=None,
 )
 
+@app.middleware("http")
+async def _read_only_migration_window(request:Request,call_next):
+    # Freeze old Render HTTP writes while the replacement starts; rollout is
+    # blue/green and the new service removes this flag after verification.
+    if (os.getenv("MIGRATION_FREEZE_WRITES","").strip()=="1"
+            and request.method.upper() not in ("GET","HEAD","OPTIONS")):
+        return JSONResponse(
+            status_code=503,
+            content={"detail":"Database migration: write operations temporarily paused"},
+            headers={"Retry-After":"120","Cache-Control":"no-store"})
+    return await call_next(request)
+
+
 class TaskRequest(BaseModel):
     kind:Literal["explore","sync","weekly"]="explore"
     query:str=Field(default="",max_length=2000)
-    # Optional strict source list for this run only, always snapshotted.
     source_override:dict[str,list[str]]|None=None
 
 class ResearchOpportunityRunRequest(BaseModel):
@@ -298,6 +504,48 @@ class ChatAIReplyRequest(BaseModel):
 
 class ChatMemberAddRequest(BaseModel):
     member_id:str=Field(min_length=1,max_length=48)
+
+class FeedbackRequest(BaseModel):
+    status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
+    note:str=Field(default="",max_length=1500)
+
+class ProfileRequest(BaseModel):
+    research_lines:list[dict]
+    excluded_terms:list[str]=Field(default_factory=list)
+    goals:str=""
+    team:dict|None=None
+    datasets:list[dict]|None=None
+    methods:list[str]|None=None
+    expected_version:int|None=None
+
+class PersonalProfileRequest(BaseModel):
+    profile:dict
+    expected_version:int=Field(ge=0)
+
+class PersonalAssetRequest(BaseModel):
+    kind:Literal["publication","agent_report","experiment_result","project","dataset","note"]
+    title:str=Field(min_length=1,max_length=260)
+    summary:str=Field(default="",max_length=12000)
+    url:str=Field(default="",max_length=1200)
+    source_type:Literal["doi","openalex_work","chatgpt_space_page","research_task","sc05_run","library_file","external_url","manual"]="manual"
+    source_id:str=Field(default="",max_length=255)
+    client_key:str=Field(default="",max_length=80)
+    metadata:dict=Field(default_factory=dict)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+
+
+class PersonalPaperImportRequest(BaseModel):
+    paper_id:str|None=Field(default=None,max_length=255)
+    doi:str|None=Field(default=None,max_length=255)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+    client_key:str=Field(default="",max_length=80)
+
+
+class PersonalTaskImportRequest(BaseModel):
+    task_id:str=Field(min_length=1,max_length=40)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+    client_key:str=Field(default="",max_length=80)
+
 
 def validate_personal_profile(raw:dict) -> dict:
     """Validate member-owned research lines and their linked personal evidence."""
@@ -369,19 +617,6 @@ def validate_personal_profile(raw:dict) -> dict:
         "datasets":[],
     })
     return payload
-
-class FeedbackRequest(BaseModel):
-    status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
-    note:str=Field(default="",max_length=1500)
-
-class ProfileRequest(BaseModel):
-    research_lines:list[dict]
-    excluded_terms:list[str]=Field(default_factory=list)
-    goals:str=""
-    team:dict|None=None
-    datasets:list[dict]|None=None
-    methods:list[str]|None=None
-    expected_version:int|None=None
 
 class AchievementReviewRequest(BaseModel):
     status:Literal["verified","review","rejected"]
@@ -1288,7 +1523,7 @@ def cusp_opportunities_api(db:Session=Depends(get_db)):
 @app.get("/api/task-source-scopes",dependencies=[Depends(require_actor)])
 def task_source_scopes(actor:TeamMember|None=Depends(require_actor),
                        db:Session=Depends(get_db)):
-    """Per-scene source lists. The personal list is visible only to its owner."""
+    """Return independent SC01/SC02/SC03 journal lists."""
     personal_available = actor is not None
     return {"items":[
         read_scope(db, "team_weekly"),
@@ -1305,7 +1540,7 @@ def task_source_scope_update(scene:str, data:TaskSourceScopeRequest,
                              actor:TeamMember|None=Depends(require_editor),
                              db:Session=Depends(get_db)):
     if scene not in SCOPES:
-        raise HTTPException(404,"Unknown task source scope")
+        raise HTTPException(404,"Unknown research task source scope")
     if scene=="personal_weekly":
         if actor is None:
             raise HTTPException(409,"个人来源配置需要独立团队成员账号")
@@ -1968,3 +2203,24 @@ from backend.research_evolution_api import mount as _mount_evolution_routes
 _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
                        require_actor=require_actor, require_editor=require_editor,
                        team_auth_enabled=team_auth_enabled)
+
+# Read-only migration target preflight; team-admin session required.
+from backend.migration_preflight import mount as _mount_migration_preflight_routes
+_mount_migration_preflight_routes(app, require_admin=require_admin)
+
+# Durable Business Research Advisor: disabled for external access until explicitly
+# approved and configured by the team owner (separate integration secret).
+from backend.business_memory import mount as _mount_business_memory_routes
+_mount_business_memory_routes(app, get_db=get_db, require_actor=require_actor,
+                              require_editor=require_editor, require_admin=require_admin)
+
+# Independent minimal OAuth consent page, served from Render instead of Vercel.
+# It is enabled only after a project publishable key is configured on Render.
+from backend.oauth_consent import router as _oauth_consent_router
+app.include_router(_oauth_consent_router)
+
+# Custom MCP is intentionally off until a reviewed external OAuth provider,
+# approved subjects, and explicit team data-sharing grant are configured.
+if os.getenv("BUSINESS_MCP_ENABLED","").strip().lower()=="true":
+    from backend.business_mcp import mount_mcp as _mount_research_advisor_mcp
+    _mount_research_advisor_mcp(app)
