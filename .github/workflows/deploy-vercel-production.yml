@@ -1,0 +1,93 @@
+name: Deploy Research Atlas to Vercel Production
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-vercel-production.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-atlas-vercel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy the reviewed main branch
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      VERCEL_ORG_ID: team_AJPdxeeAHVMuBFUh4fHVFqcl
+      VERCEL_PROJECT_ID: prj_v88I5Sy7PwDabkWSDiV9zQFjEdgq
+      VERCEL_SCOPE: bo-o-o-o-o-m
+      PRODUCTION_URL: https://research-opportunity-workbench.vercel.app
+
+    steps:
+      - name: Checkout reviewed main commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@66.6.0
+
+      - name: Verify deployment credential is configured
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "::error::Repository secret VERCEL_TOKEN is not configured. Add a Vercel team token in GitHub Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Link this frontend directory to the existing Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel link --yes --project research-opportunity-workbench --scope "$VERCEL_SCOPE"
+
+      - name: Pull Production environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --scope "$VERCEL_SCOPE"
+
+      - name: Build with Production settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --scope "$VERCEL_SCOPE"
+
+      - name: Deploy the prebuilt output to Production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --yes --scope "$VERCEL_SCOPE"
+
+      - name: Verify the production domain
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors \
+            --max-time 30 "$PRODUCTION_URL/" -o /dev/null
+          status="$(curl --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors \
+            --max-time 30 -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/api/session")"
+          test "$status" = "200"
+
+      - name: Write deployment summary
+        run: |
+          {
+            echo "## Research Atlas Production Deployment"
+            echo
+            echo "- Target: Production"
+            echo "- URL: $PRODUCTION_URL"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Frontend root: frontend/"
+            echo "- Smoke test: homepage and session endpoint returned HTTP 200"
+          } >> "$GITHUB_STEP_SUMMARY"
