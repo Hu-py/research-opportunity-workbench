@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import create_engine
@@ -111,3 +112,35 @@ def test_new_team_member_is_added_to_existing_team_conversation(db):
     new_member = add_member(db, "NewMember")
     chat_service.add_conversation_member(db, conversation["id"], new_member.id)
     assert chat_service.list_messages(db, conversation["id"], new_member.id) == []
+
+
+def test_stale_ai_lock_is_recovered_and_new_private_message_completes(db, monkeypatch):
+    monkeypatch.setattr(chat_service, "_provider_reply", fake_provider)
+    member = add_member(db, "Alice")
+    conversation = chat_service.create_conversation(db, member, "private")
+    conv = db.get(chat_models.ChatConversation, conversation["id"])
+    old_user = chat_models.ChatMessage(
+        id=str(uuid.uuid4()), conversation_id=conv.id, seq=1, sender_id=member.id,
+        role="user", content="上一次请求", client_nonce="stale-user-nonce",
+    )
+    stale_call = chat_models.ChatAICall(
+        id=str(uuid.uuid4()), conversation_id=conv.id, trigger_message_id=old_user.id,
+        trigger_type="private", idempotency_key="message:stale-user-nonce",
+        input_until_seq=1, status="running",
+        created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+    )
+    db.add(old_user)
+    db.add(stale_call)
+    conv.last_seq = 1
+    conv.active_ai_call_id = stale_call.id
+    db.commit()
+
+    result = chat_service.send_message(
+        db, conv.id, member, "现在再测试", "fresh-user-nonce-001"
+    )
+    db.refresh(stale_call)
+    db.refresh(conv)
+    assert stale_call.status == "failed"
+    assert conv.active_ai_call_id == ""
+    assert result["assistant_message"]["content"].startswith("已收到")
+    assert result["ai_call"]["status"] == "completed"
