@@ -119,6 +119,10 @@ from backend.team import (
     current_profile_version, save_team_profile,
     read_personal_profile, save_personal_profile,
 )
+from backend.personal_library import (
+    PersonalResearchAsset, upsert_personal_asset, list_personal_assets,
+    archive_personal_asset,
+)
 
 from backend.chat_service import (
     ChatServiceError, list_conversations, create_conversation, list_messages,
@@ -516,6 +520,30 @@ class ProfileRequest(BaseModel):
 class PersonalProfileRequest(BaseModel):
     profile:dict
     expected_version:int=Field(ge=0)
+
+class PersonalAssetRequest(BaseModel):
+    kind:Literal["publication","agent_report","experiment_result","project","dataset","note"]
+    title:str=Field(min_length=1,max_length=260)
+    summary:str=Field(default="",max_length=12000)
+    url:str=Field(default="",max_length=1200)
+    source_type:Literal["doi","openalex_work","chatgpt_space_page","research_task","sc05_run","library_file","external_url","manual"]="manual"
+    source_id:str=Field(default="",max_length=255)
+    client_key:str=Field(default="",max_length=80)
+    metadata:dict=Field(default_factory=dict)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+
+
+class PersonalPaperImportRequest(BaseModel):
+    paper_id:str|None=Field(default=None,max_length=255)
+    doi:str|None=Field(default=None,max_length=255)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+    client_key:str=Field(default="",max_length=80)
+
+
+class PersonalTaskImportRequest(BaseModel):
+    task_id:str=Field(min_length=1,max_length=40)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+    client_key:str=Field(default="",max_length=80)
 
 
 def validate_personal_profile(raw:dict) -> dict:
