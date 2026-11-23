@@ -246,16 +246,13 @@ class ResearchAgent:
                     from openai import OpenAI
                     self.model_client=OpenAI(api_key=openai_key,timeout=50,max_retries=1)
                 else:
-                    deepseek_key=os.getenv("DEEPSEEK_API_KEY","").strip()
                     config=None
-                    if not deepseek_key:
-                        try:
-                            from backend.model_vault import ModelCredential, load_key
-                            config=self.db.get(ModelCredential,"deepseek")
-                            if config and config.encrypted_key:
-                                deepseek_key=load_key(self.db) or ""
-                        except Exception:
-                            deepseek_key=""
+                    try:
+                        from backend.model_vault import ModelCredential, resolve_key
+                        config=self.db.get(ModelCredential,"deepseek")
+                        deepseek_key=resolve_key(self.db) or ""
+                    except Exception:
+                        deepseek_key=""
                     if not deepseek_key:
                         return self.preview(prompt)
                     if config is None:
