@@ -41,6 +41,8 @@ export default function PersonalResearchLibrary({
  onChange:(items:PersonalResearchAsset[])=>void;
 }){
  const [open,setOpen]=useState(false);
+ const [editingId,setEditingId]=useState<string|null>(null);
+ const [metadataText,setMetadataText]=useState("{}");
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
  const [notice,setNotice]=useState("");
@@ -59,18 +61,36 @@ export default function PersonalResearchLibrary({
  async function save(){
   if(!profileSaved){setError("请先保存个人研究画像，再录入关联资料。");return;}
   if(!draft.title.trim()){setError("请先填写资料标题。");return;}
+  let metadata:Record<string,unknown>={};
+  try{
+   const parsed=JSON.parse(metadataText||"{}");
+   if(!parsed||Array.isArray(parsed)||typeof parsed!=="object")throw new Error("元数据必须是 JSON 对象");
+   metadata=parsed as Record<string,unknown>;
+  }catch(cause){setError(cause instanceof Error?cause.message:"元数据 JSON 格式无效");return;}
   setBusy(true);setError("");setNotice("");
   try{
-   const item=await api<PersonalResearchAsset>("personal-assets",{
-    method:"POST",body:JSON.stringify(draft),
-   });
+   const payload={...draft,metadata};
+   const item=await api<PersonalResearchAsset>(
+    editingId?"personal-assets/"+editingId:"personal-assets",
+    {method:editingId?"PUT":"POST",body:JSON.stringify(payload)},
+   );
    onChange([item,...assets.filter(row=>row.id!==item.id)]);
-   setDraft(emptyDraft);setOpen(false);
-   setNotice("科研资料已保存到当前账号。");
+   setDraft(emptyDraft);setMetadataText("{}");setEditingId(null);setOpen(false);
+   setNotice(editingId?"科研资料已更新。":"科研资料已保存到当前账号。");
   }catch(cause){setError(cause instanceof Error?cause.message:"资料保存失败");}
   finally{setBusy(false);}
  }
 
+ function edit(item:PersonalResearchAsset){
+  setEditingId(item.id);
+  setDraft({
+   kind:item.kind,title:item.title,summary:item.summary,url:item.url,
+   source_type:item.source_type,source_id:item.source_id,
+   metadata:item.metadata,line_ids:item.line_ids,
+  });
+  setMetadataText(JSON.stringify(item.metadata||{},null,2));
+  setOpen(true);setError("");setNotice("");
+ }
  async function importPaper(){
   if(!doi.trim())return;
   setBusy(true);setError("");setNotice("");
