@@ -177,6 +177,33 @@ def require_team_actor(actor:TeamMember|None=Depends(require_actor)):
         raise HTTPException(503,"持久化对话需要启用团队身份认证")
     return actor
 
+def _resolve_directed_sources_background(factory):
+    """Resolve only the currently selected SC03 sources by exact OpenAlex match."""
+    logger = logging.getLogger("uvicorn.error")
+    try:
+        with factory() as db:
+            scope = read_scope(db, "directed_research")
+            source_ids = list(dict.fromkeys(
+                source_id
+                for band in ("A", "B", "C")
+                for source_id in scope["groups"].get(band, [])
+            ))
+            summary = resolve_sources(db, source_ids) if source_ids else {
+                "checked": 0, "resolved": 0, "ambiguous": 0,
+                "not_found": 0, "errors": 0,
+            }
+            updated = read_scope(db, "directed_research")
+        logger.info(
+            "Research Opportunity source resolution: checked=%s resolved_now=%s "
+            "ambiguous=%s not_found=%s errors=%s; readiness=%s/%s",
+            summary["checked"], summary["resolved"], summary["ambiguous"],
+            summary["not_found"], summary["errors"],
+            updated["resolved_count"], updated["selected_count"],
+        )
+    except Exception:
+        logger.warning("Research Opportunity source resolution: failed")
+
+
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     if os.getenv("APP_ENV","development").lower()=="production" and not os.getenv("API_BEARER_TOKEN"):
@@ -339,6 +366,14 @@ async def lifespan(app:FastAPI):
         logging.getLogger("uvicorn.error").warning(
             "Research Opportunity source readiness: unavailable"
         )
+    if os.getenv("RESEARCH_SOURCE_AUTO_RESOLVE_ON_STARTUP","").strip().lower() in ("1","true","yes"):
+        from threading import Thread
+        Thread(
+            target=_resolve_directed_sources_background,
+            args=(factory,),
+            daemon=True,
+            name="research-source-resolver",
+        ).start()
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
     trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
