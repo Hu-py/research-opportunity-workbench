@@ -437,6 +437,7 @@ def send_message(db: Session, conversation_id: str, actor: TeamMember,
     if not client_nonce or len(client_nonce) > 80:
         raise ChatServiceError(422, "缺少有效的消息幂等标识")
     conv = _conversation(db, conversation_id, actor.id, lock=True)
+    _recover_stale_ai_lock(db, conv)
     duplicate = db.scalar(select(ChatMessage).where(
         ChatMessage.conversation_id == conv.id,
         ChatMessage.client_nonce == client_nonce,
