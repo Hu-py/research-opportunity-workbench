@@ -647,6 +647,118 @@ export default function ResearchAtlasV1() {
     }
   }
 
+  async function refreshPersonalAssets() {
+    const result = await api<{ items: PersonalResearchAsset[] }>("personal-assets");
+    setPersonalAssets(result.items || []);
+    setPersonalAssetsLoaded(true);
+  }
+
+  async function savePersonalAsset() {
+    if (!personalProfileVersion) {
+      setError("请先保存个人研究画像，再录入关联资料。");
+      return;
+    }
+    if (!assetDraft.title.trim()) {
+      setError("请先填写资料标题。");
+      return;
+    }
+    setAssetBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api<PersonalResearchAsset>("personal-assets", {
+        method: "POST",
+        body: JSON.stringify(assetDraft),
+      });
+      setPersonalAssets(current => [result, ...current.filter(item => item.id !== result.id)]);
+      setAssetDraft({
+        kind: "publication", title: "", summary: "", url: "",
+        source_type: "manual", source_id: "", metadata: {}, line_ids: [],
+      });
+      setAssetFormOpen(false);
+      setNotice("科研资料已保存到当前账号的个人资料库。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "科研资料保存失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  async function importPersonalPaper() {
+    if (!assetImportDoi.trim()) return;
+    if (!personalProfileVersion) {
+      setError("请先保存个人研究画像，再导入论文。");
+      return;
+    }
+    setAssetBusy(true);
+    setError("");
+    try {
+      const result = await api<PersonalResearchAsset>("personal-assets/import-paper", {
+        method: "POST",
+        body: JSON.stringify({
+          doi: assetImportDoi.trim(),
+          line_ids: assetDraft.line_ids,
+        }),
+      });
+      setPersonalAssets(current => [result, ...current.filter(item => item.id !== result.id)]);
+      setAssetImportDoi("");
+      setNotice("已从共用文献库导入论文，并建立个人资料引用。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "论文导入失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  async function importPersonalTask() {
+    if (!assetImportTaskId.trim()) return;
+    if (!personalProfileVersion) {
+      setError("请先保存个人研究画像，再导入研究报告。");
+      return;
+    }
+    setAssetBusy(true);
+    setError("");
+    try {
+      const result = await api<PersonalResearchAsset>("personal-assets/import-task", {
+        method: "POST",
+        body: JSON.stringify({
+          task_id: assetImportTaskId.trim(),
+          line_ids: assetDraft.line_ids,
+        }),
+      });
+      setPersonalAssets(current => [result, ...current.filter(item => item.id !== result.id)]);
+      setAssetImportTaskId("");
+      setNotice("已将研究任务结果快照加入个人资料库。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "研究报告导入失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  async function archivePersonalAsset(assetId: string) {
+    setAssetBusy(true);
+    setError("");
+    try {
+      await api("personal-assets/" + assetId, { method: "DELETE" });
+      setPersonalAssets(current => current.filter(item => item.id !== assetId));
+      setNotice("资料已从当前个人资料库归档；原始论文或报告没有被删除。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "资料归档失败");
+    } finally {
+      setAssetBusy(false);
+    }
+  }
+
+  function toggleAssetLine(lineId: string) {
+    setAssetDraft(current => ({
+      ...current,
+      line_ids: current.line_ids.includes(lineId)
+        ? current.line_ids.filter(id => id !== lineId)
+        : [...current.line_ids, lineId],
+    }));
+  }
+
   async function inviteMember() {
     setBusy(true);
     setError("");
