@@ -160,8 +160,15 @@ def write_scope(db, scene: str, *, groups: dict, enforced: bool,
 
 def snapshot_task(db, task_id: str, *, kind: str, owner_id: str = "",
                   override: dict | None = None) -> dict:
-    scene = "team_weekly" if kind == "weekly" else "directed_research"
-    record = read_scope(db, scene)
+    if kind == "weekly":
+        scene = "team_weekly"
+    elif kind == "explore":
+        scene = "directed_research"
+    else:
+        scene = "sync"
+    record = read_scope(db, scene) if scene in SCOPES else {
+        "groups": {"A": [], "B": [], "C": []}, "version": 0, "enforced": False,
+    }
     groups = _validate_groups(db, override) if override is not None else record["groups"]
     enforced = (override is not None or record["enforced"]) if kind != "sync" else False
     if enforced and not any(groups.values()):
