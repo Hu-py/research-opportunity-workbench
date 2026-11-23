@@ -80,8 +80,8 @@ def test_team_message_does_not_call_ai_without_explicit_trigger(db, monkeypatch)
 def test_team_at_gpt_triggers_ai_and_private_chat_isolated(db, monkeypatch):
     monkeypatch.setattr(chat_service, "_provider_reply", fake_provider)
     owner = add_member(db, "Owner")
-    outsider = add_member(db, "Outsider")
     conversation = chat_service.create_conversation(db, owner, "team")
+    outsider = add_member(db, "Outsider")
     result = chat_service.send_message(
         db, conversation["id"], owner, "请 GPT 帮忙整理刚才的讨论",
         "team-nonce-0002", trigger_ai=True, trigger_type="mention",
