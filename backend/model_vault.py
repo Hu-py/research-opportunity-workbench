@@ -83,6 +83,21 @@ def remove_key(db,actor):
         db.commit()
     return status(db)
 
+def resolve_key(db):
+    """Resolve the active DeepSeek key without exposing it to clients or logs.
+
+    The SC04 name is retained as a compatibility alias for existing Render
+    deployments; new deployments should prefer DEEPSEEK_API_KEY.
+    """
+    direct = (
+        os.getenv("DEEPSEEK_API_KEY", "").strip()
+        or os.getenv("SC04_DEEPSEEK_API_KEY", "").strip()
+    )
+    if direct:
+        return direct
+    return load_key(db)
+
+
 def load_key(db):
     row=db.get(ModelCredential,"deepseek")
     if not row or not row.encrypted_key:return None
