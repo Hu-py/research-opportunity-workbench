@@ -3,7 +3,8 @@ import pytest
 from fastapi.testclient import TestClient
 import backend.api as server
 from backend.team import create_member
-from research_workbench.core import session_factory
+from backend.tasks import ResearchTask
+from research_workbench.core import session_factory, Paper
 
 def service(token=None):
     result={"Authorization":"Bearer service-test-key"}
@@ -116,7 +117,14 @@ def test_personal_profile_is_private_to_each_member_and_versioned(team_client):
         "profile":admin_profile,"expected_version":0})
     assert saved.status_code==200,saved.text
     assert saved.json()["version"]==1
-    assert saved.json()["profile"]==admin_profile
+    expected_profile={key:value for key,value in admin_profile.items() if key!="evidence"}
+    assert saved.json()["profile"]==expected_profile
+    seeded=client.get("/api/personal-assets",headers=service(admin))
+    assert seeded.status_code==200
+    assert len(seeded.json()["items"])==1
+    assert seeded.json()["items"][0]["kind"]=="publication"
+    assert seeded.json()["items"][0]["line_ids"]==["metro_resilience"]
+    assert seeded.json()["items"][0]["source_type"]=="doi"
 
     # A different authenticated member has a separate empty profile.
     assert client.get("/api/personal-profile",headers=service(researcher)).json()=={
@@ -138,7 +146,7 @@ def test_personal_profile_is_private_to_each_member_and_versioned(team_client):
     assert own.json()["profile"]["research_lines"][0]["id"]=="health_transfer"
 
     # Member A cannot read or overwrite member B's private profile by guessing IDs.
-    assert client.get("/api/personal-profile",headers=service(admin)).json()["profile"]==admin_profile
+    assert client.get("/api/personal-profile",headers=service(admin)).json()["profile"]==expected_profile
     stale=client.put("/api/personal-profile",headers=service(admin),json={
         "profile":admin_profile,"expected_version":0})
     assert stale.status_code==409,stale.text

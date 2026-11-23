@@ -229,7 +229,7 @@ def read_personal_profile(db:Session,member_id:str) -> dict:
 
 
 def save_personal_profile(db:Session,member_id:str,payload:dict,
-                          expected_version:int) -> dict:
+                          expected_version:int, *, commit:bool=True) -> dict:
     """Versioned member-scoped upsert; never touches the shared team Profile."""
     row=db.execute(
         select(PersonalResearchProfile)
@@ -257,9 +257,12 @@ def save_personal_profile(db:Session,member_id:str,payload:dict,
     ))
     add_audit(db,"personal_profile.updated",member_id,member_id,
               "version="+str(version)+" lines="+str(len(payload.get("research_lines",[]))))
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise ValueError("Personal profile changed; reload before saving") from exc
+    if commit:
+        try:
+            db.commit()
+        except IntegrityError as exc:
+            db.rollback()
+            raise ValueError("Personal profile changed; reload before saving") from exc
+    else:
+        db.flush()
     return read_personal_profile(db,member_id)
