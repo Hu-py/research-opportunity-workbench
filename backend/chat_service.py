@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.chat_models import ChatAICall, ChatConversation, ChatMember, ChatMessage
@@ -106,11 +106,11 @@ def list_conversations(db: Session, member_id: str, kind: str | None = None) -> 
             .order_by(ChatMessage.seq.desc())
             .limit(1)
         )
-        count = db.scalar(
-            select(ChatMember.member_id).where(
+        member_count = db.scalar(
+            select(func.count()).select_from(ChatMember).where(
                 ChatMember.conversation_id == conv.id, ChatMember.left_at.is_(None)
             )
-        )
+        ) or 0
         items.append({
             "id": conv.id,
             "kind": conv.kind,
@@ -121,6 +121,7 @@ def list_conversations(db: Session, member_id: str, kind: str | None = None) -> 
             "last_message_at": last.created_at.isoformat() if last and last.created_at else None,
             "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
             "active": bool(conv.active_ai_call_id),
+            "member_count": member_count,
         })
     return items
 
@@ -202,7 +203,6 @@ def _build_history(db: Session, conv: ChatConversation, input_until_seq: int) ->
         .order_by(ChatMessage.seq.desc())
         .limit(MAX_HISTORY_MESSAGES)
     ).all()
-    rows.reverse()
     history: list[dict[str, str]] = []
     total = 0
     for row in rows:
@@ -214,9 +214,10 @@ def _build_history(db: Session, conv: ChatConversation, input_until_seq: int) ->
             content = (sender.name if sender else "团队成员") + "： " + content
         content = content[:3000]
         if total + len(content) > MAX_HISTORY_CHARS:
-            break
+            continue
         history.append({"role": row.role, "content": content})
         total += len(content)
+    history.reverse()
     system = (
         "你是 Research Atlas 的科研协作助手。使用中文回答，保持准确、清晰和诚实。"
         "区分已知事实、推断和假设；没有检索或核验时不要声称已经完成。"
