@@ -5,7 +5,8 @@
 - 前端产品范围与任务专属 A/B/C 期刊配置已合并至 `main`（commit `7b1772d`）。
 - 后端来源配置接口已部署至 Render `research-atlas-api-test`（commit `8d0b26d`），继续使用测试数据库 `research_atlas_test_db`。
 - 本次发布不切换数据库、不重建现有数据。
-- Vercel 新建部署 API 达到 Hobby 每日调用额度；本次通过 Git 主分支更新触发正式构建，待验收生产部署状态。
+- Vercel 正式发布尚未完成：Hobby 每日 API 部署额度（超过 100 次）返回 402，需等待 24 小时配额恢复或由项目所有者在 Vercel 端解决额度限制。Git 主分支更新未产生新的 Vercel 部署；当前正式域名仍指向旧部署。
+- 不直接提升 Preview 部署，因为 Preview 环境缺少 Production 专用的定时任务密钥。
 
 ## V1.0 来源配置补充 — 2026-11-22
 
