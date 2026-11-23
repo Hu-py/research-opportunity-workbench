@@ -1,2 +1,5 @@
-import Workbench from "@/components/Workbench";
-export default function Home(){return <Workbench/>;}
+import ResearchAtlasV1 from "@/components/ResearchAtlasV1";
+
+export default function Home() {
+  return <ResearchAtlasV1 />;
+}
