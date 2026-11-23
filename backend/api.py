@@ -305,6 +305,25 @@ async def lifespan(app:FastAPI):
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
     )
+    # Report only credential readiness, never key values or encrypted blobs.
+    direct_deepseek = bool(
+        os.getenv("DEEPSEEK_API_KEY","").strip()
+        or os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
+    )
+    try:
+        with factory() as credential_db:
+            vault_status = model_status(credential_db)
+        if direct_deepseek:
+            deepseek_source = "environment"
+        elif vault_status["configured"] and vault_status["vault_ready"]:
+            deepseek_source = "encrypted_vault"
+        else:
+            deepseek_source = "missing"
+    except Exception:
+        deepseek_source = "unknown"
+    logging.getLogger("uvicorn.error").info(
+        "DeepSeek runtime credential source: %s", deepseek_source
+    )
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
     trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
