@@ -117,6 +117,10 @@ from backend.team import (
     create_member, public_member, set_member_status, add_audit,
     current_profile_version, save_team_profile,
 )
+from backend.chat_service import (
+    ChatServiceError, list_conversations, create_conversation, list_messages,
+    send_message as send_chat_message, request_ai_reply, add_conversation_member,
+)
 
 @lru_cache(maxsize=1)
 def get_factory():
@@ -163,6 +167,11 @@ def require_editor(actor:TeamMember|None=Depends(require_actor)):
 def require_admin(actor:TeamMember|None=Depends(require_actor)):
     if team_auth_enabled() and (actor is None or actor.role!="admin"):
         raise HTTPException(403,"Administrator role required")
+    return actor
+
+def require_team_actor(actor:TeamMember|None=Depends(require_actor)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(503,"持久化对话需要启用团队身份认证")
     return actor
 
 @asynccontextmanager
@@ -265,6 +274,23 @@ class ResearchOpportunityRunRequest(BaseModel):
     capability:Literal["paper_discovery","evidence_review","method_transfer","idea_review"]="idea_review"
     question:str=Field(min_length=6,max_length=1500)
     source_override:dict[str,list[str]]|None=None
+
+class ChatCreateRequest(BaseModel):
+    kind:Literal["private","team"]="private"
+    title:str=Field(default="",max_length=180)
+
+
+class ChatMessageRequest(BaseModel):
+    content:str=Field(min_length=1,max_length=8000)
+    client_nonce:str=Field(min_length=8,max_length=80)
+    trigger_ai:bool=False
+    trigger_type:Literal["","mention","manual"]=""
+
+class ChatAIReplyRequest(BaseModel):
+    idempotency_key:str=Field(min_length=8,max_length=100)
+
+class ChatMemberAddRequest(BaseModel):
+    member_id:str=Field(min_length=1,max_length=48)
 
 class FeedbackRequest(BaseModel):
     status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
@@ -1378,6 +1404,78 @@ def research_opportunity_start(data:ResearchOpportunityRunRequest,
     result["source_scope"]=source_state
     result["capability"]=data.capability
     return result
+
+
+@app.get("/api/chats",dependencies=[Depends(require_team_actor)])
+def chats(kind:Literal["private","team"]|None=None,
+          actor:TeamMember=Depends(require_team_actor),
+          db:Session=Depends(get_db)):
+    return {"items":list_conversations(db,actor.id,kind)}
+
+
+@app.post("/api/chats",status_code=status.HTTP_201_CREATED,
+          dependencies=[Depends(require_team_actor)])
+def chats_create(data:ChatCreateRequest,
+                 actor:TeamMember=Depends(require_editor),
+                 db:Session=Depends(get_db)):
+    try:
+        return create_conversation(db,actor,data.kind,data.title)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.get("/api/chats/{conversation_id}/messages",
+         dependencies=[Depends(require_team_actor)])
+def chat_messages(conversation_id:str,
+                  after_seq:int=Query(default=0,ge=0),
+                  limit:int=Query(default=100,ge=1,le=200),
+                  actor:TeamMember=Depends(require_team_actor),
+                  db:Session=Depends(get_db)):
+    try:
+        items=list_messages(db,conversation_id,actor.id,after_seq,limit)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+    return {"items":items}
+
+
+@app.post("/api/chats/{conversation_id}/messages",
+          dependencies=[Depends(require_team_actor)])
+def chat_message_create(conversation_id:str,data:ChatMessageRequest,
+                        actor:TeamMember=Depends(require_editor),
+                        db:Session=Depends(get_db)):
+    try:
+        return send_chat_message(
+            db,conversation_id,actor,data.content,data.client_nonce,
+            trigger_ai=data.trigger_ai,trigger_type=data.trigger_type,
+        )
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.post("/api/chats/{conversation_id}/ai-replies",
+          dependencies=[Depends(require_team_actor)])
+def chat_ai_reply(conversation_id:str,data:ChatAIReplyRequest,
+                  actor:TeamMember=Depends(require_editor),
+                  db:Session=Depends(get_db)):
+    try:
+        return request_ai_reply(db,conversation_id,actor,data.idempotency_key)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.post("/api/chats/{conversation_id}/members",
+          dependencies=[Depends(require_admin)])
+def chat_member_add(conversation_id:str,data:ChatMemberAddRequest,
+                    actor:TeamMember=Depends(require_admin),
+                    db:Session=Depends(get_db)):
+    from backend.chat_service import _conversation
+    try:
+        conv=_conversation(db,conversation_id,actor.id)
+        if conv.kind!="team":
+            raise ChatServiceError(422,"只能向团队会话添加成员")
+        return add_conversation_member(db,conversation_id,data.member_id)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
 
 
 @app.get("/api/tasks",dependencies=[Depends(require_actor)])
