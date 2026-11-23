@@ -1,6 +1,6 @@
 # Research Atlas 对话与科研发现任务 V1
 
-> Status: integrated feature branch for staging validation. Not production until the combined PR is reviewed, CI passes and backend/frontend E2E succeeds.
+> Status: integrated feature branch for staging validation. Not production until the combined PR is reviewed, CI passes and backend/frontend E2E succeeds. Deployment must use a staging database first; do not point this branch at the production database.
 
 ## 1. Product behavior
 
