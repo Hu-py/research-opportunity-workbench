@@ -66,6 +66,7 @@ def test_worker_closed_loop_without_external_calls(monkeypatch, tmp_path):
     from research_workbench.core import session_factory
     from backend.tasks import enqueue, ResearchTask
     from backend.worker import run_task
+    import backend.worker as worker_module
     import backend.agent as agent_module
 
     class StubAgent:
@@ -79,6 +80,14 @@ def test_worker_closed_loop_without_external_calls(monkeypatch, tmp_path):
                     "usage": {"tool_calls": 0, "model_rounds": 0}}
 
     monkeypatch.setattr(agent_module, "ResearchAgent", StubAgent)
+    monkeypatch.setattr(worker_module, "task_source_context", lambda db, task_id: {
+        "groups": {"A": ["a"], "B": ["b"], "C": ["c"]},
+        "direct_ids": ["S1", "S2"], "method_ids": ["S3"], "all_ids": ["S1", "S2", "S3"],
+        "source_ids_by_lane": {"A": ["S1"], "B": ["S2"], "C": ["S3"]},
+        "allowed_venues": {"a", "b", "c"},
+        "allowed_venues_by_lane": {"A": {"a"}, "B": {"b"}, "C": {"c"}},
+        "scope_version": "test-source-v1", "scene": "directed_research",
+    })
     factory = session_factory("sqlite:///" + str(tmp_path / "research.db"))
     with factory() as db:
         task = enqueue(db, "research_opportunity",
