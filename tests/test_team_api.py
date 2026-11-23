@@ -146,7 +146,7 @@ def test_personal_profile_is_private_to_each_member_and_versioned(team_client):
     assert own.json()["profile"]["research_lines"][0]["id"]=="health_transfer"
 
     # Member A cannot read or overwrite member B's private profile by guessing IDs.
-    assert client.get("/api/personal-profile",headers=service(admin)).json()["profile"]==admin_profile
+    assert client.get("/api/personal-profile",headers=service(admin)).json()["profile"]==expected_profile
     stale=client.put("/api/personal-profile",headers=service(admin),json={
         "profile":admin_profile,"expected_version":0})
     assert stale.status_code==409,stale.text
