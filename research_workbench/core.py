@@ -105,6 +105,7 @@ def _build_session_factory(url):
     engine=create_engine(url,**options)
     from backend import interests as _registered_interests
     from backend import research_sources as _registered_sources
+    from backend import task_source_scopes as _registered_task_scopes
     Base.metadata.create_all(engine)
     factory=sessionmaker(bind=engine,expire_on_commit=False)
     with factory() as db:
@@ -222,28 +223,52 @@ def query_openalex(query,since,limit=15,client=None,source_ids=None):
     finally:
         if own:http.close()
 
-def ingest(db,profile,days=14,limit=15,client=None):
+def ingest(db,profile,days=14,limit=15,client=None,source_ids_by_mode=None):
     if not 1<=days<=3650:raise ValueError("days must be within 1..3650")
     since=(date.today()-timedelta(days=days)).isoformat()
     excluded=[str(x).lower() for x in profile.get("excluded_terms",[]) if str(x).strip()]
     new=0;matched=0;errors=[]
     for line in profile["research_lines"]:
-        for q in dict.fromkeys(line["search_queries"]+line["method_queries"]):
-            try:
-                works=query_openalex(q,since,limit,client)
-            except (httpx.HTTPError,ValueError) as ex:
-                errors.append({"query":q,"error":str(ex)[:200]});continue
-            for work in works:
-                data=normalize_paper(work)
-                if not data["title"] or any(x in (data["title"]+" "+data["abstract"]).lower() for x in excluded):continue
-                matched+=1
-                p=db.get(Paper,data["id"])
-                if p is None:
-                    db.add(Paper(**data,line_ids=json.dumps([line["id"]])));new+=1
+        for mode, queries in (
+            ("direct", line["search_queries"]),
+            ("method", line["method_queries"]),
+        ):
+            selected_ids = None if source_ids_by_mode is None else source_ids_by_mode.get(mode, [])
+            # A strictly selected scope may leave one band empty.
+            # Never turn an empty source list into an unrestricted query.
+            if selected_ids is not None and not selected_ids:
+                continue
+            for q in dict.fromkeys(queries):
+              try:
+                if selected_ids is None:
+                    works=query_openalex(q,since,limit,client)
                 else:
-                    ids=set(json.loads(p.line_ids));ids.add(line["id"]);p.line_ids=json.dumps(sorted(ids))
-                    for key,value in data.items():
-                        if key!="id" and value:setattr(p,key,value)
+                    works=query_openalex(q,since,limit,client,source_ids=selected_ids)
+              except (httpx.HTTPError,ValueError) as ex:
+                  errors.append({"query":q,"error":str(ex)[:200]})
+                  continue
+              for work in works:
+                  if selected_ids is not None:
+                      source=((work.get("primary_location") or {}).get("source") or {})
+                      openalex_id=str(source.get("id") or "").rsplit("/",1)[-1]
+                      allowed={str(value).rsplit("/",1)[-1] for value in selected_ids}
+                      if openalex_id not in allowed:
+                          continue
+                  data=normalize_paper(work)
+                  if not data["title"] or any(x in (data["title"]+" "+data["abstract"]).lower() for x in excluded):
+                      continue
+                  matched+=1
+                  p=db.get(Paper,data["id"])
+                  if p is None:
+                      db.add(Paper(**data,line_ids=json.dumps([line["id"]])))
+                      new+=1
+                  else:
+                      ids=set(json.loads(p.line_ids))
+                      ids.add(line["id"])
+                      p.line_ids=json.dumps(sorted(ids))
+                      for key,value in data.items():
+                          if key!="id" and value:
+                              setattr(p,key,value)
     db.commit()
     return {"new_papers":new,"matches":matched,"failed_queries":errors,"since":since}
 
@@ -306,10 +331,16 @@ def feedback(db,idea_id,status,note=""):
                  detail=json.dumps({"status":status,"note":note},ensure_ascii=False)))
     db.commit()
 
-def weekly_report(db,profile,days=7):
+def weekly_report(db,profile,days=7,allowed_venues=None,include_team_ideas=True,include_interests=True):
     cutoff=(date.today()-timedelta(days=days)).isoformat()
-    papers=db.scalars(select(Paper).where(Paper.published>=cutoff).order_by(Paper.published.desc()).limit(20)).all()
-    ideas=db.scalars(select(Idea).order_by(Idea.score.desc()).limit(10)).all()
+    paper_limit=120 if allowed_venues is not None else 20
+    papers=db.scalars(select(Paper).where(Paper.published>=cutoff).order_by(Paper.published.desc()).limit(paper_limit)).all()
+    if allowed_venues is not None:
+        from backend.research_sources import _norm
+        papers=[paper for paper in papers if _norm(paper.venue) in allowed_venues]
+    papers=papers[:20]
+    ideas=(db.scalars(select(Idea).order_by(Idea.score.desc()).limit(10)).all()
+           if include_team_ideas else [])
     report=["# Research Opportunity Brief — "+date.today().isoformat(),"",
             "> Evidence-based triage, NOT verified novelty. Dates reflect publication, not indexing.","",
             "## Recent indexed papers",""]
@@ -324,7 +355,11 @@ def weekly_report(db,profile,days=7):
             p=db.get(Paper,pid)
             if p:report.append("- ["+p.title+"]("+p.url+")")
         report.append("")
-    from backend.interests import interest_brief_section
-    report.extend(interest_brief_section(db,days=days))
+    if include_interests:
+        from backend.interests import interest_brief_section
+        report.extend(interest_brief_section(db,days=days))
+    elif allowed_venues is not None:
+        report.extend(["", "> This report uses a task-specific journal whitelist. "
+                       "Independent interest feeds and global Radar topics are excluded."])
     report+=["## Recommended next steps","","1. Read primary source papers.","2. Search prior art and competing baselines.","3. Update idea status and record experiment outcomes."]
     return "\n".join(report)
