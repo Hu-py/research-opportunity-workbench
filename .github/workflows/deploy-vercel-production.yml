@@ -1,3 +1,4 @@
+# Production release uses the existing team token only through GitHub Actions secrets.
 name: Deploy Research Atlas to Vercel Production
 
 on:
