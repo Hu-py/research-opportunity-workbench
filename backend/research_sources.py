@@ -357,7 +357,10 @@ def match_source_rows(db, names=None, *, enabled_only=True):
 def _openalex_source_candidates(row, client):
     # Search by canonical name and short name only. Aliases are used for
     # exact validation, not as an unbounded sequence of extra API requests.
-    terms = [row.name, row.abbreviation]
+    terms = list(dict.fromkeys(
+        x for x in [row.name, row.abbreviation, *_aliases(row)]
+        if isinstance(x, str) and x.strip()
+    ))
     exact_names = [row.name, row.abbreviation] + _aliases(row)
     for term in [x for x in terms if x]:
         params = {"search": term, "per-page": 20}
