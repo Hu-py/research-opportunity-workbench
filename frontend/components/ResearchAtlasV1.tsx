@@ -248,7 +248,6 @@ export default function ResearchAtlasV1() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileDraft, setProfileDraft] = useState<Profile>(emptyProfile);
   const [profileVersion, setProfileVersion] = useState(0);
-  const [personalProfile, setPersonalProfile] = useState<PersonalResearchProfile | null>(null);
   const [personalProfileDraft, setPersonalProfileDraft] = useState<PersonalResearchProfile>(initialPersonalProfile);
   const [personalProfileVersion, setPersonalProfileVersion] = useState(0);
   const [personalProfileLoaded, setPersonalProfileLoaded] = useState(false);
@@ -312,7 +311,6 @@ export default function ResearchAtlasV1() {
         excluded_terms: saved.excluded_terms || [],
         evidence: saved.evidence || [],
       } : initialPersonalProfile;
-      setPersonalProfile(saved);
       setPersonalProfileDraft(next);
       setPersonalProfileVersion(personalProfileResult.value.version || 0);
       setPersonalProfileLoaded(true);
@@ -607,7 +605,6 @@ export default function ResearchAtlasV1() {
           }),
         },
       );
-      setPersonalProfile(result.profile);
       setPersonalProfileDraft({
         ...initialPersonalProfile,
         ...result.profile,
