@@ -24,7 +24,7 @@ class ResearchTask(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 def enqueue(db, kind: str, query: str = "") -> ResearchTask:
-    if kind not in ("explore", "sync", "weekly"):
+    if kind not in ("explore", "sync", "weekly", "research_opportunity"):
         raise ValueError("Unknown task kind")
     task = ResearchTask(id=str(uuid.uuid4()), kind=kind, query=query.strip())
     db.add(task)
