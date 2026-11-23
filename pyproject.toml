@@ -18,6 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2,<4"]
+mcp = ["mcp>=2.0,<3", "PyJWT[crypto]>=2.10,<3"]
 ai = ["openai>=1.60,<3"]
 legacy-ui = ["streamlit>=1.38,<2"]
 test = ["pytest>=8,<10"]

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import re
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -13,6 +14,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Req
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text as sql_text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from research_workbench.core import (
@@ -21,6 +23,7 @@ from research_workbench.core import (
     session_factory,
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
+from backend.research_opportunity_skill import catalog as opportunity_catalog, make_payload as opportunity_payload
 from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
     recent_papers as interest_papers, ingest_interests,
@@ -115,6 +118,16 @@ from backend.team import (
     SESSION_SECONDS, login as member_login, resolve_session, revoke_session,
     create_member, public_member, set_member_status, add_audit,
     current_profile_version, save_team_profile,
+    read_personal_profile, save_personal_profile,
+)
+from backend.personal_library import (
+    PersonalResearchAsset, upsert_personal_asset, list_personal_assets,
+    archive_personal_asset, prune_personal_asset_line_links,
+)
+
+from backend.chat_service import (
+    ChatServiceError, list_conversations, create_conversation, list_messages,
+    send_message as send_chat_message, request_ai_reply, add_conversation_member,
 )
 
 @lru_cache(maxsize=1)
@@ -164,11 +177,104 @@ def require_admin(actor:TeamMember|None=Depends(require_actor)):
         raise HTTPException(403,"Administrator role required")
     return actor
 
+def require_team_actor(actor:TeamMember|None=Depends(require_actor)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(503,"持久化对话需要启用团队身份认证")
+    return actor
+
+def _resolve_directed_sources_background(factory):
+    """Resolve only the currently selected SC03 sources by exact OpenAlex match."""
+    logger = logging.getLogger("uvicorn.error")
+    try:
+        # httpx logs full request URLs at INFO, which would expose OpenAlex
+        # query-string credentials. Keep transport logs at warning or above.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        with factory() as db:
+            scope = read_scope(db, "directed_research")
+            source_ids = list(dict.fromkeys(
+                source_id
+                for band in ("A", "B", "C")
+                for source_id in scope["groups"].get(band, [])
+            ))
+            # OpenAlex stores the NeurIPS series under "Neural Information
+            # Processing Systems" (alternate title: "Advances in neural
+            # information processing systems"), not the longer local label.
+            # Add these exact catalogue aliases and retry only that reviewed row.
+            if source_ids:
+                selected_rows = db.scalars(
+                    select(ResearchSource).where(ResearchSource.id.in_(source_ids))
+                ).all()
+                for row in selected_rows:
+                    if row.name == "Conference on Neural Information Processing Systems":
+                        try:
+                            aliases = json.loads(row.aliases_json or "[]")
+                        except (TypeError, ValueError):
+                            aliases = []
+                        for alias in (
+                            "Neural Information Processing Systems",
+                            "Advances in Neural Information Processing Systems",
+                        ):
+                            if alias.casefold() not in {
+                                str(value).casefold() for value in aliases
+                                if isinstance(value, str)
+                            }:
+                                aliases.append(alias)
+                        row.aliases_json = json.dumps(aliases, ensure_ascii=False)
+                        if row.resolution_status == "not_found":
+                            row.resolution_status = "unresolved"
+                            row.resolution_note = "Added exact OpenAlex display-name aliases; retry pending"
+                        db.commit()
+            summary = resolve_sources(db, source_ids) if source_ids else {
+                "checked": 0, "resolved": 0, "ambiguous": 0,
+                "not_found": 0, "errors": 0,
+            }
+            updated = read_scope(db, "directed_research")
+            unresolved = db.scalars(
+                select(ResearchSource).where(
+                    ResearchSource.id.in_(source_ids),
+                    ResearchSource.resolution_status != "resolved",
+                )
+            ).all() if source_ids else []
+            unresolved_names = ",".join(
+                f"{row.name}:{row.resolution_status}" for row in unresolved
+            ) or "none"
+        logger.info(
+            "Research Opportunity source resolution: checked=%s resolved_now=%s "
+            "ambiguous=%s not_found=%s errors=%s; readiness=%s/%s; unresolved=%s",
+            summary["checked"], summary["resolved"], summary["ambiguous"],
+            summary["not_found"], summary["errors"],
+            updated["resolved_count"], updated["selected_count"], unresolved_names,
+        )
+    except Exception:
+        logger.warning("Research Opportunity source resolution: failed")
+
+
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     if os.getenv("APP_ENV","development").lower()=="production" and not os.getenv("API_BEARER_TOKEN"):
         raise RuntimeError("Set API_BEARER_TOKEN before production deployment")
+    # One-shot content integrity gate BEFORE creating any app sessions on the
+    # new database. A failed Render deploy leaves the old service live.
+    if (os.getenv("RESEARCH_DATABASE_PROVIDER","render").strip().lower()=="supabase"
+            and os.getenv("MIGRATION_CUTOVER_GUARD","").strip()=="1"):
+        from backend.managed_migration import precutover_verify, _cfg
+        try:
+            result=precutover_verify(
+                _cfg(os.getenv("DATABASE_URL","")),
+                _cfg(os.getenv("MIGRATION_TARGET_DATABASE_URL","")))
+            if result.get("result")!="ready":
+                raise RuntimeError("Cutover integrity gate failed")
+            logging.getLogger("uvicorn.error").info(
+                "DATABASE_CUTOVER_INTEGRITY_PASSED tables=%s",result["tables"])
+        except Exception:
+            logging.getLogger("uvicorn.error").error(
+                "DATABASE_CUTOVER_INTEGRITY_FAILED; refusing new app startup")
+            raise RuntimeError("Cannot switch database: integrity verification failed") from None
     factory=get_factory()
+    # New Business Agent tables remain private and RLS-protected at startup.
+    from backend.business_memory import secure_new_tables
+    with factory() as _business_security_db:
+        secure_new_tables(_business_security_db)
     bootstrap_admin_from_env(factory)
     with factory() as db:
         imported=seed_verified(db)
@@ -211,10 +317,108 @@ async def lifespan(app:FastAPI):
         if os.getenv("PROFILE_AUDIT_ON_STARTUP","").strip()=="1":
             from backend.profile_audit import emit_log_report
             emit_log_report(db,logging.getLogger("uvicorn.error"))
+    # Optional, read-only, one-off Supabase migration target check.
+    # Never log DB URLs, credentials, hostnames, users, or error causes.
+    if os.getenv("MIGRATION_PREFLIGHT_ON_STARTUP", "").strip() == "1":
+        from backend.migration_preflight import inspect_target
+        try:
+            probe = inspect_target(
+                os.getenv("DATABASE_URL", ""),
+                os.getenv("MIGRATION_TARGET_DATABASE_URL", ""),
+            )
+            logging.getLogger("uvicorn.error").info(
+                "MIGRATION_PREFLIGHT_RESULT %s",
+                json.dumps(probe, sort_keys=True),
+            )
+        except (ValueError, RuntimeError) as exc:
+            # inspect_target wraps all connection exceptions in fixed, non-sensitive
+            # messages, so categorize rather than emitting raw provider exceptions.
+            detail = str(exc)
+            categories = {
+                "Migration target is not configured": "target_missing",
+                "Source database is not configured": "source_missing",
+                "Invalid PostgreSQL connection configuration": "invalid_uri",
+                "The target is identical to the source; no migration allowed": "same_database",
+                "Target connection failed; check private connection string, SSL and network": "connection_failed",
+            }
+            if detail.startswith("migration_target_"):
+                candidate = detail[len("migration_target_"):]
+                permitted = {
+                    "authentication_failed", "database_not_found",
+                    "role_or_access_rejected", "dns_resolution_failed",
+                    "network_timeout", "connection_refused",
+                    "other_connection_error",
+                }
+                category = candidate if candidate in permitted else "unknown"
+            else:
+                category = categories.get(detail, "unknown")
+            logging.getLogger("uvicorn.error").warning(
+                "MIGRATION_PREFLIGHT_FAILED category=%s", category
+            )
+    # Optional migration source inventory: only sizes and trusted table counts.
+    # Never returns research records, passwords, hostnames or connection strings.
+    if os.getenv("MIGRATION_SOURCE_AUDIT_ON_STARTUP", "").strip() == "1":
+        from backend.migration_preflight import source_inventory
+        try:
+            with factory() as source_db:
+                inventory = source_inventory(source_db)
+            logging.getLogger("uvicorn.error").info(
+                "MIGRATION_SOURCE_INVENTORY %s", json.dumps(inventory, sort_keys=True)
+            )
+        except (ValueError, Exception):
+            logging.getLogger("uvicorn.error").warning(
+                "MIGRATION_SOURCE_INVENTORY_FAILED"
+            )
+    # Explicit one-shot server-side migration, never on by default.
+    # Executes only on Render with MANAGED_MIGRATION_PHASE=backup|restore.
+    # Restores only to a separate isolated target and never changes DATABASE_URL.
+    if os.getenv("MANAGED_MIGRATION_PHASE","").strip() in ("backup","restore","verify","precutover"):
+        from backend.managed_migration import execute_from_env
+        execute_from_env()
     logging.getLogger("uvicorn.error").info(
         "OpenAlex API key configured: %s",
         "yes" if os.getenv("OPENALEX_API_KEY","").strip() else "no",
     )
+    # Report only credential readiness, never key values or encrypted blobs.
+    direct_deepseek = bool(
+        os.getenv("DEEPSEEK_API_KEY","").strip()
+        or os.getenv("SC04_DEEPSEEK_API_KEY","").strip()
+    )
+    try:
+        with factory() as credential_db:
+            vault_status = model_status(credential_db)
+        if direct_deepseek:
+            deepseek_source = "environment"
+        elif vault_status["configured"] and vault_status["vault_ready"]:
+            deepseek_source = "encrypted_vault"
+        else:
+            deepseek_source = "missing"
+    except Exception:
+        deepseek_source = "unknown"
+    logging.getLogger("uvicorn.error").info(
+        "DeepSeek runtime credential source: %s", deepseek_source
+    )
+    try:
+        with factory() as scope_db:
+            source_readiness = read_scope(scope_db, "directed_research")
+        logging.getLogger("uvicorn.error").info(
+            "Research Opportunity source readiness: selected=%s resolved=%s unresolved=%s",
+            source_readiness["selected_count"],
+            source_readiness["resolved_count"],
+            source_readiness["missing_or_unresolved"],
+        )
+    except Exception:
+        logging.getLogger("uvicorn.error").warning(
+            "Research Opportunity source readiness: unavailable"
+        )
+    if os.getenv("RESEARCH_SOURCE_AUTO_RESOLVE_ON_STARTUP","").strip().lower() in ("1","true","yes"):
+        from threading import Thread
+        Thread(
+            target=_resolve_directed_sources_background,
+            args=(factory,),
+            daemon=True,
+            name="research-source-resolver",
+        ).start()
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
     trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
@@ -243,7 +447,14 @@ async def lifespan(app:FastAPI):
         logging.getLogger("uvicorn.error").warning(
             "Inline research jobs enabled: not durable across free-instance sleep or restarts"
         )
-    yield
+    # The mounted OAuth MCP session manager has its own ASGI lifespan.
+    # Never run or expose it unless the owner explicitly enabled the MCP app.
+    managed_mcp=getattr(app.state,"research_advisor_mcp",None)
+    if managed_mcp is not None:
+        async with managed_mcp.session_manager.run():
+            yield
+    else:
+        yield
 
 app=FastAPI(
     title="Research Opportunity Workbench API",
@@ -254,11 +465,45 @@ app=FastAPI(
     redoc_url=None,
 )
 
+@app.middleware("http")
+async def _read_only_migration_window(request:Request,call_next):
+    # Freeze old Render HTTP writes while the replacement starts; rollout is
+    # blue/green and the new service removes this flag after verification.
+    if (os.getenv("MIGRATION_FREEZE_WRITES","").strip()=="1"
+            and request.method.upper() not in ("GET","HEAD","OPTIONS")):
+        return JSONResponse(
+            status_code=503,
+            content={"detail":"Database migration: write operations temporarily paused"},
+            headers={"Retry-After":"120","Cache-Control":"no-store"})
+    return await call_next(request)
+
+
 class TaskRequest(BaseModel):
     kind:Literal["explore","sync","weekly"]="explore"
     query:str=Field(default="",max_length=2000)
-    # Optional strict source list for this run only, always snapshotted.
     source_override:dict[str,list[str]]|None=None
+
+class ResearchOpportunityRunRequest(BaseModel):
+    capability:Literal["paper_discovery","evidence_review","method_transfer","idea_review"]="idea_review"
+    question:str=Field(min_length=6,max_length=1500)
+    source_override:dict[str,list[str]]|None=None
+
+class ChatCreateRequest(BaseModel):
+    kind:Literal["private","team"]="private"
+    title:str=Field(default="",max_length=180)
+
+
+class ChatMessageRequest(BaseModel):
+    content:str=Field(min_length=1,max_length=8000)
+    client_nonce:str=Field(min_length=8,max_length=80)
+    trigger_ai:bool=False
+    trigger_type:Literal["","mention","manual"]=""
+
+class ChatAIReplyRequest(BaseModel):
+    idempotency_key:str=Field(min_length=8,max_length=100)
+
+class ChatMemberAddRequest(BaseModel):
+    member_id:str=Field(min_length=1,max_length=48)
 
 class FeedbackRequest(BaseModel):
     status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
@@ -272,6 +517,106 @@ class ProfileRequest(BaseModel):
     datasets:list[dict]|None=None
     methods:list[str]|None=None
     expected_version:int|None=None
+
+class PersonalProfileRequest(BaseModel):
+    profile:dict
+    expected_version:int=Field(ge=0)
+
+class PersonalAssetRequest(BaseModel):
+    kind:Literal["publication","agent_report","experiment_result","project","dataset","note"]
+    title:str=Field(min_length=1,max_length=260)
+    summary:str=Field(default="",max_length=12000)
+    url:str=Field(default="",max_length=1200)
+    source_type:Literal["doi","openalex_work","chatgpt_space_page","research_task","sc05_run","library_file","external_url","manual"]="manual"
+    source_id:str=Field(default="",max_length=255)
+    client_key:str=Field(default="",max_length=80)
+    metadata:dict=Field(default_factory=dict)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+
+
+class PersonalPaperImportRequest(BaseModel):
+    paper_id:str|None=Field(default=None,max_length=255)
+    doi:str|None=Field(default=None,max_length=255)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+    client_key:str=Field(default="",max_length=80)
+
+
+class PersonalTaskImportRequest(BaseModel):
+    task_id:str=Field(min_length=1,max_length=40)
+    line_ids:list[str]=Field(default_factory=list,max_length=8)
+    client_key:str=Field(default="",max_length=80)
+
+
+def validate_personal_profile(raw:dict) -> dict:
+    """Validate member-owned research lines and their linked personal evidence."""
+    if not isinstance(raw,dict):
+        raise ValueError("个人画像必须是对象")
+    lines=raw.get("research_lines")
+    if not isinstance(lines,list) or not 1<=len(lines)<=8:
+        raise ValueError("个人研究主线需要 1–8 条")
+    line_ids=set()
+    for line in lines:
+        if not isinstance(line,dict):
+            raise ValueError("研究主线格式无效")
+        ident=line.get("id")
+        if not isinstance(ident,str) or not re.fullmatch(r"[a-z][a-z0-9_]{2,54}",ident):
+            raise ValueError("研究主线 ID 格式无效")
+        if ident in line_ids:
+            raise ValueError("研究主线 ID 不能重复")
+        line_ids.add(ident)
+        if not isinstance(line.get("name"),str) or not line["name"].strip() or len(line["name"])>140:
+            raise ValueError("研究主线名称不能为空且不超过 140 字")
+        if not isinstance(line.get("problem"),str) or not line["problem"].strip() or len(line["problem"])>1000:
+            raise ValueError("研究问题不能为空且不超过 1000 字")
+        for field,limit,max_length in (
+            ("keywords",16,100),("search_queries",5,160),("method_queries",5,160)
+        ):
+            values=line.get(field,[])
+            if not isinstance(values,list) or len(values)>limit or any(
+                not isinstance(value,str) or len(value)>max_length for value in values
+            ):
+                raise ValueError(field+" 格式或数量无效")
+    payload={
+        "research_lines":lines,
+        "goals":raw.get("goals",""),
+        "methods":raw.get("methods",[]),
+        "excluded_terms":raw.get("excluded_terms",[]),
+        "evidence":raw.get("evidence",[]),
+    }
+    if not isinstance(payload["goals"],str) or len(payload["goals"])>1000:
+        raise ValueError("个人研究目标不超过 1000 字")
+    for field,limit,max_length in (("methods",30,120),("excluded_terms",30,120)):
+        values=payload[field]
+        if not isinstance(values,list) or len(values)>limit or any(
+            not isinstance(value,str) or len(value)>max_length for value in values
+        ):
+            raise ValueError(field+" 格式或数量无效")
+    evidence=payload["evidence"]
+    if not isinstance(evidence,list) or len(evidence)>40:
+        raise ValueError("个人成果与报告关联记录最多 40 条")
+    allowed_kinds={"publication","agent_report","project","dataset"}
+    for item in evidence:
+        if not isinstance(item,dict) or item.get("line_id") not in line_ids:
+            raise ValueError("成果关联了不存在的个人研究主线")
+        if item.get("kind") not in allowed_kinds:
+            raise ValueError("成果类型无效")
+        if not isinstance(item.get("id"),str) or not re.fullmatch(r"[a-z][a-z0-9_]{2,54}",item["id"]):
+            raise ValueError("成果记录 ID 格式无效")
+        if not isinstance(item.get("title"),str) or not item["title"].strip() or len(item["title"])>260:
+            raise ValueError("成果标题不能为空且不超过 260 字")
+        url=item.get("url","")
+        if not isinstance(url,str) or len(url)>1200 or (url and not url.startswith(("https://","http://"))):
+            raise ValueError("成果链接必须为有效 HTTP(S) 地址")
+        if not isinstance(item.get("note",""),str) or len(item.get("note",""))>1000:
+            raise ValueError("成果说明不超过 1000 字")
+    validate_profile({
+        "research_lines":payload["research_lines"],
+        "goals":payload["goals"],
+        "methods":payload["methods"],
+        "excluded_terms":payload["excluded_terms"],
+        "datasets":[],
+    })
+    return payload
 
 class AchievementReviewRequest(BaseModel):
     status:Literal["verified","review","rejected"]
@@ -1178,7 +1523,7 @@ def cusp_opportunities_api(db:Session=Depends(get_db)):
 @app.get("/api/task-source-scopes",dependencies=[Depends(require_actor)])
 def task_source_scopes(actor:TeamMember|None=Depends(require_actor),
                        db:Session=Depends(get_db)):
-    """Per-scene source lists. The personal list is visible only to its owner."""
+    """Return independent SC01/SC02/SC03 journal lists."""
     personal_available = actor is not None
     return {"items":[
         read_scope(db, "team_weekly"),
@@ -1195,7 +1540,7 @@ def task_source_scope_update(scene:str, data:TaskSourceScopeRequest,
                              actor:TeamMember|None=Depends(require_editor),
                              db:Session=Depends(get_db)):
     if scene not in SCOPES:
-        raise HTTPException(404,"Unknown task source scope")
+        raise HTTPException(404,"Unknown research task source scope")
     if scene=="personal_weekly":
         if actor is None:
             raise HTTPException(409,"个人来源配置需要独立团队成员账号")
@@ -1323,6 +1668,388 @@ def profile_update(data:ProfileRequest,db:Session=Depends(get_db),
             version=current_profile_version(db)
     except ValueError as exc:raise HTTPException(409 if "changed by another" in str(exc) else 422,str(exc)) from exc
     return {"profile":get_profile(db),"version":version}
+
+@app.get("/api/personal-profile")
+def personal_profile_get(
+    actor:TeamMember=Depends(require_team_actor),db:Session=Depends(get_db)
+):
+    """Return only the authenticated member's private research profile."""
+    return read_personal_profile(db,actor.id)
+
+
+@app.put("/api/personal-profile")
+def personal_profile_update(
+    data:PersonalProfileRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    """Save the profile and its initial evidence assets in one transaction."""
+    try:
+        payload=validate_personal_profile(data.profile)
+        evidence=payload.pop("evidence",[])
+        result=save_personal_profile(
+            db,actor.id,payload,data.expected_version,commit=False
+        )
+        valid_line_ids={line["id"] for line in payload["research_lines"]}
+        prune_personal_asset_line_links(db,actor.id,valid_line_ids)
+        for item in evidence:
+            url=item.get("url","")
+            if "doi.org/" in url:
+                source_type="doi"
+                source_id=url.split("doi.org/",1)[1].strip()
+            elif "/space/page" in url:
+                source_type="chatgpt_space_page"
+                source_id=url.rstrip("/").split("/")[-1]
+            elif url:
+                source_type="external_url"
+                source_id=url
+            else:
+                source_type="manual"
+                source_id=""
+            upsert_personal_asset(db,actor.id,{
+                "client_key":"profile_seed_"+item["id"],
+                "kind":item["kind"],
+                "title":item["title"],
+                "summary":item.get("note",""),
+                "url":url,
+                "source_type":source_type,
+                "source_id":source_id,
+                "metadata":{"seeded_from":"personal_profile"},
+                "line_ids":[item["line_id"]],
+            })
+        db.commit()
+        return read_personal_profile(db,actor.id)
+    except ValueError as exc:
+        db.rollback()
+        conflict="changed" in str(exc).lower()
+        raise HTTPException(409 if conflict else 422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"个人画像或资料已被另一请求更新，请刷新后重试") from exc
+
+
+def _migrate_embedded_personal_evidence(db:Session,member_id:str):
+    """Idempotently move legacy profile evidence links into the asset library."""
+    stored=read_personal_profile(db,member_id).get("profile") or {}
+    evidence=stored.get("evidence") or []
+    created=False
+    for item in evidence:
+        if not isinstance(item,dict) or not item.get("id") or not item.get("line_id"):
+            continue
+        client_key="profile_seed_"+str(item["id"])
+        existing=db.scalar(select(PersonalResearchAsset).where(
+            PersonalResearchAsset.member_id==member_id,
+            PersonalResearchAsset.client_key==client_key,
+        ))
+        if existing is not None:
+            continue
+        url=item.get("url","")
+        if "doi.org/" in url:
+            source_type="doi";source_id=url.split("doi.org/",1)[1].strip()
+        elif "/space/page" in url:
+            source_type="chatgpt_space_page";source_id=url.rstrip("/").split("/")[-1]
+        elif url:
+            source_type="external_url";source_id=url
+        else:
+            source_type="manual";source_id=""
+        try:
+            upsert_personal_asset(db,member_id,{
+                "client_key":client_key,
+                "kind":item.get("kind","agent_report"),
+                "title":item.get("title","Untitled evidence"),
+                "summary":item.get("note",""),
+                "url":url,
+                "source_type":source_type,
+                "source_id":source_id,
+                "metadata":{"migrated_from":"legacy_profile_evidence"},
+                "line_ids":[item["line_id"]],
+            })
+            created=True
+        except ValueError:
+            # Preserve the original profile data if a legacy line reference is invalid.
+            continue
+    if created:
+        db.commit()
+
+
+@app.get("/api/personal-assets")
+def personal_assets_list(
+    kind:str|None=None,
+    line_id:str|None=None,
+    q:str|None=Query(default=None,max_length=120),
+    include_archived:bool=False,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    try:
+        _migrate_embedded_personal_evidence(db,actor.id)
+        return {"items":list_personal_assets(
+            db,actor.id,kind=kind,line_id=line_id,query=q,
+            include_archived=include_archived,
+        )}
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/personal-assets",status_code=status.HTTP_201_CREATED)
+def personal_asset_create(
+    data:PersonalAssetRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    try:
+        result=upsert_personal_asset(db,actor.id,data.model_dump())
+        add_audit(db,"personal_asset.created",actor.id,result["id"],
+                  "kind="+result["kind"]+" source="+result["source_type"])
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"资料已存在或正在被另一请求修改") from exc
+
+
+@app.put("/api/personal-assets/{asset_id}")
+def personal_asset_update(
+    asset_id:str,
+    data:PersonalAssetRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    existing=db.scalar(select(PersonalResearchAsset).where(
+        PersonalResearchAsset.id==asset_id,
+        PersonalResearchAsset.member_id==actor.id,
+    ))
+    if existing is None:
+        raise HTTPException(404,"个人科研资料不存在")
+    payload=data.model_dump()
+    payload["client_key"]=existing.client_key
+    try:
+        result=upsert_personal_asset(db,actor.id,payload)
+        add_audit(db,"personal_asset.updated",actor.id,result["id"],
+                  "kind="+result["kind"])
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"资料已被另一请求修改") from exc
+
+
+@app.delete("/api/personal-assets/{asset_id}")
+def personal_asset_archive(
+    asset_id:str,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    if not archive_personal_asset(db,actor.id,asset_id):
+        raise HTTPException(404,"个人科研资料不存在")
+    add_audit(db,"personal_asset.archived",actor.id,asset_id)
+    db.commit()
+    return {"archived":True,"id":asset_id}
+
+
+@app.post("/api/personal-assets/import-paper",status_code=status.HTTP_201_CREATED)
+def personal_asset_import_paper(
+    data:PersonalPaperImportRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    if not data.paper_id and not data.doi:
+        raise HTTPException(422,"请提供 paper_id 或 DOI")
+    paper=db.get(Paper,data.paper_id) if data.paper_id else None
+    if paper is None and data.doi:
+        paper=db.scalar(select(Paper).where(Paper.doi==data.doi))
+    if paper is None:
+        raise HTTPException(404,"共用文献库中未找到这篇论文；可用手动资料录入 DOI 和链接")
+    if paper.id.startswith("https://openalex.org/"):
+        source_type,source_id="openalex_work",paper.id.rsplit("/",1)[-1]
+    elif paper.doi:
+        source_type,source_id="doi",paper.doi
+    else:
+        source_type,source_id="manual",paper.id
+    try:
+        result=upsert_personal_asset(db,actor.id,{
+            "client_key":data.client_key,
+            "kind":"publication",
+            "title":paper.title,
+            "summary":paper.abstract or "",
+            "url":paper.url or ("https://doi.org/"+paper.doi if paper.doi else ""),
+            "source_type":source_type,
+            "source_id":source_id,
+            "metadata":{"doi":paper.doi,"venue":paper.venue,
+                        "published":paper.published,"paper_id":paper.id},
+            "line_ids":data.line_ids,
+        })
+        add_audit(db,"personal_asset.imported_paper",actor.id,result["id"],
+                  "paper_id="+paper.id)
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/personal-assets/import-task",status_code=status.HTTP_201_CREATED)
+def personal_asset_import_task(
+    data:PersonalTaskImportRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    task=db.get(ResearchTask,data.task_id)
+    if task is None:
+        raise HTTPException(404,"科研任务不存在")
+    result_payload=json.loads(task.result_json or "{}")
+    if not result_payload:
+        raise HTTPException(409,"任务尚无可归档的研究结果")
+    summary=str(result_payload.get("answer") or result_payload.get("summary") or "")
+    title=task.query.strip() or ("Research Atlas task "+task.id[:8])
+    try:
+        result=upsert_personal_asset(db,actor.id,{
+            "client_key":data.client_key or "task_"+task.id,
+            "kind":"agent_report",
+            "title":title,
+            "summary":summary[:12000],
+            "url":"",
+            "source_type":"research_task",
+            "source_id":task.id,
+            "metadata":{"task_kind":task.kind,"task_status":task.status,
+                        "created_at":task.created_at.isoformat() if task.created_at else None},
+            "line_ids":data.line_ids,
+        })
+        add_audit(db,"personal_asset.imported_task",actor.id,result["id"],
+                  "task_id="+task.id)
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+
+def require_research_opportunity_enabled():
+    if not team_auth_enabled():
+        raise HTTPException(503,"Research Opportunity requires team authentication")
+    if os.getenv("RESEARCH_OPPORTUNITY_SKILL_ENABLED","").strip().lower() not in ("1","true","yes"):
+        raise HTTPException(503,"Research Opportunity Skill is not enabled")
+
+
+@app.get("/api/skills/research-opportunity",dependencies=[Depends(require_actor)])
+def research_opportunity_catalog():
+    require_research_opportunity_enabled()
+    return opportunity_catalog()
+
+
+@app.post("/api/skills/research-opportunity/runs",status_code=status.HTTP_202_ACCEPTED,
+          dependencies=[Depends(require_actor)])
+def research_opportunity_start(data:ResearchOpportunityRunRequest,
+                               background:BackgroundTasks,
+                               db:Session=Depends(get_db),
+                               actor:TeamMember|None=Depends(require_editor)):
+    require_research_opportunity_enabled()
+    if data.source_override is not None:
+        try:
+            _validate_groups(db,data.source_override)
+        except ValueError as exc:
+            raise HTTPException(422,str(exc)) from exc
+    try:
+        payload=opportunity_payload(data.capability,data.question)
+        task=enqueue(db,"research_opportunity",payload,
+                     owner_id=actor.id if actor else "",
+                     source_override=data.source_override)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    snapshot=db.get(TaskSourceSnapshot,task.id)
+    source_state={
+        "scene":snapshot.scene,
+        "groups":json.loads(snapshot.groups_json),
+        "enforced":snapshot.enforced,
+        "scope_version":snapshot.scope_version,
+    }
+    add_audit(db,"skill.research_opportunity.started",actor.id,task.id,
+              "capability="+data.capability+";sources="+str(source_state["enforced"]))
+    db.commit()
+    if inline_worker_enabled():
+        background.add_task(run_task,get_factory(),task.id)
+    result=as_dict(task)
+    result["source_scope"]=source_state
+    result["capability"]=data.capability
+    return result
+
+
+@app.get("/api/chats",dependencies=[Depends(require_team_actor)])
+def chats(kind:Literal["private","team"]|None=None,
+          actor:TeamMember=Depends(require_team_actor),
+          db:Session=Depends(get_db)):
+    return {"items":list_conversations(db,actor.id,kind)}
+
+
+@app.post("/api/chats",status_code=status.HTTP_201_CREATED,
+          dependencies=[Depends(require_team_actor)])
+def chats_create(data:ChatCreateRequest,
+                 actor:TeamMember=Depends(require_editor),
+                 db:Session=Depends(get_db)):
+    try:
+        return create_conversation(db,actor,data.kind,data.title)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.get("/api/chats/{conversation_id}/messages",
+         dependencies=[Depends(require_team_actor)])
+def chat_messages(conversation_id:str,
+                  after_seq:int=Query(default=0,ge=0),
+                  limit:int=Query(default=100,ge=1,le=200),
+                  actor:TeamMember=Depends(require_team_actor),
+                  db:Session=Depends(get_db)):
+    try:
+        items=list_messages(db,conversation_id,actor.id,after_seq,limit)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+    return {"items":items}
+
+
+@app.post("/api/chats/{conversation_id}/messages",
+          dependencies=[Depends(require_team_actor)])
+def chat_message_create(conversation_id:str,data:ChatMessageRequest,
+                        actor:TeamMember=Depends(require_editor),
+                        db:Session=Depends(get_db)):
+    try:
+        return send_chat_message(
+            db,conversation_id,actor,data.content,data.client_nonce,
+            trigger_ai=data.trigger_ai,trigger_type=data.trigger_type,
+        )
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.post("/api/chats/{conversation_id}/ai-replies",
+          dependencies=[Depends(require_team_actor)])
+def chat_ai_reply(conversation_id:str,data:ChatAIReplyRequest,
+                  actor:TeamMember=Depends(require_editor),
+                  db:Session=Depends(get_db)):
+    try:
+        return request_ai_reply(db,conversation_id,actor,data.idempotency_key)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.post("/api/chats/{conversation_id}/members",
+          dependencies=[Depends(require_team_actor), Depends(require_admin)])
+def chat_member_add(conversation_id:str,data:ChatMemberAddRequest,
+                    actor:TeamMember=Depends(require_admin),
+                    db:Session=Depends(get_db)):
+    from backend.chat_service import _conversation
+    try:
+        conv=_conversation(db,conversation_id,actor.id)
+        if conv.kind!="team":
+            raise ChatServiceError(422,"只能向团队会话添加成员")
+        return add_conversation_member(db,conversation_id,data.member_id)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
 
 @app.get("/api/tasks",dependencies=[Depends(require_actor)])
 def tasks(db:Session=Depends(get_db)):
@@ -1476,3 +2203,24 @@ from backend.research_evolution_api import mount as _mount_evolution_routes
 _mount_evolution_routes(app, get_db=get_db, get_factory=get_factory,
                        require_actor=require_actor, require_editor=require_editor,
                        team_auth_enabled=team_auth_enabled)
+
+# Read-only migration target preflight; team-admin session required.
+from backend.migration_preflight import mount as _mount_migration_preflight_routes
+_mount_migration_preflight_routes(app, require_admin=require_admin)
+
+# Durable Business Research Advisor: disabled for external access until explicitly
+# approved and configured by the team owner (separate integration secret).
+from backend.business_memory import mount as _mount_business_memory_routes
+_mount_business_memory_routes(app, get_db=get_db, require_actor=require_actor,
+                              require_editor=require_editor, require_admin=require_admin)
+
+# Independent minimal OAuth consent page, served from Render instead of Vercel.
+# It is enabled only after a project publishable key is configured on Render.
+from backend.oauth_consent import router as _oauth_consent_router
+app.include_router(_oauth_consent_router)
+
+# Custom MCP is intentionally off until a reviewed external OAuth provider,
+# approved subjects, and explicit team data-sharing grant are configured.
+if os.getenv("BUSINESS_MCP_ENABLED","").strip().lower()=="true":
+    from backend.business_mcp import mount_mcp as _mount_research_advisor_mcp
+    _mount_research_advisor_mcp(app)

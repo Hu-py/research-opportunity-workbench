@@ -1,11 +1,15 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-trixie
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
+# PostgreSQL 17 clients are required for an exact logical backup/restore of PG17.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client-17 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY pyproject.toml ./
 COPY research_workbench ./research_workbench
 COPY backend ./backend
 COPY skills ./skills
-RUN pip install --no-cache-dir '.[postgres,ai]'
+RUN pip install --no-cache-dir '.[postgres,ai,mcp]'
 RUN useradd --create-home --uid 10001 researcher
 USER researcher
 EXPOSE 8000
