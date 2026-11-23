@@ -33,10 +33,12 @@ TOOLS = [
      "parameters":{"type":"object","properties":{"query":{"type":"string"}},
                    "required":["query"],"additionalProperties":False}},
     {"type":"function","name":"search_live_papers",
-     "description":"Query OpenAlex for up to 6 recent papers and their bibliographic metadata. Conference status is unverified.",
+     "description":"Query OpenAlex within one approved Research Atlas source lane: A planning applications, B urban-science framing, C computational methods, or all. Conference status is unverified.",
      "strict":True,
-     "parameters":{"type":"object","properties":{"query":{"type":"string"}},
-                   "required":["query"],"additionalProperties":False}},
+     "parameters":{"type":"object","properties":{
+         "query":{"type":"string"},
+         "lane":{"type":"string","enum":["A","B","C","all"]}},
+         "required":["query","lane"],"additionalProperties":False}},
     {"type":"function","name":"get_research_profile",
      "description":"Retrieve the researcher's configured research questions, existing methods, and research priorities",
      "strict":True,
@@ -132,21 +134,32 @@ class ResearchAgent:
             return self._papers([p for p in ranked if any(x in (p.title+" "+(p.abstract or "")).lower()
                                                               for x in words)][:8])
         if name == "search_live_papers":
-            self.log("paper_search",f"OpenAlex 检索：{q}")
+            lane=str(args.get("lane","all")).upper()
+            if lane not in ("A","B","C","ALL"):
+                return {"error":"Invalid source lane"}
+            lane = lane.lower() if lane == "ALL" else lane
+            self.log("paper_search",f"OpenAlex {lane} lane 检索：{q}")
             try:
                 scope=self.source_context
+                source_ids=None
+                allowed_venues=None
+                if scope is not None:
+                    source_ids=(scope["all_ids"] if lane == "all"
+                                else scope["source_ids_by_lane"].get(lane,[]))
+                    allowed_venues=(scope["allowed_venues"] if lane == "all"
+                                    else scope["allowed_venues_by_lane"].get(lane,set()))
+                    # Empty configured lane is an empty result, never an unrestricted fallback.
+                    if not source_ids:
+                        return []
                 rows=query_openalex(
                     q,(date.today()-timedelta(days=730)).isoformat(),
-                    limit=6,client=self.openalex_client,
-                    source_ids=scope["all_ids"] if scope is not None else None,
+                    limit=6,client=self.openalex_client,source_ids=source_ids,
                 )
                 if scope is not None:
-                    # Defend against a mock/non-compliant source returning
-                    # venues outside the requested OpenAlex whitelist.
                     def inside_source(work):
                         src=((work.get("primary_location") or {}).get("source") or {})
                         src_id=str(src.get("id") or "").rsplit("/",1)[-1]
-                        return src_id in scope["all_ids"] or _norm(src.get("display_name","")) in scope["allowed_venues"]
+                        return src_id in source_ids or _norm(src.get("display_name","")) in allowed_venues
                     rows=[work for work in rows if inside_source(work)]
                 return self._papers([normalize_paper(x) for x in rows if x.get("title")])
             except Exception as exc:
