@@ -1,0 +1,53 @@
+.panel{background:#fff;border:1px solid #e8e8e5;border-radius:8px;padding:22px 23px;display:grid;gap:14px}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.eyebrow{font-size:9px;letter-spacing:1.5px;color:#999;font-weight:750}
+.heading h2{font-size:16px;margin:6px 0 0;color:#222}
+.count{font-size:9px;color:#888;border:1px solid #e8e8e5;border-radius:4px;padding:5px 8px}
+.description{font-size:10px;color:#888;line-height:1.8;margin:0}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.filters{display:flex;gap:5px;flex-wrap:wrap}
+.filters button{border:1px solid transparent;border-radius:5px;background:transparent;color:#777;padding:7px 10px;font-size:10px}
+.filters button:hover{background:#f7f7f5}
+.filters .filterActive{background:#171717;color:#fff}
+.addButton,.save,.importButton{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #171717;background:#171717;color:#fff;border-radius:5px;padding:8px 12px;font-size:10px;font-weight:650}
+.assetList{display:grid;gap:8px}
+.asset{border:1px solid #ecece8;border-radius:6px;padding:13px 14px;min-width:0}
+.assetTop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.assetTitle{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.assetTitle strong{font-size:11px;color:#333;line-height:1.6}
+.assetTitle span{font-size:9px;color:#777;background:#f5f5f2;border:1px solid #e9e9e4;border-radius:4px;padding:3px 6px;white-space:nowrap}
+.archive{border:0;background:transparent;color:#999;font-size:9px;padding:3px 0;white-space:nowrap}
+.archive:hover{color:#9a4c45}
+.asset>p{font-size:10px;color:#777;line-height:1.75;margin:8px 0}
+.assetMeta{display:flex;gap:5px 14px;flex-wrap:wrap;margin-top:8px}
+.assetMeta span{font-size:9px;color:#999;overflow-wrap:anywhere}
+.asset>a{display:inline-flex;align-items:center;gap:4px;margin-top:9px;color:#555;font-size:9px;text-decoration:none}
+.asset>a:hover{text-decoration:underline}
+.empty{display:flex;align-items:center;flex-direction:column;gap:7px;text-align:center;padding:28px 14px;border:1px dashed #e5e5df;border-radius:6px;color:#999}
+.empty strong{font-size:11px;color:#555}
+.empty span{font-size:9px;line-height:1.6}
+.editor,.imports{border-top:1px solid #ecece8;padding-top:15px;margin-top:4px;display:grid;gap:12px}
+.subhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.subhead h3{font-size:11px;color:#333;margin:0}
+.subhead span{font-size:9px;color:#999}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid label,.full{display:flex;flex-direction:column;gap:6px;font-size:10px;color:#777;min-width:0}
+.grid input,.grid select,.full input,.full textarea{width:100%;min-width:0;border:1px solid #e3e3dd;border-radius:5px;padding:9px 10px;color:#333;background:#fff;font:inherit;font-size:10px;outline:none}
+.grid input:focus,.grid select:focus,.full input:focus,.full textarea:focus{border-color:#999}
+.full textarea{resize:vertical;line-height:1.7}
+.lineChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lineChoices label{display:flex;align-items:center;gap:7px;border:1px solid #ededE8;border-radius:5px;padding:8px 9px;font-size:10px;color:#555}
+.lineChoices input{accent-color:#222}
+.actions{display:flex;justify-content:flex-end;gap:8px}
+.cancel{border:1px solid #e1e1db;background:#fff;color:#555;border-radius:5px;padding:8px 12px;font-size:10px}
+.importButton{margin-top:2px;width:max-content;background:#fff;color:#555;border-color:#deded8;font-weight:550}
+.importButton:disabled,.save:disabled,.addButton:disabled{opacity:.5;cursor:not-allowed}
+.imports>p{font-size:9px;color:#999;line-height:1.7;margin:0}
+.error,.notice,.message{display:flex;align-items:flex-start;gap:7px;padding:10px 11px;border-radius:5px;font-size:10px;line-height:1.7}
+.error{border:1px solid #efd9d5;background:#fff9f8;color:#994b43}
+.notice{border:1px solid #d8e6d7;background:#fbfdfb;color:#4d714c}
+.message{border:1px solid #e8e8e5;background:#f8f8f6;color:#777}
+.error svg,.notice svg,.message svg{flex:none;margin-top:1px}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){.panel{padding:15px}.grid,.lineChoices{grid-template-columns:1fr}.toolbar{align-items:flex-start}.actions{flex-direction:column}.actions button{width:100%}}
