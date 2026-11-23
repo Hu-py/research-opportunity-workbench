@@ -1695,7 +1695,7 @@ def personal_profile_update(
             if "doi.org/" in url:
                 source_type="doi"
                 source_id=url.split("doi.org/",1)[1].strip()
-            elif "/space/page/" in url:
+            elif "/space/page" in url:
                 source_type="chatgpt_space_page"
                 source_id=url.rstrip("/").split("/")[-1]
             elif url:
