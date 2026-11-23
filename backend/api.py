@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import re
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -13,6 +14,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Req
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text as sql_text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from research_workbench.core import (
@@ -21,6 +23,7 @@ from research_workbench.core import (
     session_factory,
 )
 from backend.tasks import ResearchTask, enqueue, as_dict
+from backend.research_opportunity_skill import catalog as opportunity_catalog, make_payload as opportunity_payload
 from backend.interests import (
     ResearchInterest, create_interest, as_dict as interest_dict,
     recent_papers as interest_papers, ingest_interests,
@@ -115,6 +118,15 @@ from backend.team import (
     SESSION_SECONDS, login as member_login, resolve_session, revoke_session,
     create_member, public_member, set_member_status, add_audit,
     current_profile_version, save_team_profile,
+    read_personal_profile, save_personal_profile,
+)
+from backend.personal_library import (
+    PersonalResearchAsset, upsert_personal_asset, list_personal_assets,
+    archive_personal_asset, prune_personal_asset_line_links,
+)
+from backend.chat_service import (
+    ChatServiceError, list_conversations, create_conversation, list_messages,
+    send_message as send_chat_message, request_ai_reply, add_conversation_member,
 )
 
 @lru_cache(maxsize=1)
@@ -162,6 +174,11 @@ def require_editor(actor:TeamMember|None=Depends(require_actor)):
 def require_admin(actor:TeamMember|None=Depends(require_actor)):
     if team_auth_enabled() and (actor is None or actor.role!="admin"):
         raise HTTPException(403,"Administrator role required")
+    return actor
+
+def require_team_actor(actor:TeamMember|None=Depends(require_actor)):
+    if not team_auth_enabled() or actor is None:
+        raise HTTPException(503,"持久化对话需要启用团队身份认证")
     return actor
 
 @asynccontextmanager
@@ -259,6 +276,99 @@ class TaskRequest(BaseModel):
     query:str=Field(default="",max_length=2000)
     # Optional strict source list for this run only, always snapshotted.
     source_override:dict[str,list[str]]|None=None
+
+class ResearchOpportunityRunRequest(BaseModel):
+    capability:Literal["paper_discovery","evidence_review","method_transfer","idea_review"]="idea_review"
+    question:str=Field(min_length=6,max_length=1500)
+    source_override:dict[str,list[str]]|None=None
+
+class ChatCreateRequest(BaseModel):
+    kind:Literal["private","team"]="private"
+    title:str=Field(default="",max_length=180)
+
+
+class ChatMessageRequest(BaseModel):
+    content:str=Field(min_length=1,max_length=8000)
+    client_nonce:str=Field(min_length=8,max_length=80)
+    trigger_ai:bool=False
+    trigger_type:Literal["","mention","manual"]=""
+
+class ChatAIReplyRequest(BaseModel):
+    idempotency_key:str=Field(min_length=8,max_length=100)
+
+class ChatMemberAddRequest(BaseModel):
+    member_id:str=Field(min_length=1,max_length=48)
+
+def validate_personal_profile(raw:dict) -> dict:
+    """Validate member-owned research lines and their linked personal evidence."""
+    if not isinstance(raw,dict):
+        raise ValueError("个人画像必须是对象")
+    lines=raw.get("research_lines")
+    if not isinstance(lines,list) or not 1<=len(lines)<=8:
+        raise ValueError("个人研究主线需要 1–8 条")
+    line_ids=set()
+    for line in lines:
+        if not isinstance(line,dict):
+            raise ValueError("研究主线格式无效")
+        ident=line.get("id")
+        if not isinstance(ident,str) or not re.fullmatch(r"[a-z][a-z0-9_]{2,54}",ident):
+            raise ValueError("研究主线 ID 格式无效")
+        if ident in line_ids:
+            raise ValueError("研究主线 ID 不能重复")
+        line_ids.add(ident)
+        if not isinstance(line.get("name"),str) or not line["name"].strip() or len(line["name"])>140:
+            raise ValueError("研究主线名称不能为空且不超过 140 字")
+        if not isinstance(line.get("problem"),str) or not line["problem"].strip() or len(line["problem"])>1000:
+            raise ValueError("研究问题不能为空且不超过 1000 字")
+        for field,limit,max_length in (
+            ("keywords",16,100),("search_queries",5,160),("method_queries",5,160)
+        ):
+            values=line.get(field,[])
+            if not isinstance(values,list) or len(values)>limit or any(
+                not isinstance(value,str) or len(value)>max_length for value in values
+            ):
+                raise ValueError(field+" 格式或数量无效")
+    payload={
+        "research_lines":lines,
+        "goals":raw.get("goals",""),
+        "methods":raw.get("methods",[]),
+        "excluded_terms":raw.get("excluded_terms",[]),
+        "evidence":raw.get("evidence",[]),
+    }
+    if not isinstance(payload["goals"],str) or len(payload["goals"])>1000:
+        raise ValueError("个人研究目标不超过 1000 字")
+    for field,limit,max_length in (("methods",30,120),("excluded_terms",30,120)):
+        values=payload[field]
+        if not isinstance(values,list) or len(values)>limit or any(
+            not isinstance(value,str) or len(value)>max_length for value in values
+        ):
+            raise ValueError(field+" 格式或数量无效")
+    evidence=payload["evidence"]
+    if not isinstance(evidence,list) or len(evidence)>40:
+        raise ValueError("个人成果与报告关联记录最多 40 条")
+    allowed_kinds={"publication","agent_report","project","dataset"}
+    for item in evidence:
+        if not isinstance(item,dict) or item.get("line_id") not in line_ids:
+            raise ValueError("成果关联了不存在的个人研究主线")
+        if item.get("kind") not in allowed_kinds:
+            raise ValueError("成果类型无效")
+        if not isinstance(item.get("id"),str) or not re.fullmatch(r"[a-z][a-z0-9_]{2,54}",item["id"]):
+            raise ValueError("成果记录 ID 格式无效")
+        if not isinstance(item.get("title"),str) or not item["title"].strip() or len(item["title"])>260:
+            raise ValueError("成果标题不能为空且不超过 260 字")
+        url=item.get("url","")
+        if not isinstance(url,str) or len(url)>1200 or (url and not url.startswith(("https://","http://"))):
+            raise ValueError("成果链接必须为有效 HTTP(S) 地址")
+        if not isinstance(item.get("note",""),str) or len(item.get("note",""))>1000:
+            raise ValueError("成果说明不超过 1000 字")
+    validate_profile({
+        "research_lines":payload["research_lines"],
+        "goals":payload["goals"],
+        "methods":payload["methods"],
+        "excluded_terms":payload["excluded_terms"],
+        "datasets":[],
+    })
+    return payload
 
 class FeedbackRequest(BaseModel):
     status:Literal["candidate","watch","shortlist","experiment","rejected","archived"]
@@ -1323,6 +1433,388 @@ def profile_update(data:ProfileRequest,db:Session=Depends(get_db),
             version=current_profile_version(db)
     except ValueError as exc:raise HTTPException(409 if "changed by another" in str(exc) else 422,str(exc)) from exc
     return {"profile":get_profile(db),"version":version}
+
+@app.get("/api/personal-profile")
+def personal_profile_get(
+    actor:TeamMember=Depends(require_team_actor),db:Session=Depends(get_db)
+):
+    """Return only the authenticated member's private research profile."""
+    return read_personal_profile(db,actor.id)
+
+
+@app.put("/api/personal-profile")
+def personal_profile_update(
+    data:PersonalProfileRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    """Save the profile and its initial evidence assets in one transaction."""
+    try:
+        payload=validate_personal_profile(data.profile)
+        evidence=payload.pop("evidence",[])
+        result=save_personal_profile(
+            db,actor.id,payload,data.expected_version,commit=False
+        )
+        valid_line_ids={line["id"] for line in payload["research_lines"]}
+        prune_personal_asset_line_links(db,actor.id,valid_line_ids)
+        for item in evidence:
+            url=item.get("url","")
+            if "doi.org/" in url:
+                source_type="doi"
+                source_id=url.split("doi.org/",1)[1].strip()
+            elif "/space/page" in url:
+                source_type="chatgpt_space_page"
+                source_id=url.rstrip("/").split("/")[-1]
+            elif url:
+                source_type="external_url"
+                source_id=url
+            else:
+                source_type="manual"
+                source_id=""
+            upsert_personal_asset(db,actor.id,{
+                "client_key":"profile_seed_"+item["id"],
+                "kind":item["kind"],
+                "title":item["title"],
+                "summary":item.get("note",""),
+                "url":url,
+                "source_type":source_type,
+                "source_id":source_id,
+                "metadata":{"seeded_from":"personal_profile"},
+                "line_ids":[item["line_id"]],
+            })
+        db.commit()
+        return read_personal_profile(db,actor.id)
+    except ValueError as exc:
+        db.rollback()
+        conflict="changed" in str(exc).lower()
+        raise HTTPException(409 if conflict else 422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"个人画像或资料已被另一请求更新，请刷新后重试") from exc
+
+
+def _migrate_embedded_personal_evidence(db:Session,member_id:str):
+    """Idempotently move legacy profile evidence links into the asset library."""
+    stored=read_personal_profile(db,member_id).get("profile") or {}
+    evidence=stored.get("evidence") or []
+    created=False
+    for item in evidence:
+        if not isinstance(item,dict) or not item.get("id") or not item.get("line_id"):
+            continue
+        client_key="profile_seed_"+str(item["id"])
+        existing=db.scalar(select(PersonalResearchAsset).where(
+            PersonalResearchAsset.member_id==member_id,
+            PersonalResearchAsset.client_key==client_key,
+        ))
+        if existing is not None:
+            continue
+        url=item.get("url","")
+        if "doi.org/" in url:
+            source_type="doi";source_id=url.split("doi.org/",1)[1].strip()
+        elif "/space/page" in url:
+            source_type="chatgpt_space_page";source_id=url.rstrip("/").split("/")[-1]
+        elif url:
+            source_type="external_url";source_id=url
+        else:
+            source_type="manual";source_id=""
+        try:
+            upsert_personal_asset(db,member_id,{
+                "client_key":client_key,
+                "kind":item.get("kind","agent_report"),
+                "title":item.get("title","Untitled evidence"),
+                "summary":item.get("note",""),
+                "url":url,
+                "source_type":source_type,
+                "source_id":source_id,
+                "metadata":{"migrated_from":"legacy_profile_evidence"},
+                "line_ids":[item["line_id"]],
+            })
+            created=True
+        except ValueError:
+            # Preserve the original profile data if a legacy line reference is invalid.
+            continue
+    if created:
+        db.commit()
+
+
+@app.get("/api/personal-assets")
+def personal_assets_list(
+    kind:str|None=None,
+    line_id:str|None=None,
+    q:str|None=Query(default=None,max_length=120),
+    include_archived:bool=False,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    try:
+        _migrate_embedded_personal_evidence(db,actor.id)
+        return {"items":list_personal_assets(
+            db,actor.id,kind=kind,line_id=line_id,query=q,
+            include_archived=include_archived,
+        )}
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/personal-assets",status_code=status.HTTP_201_CREATED)
+def personal_asset_create(
+    data:PersonalAssetRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    try:
+        result=upsert_personal_asset(db,actor.id,data.model_dump())
+        add_audit(db,"personal_asset.created",actor.id,result["id"],
+                  "kind="+result["kind"]+" source="+result["source_type"])
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"资料已存在或正在被另一请求修改") from exc
+
+
+@app.put("/api/personal-assets/{asset_id}")
+def personal_asset_update(
+    asset_id:str,
+    data:PersonalAssetRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    existing=db.scalar(select(PersonalResearchAsset).where(
+        PersonalResearchAsset.id==asset_id,
+        PersonalResearchAsset.member_id==actor.id,
+    ))
+    if existing is None:
+        raise HTTPException(404,"个人科研资料不存在")
+    payload=data.model_dump()
+    payload["client_key"]=existing.client_key
+    try:
+        result=upsert_personal_asset(db,actor.id,payload)
+        add_audit(db,"personal_asset.updated",actor.id,result["id"],
+                  "kind="+result["kind"])
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"资料已被另一请求修改") from exc
+
+
+@app.delete("/api/personal-assets/{asset_id}")
+def personal_asset_archive(
+    asset_id:str,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    if not archive_personal_asset(db,actor.id,asset_id):
+        raise HTTPException(404,"个人科研资料不存在")
+    add_audit(db,"personal_asset.archived",actor.id,asset_id)
+    db.commit()
+    return {"archived":True,"id":asset_id}
+
+
+@app.post("/api/personal-assets/import-paper",status_code=status.HTTP_201_CREATED)
+def personal_asset_import_paper(
+    data:PersonalPaperImportRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    if not data.paper_id and not data.doi:
+        raise HTTPException(422,"请提供 paper_id 或 DOI")
+    paper=db.get(Paper,data.paper_id) if data.paper_id else None
+    if paper is None and data.doi:
+        paper=db.scalar(select(Paper).where(Paper.doi==data.doi))
+    if paper is None:
+        raise HTTPException(404,"共用文献库中未找到这篇论文；可用手动资料录入 DOI 和链接")
+    if paper.id.startswith("https://openalex.org/"):
+        source_type,source_id="openalex_work",paper.id.rsplit("/",1)[-1]
+    elif paper.doi:
+        source_type,source_id="doi",paper.doi
+    else:
+        source_type,source_id="manual",paper.id
+    try:
+        result=upsert_personal_asset(db,actor.id,{
+            "client_key":data.client_key,
+            "kind":"publication",
+            "title":paper.title,
+            "summary":paper.abstract or "",
+            "url":paper.url or ("https://doi.org/"+paper.doi if paper.doi else ""),
+            "source_type":source_type,
+            "source_id":source_id,
+            "metadata":{"doi":paper.doi,"venue":paper.venue,
+                        "published":paper.published,"paper_id":paper.id},
+            "line_ids":data.line_ids,
+        })
+        add_audit(db,"personal_asset.imported_paper",actor.id,result["id"],
+                  "paper_id="+paper.id)
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/personal-assets/import-task",status_code=status.HTTP_201_CREATED)
+def personal_asset_import_task(
+    data:PersonalTaskImportRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    task=db.get(ResearchTask,data.task_id)
+    if task is None:
+        raise HTTPException(404,"科研任务不存在")
+    result_payload=json.loads(task.result_json or "{}")
+    if not result_payload:
+        raise HTTPException(409,"任务尚无可归档的研究结果")
+    summary=str(result_payload.get("answer") or result_payload.get("summary") or "")
+    title=task.query.strip() or ("Research Atlas task "+task.id[:8])
+    try:
+        result=upsert_personal_asset(db,actor.id,{
+            "client_key":data.client_key or "task_"+task.id,
+            "kind":"agent_report",
+            "title":title,
+            "summary":summary[:12000],
+            "url":"",
+            "source_type":"research_task",
+            "source_id":task.id,
+            "metadata":{"task_kind":task.kind,"task_status":task.status,
+                        "created_at":task.created_at.isoformat() if task.created_at else None},
+            "line_ids":data.line_ids,
+        })
+        add_audit(db,"personal_asset.imported_task",actor.id,result["id"],
+                  "task_id="+task.id)
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+
+def require_research_opportunity_enabled():
+    if not team_auth_enabled():
+        raise HTTPException(503,"Research Opportunity requires team authentication")
+    if os.getenv("RESEARCH_OPPORTUNITY_SKILL_ENABLED","").strip().lower() not in ("1","true","yes"):
+        raise HTTPException(503,"Research Opportunity Skill is not enabled")
+
+
+@app.get("/api/skills/research-opportunity",dependencies=[Depends(require_actor)])
+def research_opportunity_catalog():
+    require_research_opportunity_enabled()
+    return opportunity_catalog()
+
+
+@app.post("/api/skills/research-opportunity/runs",status_code=status.HTTP_202_ACCEPTED,
+          dependencies=[Depends(require_actor)])
+def research_opportunity_start(data:ResearchOpportunityRunRequest,
+                               background:BackgroundTasks,
+                               db:Session=Depends(get_db),
+                               actor:TeamMember|None=Depends(require_editor)):
+    require_research_opportunity_enabled()
+    if data.source_override is not None:
+        try:
+            _validate_groups(db,data.source_override)
+        except ValueError as exc:
+            raise HTTPException(422,str(exc)) from exc
+    try:
+        payload=opportunity_payload(data.capability,data.question)
+        task=enqueue(db,"research_opportunity",payload,
+                     owner_id=actor.id if actor else "",
+                     source_override=data.source_override)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    snapshot=db.get(TaskSourceSnapshot,task.id)
+    source_state={
+        "scene":snapshot.scene,
+        "groups":json.loads(snapshot.groups_json),
+        "enforced":snapshot.enforced,
+        "scope_version":snapshot.scope_version,
+    }
+    add_audit(db,"skill.research_opportunity.started",actor.id,task.id,
+              "capability="+data.capability+";sources="+str(source_state["enforced"]))
+    db.commit()
+    if inline_worker_enabled():
+        background.add_task(run_task,get_factory(),task.id)
+    result=as_dict(task)
+    result["source_scope"]=source_state
+    result["capability"]=data.capability
+    return result
+
+
+@app.get("/api/chats",dependencies=[Depends(require_team_actor)])
+def chats(kind:Literal["private","team"]|None=None,
+          actor:TeamMember=Depends(require_team_actor),
+          db:Session=Depends(get_db)):
+    return {"items":list_conversations(db,actor.id,kind)}
+
+
+@app.post("/api/chats",status_code=status.HTTP_201_CREATED,
+          dependencies=[Depends(require_team_actor)])
+def chats_create(data:ChatCreateRequest,
+                 actor:TeamMember=Depends(require_editor),
+                 db:Session=Depends(get_db)):
+    try:
+        return create_conversation(db,actor,data.kind,data.title)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.get("/api/chats/{conversation_id}/messages",
+         dependencies=[Depends(require_team_actor)])
+def chat_messages(conversation_id:str,
+                  after_seq:int=Query(default=0,ge=0),
+                  limit:int=Query(default=100,ge=1,le=200),
+                  actor:TeamMember=Depends(require_team_actor),
+                  db:Session=Depends(get_db)):
+    try:
+        items=list_messages(db,conversation_id,actor.id,after_seq,limit)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+    return {"items":items}
+
+
+@app.post("/api/chats/{conversation_id}/messages",
+          dependencies=[Depends(require_team_actor)])
+def chat_message_create(conversation_id:str,data:ChatMessageRequest,
+                        actor:TeamMember=Depends(require_editor),
+                        db:Session=Depends(get_db)):
+    try:
+        return send_chat_message(
+            db,conversation_id,actor,data.content,data.client_nonce,
+            trigger_ai=data.trigger_ai,trigger_type=data.trigger_type,
+        )
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.post("/api/chats/{conversation_id}/ai-replies",
+          dependencies=[Depends(require_team_actor)])
+def chat_ai_reply(conversation_id:str,data:ChatAIReplyRequest,
+                  actor:TeamMember=Depends(require_editor),
+                  db:Session=Depends(get_db)):
+    try:
+        return request_ai_reply(db,conversation_id,actor,data.idempotency_key)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.post("/api/chats/{conversation_id}/members",
+          dependencies=[Depends(require_team_actor), Depends(require_admin)])
+def chat_member_add(conversation_id:str,data:ChatMemberAddRequest,
+                    actor:TeamMember=Depends(require_admin),
+                    db:Session=Depends(get_db)):
+    from backend.chat_service import _conversation
+    try:
+        conv=_conversation(db,conversation_id,actor.id)
+        if conv.kind!="team":
+            raise ChatServiceError(422,"只能向团队会话添加成员")
+        return add_conversation_member(db,conversation_id,data.member_id)
+    except ChatServiceError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
 
 @app.get("/api/tasks",dependencies=[Depends(require_actor)])
 def tasks(db:Session=Depends(get_db)):
