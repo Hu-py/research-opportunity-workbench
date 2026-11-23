@@ -1,5 +1,15 @@
 # Research Atlas 前端设计与产品范围变更记录
 
+## 个人科研资料库 — 2026-11-23
+
+- 后端 PR #138 已合并至 Render API 分支，Render `research-atlas-api-test` 已部署 commit `3875aaf`；新增 `personal_research_assets` 与 `personal_research_asset_lines`，并提供个人资料 CRUD、论文/任务导入接口。
+- 个人画像首次保存会将 Shen et al. TRD 论文和 R6.4.5 原始/综合报告作为独立资料记录写入个人资料库，不再把资料清单作为画像 JSON 的唯一存储。
+- 新增 Personal Research Library 前端组件：动态读取资料、按类型筛选、新增/编辑/归档、关联多条研究主线、导入共享文献和 Research Atlas 任务。
+- 实验结果支持 `sc05_run` 来源 ID 与结构化 JSON 元数据；当前外部 SC05 数据源尚未自动连接，需通过新增资料登记引用和结果摘要。
+- 所有资料按认证成员 ID 隔离；归档不删除原文或团队任务；移除研究主线只解除资料关联。
+- Vercel CLI 发布工作流已加入，但运行检查发现 GitHub Actions 尚未配置 `VERCEL_TOKEN` Secret。添加该 Secret 后可运行正式部署；不需要把 Token 发到聊天中。
+- 动态资料新增、修改和归档不需要重新部署前端；新增界面或 API 能力才需要部署。
+
 ## 个人研究画像接入记录 — 2026-11-23
 
 - 后端 PR #132 已合并至 Render API 分支 `feat/shared-team-workspace`，Render `research-atlas-api-test` 已部署 commit `bc9596c`。
