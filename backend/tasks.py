@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import DateTime, Integer, String, Text, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 from research_workbench.core import Base
@@ -59,6 +59,27 @@ def claim(db, task_id: str) -> bool:
     )
     db.commit()
     return bool(result.rowcount)
+
+def recover_stale_running(db, *, stale_after_seconds: int = 5400) -> int:
+    """Requeue tasks abandoned by a worker process that was interrupted.
+
+    Task events refresh updated_at, so only tasks with no recorded progress
+    for 90 minutes are reclaimed. Retrying can repeat an external model call
+    if the previous worker died after the provider returned but before commit.
+    """
+    cutoff = utc_now() - timedelta(seconds=max(300, stale_after_seconds))
+    result = db.execute(
+        update(ResearchTask)
+        .where(ResearchTask.status == "running", ResearchTask.updated_at < cutoff)
+        .values(
+            status="queued",
+            error="Worker interruption detected; task requeued. A provider call may be repeated if the previous process stopped before saving its result.",
+            updated_at=utc_now(),
+        )
+    )
+    db.commit()
+    return int(result.rowcount or 0)
+
 
 def next_queued(db):
     task_id = db.scalar(select(ResearchTask.id).where(ResearchTask.status == "queued")
