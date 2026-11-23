@@ -1,0 +1,31 @@
+# Research Atlas test worker.
+# This Blueprint creates only the worker. It references the existing API service
+# for secrets and the existing test PostgreSQL connection; it does not adopt,
+# replace, or modify the API service or database.
+services:
+  - type: worker
+    name: research-atlas-task-worker-test
+    runtime: docker
+    repo: https://github.com/Hu-py/research-opportunity-workbench
+    branch: feat/research-atlas-v1-fullstack-preview-20261123
+    dockerfilePath: ./Dockerfile.api
+    dockerCommand: python -m backend.worker --interval 4
+    plan: 0.5c-512mb
+    region: singapore
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: web
+          name: research-atlas-api-test
+          envVarKey: DATABASE_URL
+      - key: MODEL_VAULT_KEY
+        fromService:
+          type: web
+          name: research-atlas-api-test
+          envVarKey: MODEL_VAULT_KEY
+      - key: OPENALEX_API_KEY
+        fromService:
+          type: web
+          name: research-atlas-api-test
+          envVarKey: OPENALEX_API_KEY
