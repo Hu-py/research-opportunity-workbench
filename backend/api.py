@@ -14,6 +14,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Req
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text as sql_text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from research_workbench.core import (
@@ -1682,13 +1683,204 @@ def personal_profile_update(
     actor:TeamMember=Depends(require_team_actor),
     db:Session=Depends(get_db),
 ):
-    """Save a versioned profile owned by the current account, never the team profile."""
+    """Save the profile and its initial evidence assets in one transaction."""
     try:
         payload=validate_personal_profile(data.profile)
-        return save_personal_profile(db,actor.id,payload,data.expected_version)
+        evidence=payload.pop("evidence",[])
+        result=save_personal_profile(
+            db,actor.id,payload,data.expected_version,commit=False
+        )
+        for item in evidence:
+            url=item.get("url","")
+            if "doi.org/" in url:
+                source_type="doi"
+                source_id=url.split("doi.org/",1)[1].strip()
+            elif "/space/page/" in url:
+                source_type="chatgpt_space_page"
+                source_id=url.rstrip("/").split("/")[-1]
+            elif url:
+                source_type="external_url"
+                source_id=url
+            else:
+                source_type="manual"
+                source_id=""
+            upsert_personal_asset(db,actor.id,{
+                "client_key":"profile_seed_"+item["id"],
+                "kind":item["kind"],
+                "title":item["title"],
+                "summary":item.get("note",""),
+                "url":url,
+                "source_type":source_type,
+                "source_id":source_id,
+                "metadata":{"seeded_from":"personal_profile"},
+                "line_ids":[item["line_id"]],
+            })
+        db.commit()
+        return read_personal_profile(db,actor.id)
     except ValueError as exc:
+        db.rollback()
         conflict="changed" in str(exc).lower()
         raise HTTPException(409 if conflict else 422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"个人画像或资料已被另一请求更新，请刷新后重试") from exc
+
+
+@app.get("/api/personal-assets")
+def personal_assets_list(
+    kind:str|None=None,
+    line_id:str|None=None,
+    q:str|None=Query(default=None,max_length=120),
+    include_archived:bool=False,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    try:
+        return {"items":list_personal_assets(
+            db,actor.id,kind=kind,line_id=line_id,query=q,
+            include_archived=include_archived,
+        )}
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/personal-assets",status_code=status.HTTP_201_CREATED)
+def personal_asset_create(
+    data:PersonalAssetRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    try:
+        result=upsert_personal_asset(db,actor.id,data.model_dump())
+        add_audit(db,"personal_asset.created",actor.id,result["id"],
+                  "kind="+result["kind"]+" source="+result["source_type"])
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"资料已存在或正在被另一请求修改") from exc
+
+
+@app.put("/api/personal-assets/{asset_id}")
+def personal_asset_update(
+    asset_id:str,
+    data:PersonalAssetRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    existing=db.scalar(select(PersonalResearchAsset).where(
+        PersonalResearchAsset.id==asset_id,
+        PersonalResearchAsset.member_id==actor.id,
+    ))
+    if existing is None:
+        raise HTTPException(404,"个人科研资料不存在")
+    payload=data.model_dump()
+    payload["client_key"]=existing.client_key
+    try:
+        result=upsert_personal_asset(db,actor.id,payload)
+        add_audit(db,"personal_asset.updated",actor.id,result["id"],
+                  "kind="+result["kind"])
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409,"资料已被另一请求修改") from exc
+
+
+@app.delete("/api/personal-assets/{asset_id}")
+def personal_asset_archive(
+    asset_id:str,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    if not archive_personal_asset(db,actor.id,asset_id):
+        raise HTTPException(404,"个人科研资料不存在")
+    add_audit(db,"personal_asset.archived",actor.id,asset_id)
+    db.commit()
+    return {"archived":True,"id":asset_id}
+
+
+@app.post("/api/personal-assets/import-paper",status_code=status.HTTP_201_CREATED)
+def personal_asset_import_paper(
+    data:PersonalPaperImportRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    if not data.paper_id and not data.doi:
+        raise HTTPException(422,"请提供 paper_id 或 DOI")
+    paper=db.get(Paper,data.paper_id) if data.paper_id else None
+    if paper is None and data.doi:
+        paper=db.scalar(select(Paper).where(Paper.doi==data.doi))
+    if paper is None:
+        raise HTTPException(404,"共用文献库中未找到这篇论文；可用手动资料录入 DOI 和链接")
+    if paper.id.startswith("https://openalex.org/"):
+        source_type,source_id="openalex_work",paper.id.rsplit("/",1)[-1]
+    elif paper.doi:
+        source_type,source_id="doi",paper.doi
+    else:
+        source_type,source_id="manual",paper.id
+    try:
+        result=upsert_personal_asset(db,actor.id,{
+            "client_key":data.client_key,
+            "kind":"publication",
+            "title":paper.title,
+            "summary":paper.abstract or "",
+            "url":paper.url or ("https://doi.org/"+paper.doi if paper.doi else ""),
+            "source_type":source_type,
+            "source_id":source_id,
+            "metadata":{"doi":paper.doi,"venue":paper.venue,
+                        "published":paper.published,"paper_id":paper.id},
+            "line_ids":data.line_ids,
+        })
+        add_audit(db,"personal_asset.imported_paper",actor.id,result["id"],
+                  "paper_id="+paper.id)
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
+
+
+@app.post("/api/personal-assets/import-task",status_code=status.HTTP_201_CREATED)
+def personal_asset_import_task(
+    data:PersonalTaskImportRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    task=db.get(ResearchTask,data.task_id)
+    if task is None:
+        raise HTTPException(404,"科研任务不存在")
+    result_payload=json.loads(task.result_json or "{}")
+    if not result_payload:
+        raise HTTPException(409,"任务尚无可归档的研究结果")
+    summary=str(result_payload.get("answer") or result_payload.get("summary") or "")
+    title=task.query.strip() or ("Research Atlas task "+task.id[:8])
+    try:
+        result=upsert_personal_asset(db,actor.id,{
+            "client_key":data.client_key or "task_"+task.id,
+            "kind":"agent_report",
+            "title":title,
+            "summary":summary[:12000],
+            "url":"",
+            "source_type":"research_task",
+            "source_id":task.id,
+            "metadata":{"task_kind":task.kind,"task_status":task.status,
+                        "created_at":task.created_at.isoformat() if task.created_at else None},
+            "line_ids":data.line_ids,
+        })
+        add_audit(db,"personal_asset.imported_task",actor.id,result["id"],
+                  "task_id="+task.id)
+        db.commit()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from exc
 
 def require_research_opportunity_enabled():
     if not team_auth_enabled():
