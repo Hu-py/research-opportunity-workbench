@@ -344,6 +344,10 @@ def _run_ai_call(db: Session, conv: ChatConversation, actor_id: str,
             content=answer,
         )
         db.add(assistant)
+        # Insert the assistant row before updating ChatAICall.assistant_message_id.
+        # Both tables reference chat_messages, but there is no ORM relationship
+        # to order this cyclic write automatically.
+        db.flush()
         conv.last_seq += 1
         conv.last_ai_synced_seq = call.input_until_seq
         conv.active_ai_call_id = ""
@@ -359,6 +363,7 @@ def _run_ai_call(db: Session, conv: ChatConversation, actor_id: str,
         db.refresh(assistant)
         return {"ai_call": _serialize_call(call), "assistant_message": _serialize_message(db, assistant)}
     except ChatServiceError as exc:
+        db.rollback()
         conv = db.get(ChatConversation, conv.id)
         call = db.get(ChatAICall, call.id)
         call.status = "failed"
@@ -369,6 +374,7 @@ def _run_ai_call(db: Session, conv: ChatConversation, actor_id: str,
         db.commit()
         return {"ai_call": _serialize_call(call), "assistant_message": None}
     except Exception:
+        db.rollback()
         conv = db.get(ChatConversation, conv.id)
         call = db.get(ChatAICall, call.id)
         call.status = "failed"
