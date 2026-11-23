@@ -324,6 +324,19 @@ async def lifespan(app:FastAPI):
     logging.getLogger("uvicorn.error").info(
         "DeepSeek runtime credential source: %s", deepseek_source
     )
+    try:
+        with factory() as scope_db:
+            source_readiness = read_scope(scope_db, "directed_research")
+        logging.getLogger("uvicorn.error").info(
+            "Research Opportunity source readiness: selected=%s resolved=%s unresolved=%s",
+            source_readiness["selected_count"],
+            source_readiness["resolved_count"],
+            source_readiness["missing_or_unresolved"],
+        )
+    except Exception:
+        logging.getLogger("uvicorn.error").warning(
+            "Research Opportunity source readiness: unavailable"
+        )
     # Opt-in, single database-recorded first batch. No model calls, no
     # automatically approved papers, and no repeated startup ingestion.
     trial_mode=os.getenv("RADAR_TRIAL_ON_STARTUP","").strip()
