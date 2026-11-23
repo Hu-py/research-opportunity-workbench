@@ -148,7 +148,7 @@ export default function PersonalResearchLibrary({
       {value==="all"?"全部":kindNames[value]}
      </button>)}
     </div>
-    <button className={styles.addButton} type="button" onClick={()=>setOpen(value=>!value)}>
+    <button className={styles.addButton} type="button" onClick={()=>{if(!open){setEditingId(null);setDraft(emptyDraft);setMetadataText("{}");}setOpen(value=>!value);}}>
      <Plus size={14}/>{open?"收起录入":"新增资料"}
     </button>
    </div>
@@ -199,7 +199,7 @@ export default function PersonalResearchLibrary({
      {lines.map(line=><label key={line.id}><input type="checkbox" checked={draft.line_ids.includes(line.id)} onChange={()=>toggleLine(line.id)}/><span>{line.name}</span></label>)}
     </div>
     <div className={styles.actions}>
-     <button type="button" className={styles.cancel} onClick={()=>setOpen(false)}>取消</button>
+     <button type="button" className={styles.cancel} onClick={()=>{setOpen(false);setEditingId(null);setDraft(emptyDraft);setMetadataText("{}");}}>取消</button>
      <button type="button" className={styles.save} disabled={busy||!draft.title.trim()||!profileSaved} onClick={()=>void save()}>
       {busy?<Loader2 size={14} className={styles.spin}/>:<Check size={14}/>}{editingId?"保存修改":"保存资料"}
      </button>
