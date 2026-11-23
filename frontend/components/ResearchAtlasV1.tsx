@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import type { PersonalResearchAsset, PersonalResearchProfile, Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import InterestWatchlist from "@/components/InterestWatchlist";
+import PersistentChat from "@/components/PersistentChat";
 import PersonalResearchLibrary from "@/components/PersonalResearchLibrary";
 import TaskSourceScopeSettings, {TaskSourceRunPicker, SourceScopeInline, sourceScopeShort} from "@/components/TaskSourceScopes";
 import type {SourceGroups} from "@/components/TaskSourceScopes";
@@ -240,7 +241,6 @@ export default function ResearchAtlasV1() {
   const [section, setSection] = useState<Section>("chat");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [chatScope, setChatScope] = useState<ChatScope>("private");
-  const [chatMode, setChatMode] = useState<"gpt" | "research">("research");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -274,8 +274,8 @@ export default function ResearchAtlasV1() {
   const [question, setQuestion] = useState("");
   const [taskSourceOverride, setTaskSourceOverride] = useState<SourceGroups|null>(null);
   const [taskQuery, setTaskQuery] = useState("");
-  const [taskFilter, setTaskFilter] = useState<"all" | "explore" | "weekly">("all");
-  const [showTrace, setShowTrace] = useState(false);
+  const [opportunityCapability, setOpportunityCapability] = useState<"paper_discovery"|"evidence_review"|"method_transfer"|"idea_review">("idea_review");
+  const [taskFilter, setTaskFilter] = useState<"all" | "explore" | "research_opportunity" | "weekly">("all");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -401,7 +401,7 @@ export default function ResearchAtlasV1() {
   }, [auth, tasks, load]);
 
   const exploreTasks = useMemo(
-    () => tasks.filter(task => task.kind === "explore"),
+    () => tasks.filter(task => task.kind === "explore" || task.kind === "research_opportunity"),
     [tasks],
   );
   const weeklyTasks = useMemo(
@@ -409,7 +409,6 @@ export default function ResearchAtlasV1() {
     [tasks],
   );
   const selectedTask = tasks.find(task => task.id === selectedTaskId) || null;
-  const selectedExploreTask = selectedTask?.kind === "explore" ? selectedTask : null;
   const latestWeeklyTask = weeklyTasks[0] || null;
   const displayedWeeklyTask = selectedTask?.kind === "weekly" ? selectedTask : latestWeeklyTask;
   const displayedWeeklyReport = selectedTask?.kind === "weekly"
@@ -420,6 +419,7 @@ export default function ResearchAtlasV1() {
   const visibleTasks = tasks.filter(task => {
     const matchesType = taskFilter === "all"
       || (taskFilter === "explore" && task.kind === "explore")
+      || (taskFilter === "research_opportunity" && task.kind === "research_opportunity")
       || (taskFilter === "weekly" && task.kind === "weekly");
     const haystack = (task.query || "") + " " + (task.result?.answer || "");
     return matchesType && haystack.toLowerCase().includes(taskQuery.toLowerCase());
@@ -487,6 +487,32 @@ export default function ResearchAtlasV1() {
         : "定向科研任务已提交。可在任务记录中查看进度和结果。");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "任务提交失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitOpportunity() {
+    if (question.trim().length < 6) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const task = await api<Task>("skills/research-opportunity/runs", {
+        method: "POST",
+        body: JSON.stringify({
+          capability: opportunityCapability,
+          question: question.trim(),
+          ...(taskSourceOverride ? { source_override: taskSourceOverride } : {}),
+        }),
+      });
+      setTasks(current => [task, ...current.filter(item => item.id !== task.id)]);
+      setSelectedTaskId(task.id);
+      setQuestion("");
+      setTaskSourceOverride(null);
+      setNotice("科研发现任务已提交。可在本页查看执行进度、文献证据和完整报告。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "科研发现任务提交失败");
     } finally {
       setBusy(false);
     }
@@ -928,77 +954,8 @@ export default function ResearchAtlasV1() {
         {notice && <div className={styles.alertSuccess}><CheckCircle2 size={16} /><span>{notice}</span><button onClick={() => setNotice("")} aria-label="关闭"><X size={15} /></button></div>}
 
         {section === "chat" && <section className={styles.chatPage}>
-          <PageHeader eyebrow="RESEARCH CONVERSATION" title="对话" description="围绕研究问题交流，按需调用科研分析与深度研究。" />
-          {chatScope === "private" ? <>
-            <div className={styles.capabilityNotice}>
-              <ShieldCheck size={16} />
-              <span>当前已连接真实 Research Agent，但后端仍以单次研究任务保存结果；独立私人多轮会话和私有数据隔离尚未完成。请勿将需要严格保密的内容视为私人存储。</span>
-            </div>
-            <div className={styles.modeSwitch}>
-              <button className={chatMode === "gpt" ? styles.modeActive : ""} onClick={() => setChatMode("gpt")}>
-                GPT 调用 <small>通用对话 · 待接入</small>
-              </button>
-              <button className={chatMode === "research" ? styles.modeActive : ""} onClick={() => setChatMode("research")}>
-                深度研究 <small>Research Agent · 当前可用</small>
-              </button>
-            </div>
-            {chatMode === "gpt" ? <div className={styles.teamChatPending}>
-              <div className={styles.pendingIcon}><MessageCircle size={23} /></div>
-              <div className={styles.eyebrow}>GPT CONVERSATION</div>
-              <h2>通用 GPT 多轮对话尚未接入</h2>
-              <p>当前后端提供的是定向 Research Agent 任务接口，尚未提供可持续保存的通用 GPT 对话接口。切换到「深度研究」即可使用现有真实科研任务能力。</p>
-              <button className={styles.secondaryButton} onClick={() => setChatMode("research")}>进入深度研究 <ArrowUpRight size={14} /></button>
-            </div> : <div className={styles.chatWorkspace}>
-              <div className={styles.chatMain}>
-                {selectedExploreTask ? <div className={styles.chatResult}>
-                  <div className={styles.messageUser}>
-                    <div className={styles.messageAvatar}>我</div>
-                    <div><span>研究问题</span><p>{selectedExploreTask.query}</p></div>
-                  </div>
-                  <div className={styles.messageAssistant}>
-                    <div className={styles.assistantMark}>RA</div>
-                    <div className={styles.assistantContent}>
-                      <div className={styles.assistantTitle}>Research Agent <Status status={selectedExploreTask.status} /></div>
-                      {selectedExploreTask.status === "completed" && <ReportBody markdown={selectedExploreTask.result?.answer || "任务已完成，但没有返回文本结果。"} />}
-                      {selectedExploreTask.status === "failed" && <div className={styles.inlineError}><AlertCircle size={15} />{selectedExploreTask.error || "任务执行失败"}</div>}
-                      {(selectedExploreTask.status === "queued" || selectedExploreTask.status === "running") && <div className={styles.runningState}><Loader2 size={17} className={styles.spin} />研究任务正在执行，结果会自动更新。</div>}
-                      {!!selectedExploreTask.result?.sources?.length && <div className={styles.sourceList}>
-                        <div className={styles.sourceHeading}>本次引用来源 · {selectedExploreTask.result.sources.length}</div>
-                        {selectedExploreTask.result.sources.map(paper => <a key={paper.id} href={paper.url || undefined} target="_blank" rel="noopener noreferrer">
-                          <BookOpen size={14} /><span>{paper.title}<small>{paper.venue || "来源待核验"} · {paper.published || "日期未知"}</small></span><ArrowUpRight size={13} />
-                        </a>)}
-                      </div>}
-                      <button className={styles.traceToggle} onClick={() => setShowTrace(value => !value)}>
-                        <ChevronDown size={14} />{showTrace ? "收起执行记录" : "查看执行记录"}
-                      </button>
-                      {showTrace && <div className={styles.traceList}>
-                        {selectedExploreTask.events.map((event, index) => <div key={index}><span>{dateTime(event.at)}</span><strong>{event.step}</strong><p>{event.detail}</p></div>)}
-                        {selectedExploreTask.error && <div className={styles.traceError}>{selectedExploreTask.error}</div>}
-                      </div>}
-                      {selectedExploreTask.status === "queued" && canEdit && <button className={styles.secondaryButton} onClick={() => void dispatchTask(selectedExploreTask)} disabled={busy}>请求后台执行</button>}
-                    </div>
-                  </div>
-                </div> : <EmptyState icon={MessageCircle} title="开始一项科研探索" description="描述研究问题、已有基础和希望解决的瓶颈。系统将创建一项真实研究任务，并返回文献证据与分析结果。" />}
-                <form className={styles.composer} onSubmit={event => { event.preventDefault(); void submitTask("explore", question); }}>
-                  <textarea value={question} onChange={event => setQuestion(event.target.value)} maxLength={2000}
-                    rows={3} placeholder="例如：基于我现有的研究，哪些跨学科方法可能解决当前的泛化瓶颈？" disabled={!canEdit || busy} />
-                  <TaskSourceRunPicker key={selectedTaskId || "new-research"} disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
-                  <div className={styles.composerBottom}>
-                    <span>{question.length}/2000 · 每次提交创建一项独立科研任务</span>
-                    <button className={styles.primaryButton} type="submit" disabled={!canEdit || busy || question.trim().length < 6}>
-                      {busy ? <Loader2 size={15} className={styles.spin} /> : <Send size={15} />}开始研究
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>}
-          </> : <div className={styles.teamChatPending}>
-            <div className={styles.pendingIcon}><Users size={24} /></div>
-            <div className={styles.eyebrow}>TEAM CONVERSATION</div>
-            <h2>团队共同对话界面已预留</h2>
-            <p>当前后端尚未提供团队多轮会话、成员发言记录和 @GPT 触发机制。为避免将普通研究任务误显示为共享聊天，这里暂不开放发送入口。</p>
-            <div className={styles.pendingRule}>后续按既定规则实现：普通成员消息不触发模型，只有 @GPT 或主动调用 AI 时才启动科研能力。</div>
-          </div>}
+          <PageHeader eyebrow="RESEARCH CONVERSATION" title="对话" description="私人多轮对话与团队协作会话；科研发现作为独立任务保存在研究台。" />
+          <PersistentChat scope={chatScope} member={member} canEdit={canEdit} onError={setError} />
         </section>}
 
         {section === "team-weekly" && <section>
@@ -1081,16 +1038,37 @@ export default function ResearchAtlasV1() {
         </section>}
 
         {section === "tasks" && <section>
-          <PageHeader eyebrow="SC03 · DIRECTED RESEARCH" title="定向科研任务" description="针对具体研究问题开展文献检索、方法迁移和证据审查，并保存完整研究报告。"
-            action={<button className={styles.primaryButton} onClick={() => { setSection("chat"); setChatScope("private"); }}><Plus size={15} />新建任务</button>} />
+          <PageHeader eyebrow="SC03 · DIRECTED RESEARCH" title="定向科研任务" description="运行 Research Opportunity Skill，完成受控文献发现、跨论文综合、方法迁移与论文级选题审查。" />
           <SourceScopeInline scope={sourceScopes.find(scope => scope.scene === "directed_research")}
             sources={sourceCatalog} label="定向科研 · 默认期刊"
             onEdit={() => {setSettingsTab("task-sources");changeSection("settings");}}
             missingNote="尚未连接定向任务来源配置" />
+          <div className={styles.opportunityComposer}>
+            <div className={styles.opportunityComposerHeader}>
+              <div><strong>科研发现任务</strong><span>Research Opportunity Skill V1.0 · 论文级问题发现与批判审查</span></div>
+              <select value={opportunityCapability} onChange={event => setOpportunityCapability(event.target.value as typeof opportunityCapability)} disabled={!canEdit || busy}>
+                <option value="idea_review">完整科研发现与选题审查</option>
+                <option value="paper_discovery">文献发现</option>
+                <option value="evidence_review">证据审查</option>
+                <option value="method_transfer">方法迁移</option>
+              </select>
+            </div>
+            <textarea value={question} onChange={event => setQuestion(event.target.value)} maxLength={1500} rows={3}
+              placeholder="输入研究问题、种子论文（可填写题名或 DOI）及希望发现的研究机会。例如：基于 Shen et al. 2026 TRD，独立诊断其研究并寻找足以支撑下一篇论文的研究问题。"
+              disabled={!canEdit || busy} />
+            <TaskSourceRunPicker key={selectedTaskId || "opportunity-source-scope"} disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
+            <div className={styles.opportunityComposerBottom}>
+              <span>{question.length}/1500 · 任务会冻结本次 A/B/C 来源清单并保存执行记录</span>
+              <button className={styles.primaryButton} onClick={() => void submitOpportunity()} disabled={!canEdit || busy || question.trim().length < 6}>
+                {busy ? <Loader2 size={15} className={styles.spin} /> : <Search size={15} />}启动科研发现
+              </button>
+            </div>
+          </div>
           <div className={styles.taskToolbar}>
             <div className={styles.taskFilters}>
               <button className={taskFilter === "all" ? styles.filterActive : ""} onClick={() => setTaskFilter("all")}>全部</button>
-              <button className={taskFilter === "explore" ? styles.filterActive : ""} onClick={() => setTaskFilter("explore")}>定向研究</button>
+              <button className={taskFilter === "explore" ? styles.filterActive : ""} onClick={() => setTaskFilter("explore")}>普通定向研究</button>
+              <button className={taskFilter === "research_opportunity" ? styles.filterActive : ""} onClick={() => setTaskFilter("research_opportunity")}>科研发现</button>
               <button className={taskFilter === "weekly" ? styles.filterActive : ""} onClick={() => setTaskFilter("weekly")}>周报任务</button>
             </div>
             <label className={styles.searchInput}><Search size={15} /><input value={taskQuery} onChange={event => setTaskQuery(event.target.value)} placeholder="搜索任务问题或结果" /></label>
@@ -1100,7 +1078,7 @@ export default function ResearchAtlasV1() {
               {visibleTasks.length ? visibleTasks.map(task => <button key={task.id}
                 className={styles.taskListItem + (selectedTaskId === task.id ? " " + styles.taskListSelected : "")}
                 onClick={() => setSelectedTaskId(task.id)}>
-                <div className={styles.taskListTop}><span>{task.kind === "weekly" ? "团队周报" : task.kind === "sync" ? "文献更新" : "定向研究"}</span><Status status={task.status} /></div>
+                <div className={styles.taskListTop}><span>{task.kind === "weekly" ? "团队周报" : task.kind === "sync" ? "文献更新" : task.kind === "research_opportunity" ? "科研发现" : "定向研究"}</span><Status status={task.status} /></div>
                 <strong>{task.query || (task.kind === "weekly" ? "团队科研周报" : "未命名任务")}</strong>
                 <span className={styles.taskSourceHint}><BookOpen size={12} />{sourceScopeShort(task.source_scope)} · {task.source_scope ? "点击查看清单" : "未记录清单"}</span>
                 <small>{dateTime(task.created_at)}</small>
@@ -1110,7 +1088,7 @@ export default function ResearchAtlasV1() {
               {selectedTask ? <>
                 <div className={styles.panelHeading}>
                   <div><div className={styles.eyebrow}>TASK DETAIL · {selectedTask.id.slice(0, 8)}</div>
-                    <h2>{selectedTask.query || (selectedTask.kind === "weekly" ? "团队科研周报" : "任务详情")}</h2></div>
+                    <h2>{selectedTask.query || (selectedTask.kind === "weekly" ? "团队科研周报" : selectedTask.kind === "research_opportunity" ? "科研发现任务" : "任务详情")}</h2></div>
                   <Status status={selectedTask.status} />
                 </div>
                 <div className={styles.taskDetailMeta}><span>创建于 {dateTime(selectedTask.created_at)}</span><span>更新于 {dateTime(selectedTask.updated_at)}</span></div>
