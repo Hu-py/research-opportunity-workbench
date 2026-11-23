@@ -1728,6 +1728,50 @@ def personal_profile_update(
         raise HTTPException(409,"个人画像或资料已被另一请求更新，请刷新后重试") from exc
 
 
+def _migrate_embedded_personal_evidence(db:Session,member_id:str):
+    """Idempotently move legacy profile evidence links into the asset library."""
+    stored=read_personal_profile(db,member_id).get("profile") or {}
+    evidence=stored.get("evidence") or []
+    created=False
+    for item in evidence:
+        if not isinstance(item,dict) or not item.get("id") or not item.get("line_id"):
+            continue
+        client_key="profile_seed_"+str(item["id"])
+        existing=db.scalar(select(PersonalResearchAsset).where(
+            PersonalResearchAsset.member_id==member_id,
+            PersonalResearchAsset.client_key==client_key,
+        ))
+        if existing is not None:
+            continue
+        url=item.get("url","")
+        if "doi.org/" in url:
+            source_type="doi";source_id=url.split("doi.org/",1)[1].strip()
+        elif "/space/page" in url:
+            source_type="chatgpt_space_page";source_id=url.rstrip("/").split("/")[-1]
+        elif url:
+            source_type="external_url";source_id=url
+        else:
+            source_type="manual";source_id=""
+        try:
+            upsert_personal_asset(db,member_id,{
+                "client_key":client_key,
+                "kind":item.get("kind","agent_report"),
+                "title":item.get("title","Untitled evidence"),
+                "summary":item.get("note",""),
+                "url":url,
+                "source_type":source_type,
+                "source_id":source_id,
+                "metadata":{"migrated_from":"legacy_profile_evidence"},
+                "line_ids":[item["line_id"]],
+            })
+            created=True
+        except ValueError:
+            # Preserve the original profile data if a legacy line reference is invalid.
+            continue
+    if created:
+        db.commit()
+
+
 @app.get("/api/personal-assets")
 def personal_assets_list(
     kind:str|None=None,
@@ -1738,6 +1782,7 @@ def personal_assets_list(
     db:Session=Depends(get_db),
 ):
     try:
+        _migrate_embedded_personal_evidence(db,actor.id)
         return {"items":list_personal_assets(
             db,actor.id,kind=kind,line_id=line_id,query=q,
             include_archived=include_archived,
