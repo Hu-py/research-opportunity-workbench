@@ -73,6 +73,7 @@ def session_factory(url=None):
     from backend import interests as _registered_interests  # watchlist tables before create_all
     from backend import research_sources as _registered_sources  # academic source registry
     from backend import task_source_scopes as _registered_task_scopes  # per-task source profiles and snapshots
+    from backend import team as _registered_team  # team identities referenced by chat memberships
     from backend import chat_models as _registered_chat_models  # private/team conversations
     Base.metadata.create_all(engine)
     factory=sessionmaker(bind=engine, expire_on_commit=False)
