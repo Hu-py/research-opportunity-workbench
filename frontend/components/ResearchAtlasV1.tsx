@@ -8,7 +8,7 @@ import {
   Settings2, ShieldCheck, SlidersHorizontal, UserRound, Users, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
+import type { PersonalResearchProfile, Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import TaskSourceScopeSettings, {TaskSourceRunPicker, SourceScopeInline, sourceScopeShort} from "@/components/TaskSourceScopes";
@@ -26,6 +26,116 @@ const emptyProfile: Profile = {
   methods: [],
   excluded_terms: [],
   research_lines: [],
+};
+
+const initialPersonalProfile: PersonalResearchProfile = {
+  goals: "围绕城市系统的测度、演化与运行机制，开展城市科学、空间数据科学与人工智能的交叉研究。重点关注城市交通与基础设施韧性、建成环境与儿童健康的跨区域关系、三维竖向城市化；强调从方法创新回到可解释的城市规律及规划意义。",
+  methods: [
+    "空间数据科学、GIS 与多源城市数据整合",
+    "移动信令、OD 与时空行为分析",
+    "城市网络科学、网络中心性与韧性分析",
+    "机器学习、深度学习与跨区域泛化评估",
+    "空间迁移、AOA/DI、样本增强与图邻域聚合",
+    "三维城市形态、建筑高度与垂直功能测度",
+    "AI 辅助科研发现、文献证据审查与可证伪研究设计"
+  ],
+  excluded_terms: [],
+  research_lines: [
+    {
+      id: "metro_resilience",
+      name: "地铁网络韧性与极端天气响应",
+      problem: "研究极端天气扰动下地铁站点承压能力（To-resilience）与区间传导韧性（Through-resilience）如何耦合，客流重分配如何触发压力累积、容量阈值与级联失效，以及网络冗余和空间干预在什么条件下有效。以郑州“7·20”极端降雨地铁研究为代表性基础，继续寻找能够形成独立科学贡献的机制问题。",
+      keywords: ["地铁网络韧性", "极端降雨", "To–Through resilience", "站点容量", "区间压力传播", "移动信令与 OD", "客流重分配", "级联失效", "网络冗余", "韧性规划干预"],
+      search_queries: [
+        "\"metro network resilience\" AND \"extreme rainfall\"",
+        "\"To-resilience\" OR \"Through-resilience\" metro",
+        "\"passenger flow redistribution\" metro disruption capacity",
+        "\"cascading failure\" metro network resilience extreme weather",
+        "\"network redundancy\" metro resilience intervention"
+      ],
+      method_queries: [
+        "node-link coupled resilience metrics and network science",
+        "mobile phone signalling OD and spatiotemporal mobility analysis",
+        "capacity-constrained passenger flow redistribution simulation",
+        "counterfactual network intervention and corridor redundancy",
+        "multi-event validation of transport network resilience"
+      ]
+    },
+    {
+      id: "child_health_transfer",
+      name: "儿童健康与建成环境的跨区域外推",
+      problem: "研究建成环境与儿童健康结局关系在不同地区和城市之间的可迁移性，识别环境表征差异、标签稀疏与空间样本偏差如何共同导致外推失败；探索目标区域补样、人口与房价等 SES 信息、空间邻域聚合和多城市交叉验证，区分全局样本稀疏与空间覆盖偏差。",
+      keywords: ["儿童健康", "建成环境", "跨城市迁移", "外部验证", "域偏移", "标签稀疏", "空间抽样偏差", "SES", "AOA", "DI", "图学习", "城市健康"],
+      search_queries: [
+        "\"built environment\" child health \"cross-city\" transferability",
+        "\"spatial transfer learning\" health prediction built environment",
+        "\"domain adaptation\" urban health sparse labels",
+        "\"multi-city validation\" built environment child health",
+        "\"spatially clustered labels\" external validation"
+      ],
+      method_queries: [
+        "targeted sample augmentation and domain adaptation",
+        "area of applicability AOA and dissimilarity index DI",
+        "multi-city cross-validation with held-out city evaluation",
+        "graph-based neighborhood aggregation and spatial representation learning",
+        "SES reconstruction and teacher-student representation learning"
+      ]
+    },
+    {
+      id: "vertical_urbanization_3d",
+      name: "三维竖向城市化与城市空间功能演化",
+      problem: "从三维视角重新测度城市化，研究高层建筑增长、垂直空间功能化与经济周期之间的耦合演化；进一步探索智能化时代如何改变城市化的测量框架，以及 AI 如何重塑城市化路径、空间组织和发展机制。",
+      keywords: ["三维城市化", "竖向城市化", "高层建筑增长", "垂直功能化", "建筑高度", "城市形态", "经济周期", "城市化测度", "AI 时代城市化", "城市演化"],
+      search_queries: [
+        "\"vertical urbanization\" high-rise buildings urbanization measurement",
+        "\"3D urbanization\" vertical functional mix",
+        "\"skyscraper growth\" economic cycles urban development",
+        "\"vertical functionalization\" urban buildings floor-level",
+        "\"AI\" \"urbanization measurement\" urban science"
+      ],
+      method_queries: [
+        "three-dimensional building stock and vertical urban form measurement",
+        "floor-level functional classification and vertical mixed use",
+        "time-series analysis of skyscraper growth and economic cycles",
+        "3D GIS and multi-source urban morphology representation",
+        "comparative urbanization measurement in the AI age"
+      ]
+    }
+  ],
+  evidence: [
+    {
+      id: "shen_trd_2026",
+      line_id: "metro_resilience",
+      kind: "publication",
+      title: "How metro networks respond to extreme rainfall: a coupled To–Through resilience perspective",
+      url: "https://doi.org/10.1016/j.trd.2026.105654",
+      note: "Transportation Research Part D, 162 (2027), Article 105654；在线发表 2026-10-06。"
+    },
+    {
+      id: "shen_r645_gate_on",
+      line_id: "metro_resilience",
+      kind: "agent_report",
+      title: "SC05 R6.4.5｜Science Gate On 原始报告（盲评 70/100）",
+      url: "https://chatgpt.com/space/page_055ef567539c8191ac47eb1757794156",
+      note: "DeepSeek 生成的原始报告；候选路线 R01–R03 均为 Hold，未获得科研新颖性或科学质量认证。"
+    },
+    {
+      id: "shen_r645_gate_off",
+      line_id: "metro_resilience",
+      kind: "agent_report",
+      title: "SC05 R6.4.5｜Science Gate Off 原始报告（盲评 38/100）",
+      url: "https://chatgpt.com/space/page_a2f76795ccc881919e707e5d3e78d56a",
+      note: "对照基线原始报告；保持历史冻结，不代表已验证研究方案。"
+    },
+    {
+      id: "shen_r645_synthesis",
+      line_id: "metro_resilience",
+      kind: "agent_report",
+      title: "Shen et al. 2026 TRD｜正式科研机会综合报告及 R6.4.5 盲评解盲",
+      url: "https://chatgpt.com/space/page_f8fffbfcdd888191836e1c78077aa3e2",
+      note: "ChatGPT 对两份原始报告和单评审盲评结果的综合解读；不是新增 DeepSeek 运行。"
+    }
+  ]
 };
 
 const sectionNames: Record<Section, string> = {
@@ -138,6 +248,10 @@ export default function ResearchAtlasV1() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileDraft, setProfileDraft] = useState<Profile>(emptyProfile);
   const [profileVersion, setProfileVersion] = useState(0);
+  const [personalProfile, setPersonalProfile] = useState<PersonalResearchProfile | null>(null);
+  const [personalProfileDraft, setPersonalProfileDraft] = useState<PersonalResearchProfile>(initialPersonalProfile);
+  const [personalProfileVersion, setPersonalProfileVersion] = useState(0);
+  const [personalProfileLoaded, setPersonalProfileLoaded] = useState(false);
   const [brief, setBrief] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [question, setQuestion] = useState("");
@@ -168,8 +282,9 @@ export default function ResearchAtlasV1() {
       api<{ markdown: string; profile_ready?: boolean }>("brief"),
       api<{ items: TaskSourceScope[] }>("task-source-scopes"),
       api<{ items: ResearchSourceLabel[] }>("research-sources"),
+      api<{ profile: PersonalResearchProfile | null; version: number }>("personal-profile"),
     ]);
-    const [taskResult, profileResult, briefResult, scopeResult, catalogResult] = results;
+    const [taskResult, profileResult, briefResult, scopeResult, catalogResult, personalProfileResult] = results;
     if (taskResult.status === "fulfilled") setTasks(taskResult.value.items);
     if (profileResult.status === "fulfilled") {
       const nextProfile = profileResult.value.profile;
@@ -187,6 +302,23 @@ export default function ResearchAtlasV1() {
     }
     if (scopeResult.status === "fulfilled") setSourceScopes(scopeResult.value.items);
     if (catalogResult.status === "fulfilled") setSourceCatalog(catalogResult.value.items);
+    if (personalProfileResult.status === "fulfilled") {
+      const saved = personalProfileResult.value.profile;
+      const next = saved ? {
+        ...initialPersonalProfile,
+        ...saved,
+        research_lines: saved.research_lines || [],
+        methods: saved.methods || [],
+        excluded_terms: saved.excluded_terms || [],
+        evidence: saved.evidence || [],
+      } : initialPersonalProfile;
+      setPersonalProfile(saved);
+      setPersonalProfileDraft(next);
+      setPersonalProfileVersion(personalProfileResult.value.version || 0);
+      setPersonalProfileLoaded(true);
+    } else {
+      setPersonalProfileLoaded(false);
+    }
     // Older Render backends do not expose task-source-scopes yet; this must
     // not block existing chat and report workspaces.
     const failed = results.slice(0, 3).find(x => x.status === "rejected");
@@ -421,6 +553,73 @@ export default function ResearchAtlasV1() {
       setNotice("团队研究画像已保存。后续团队科研任务将使用新版本画像。");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "画像保存失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function updatePersonalResearchLine(index: number, patch: Partial<ResearchLine>) {
+    setPersonalProfileDraft(current => ({
+      ...current,
+      research_lines: current.research_lines.map((line, lineIndex) =>
+        lineIndex === index ? { ...line, ...patch } : line),
+    }));
+  }
+
+  function addPersonalResearchLine() {
+    const line: ResearchLine = {
+      id: "personal_line_" + Date.now().toString(36),
+      name: "",
+      problem: "",
+      keywords: [],
+      search_queries: [],
+      method_queries: [],
+    };
+    setPersonalProfileDraft(current => ({
+      ...current,
+      research_lines: [...current.research_lines, line],
+    }));
+  }
+
+  function removePersonalResearchLine(index: number) {
+    setPersonalProfileDraft(current => {
+      const removedId = current.research_lines[index]?.id;
+      return {
+        ...current,
+        research_lines: current.research_lines.filter((_, lineIndex) => lineIndex !== index),
+        evidence: current.evidence.filter(item => item.line_id !== removedId),
+      };
+    });
+  }
+
+  async function savePersonalProfile() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api<{ profile: PersonalResearchProfile; version: number; updated_at?: string }>(
+        "personal-profile",
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            profile: personalProfileDraft,
+            expected_version: personalProfileVersion,
+          }),
+        },
+      );
+      setPersonalProfile(result.profile);
+      setPersonalProfileDraft({
+        ...initialPersonalProfile,
+        ...result.profile,
+        research_lines: result.profile.research_lines || [],
+        methods: result.profile.methods || [],
+        excluded_terms: result.profile.excluded_terms || [],
+        evidence: result.profile.evidence || [],
+      });
+      setPersonalProfileVersion(result.version);
+      setNotice("个人研究画像已保存到当前登录账号，与团队画像独立存储。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "个人画像保存失败");
     } finally {
       setBusy(false);
     }
@@ -716,21 +915,28 @@ export default function ResearchAtlasV1() {
           <div className={styles.personalIntro}>
             <div className={styles.personalIcon}><UserRound size={22} /></div>
             <div><div className={styles.eyebrow}>PERSONAL RESEARCH</div><h2>个人研究动态</h2>
-              <p>个人画像、独立周报存储与定时生成接口尚未接入当前生产后端。为避免将团队周报误作个人结果，本页面暂不展示模拟报告。</p>
+              <p>{personalProfileVersion > 0
+                ? `已读取当前账号的个人研究画像（版本 V${personalProfileVersion}），包含 ${personalProfileDraft.research_lines.length} 条研究主线。个人周报生成与独立报告归档仍需后续接入。`
+                : "个人研究画像尚未保存。请先到研究设置检查并保存三条个人主线；保存后可用于后续个人周报和定向科研任务匹配。"}
+              </p>
+              <button className={styles.textButton} type="button" onClick={() => { setSettingsTab("profile"); setSection("settings"); }}>
+                {personalProfileVersion > 0 ? "管理个人研究画像" : "检查并保存个人画像"}
+              </button>
             </div>
           </div>
           <div className={styles.personalGrid}>
             <div className={styles.personalCard}>
-              <span>个人研究画像</span><strong>待接入</strong><p>用于识别个人研究兴趣、方法基础和当前问题。</p>
+              <span>个人研究画像</span><strong>{personalProfileVersion > 0 ? "已保存" : "待保存"}</strong>
+              <p>{personalProfileDraft.research_lines.length} 条主线，账号独立存储。</p>
             </div>
             <div className={styles.personalCard}>
-              <span>个性化文献发现</span><strong>待接入</strong><p>基于个人关注方向检索论文和跨领域方法。</p>
+              <span>个性化文献发现</span><strong>待接入</strong><p>后续将按个人主线与个人期刊清单发现论文和方法。</p>
             </div>
             <div className={styles.personalCard}>
               <span>个人报告归档</span><strong>待接入</strong><p>个人周报独立保存，不自动进入团队共享空间。</p>
             </div>
           </div>
-          <div className={styles.pendingFootnote}><ShieldCheck size={16} />个人周报需要独立的个人画像、访问控制和报告存储；这些接口完成后再开放生成操作。</div>
+          <div className={styles.pendingFootnote}><ShieldCheck size={16} />个人画像的读取与保存已独立于团队画像；个人周报生成和报告归档仍未开放。</div>
         </section>}
 
         {section === "tasks" && <section>
@@ -830,8 +1036,60 @@ export default function ResearchAtlasV1() {
               </section>
 
               <section className={styles.settingsCard}>
-                <div className={styles.panelHeading}><div><div className={styles.eyebrow}>PERSONAL PROFILE</div><h2>个人研究画像</h2></div><span className={styles.pendingLabel}>待接入</span></div>
-                <p className={styles.settingsDescription}>个人画像需要独立的成员级存储与权限接口。当前系统尚未提供该接口，因此不会将团队画像复制成个人画像。</p>
+                <div className={styles.panelHeading}>
+                  <div><div className={styles.eyebrow}>PERSONAL PROFILE · PRIVATE TO THIS ACCOUNT</div><h2>个人研究画像</h2></div>
+                  <span className={personalProfileVersion ? styles.versionLabel : styles.pendingLabel}>
+                    {personalProfileLoaded ? (personalProfileVersion ? `个人版本 V${personalProfileVersion}` : "尚未保存") : "连接中"}
+                  </span>
+                </div>
+                <p className={styles.settingsDescription}>仅当前登录账号可读取和修改。个人画像与团队共享画像分开保存；下方三条主线已预填，可检查后保存到你的账号。</p>
+                {!personalProfileLoaded ? (
+                  <div className={styles.inlineError}><AlertCircle size={15} />个人画像接口暂不可用。请确认后端已更新并刷新页面；不会将内容写入团队画像。</div>
+                ) : <>
+                  <label className={styles.fullField}>个人研究目标
+                    <textarea rows={3} value={personalProfileDraft.goals}
+                      onChange={event => setPersonalProfileDraft(current => ({ ...current, goals: event.target.value }))} />
+                  </label>
+                  <label className={styles.fullField}>方法基础
+                    <textarea rows={3} value={personalProfileDraft.methods.join("\n")}
+                      onChange={event => setPersonalProfileDraft(current => ({
+                        ...current, methods: event.target.value.split("\n").map(x => x.trim()).filter(Boolean),
+                      }))} />
+                  </label>
+                  <div className={styles.sectionSubhead}><h3>个人研究主线</h3><span>{personalProfileDraft.research_lines.length} 条</span></div>
+                  {personalProfileDraft.research_lines.map((line, index) => {
+                    const linkedEvidence = personalProfileDraft.evidence.filter(item => item.line_id === line.id);
+                    return <div className={styles.lineEditor} key={line.id}>
+                      <div className={styles.lineEditorTop}>
+                        <strong>个人主线 {index + 1}</strong>
+                        <button onClick={() => removePersonalResearchLine(index)} type="button" aria-label="删除个人研究主线"><X size={15} /></button>
+                      </div>
+                      <label>名称<input value={line.name} onChange={event => updatePersonalResearchLine(index, { name: event.target.value })} /></label>
+                      <label>核心问题<textarea rows={3} value={line.problem} onChange={event => updatePersonalResearchLine(index, { problem: event.target.value })} /></label>
+                      <label>关键词<textarea rows={2} value={line.keywords.join("\n")}
+                        onChange={event => updatePersonalResearchLine(index, { keywords: event.target.value.split("\n").map(x => x.trim()).filter(Boolean) })} /></label>
+                      <div className={styles.formGrid}>
+                        <label>问题检索词<textarea rows={3} value={line.search_queries.join("\n")}
+                          onChange={event => updatePersonalResearchLine(index, { search_queries: event.target.value.split("\n").map(x => x.trim()).filter(Boolean) })} /></label>
+                        <label>方法检索词<textarea rows={3} value={line.method_queries.join("\n")}
+                          onChange={event => updatePersonalResearchLine(index, { method_queries: event.target.value.split("\n").map(x => x.trim()).filter(Boolean) })} /></label>
+                      </div>
+                      {linkedEvidence.length > 0 && <div className={styles.personalEvidenceList}>
+                        <span>关联论文与研究报告</span>
+                        {linkedEvidence.map(item => <a key={item.id} href={item.url} target="_blank" rel="noreferrer">
+                          <span>{item.title}</span><ArrowUpRight size={13} />
+                          {item.note && <small>{item.note}</small>}
+                        </a>)}
+                      </div>}
+                    </div>;
+                  })}
+                  <div className={styles.profileActions}>
+                    <button className={styles.secondaryButton} type="button" onClick={addPersonalResearchLine}><Plus size={14} />添加个人主线</button>
+                    <button className={styles.primaryButton} type="button" onClick={() => void savePersonalProfile()} disabled={busy}>
+                      <Check size={15} />{personalProfileVersion ? "保存个人画像" : "保存到我的账号"}
+                    </button>
+                  </div>
+                </>}
               </section>
 
               <section className={styles.settingsCard}>
