@@ -29,7 +29,7 @@ def enqueue(db, kind: str, query: str = "", *,
 
     This also covers weekly tasks enqueued by the scheduler, not only the API.
     """
-    if kind not in ("explore", "sync", "weekly"):
+    if kind not in ("explore", "sync", "weekly", "research_opportunity"):
         raise ValueError("Unknown task kind")
     from backend.task_source_scopes import snapshot_task
     task = ResearchTask(id=str(uuid.uuid4()), kind=kind, query=query.strip())
