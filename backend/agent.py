@@ -56,13 +56,17 @@ TOOLS = [
 ]
 
 class ResearchAgent:
-    def __init__(self, db, log=lambda step, msg: None, openalex_client=None, model_client=None, source_context=None):
+    def __init__(self, db, log=lambda step, msg: None, openalex_client=None, model_client=None, source_context=None, skill_names=None):
         self.db = db
         self.log = log
         self.openalex_client = openalex_client
         self.model_client = model_client
         self.sources = {}
         self.source_context = source_context
+        self.skill_names = skill_names
+        self.max_tool_calls = 18 if skill_names is not None else 9
+        self.max_model_rounds = 8 if skill_names is not None else 4
+        self.max_output_tokens = 4500 if skill_names is not None else 1400
         self.usage = {"tool_calls":0, "model_rounds":0}
 
     def _record(self, item: dict):
@@ -84,7 +88,7 @@ class ResearchAgent:
 
     def dispatch(self, name, args):
         self.usage["tool_calls"] += 1
-        if self.usage["tool_calls"] > 9:
+        if self.usage["tool_calls"] > self.max_tool_calls:
             return {"error":"Tool call budget exceeded"}
         if name == "get_research_profile":
             return get_profile(self.db) or {"research_lines":[],"note":"Profile not yet supplied"}
@@ -175,12 +179,12 @@ class ResearchAgent:
                 from openai import OpenAI
                 self.model_client=OpenAI(timeout=50,max_retries=1)
             messages=[{"role":"user","content":prompt[:2000]}]
-            for turn in range(4):
+            for turn in range(self.max_model_rounds):
                 self.usage["model_rounds"]+=1
-                self.log("reasoning",f"科研智能体分析步骤 {turn+1}/4")
+                self.log("reasoning",f"科研智能体分析步骤 {turn+1}/{self.max_model_rounds}")
                 response=self.model_client.responses.create(
                     model=os.getenv("OPENAI_MODEL","gpt-4.1-mini"),
-                    instructions=SYSTEM+"\n\nResearch skills:\n"+load_skills(),tools=TOOLS,input=messages,max_output_tokens=1400
+                    instructions=SYSTEM+"\n\nResearch skills:\n"+(load_skills(self.skill_names) if self.skill_names is not None else load_skills()),tools=TOOLS,input=messages,max_output_tokens=self.max_output_tokens
                 )
                 messages.extend(response.output)
                 calls=[item for item in response.output if getattr(item,"type","")=="function_call"]
