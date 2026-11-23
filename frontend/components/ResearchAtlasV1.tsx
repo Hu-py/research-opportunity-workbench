@@ -10,6 +10,7 @@ import {
 import { api } from "@/lib/api";
 import type { Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
+import PersistentChat from "@/components/PersistentChat";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import TaskSourceScopeSettings, {TaskSourceRunPicker, SourceScopeInline, sourceScopeShort} from "@/components/TaskSourceScopes";
 import type {SourceGroups} from "@/components/TaskSourceScopes";
@@ -129,7 +130,6 @@ export default function ResearchAtlasV1() {
   const [section, setSection] = useState<Section>("chat");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [chatScope, setChatScope] = useState<ChatScope>("private");
-  const [chatMode, setChatMode] = useState<"gpt" | "research">("research");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -141,10 +141,10 @@ export default function ResearchAtlasV1() {
   const [brief, setBrief] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [question, setQuestion] = useState("");
+  const [opportunityCapability, setOpportunityCapability] = useState<"paper_discovery"|"evidence_review"|"method_transfer"|"idea_review">("idea_review");
   const [taskSourceOverride, setTaskSourceOverride] = useState<SourceGroups|null>(null);
   const [taskQuery, setTaskQuery] = useState("");
-  const [taskFilter, setTaskFilter] = useState<"all" | "explore" | "weekly">("all");
-  const [showTrace, setShowTrace] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<"all" | "explore" | "research_opportunity" | "weekly">("all");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -245,7 +245,7 @@ export default function ResearchAtlasV1() {
   }, [auth, tasks, load]);
 
   const exploreTasks = useMemo(
-    () => tasks.filter(task => task.kind === "explore"),
+    () => tasks.filter(task => task.kind === "explore" || task.kind === "research_opportunity"),
     [tasks],
   );
   const weeklyTasks = useMemo(
@@ -253,7 +253,6 @@ export default function ResearchAtlasV1() {
     [tasks],
   );
   const selectedTask = tasks.find(task => task.id === selectedTaskId) || null;
-  const selectedExploreTask = selectedTask?.kind === "explore" ? selectedTask : null;
   const latestWeeklyTask = weeklyTasks[0] || null;
   const displayedWeeklyTask = selectedTask?.kind === "weekly" ? selectedTask : latestWeeklyTask;
   const displayedWeeklyReport = selectedTask?.kind === "weekly"
@@ -264,6 +263,7 @@ export default function ResearchAtlasV1() {
   const visibleTasks = tasks.filter(task => {
     const matchesType = taskFilter === "all"
       || (taskFilter === "explore" && task.kind === "explore")
+      || (taskFilter === "research_opportunity" && task.kind === "research_opportunity")
       || (taskFilter === "weekly" && task.kind === "weekly");
     const haystack = (task.query || "") + " " + (task.result?.answer || "");
     return matchesType && haystack.toLowerCase().includes(taskQuery.toLowerCase());
@@ -326,6 +326,32 @@ export default function ResearchAtlasV1() {
         : "定向科研任务已提交。可在任务记录中查看进度和结果。");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "任务提交失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitOpportunity() {
+    if (question.trim().length < 6) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const task = await api<Task>("skills/research-opportunity/runs", {
+        method: "POST",
+        body: JSON.stringify({
+          capability: opportunityCapability,
+          question: question.trim(),
+          ...(taskSourceOverride ? { source_override: taskSourceOverride } : {}),
+        }),
+      });
+      setTasks(current => [task, ...current.filter(item => item.id !== task.id)]);
+      setSelectedTaskId(task.id);
+      setQuestion("");
+      setTaskSourceOverride(null);
+      setNotice("科研发现任务已提交。可在本页查看执行进度、文献证据和完整报告。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "科研发现任务提交失败");
     } finally {
       setBusy(false);
     }
