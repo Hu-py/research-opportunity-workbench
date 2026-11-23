@@ -8,7 +8,7 @@ import {
   Settings2, ShieldCheck, SlidersHorizontal, UserRound, Users, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { PersonalResearchProfile, Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
+import type { PersonalResearchAsset, PersonalResearchProfile, Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import InterestWatchlist from "@/components/InterestWatchlist";
 import TaskSourceScopeSettings, {TaskSourceRunPicker, SourceScopeInline, sourceScopeShort} from "@/components/TaskSourceScopes";
@@ -251,6 +251,23 @@ export default function ResearchAtlasV1() {
   const [personalProfileDraft, setPersonalProfileDraft] = useState<PersonalResearchProfile>(initialPersonalProfile);
   const [personalProfileVersion, setPersonalProfileVersion] = useState(0);
   const [personalProfileLoaded, setPersonalProfileLoaded] = useState(false);
+  const [personalAssets, setPersonalAssets] = useState<PersonalResearchAsset[]>([]);
+  const [personalAssetsLoaded, setPersonalAssetsLoaded] = useState(false);
+  const [assetFormOpen, setAssetFormOpen] = useState(false);
+  const [assetBusy, setAssetBusy] = useState(false);
+  const [assetFilter, setAssetFilter] = useState<"all"|"publication"|"agent_report"|"experiment_result">("all");
+  const [assetImportDoi, setAssetImportDoi] = useState("");
+  const [assetImportTaskId, setAssetImportTaskId] = useState("");
+  const [assetDraft, setAssetDraft] = useState({
+    kind: "publication" as PersonalResearchAsset["kind"],
+    title: "",
+    summary: "",
+    url: "",
+    source_type: "manual",
+    source_id: "",
+    metadata: {} as Record<string, unknown>,
+    line_ids: [] as string[],
+  });
   const [brief, setBrief] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [question, setQuestion] = useState("");
