@@ -265,3 +265,13 @@ def archive_personal_asset(db: Session, member_id: str, asset_id: str) -> bool:
     asset.updated_at = utc_now()
     db.flush()
     return True
+
+
+def prune_personal_asset_line_links(db: Session, member_id: str, valid_line_ids: set[str]) -> int:
+    """Unlink assets from removed research lines without deleting the assets."""
+    query = db.query(PersonalResearchAssetLine).filter(
+        PersonalResearchAssetLine.member_id == member_id
+    )
+    if valid_line_ids:
+        query = query.filter(~PersonalResearchAssetLine.line_id.in_(valid_line_ids))
+    return query.delete(synchronize_session=False)
