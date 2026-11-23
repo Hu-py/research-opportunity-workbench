@@ -9,6 +9,7 @@ from sqlalchemy import select
 from research_workbench.core import session_factory, get_profile, ingest, propose, weekly_report
 from backend.tasks import ResearchTask, claim, next_queued, event, utc_now
 from backend.agent import ResearchAgent
+from backend.task_source_scopes import task_source_context
 from backend.interests import ingest_interests
 from backend.radar_pipeline import sync_ai_opportunities, generate_weekly
 
@@ -22,8 +23,23 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
         try:
             log("start","科研任务已启动："+task.kind)
             profile=get_profile(db)
+            source_context=task_source_context(db,task_id)
+            if source_context:
+                log("source_scope",
+                    "本次任务已锁定专属期刊清单 V" + str(source_context["scope_version"]) +
+                    "，A/B/C 共 " + str(sum(len(v) for v in source_context["groups"].values())) +
+                    " 个来源。")
             if task.kind=="explore":
-                result=ResearchAgent(db,log=log,openalex_client=client,model_client=model_client).run(task.query)
+                result=ResearchAgent(
+                    db,log=log,openalex_client=client,model_client=model_client,
+                    source_context=source_context,
+                ).run(task.query)
+                if source_context:
+                    result["source_scope"]={
+                        "groups":source_context["groups"],
+                        "version":source_context["scope_version"],
+                        "enforced":True,
+                    }
             elif not profile:
                 raise ValueError("请先保存研究者画像，才能执行文献更新或周报。")
             elif task.kind=="sync":
@@ -35,16 +51,37 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
                         "answer":f"新增论文 {collected['new_papers']} 篇，新选题 {ideas['new_ideas']} 个，已更新选题 {ideas['revised_ideas']} 个。"}
             elif task.kind=="weekly":
                 log("search","正在收集周报相关文献")
-                collected=ingest(db,profile,days=14,limit=10,client=client)
-                interest_stats=ingest_interests(db,days=14,per_query=6,client=client)
-                log("interests","已检索手动兴趣分支，并保留独立来源标签")
-                ideas=propose(db,profile)
-                log("radar","正在合并 AI 选题并进行五道可行性预审")
-                radar_stats=sync_ai_opportunities(db)
-                radar_report=generate_weekly(db)
-                result={"mode":"weekly","answer":weekly_report(db,profile)+"\n\n"+radar_report,
-                        "radar":radar_stats,
-                        "papers":collected,"interest_papers":interest_stats,"ideas":ideas}
+                if source_context:
+                    collected=ingest(db,profile,days=14,limit=10,client=client,
+                                     source_ids_by_mode={
+                                         "direct":source_context["direct_ids"],
+                                         "method":source_context["method_ids"],
+                                     })
+                    # Do not mix unrelated interest topics or global historical
+                    # Radar cards into a strict SC01 report.
+                    report=weekly_report(
+                        db,profile,allowed_venues=source_context["allowed_venues"],
+                        include_team_ideas=False,include_interests=False,
+                    )
+                    report=("> 本期采用任务专属来源 V"+
+                            str(source_context["scope_version"])+
+                            "：A 应用场景 / B 前沿视角 / C 技术方法。\n\n"+report)
+                    result={"mode":"weekly_scoped","answer":report,"papers":collected,
+                            "source_scope":{"groups":source_context["groups"],
+                                            "version":source_context["scope_version"],
+                                            "enforced":True}}
+                    log("source_review","已排除非本任务来源的兴趣分支和全局 Radar 结果")
+                else:
+                    collected=ingest(db,profile,days=14,limit=10,client=client)
+                    interest_stats=ingest_interests(db,days=14,per_query=6,client=client)
+                    log("interests","已检索手动兴趣分支，并保留独立来源标签")
+                    ideas=propose(db,profile)
+                    log("radar","正在合并 AI 选题并进行五道可行性预审")
+                    radar_stats=sync_ai_opportunities(db)
+                    radar_report=generate_weekly(db)
+                    result={"mode":"weekly","answer":weekly_report(db,profile)+"\n\n"+radar_report,
+                            "radar":radar_stats,
+                            "papers":collected,"interest_papers":interest_stats,"ideas":ideas}
             else:
                 raise ValueError("Unsupported task")
             task.result_json=json.dumps(result,ensure_ascii=False)
