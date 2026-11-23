@@ -201,7 +201,7 @@ export default function PersonalResearchLibrary({
     <div className={styles.actions}>
      <button type="button" className={styles.cancel} onClick={()=>setOpen(false)}>取消</button>
      <button type="button" className={styles.save} disabled={busy||!draft.title.trim()||!profileSaved} onClick={()=>void save()}>
-      {busy?<Loader2 size={14} className={styles.spin}/>:<Check size={14}/>}保存资料
+      {busy?<Loader2 size={14} className={styles.spin}/>:<Check size={14}/>}{editingId?"保存修改":"保存资料"}
      </button>
     </div>
    </div>}
