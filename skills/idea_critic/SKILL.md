@@ -1,29 +1,38 @@
 ---
 name: idea_critic
-description: Attempt to falsify research novelty and feasibility before recommending research investment
+description: Adversarial review of research opportunities for scientific value, nearest-neighbor novelty, method validity and feasibility.
+version: 1.1.0
 ---
 
-# Idea Critic
+# Idea Critic Skill
 
-For each candidate idea, conduct adversarial, evidence-backed review:
+Act as a skeptical reviewer, not an advocate. Your task is to find the strongest reason a proposed topic should not proceed.
 
-- Prior art: look for direct matches, close substitutes and comparable problem/method combinations. State the limits of your search.
-- Assumptions: identify requirements about labels, temporal alignment, geospatial coverage, causal claims, computing and data access.
-- Baselines: require at least a simple conventional baseline and an appropriate competitive baseline.
-- Leakage: flag train/test leakage, spatial autocorrelation, temporal leakage and evaluation domain shift where relevant.
-- Deliver a verdict as `值得小规模验证`, `需要补充证据` or `暂缓` with reasons; this is not publication acceptance prediction.
+## Mandatory review
 
-Never invent supporting references. Separate paper-specific evidence from your own hypothesis.
+1. Reconstruct the exact central claim. Identify the object, construct, mechanism, outcome, scale and intended contribution.
+2. Search for 3–5 closest prior works. Do not rely on broad background papers or title similarity. Include the strongest direct competitor even if it weakens the proposed idea.
+3. Compare each nearest neighbor on research question, object/population, spatial and temporal scale, data, method, outcome, validation and contribution.
+4. Classify evidence relationships as direct, indirect, counterexample or unlinked. Explain the mechanism bridge for indirect links and the challenged claim for counterexamples.
+5. Search for contrary findings and alternative explanations. Do not present only supportive papers.
+6. Distinguish author novelty claims from independently compared gaps. If source coverage, abstract or full text is inadequate, mark novelty unverified.
+7. Test whether the proposed contribution is more than a change of city, algorithm, dataset, proxy or feature.
+8. Test method assumptions, input/output compatibility, label and sample requirements, leakage, baselines, evaluation and compute.
+9. Test whether the study can produce a meaningful scientific or planning insight, not just a model-performance table.
+10. Define the smallest falsifiable validation and a stop condition.
 
+## Five review gates
 
-## Five mandatory feasibility gates (Codex/radar rubric)
+- Scientific importance: does the question matter beyond local engineering?
+- Prior-art separation: is the closest work identified and the difference defensible?
+- Mechanism validity: is there a credible bridge from problem to method and outcome?
+- Evidence and feasibility: are data, access, scale, labels, baselines and validation plausible?
+- Scope and contribution: can one coherent paper answer the question without overclaiming?
 
-Treat these as explicit fields, not an arbitrary weighted average.
+## Verdict
 
-1. **规划问题**: planning relevance, not simply exchanging one model for another.
-2. **数据可得**: list exact datasets, real acquisition rights, spatial and temporal granularity, sample, preflight test and failure criteria. An item in a private data inventory is not proof of permission or actual access.
-3. **构念有效**: never replace observed behavior with accessibility, individual health with spatial proxies, inundation resilience with elevation, or causal effects with correlations.
-4. **文献增量**: targeted checks against closest prior art, including problem / method / outcome relevance. Zero retrieved papers does not demonstrate originality; mark novelty unverified.
-5. **规模可控**: one-city / small-sample minimum viable experiment, baselines, metrics and stopping rules.
+- GO: the core claim survives nearest-neighbor and feasibility review.
+- HOLD: potentially valuable, but a named evidence or data prerequisite must be resolved first.
+- REJECT: the main claim is already directly covered, method assumptions conflict, or the contribution is too small or unsupported.
 
-Optionally emit `minimum_data` and `stop_conditions` as JSON string arrays. Keep them as **unverified proposals**, not checked results. AI-only screening may recommend B/C/D, but must not grant A: A requires human verification of all gates. When source papers are abstract-only, distinguish "not in abstract" from "absent from full text". Merge overlapping candidate ideas rather than counting cosmetic reformulations separately.
+A high score cannot override a fatal issue. Always state the strongest counterargument, the evidence that would change the verdict, and the next action. Do not invent a novelty score or claim that a topic is novel because search results were sparse.
