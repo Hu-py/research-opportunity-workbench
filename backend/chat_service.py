@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from datetime import timedelta
 from datetime import datetime, timezone
 from typing import Any
 
@@ -297,10 +298,51 @@ def _provider_reply(db: Session, history: list[dict[str, str]]) -> tuple[str, st
         raise ChatServiceError(502, "DeepSeek 响应结构不符合预期") from None
 
 
+def _recover_stale_ai_lock(db: Session, conv: ChatConversation) -> bool:
+    """Release only a demonstrably orphaned AI lock.
+
+    Provider calls have a 45-second timeout. A running call older than two
+    minutes with no assistant result cannot still be an active request.
+    """
+    if not conv.active_ai_call_id:
+        return False
+    call = db.get(ChatAICall, conv.active_ai_call_id)
+    if call is None:
+        conv.active_ai_call_id = ""
+        db.commit()
+        return True
+    if call.status != "running":
+        conv.active_ai_call_id = ""
+        db.commit()
+        return True
+    created = call.created_at
+    if created is not None:
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if created > _now() - timedelta(minutes=2):
+            return False
+    if call.assistant_message_id:
+        assistant = db.get(ChatMessage, call.assistant_message_id)
+        if assistant is not None:
+            call.status = "completed"
+            call.error = ""
+        else:
+            call.status = "failed"
+            call.error = "Previous AI request was interrupted before its reply was saved."
+    else:
+        call.status = "failed"
+        call.error = "Previous AI request expired; its stale session lock was released."
+    call.completed_at = _now()
+    conv.active_ai_call_id = ""
+    db.commit()
+    return True
+
+
 def _run_ai_call(db: Session, conv: ChatConversation, actor_id: str,
                  trigger_type: str, idempotency_key: str,
                  trigger_message_id: str | None = None) -> dict:
     conv = _conversation(db, conv.id, actor_id, lock=True)
+    _recover_stale_ai_lock(db, conv)
     existing = db.scalar(select(ChatAICall).where(
         ChatAICall.conversation_id == conv.id,
         ChatAICall.idempotency_key == idempotency_key,
