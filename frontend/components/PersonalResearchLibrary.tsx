@@ -207,6 +207,9 @@ export default function PersonalResearchLibrary({
    </div>}
    <div className={styles.imports}>
     <div className={styles.subhead}><h3>从已有记录导入</h3><span>建立个人私有引用</span></div>
+    <div className={styles.lineChoices}>
+     {lines.map(line=><label key={line.id}><input type="checkbox" checked={draft.line_ids.includes(line.id)} onChange={()=>toggleLine(line.id)}/><span>{line.name}</span></label>)}
+    </div>
     <div className={styles.grid}>
      <label>共用文献库 DOI<input value={doi} onChange={e=>setDoi(e.target.value)} placeholder="10.xxxx/xxxxx"/>
       <button type="button" className={styles.importButton} disabled={busy||!doi.trim()||!profileSaved} onClick={()=>void importPaper()}><BookOpen size={13}/>导入论文</button>
