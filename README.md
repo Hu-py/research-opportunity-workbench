@@ -82,6 +82,16 @@ The local database defaults to \`data/research.db\` (git-ignored); it persists b
 
 Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAPI/Worker and private PostgreSQL configuration, security boundaries and secrets. The repository is public as of development; **never commit API keys, researcher CVs, unpublished manuscripts, participant data or private PDFs.**
 
+## Persistent conversations and Research Opportunity V1
+
+- The **对话** workspace now supports ACL-scoped private multi-turn conversations and shared team rooms. Private messages automatically call the configured model; ordinary team messages do not call AI unless the member explicitly uses `@GPT` or `AI 回复`.
+- The **定向科研任务** workspace can launch the versioned Research Opportunity V1 Skill, freeze a per-task A/B/C source snapshot, and store execution progress and the final report.
+- Research Opportunity runs fail closed when the approved source list is empty, disabled or unresolved. The full PDF-only SC05 diagnostic remains a separate workflow.
+- [Conversation and Research Opportunity API contract](docs/CHAT_CONVERSATIONS_AND_RESEARCH_TASKS_V1.md)
+- [Research Opportunity V1 specification](docs/RESEARCH_OPPORTUNITY_SKILL_V1.md)
+
+These capabilities require team authentication and supported model credentials on the backend. See the deployment checklist before enabling them in production.
+
 ## Architecture and tests
 
 - [Architecture, API and data/agent boundaries](docs/ARCHITECTURE.md)
