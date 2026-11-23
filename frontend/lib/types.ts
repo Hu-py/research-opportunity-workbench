@@ -25,6 +25,14 @@ export type PersonalResearchProfile = {
   research_lines:ResearchLine[];goals:string;methods:string[];
   excluded_terms:string[];evidence:PersonalProfileEvidence[];
 };
+export type PersonalResearchAssetKind =
+  | "publication" | "agent_report" | "experiment_result" | "project" | "dataset" | "note";
+export type PersonalResearchAsset = {
+  id:string;client_key:string;kind:PersonalResearchAssetKind;title:string;
+  summary:string;url:string;source_type:string;source_id:string;
+  metadata:Record<string,unknown>;line_ids:string[];status:"active"|"archived";
+  created_at:string|null;updated_at:string|null;
+};
 export type TaskSourceScope = {
   scene:string;groups:{A:string[];B:string[];C:string[]};
   enforced:boolean;scope_version?:number;version?:number;configured?:boolean;
