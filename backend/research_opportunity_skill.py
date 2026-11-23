@@ -101,14 +101,15 @@ def task_prompt(capability: str, question: str) -> str:
 
 
 def execute(db, payload: str, *, log=lambda step, msg: None,
-            openalex_client=None, model_client=None) -> dict[str, Any]:
+            openalex_client=None, model_client=None, source_context=None) -> dict[str, Any]:
     """Use the existing limited, read-only ResearchAgent; never publish results."""
     capability, question = parse_payload(payload)
     from backend.agent import ResearchAgent
 
     agent = ResearchAgent(
         db, log=log, openalex_client=openalex_client,
-        model_client=model_client, skill_names=CAPABILITIES[capability]["skills"],
+        model_client=model_client, source_context=source_context,
+        skill_names=CAPABILITIES[capability]["skills"],
     )
     result = agent.run(task_prompt(capability, question))
     return {
