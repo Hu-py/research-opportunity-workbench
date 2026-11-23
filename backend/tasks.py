@@ -29,7 +29,7 @@ def enqueue(db, kind: str, query: str = "", *,
 
     This also covers weekly tasks enqueued by the scheduler, not only the API.
     """
-    if kind not in ("explore", "sync", "weekly"):
+    if kind not in ("explore", "sync", "weekly", "research_opportunity"):
         raise ValueError("Unknown task kind")
     from backend.task_source_scopes import snapshot_task
     task = ResearchTask(id=str(uuid.uuid4()), kind=kind, query=query.strip())
@@ -66,10 +66,22 @@ def next_queued(db):
     return task_id if task_id and claim(db, task_id) else None
 
 def as_dict(task: ResearchTask) -> dict:
-    return {
-        "id":task.id, "kind":task.kind, "query":task.query,
+    query = task.query
+    capability = None
+    if task.kind == "research_opportunity":
+        try:
+            payload = json.loads(task.query or "{}")
+            query = str(payload.get("question") or task.query)
+            capability = payload.get("capability")
+        except (ValueError, TypeError):
+            pass
+    result = {
+        "id":task.id, "kind":task.kind, "query":query,
         "status":task.status, "events":json.loads(task.events_json or "[]"),
         "result":json.loads(task.result_json or "{}"), "error":task.error,
         "created_at":task.created_at.isoformat() if task.created_at else None,
         "updated_at":task.updated_at.isoformat() if task.updated_at else None,
     }
+    if capability:
+        result["capability"] = capability
+    return result
