@@ -24,7 +24,7 @@ export type TaskSourceScope = {
 export type ResearchSourceLabel = {id:string;name:string;abbreviation:string};
 export type TaskEvent = {at:string;step:string;detail:string};
 export type Task = {
-  id:string;kind:"explore"|"sync"|"weekly";query:string;
+  id:string;kind:"explore"|"sync"|"weekly"|"research_opportunity";query:string;
   status:"queued"|"running"|"completed"|"failed";events:TaskEvent[];
   result:{mode?:string;answer?:string;sources?:Paper[];usage?:Record<string,number>;papers?:unknown;ideas?:unknown};
   error:string;created_at:string;updated_at:string;
