@@ -82,6 +82,17 @@ The local database defaults to \`data/research.db\` (git-ignored); it persists b
 
 Refer to [DEPLOYMENT.md](DEPLOYMENT.md) for Vercel frontend, Docker-based FastAPI/Worker and private PostgreSQL configuration, security boundaries and secrets. The repository is public as of development; **never commit API keys, researcher CVs, unpublished manuscripts, participant data or private PDFs.**
 
+## Unified Research Atlas V1
+
+The active product line is being converged on `main` through [PR #146](https://github.com/Hu-py/research-opportunity-workbench/pull/146). This release combines the existing mainline Research Atlas interface with persistent private/team chat, personal research profiles and library, task-specific A/B/C source snapshots, Research Opportunity V1 Skills, and the durable worker entry point.
+
+- [Research Opportunity Skill V1.0 specification](docs/RESEARCH_OPPORTUNITY_SKILL_V1.md)
+- [Chat conversations and research tasks V1](docs/CHAT_CONVERSATIONS_AND_RESEARCH_TASKS_V1.md)
+- [Business Agent configuration](docs/BUSINESS_AGENT_CONFIGURATION.md)
+- [Business MCP OAuth setup](docs/BUSINESS_MCP_OAUTH_SETUP.md)
+
+The shared-team chat may read the shared team profile only. Private conversations may additionally read the authenticated member's own personal profile and bounded personal-library summaries. Private assets are never injected into team conversations.
+
 ## Architecture and tests
 
 - [Architecture, API and data/agent boundaries](docs/ARCHITECTURE.md)
