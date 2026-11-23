@@ -13,7 +13,8 @@ from datetime import datetime, timezone
 from typing import Literal
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, DateTime, func, select
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, DateTime, UniqueConstraint, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column, Session
 from research_workbench.core import Base, Profile, get_profile, set_profile
 
@@ -55,6 +56,32 @@ class TeamProfileRevision(Base):
     profile_json: Mapped[str] = mapped_column(Text)
     actor_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=timestamp)
+
+class PersonalResearchProfile(Base):
+    """One private research profile per authenticated team member."""
+    __tablename__ = "personal_research_profiles"
+    member_id: Mapped[str] = mapped_column(
+        ForeignKey("team_members.id", ondelete="CASCADE"), primary_key=True
+    )
+    profile_json: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=timestamp)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=timestamp)
+
+
+class PersonalResearchProfileRevision(Base):
+    __tablename__ = "personal_research_profile_revisions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    member_id: Mapped[str] = mapped_column(
+        ForeignKey("team_members.id", ondelete="CASCADE"), index=True
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    profile_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=timestamp)
+    __table_args__ = (
+        UniqueConstraint("member_id", "version", name="uq_personal_profile_member_version"),
+    )
+
 
 class AuditEntry(Base):
     __tablename__ = "team_audit"
@@ -188,3 +215,51 @@ def save_team_profile(db:Session,payload:dict,actor_id:str,expected_version:int|
     add_audit(db,"profile.updated",actor_id,"team-profile",f"v{version}")
     db.commit()
     return version
+
+def read_personal_profile(db:Session,member_id:str) -> dict:
+    """Read only the profile owned by this authenticated member."""
+    row=db.get(PersonalResearchProfile,member_id)
+    if row is None:
+        return {"profile":None,"version":0,"updated_at":None}
+    return {
+        "profile":json.loads(row.profile_json),
+        "version":row.version,
+        "updated_at":row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+def save_personal_profile(db:Session,member_id:str,payload:dict,
+                          expected_version:int) -> dict:
+    """Versioned member-scoped upsert; never touches the shared team Profile."""
+    row=db.execute(
+        select(PersonalResearchProfile)
+        .where(PersonalResearchProfile.member_id==member_id)
+        .with_for_update()
+    ).scalar_one_or_none()
+    current=row.version if row is not None else 0
+    if expected_version!=current:
+        raise ValueError("Personal profile changed; reload before saving")
+    version=current+1
+    serialized=json.dumps(payload,ensure_ascii=False)
+    now=timestamp()
+    if row is None:
+        row=PersonalResearchProfile(
+            member_id=member_id,profile_json=serialized,version=version,
+            created_at=now,updated_at=now,
+        )
+        db.add(row)
+    else:
+        row.profile_json=serialized
+        row.version=version
+        row.updated_at=now
+    db.add(PersonalResearchProfileRevision(
+        member_id=member_id,version=version,profile_json=serialized,created_at=now
+    ))
+    add_audit(db,"personal_profile.updated",member_id,member_id,
+              "version="+str(version)+" lines="+str(len(payload.get("research_lines",[]))))
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ValueError("Personal profile changed; reload before saving") from exc
+    return read_personal_profile(db,member_id)

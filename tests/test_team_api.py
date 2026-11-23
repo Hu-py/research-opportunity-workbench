@@ -78,3 +78,75 @@ def test_member_revocation_blocks_session(team_client):
     current=client.get("/api/auth/me",headers=service(admin)).json()["member"]
     assert client.patch("/api/team/members/"+current["id"],
         headers=service(admin),json={"active":False}).status_code==422
+
+
+def test_personal_profile_is_private_to_each_member_and_versioned(team_client):
+    client=team_client
+    admin=sign_in(client,"admin@example.org","integration-test-password-2026")
+    assert client.get("/api/personal-profile",headers=service()).status_code==401
+
+    created=client.post("/api/team/members",headers=service(admin),json={
+        "email":"personal@example.org","name":"Personal Researcher",
+        "temporary_password":"integration-test-personal-2026","role":"researcher"})
+    assert created.status_code==201,created.text
+    researcher=sign_in(client,"personal@example.org","integration-test-personal-2026")
+
+    assert client.get("/api/personal-profile",headers=service(admin)).json()=={
+        "profile":None,"version":0,"updated_at":None
+    }
+    admin_profile={
+        "goals":"Three personal research lines",
+        "methods":["network science","spatial transfer"],
+        "excluded_terms":[],
+        "research_lines":[{
+            "id":"metro_resilience","name":"Metro resilience",
+            "problem":"Understand coupled station and segment resilience",
+            "keywords":["metro","extreme rainfall"],
+            "search_queries":["metro resilience extreme rainfall"],
+            "method_queries":["capacity-constrained flow simulation"],
+        }],
+        "evidence":[{
+            "id":"shen_trd_2026","line_id":"metro_resilience",
+            "kind":"publication","title":"How metro networks respond to extreme rainfall",
+            "url":"https://doi.org/10.1016/j.trd.2026.105654",
+            "note":"Representative published work",
+        }],
+    }
+    saved=client.put("/api/personal-profile",headers=service(admin),json={
+        "profile":admin_profile,"expected_version":0})
+    assert saved.status_code==200,saved.text
+    assert saved.json()["version"]==1
+    assert saved.json()["profile"]==admin_profile
+
+    # A different authenticated member has a separate empty profile.
+    assert client.get("/api/personal-profile",headers=service(researcher)).json()=={
+        "profile":None,"version":0,"updated_at":None
+    }
+    researcher_profile={
+        "goals":"My own line",
+        "research_lines":[{
+            "id":"health_transfer","name":"Health transfer",
+            "problem":"Study transferability across cities",
+            "keywords":["child health"],"search_queries":["child health transfer"],
+            "method_queries":["domain adaptation"],
+        }],
+        "methods":[],"excluded_terms":[],"evidence":[],
+    }
+    own=client.put("/api/personal-profile",headers=service(researcher),json={
+        "profile":researcher_profile,"expected_version":0})
+    assert own.status_code==200,own.text
+    assert own.json()["profile"]["research_lines"][0]["id"]=="health_transfer"
+
+    # Member A cannot read or overwrite member B's private profile by guessing IDs.
+    assert client.get("/api/personal-profile",headers=service(admin)).json()["profile"]==admin_profile
+    stale=client.put("/api/personal-profile",headers=service(admin),json={
+        "profile":admin_profile,"expected_version":0})
+    assert stale.status_code==409,stale.text
+
+    invalid={**admin_profile,"evidence":[{
+        "id":"orphan_report","line_id":"not_a_line","kind":"agent_report",
+        "title":"Orphan","url":"https://example.org/report","note":"",
+    }]}
+    rejected=client.put("/api/personal-profile",headers=service(admin),json={
+        "profile":invalid,"expected_version":1})
+    assert rejected.status_code==422,rejected.text
