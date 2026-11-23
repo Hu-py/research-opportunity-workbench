@@ -639,7 +639,8 @@ export default function ResearchAtlasV1() {
         evidence: result.profile.evidence || [],
       });
       setPersonalProfileVersion(result.version);
-      setNotice("个人研究画像已保存到当前登录账号，与团队画像独立存储。");
+      await refreshPersonalAssets();
+      setNotice("个人研究画像和关联论文/报告已保存到当前账号，与团队画像独立存储。");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "个人画像保存失败");
     } finally {
