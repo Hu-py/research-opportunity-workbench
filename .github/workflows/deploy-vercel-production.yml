@@ -1,4 +1,7 @@
-# Production release uses the existing team token only through GitHub Actions secrets.
+# This repository is a monorepo. Vercel's Project Root Directory is
+# already configured as "frontend", so run CLI from the *repository root*.
+# Build remotely at Vercel: sensitive Production secrets are not retrievable
+# by a CI runner and local prebuilt builds would see "[SENSITIVE]" placeholders.
 name: Deploy Research Atlas to Vercel Production
 
 on:
@@ -19,11 +22,10 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and deploy the reviewed main branch
+    name: Deploy reviewed main from repository root
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
+    environment: production
     env:
       VERCEL_ORG_ID: team_AJPdxeeAHVMuBFUh4fHVFqcl
       VERCEL_PROJECT_ID: prj_v88I5Sy7PwDabkWSDiV9zQFjEdgq
@@ -41,6 +43,12 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Verify repository and frontend directories
+        run: |
+          test -f frontend/package.json
+          test -f frontend/next.config.ts
+          test -f .github/workflows/deploy-vercel-production.yml
+
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@66.6.0
 
@@ -49,36 +57,30 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           if [ -z "${VERCEL_TOKEN:-}" ]; then
-            echo "::error::Repository secret VERCEL_TOKEN is not configured. Add a Vercel team token in GitHub Settings > Secrets and variables > Actions."
+            echo "::error::Repository secret VERCEL_TOKEN is not configured."
             exit 1
           fi
 
-      - name: Link this frontend directory to the existing Vercel project
+      - name: Link repository root to the existing Vercel project
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel link --yes --project research-opportunity-workbench --scope "$VERCEL_SCOPE"
 
-      - name: Pull Production environment
+      - name: Deploy source to Production with Vercel-hosted build
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel pull --yes --environment=production --scope "$VERCEL_SCOPE"
+        run: |
+          # Project Root Directory is configured as frontend in Vercel.
+          # Do not chdir into frontend here: that creates frontend/frontend.
+          # Remote builds can access Production secrets on Vercel.
+          vercel deploy --prod --yes --scope "$VERCEL_SCOPE"
 
-      - name: Build with Production settings
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel build --prod --scope "$VERCEL_SCOPE"
-
-      - name: Deploy the prebuilt output to Production
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel deploy --prebuilt --prod --yes --scope "$VERCEL_SCOPE"
-
-      - name: Verify the production domain
+      - name: Verify production homepage and session endpoint
         run: |
           curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors \
-            --max-time 30 "$PRODUCTION_URL/" -o /dev/null
+            --max-time 80 "$PRODUCTION_URL/" -o /dev/null
           status="$(curl --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors \
-            --max-time 30 -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/api/session")"
+            --max-time 80 -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/api/session")"
           test "$status" = "200"
 
       - name: Write deployment summary
@@ -89,6 +91,7 @@ jobs:
             echo "- Target: Production"
             echo "- URL: $PRODUCTION_URL"
             echo "- Commit: $GITHUB_SHA"
-            echo "- Frontend root: frontend/"
+            echo "- Project root: repository root (Vercel rootDirectory=frontend)"
+            echo "- Build: Vercel-hosted, with Production secrets available"
             echo "- Smoke test: homepage and session endpoint returned HTTP 200"
           } >> "$GITHUB_STEP_SUMMARY"
