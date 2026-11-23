@@ -691,8 +691,7 @@ export default function ResearchAtlasV1() {
         </section>}
 
         {section === "tasks" && <section>
-          <PageHeader eyebrow="SC03 · DIRECTED RESEARCH" title="定向科研任务" description="针对具体研究问题开展文献检索、方法迁移和证据审查，并保存完整研究报告。"
-            action={<button className={styles.primaryButton} onClick={() => { setSection("chat"); setChatScope("private"); }}><Plus size={15} />新建任务</button>} />
+          <PageHeader eyebrow="SC03 · DIRECTED RESEARCH" title="定向科研任务" description="运行 Research Opportunity Skill，完成受控文献发现、跨论文综合、方法迁移与论文级选题审查。" />
           <SourceScopeInline scope={sourceScopes.find(scope => scope.scene === "directed_research")}
             sources={sourceCatalog} label="定向科研 · 默认期刊"
             onEdit={() => {setSettingsTab("task-sources");changeSection("settings");}}
@@ -710,7 +709,7 @@ export default function ResearchAtlasV1() {
             <textarea value={question} onChange={event => setQuestion(event.target.value)} maxLength={1500} rows={3}
               placeholder="输入研究问题、种子论文（可填写题名或 DOI）及希望发现的研究机会。例如：基于 Shen et al. 2026 TRD，独立诊断其研究并寻找足以支撑下一篇论文的研究问题。"
               disabled={!canEdit || busy} />
-            <TaskSourceRunPicker key="opportunity-source-scope" disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
+            <TaskSourceRunPicker key={selectedTaskId || "opportunity-source-scope"} disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
             <div className={styles.opportunityComposerBottom}>
               <span>{question.length}/1500 · 任务会冻结本次 A/B/C 来源清单并保存执行记录</span>
               <button className={styles.primaryButton} onClick={() => void submitOpportunity()} disabled={!canEdit || busy || question.trim().length < 6}>
