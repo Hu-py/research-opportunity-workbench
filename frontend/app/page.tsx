@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import ResearchAtlasV1 from "@/components/ResearchAtlasV1";
 
-/** V0.5: reproduce the approved standalone HTML without legacy Workbench modules. */
 export default function Home() {
-  redirect("/research-atlas-v0.5.html");
+  return <ResearchAtlasV1 />;
 }

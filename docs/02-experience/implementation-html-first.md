@@ -1,36 +1,48 @@
-# Research Atlas V0.5 · HTML-first website
+# Research Atlas · V0.5 HTML 原型实施记录（历史版本）
 
-Status: initial parity implementation, 2026-11-14.
+**状态：历史设计原型；不再代表当前 V1.0 产品功能范围。**
 
-The public root of the existing Next.js deployment points to the **exact approved V0.5 HTML design baseline**. This is a deliberate frontend reset, not a merging or re-display of previous Workbench features.
+V0.5 HTML 是 2026-11-14 批准的黑白极简视觉与双一级导航原型。原型文件继续保留，作为历史设计参考，不覆盖、不删除。
 
-## Files
+## 历史实现文件
 
-- `frontend/app/page.tsx`: redirects home to the approved V0.5 HTML asset.
-- `frontend/public/research-atlas-v0.5.html`: verbatim copy of `docs/02-experience/prototypes/milestones/v0.5/index.html`.
-- The historical V0.5 HTML remains unchanged and recoverable in `docs/02-experience/prototypes/milestones/v0.5/index.html`.
+- `frontend/app/page.tsx` 曾将首页重定向到 V0.5 HTML。
+- `frontend/public/research-atlas-v0.5.html` 是静态演示页面。
+- `docs/02-experience/prototypes/milestones/v0.5/index.html` 保存原始历史里程碑。
 
-## New visible information architecture
+## V0.5 与 V1.0 的关系
 
-- Primary icon rail: **对话** / **研究台**, with Chat as default.
-- Chat: personal and team conversation **visual flows only**.
-- Research Desk: **研究专题**, **科研发现**, **知识资产**, **管理与设置**.
-- Specialized subviews match V0.5 HTML: topic details, A/B/C science scans, three-part weekly brief, evidence and method views, team/personal profiles, management.
-- Black/white minimal style, no duplicate top navigation, no slogan, no architecture overview page.
+V0.5 确立并可继续沿用：
+- 左侧固定「对话 / 研究台」两个一级入口。
+- 白底、黑灰文本、轻量边线和极简布局。
+- 无 Slogan、无架构总览、无重复顶部导航。
 
-## Current operational scope and disclosures
+V0.5 中以下研究台分组已被 V1.0 取代：
+- 研究专题
+- 科研发现
+- 知识资产
+- 管理与设置
 
-The static HTML uses sample topics, signals, papers and conversations. All chat messages are in-memory UI demonstration and are **not sent to an AI model or stored on the server**. Controls that would write persistent data display demo notices. **Do not treat the visible demo as a production collaborative research application.**
+当前 V1.0 研究台只保留：
+- 团队周报
+- 个人周报
+- 定向科研任务
+- 研究设置
 
-The old `Workbench.tsx` components and backend endpoints remain in the repo for rollback/data preservation, but they are **not shown from the homepage**. Existing API endpoints retain their independent authorization. No database schemas, secrets, backups, jobs, or GitHub workflows are modified. Do not expose private records in the static HTML.
+V0.5 HTML 中的静态对话、专题、论文、知识和设置示例不代表真实生产能力，也不构成 V1.0 需求。
 
-## Production rollout
+## V1.0 实施要求
 
-1. GitHub CI: TypeScript, Next.js production build, backend tests.
-2. Vercel preview: verify exact asset, root redirect, menu, chat-to-research switching, topic/research/knowledge/settings subviews, desktop/mobile sizes.
-3. Production deploy only after verifying that replacing the authenticated old Workbench with an explicitly public, **static design prototype** is intended.
-4. Real features are implemented behind the new information architecture as separate tasks with authentication and authorization.
+后续前端重构以以下文件为准：
+- [产品范围与功能架构](product-scope-v1.0.md)
+- [信息架构](information-architecture.md)
+- [页面规格](page-specifications.md)
 
-## Follow-on engineering
+不应简单恢复旧版 Workbench 的全部菜单，也不应把所有已有 React 组件直接放回用户端。先逐个映射 SC01、SC02、SC03 和研究设置的真实业务能力，再实现导航与页面。
 
-Implement native React/Next.js V0.5 components using the fixed approved layout, then connect private/team multi-turn conversation, account scope, research topics, A/B/C data, source provenance and personal profiles with actual backend services. Do not restore discarded legacy modules automatically.
+## 上线与验收
+
+- 先在独立分支实现与验证。
+- 先完成预览环境检查，再决定生产发布。
+- 验收真实登录、权限、持久化、模型调用、任务状态、报告和引用。
+- 静态 HTML 可用于视觉评审，但不能证明后端功能已完成。

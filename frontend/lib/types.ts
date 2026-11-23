@@ -17,12 +17,18 @@ export type Profile = {
   datasets?:{name:string;description?:string;access?:string}[];
   methods?:string[];
 };
+export type TaskSourceScope = {
+  scene:string;groups:{A:string[];B:string[];C:string[]};
+  enforced:boolean;scope_version?:number;version?:number;configured?:boolean;
+};
+export type ResearchSourceLabel = {id:string;name:string;abbreviation:string};
 export type TaskEvent = {at:string;step:string;detail:string};
 export type Task = {
   id:string;kind:"explore"|"sync"|"weekly";query:string;
   status:"queued"|"running"|"completed"|"failed";events:TaskEvent[];
   result:{mode?:string;answer?:string;sources?:Paper[];usage?:Record<string,number>;papers?:unknown;ideas?:unknown};
   error:string;created_at:string;updated_at:string;
+  source_scope?:TaskSourceScope;
 };
 export type Overview = {papers:number;ideas:number;revisions:number;research_lines:number;cusp_datasets:number;extra_data_assets:number;recent_ideas:Idea[]};
 
