@@ -51,3 +51,5 @@
 .spin{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:700px){.panel{padding:15px}.grid,.lineChoices{grid-template-columns:1fr}.toolbar{align-items:flex-start}.actions{flex-direction:column}.actions button{width:100%}}
+
+.rowActions{display:flex;align-items:center;gap:10px}
