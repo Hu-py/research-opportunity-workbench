@@ -3,7 +3,8 @@ import pytest
 from fastapi.testclient import TestClient
 import backend.api as server
 from backend.team import create_member
-from research_workbench.core import session_factory
+from backend.tasks import ResearchTask
+from research_workbench.core import session_factory, Paper
 
 def service(token=None):
     result={"Authorization":"Bearer service-test-key"}
