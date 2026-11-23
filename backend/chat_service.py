@@ -256,17 +256,15 @@ def _provider_reply(db: Session, history: list[dict[str, str]]) -> tuple[str, st
         except Exception:
             raise ChatServiceError(502, "OpenAI 对话请求失败，请检查模型配置或服务状态") from None
 
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
     model = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-flash")
-    if not deepseek_key:
-        try:
-            from backend.model_vault import ModelCredential, load_key
-            config = db.get(ModelCredential, "deepseek")
-            if config and config.encrypted_key:
-                deepseek_key = load_key(db) or ""
-                model = config.fast_model or model
-        except Exception:
-            deepseek_key = ""
+    try:
+        from backend.model_vault import ModelCredential, resolve_key
+        config = db.get(ModelCredential, "deepseek")
+        if config:
+            model = config.fast_model or model
+        deepseek_key = resolve_key(db) or ""
+    except Exception:
+        deepseek_key = ""
     if not deepseek_key:
         raise ChatServiceError(
             503,
