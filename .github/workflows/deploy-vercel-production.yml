@@ -4,14 +4,10 @@
 # by a CI runner and local prebuilt builds would see "[SENSITIVE]" placeholders.
 name: Deploy Research Atlas to Vercel Production
 
+# Vercel Git integration already publishes every main push; keep this
+# authenticated CLI workflow as a manual fallback to avoid double releases.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "frontend/**"
-      - ".github/workflows/deploy-vercel-production.yml"
 
 permissions:
   contents: read
