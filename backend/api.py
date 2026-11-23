@@ -122,7 +122,7 @@ from backend.team import (
 )
 from backend.personal_library import (
     PersonalResearchAsset, upsert_personal_asset, list_personal_assets,
-    archive_personal_asset,
+    archive_personal_asset, prune_personal_asset_line_links,
 )
 
 from backend.chat_service import (
@@ -1690,6 +1690,8 @@ def personal_profile_update(
         result=save_personal_profile(
             db,actor.id,payload,data.expected_version,commit=False
         )
+        valid_line_ids={line["id"] for line in payload["research_lines"]}
+        prune_personal_asset_line_links(db,actor.id,valid_line_ids)
         for item in evidence:
             url=item.get("url","")
             if "doi.org/" in url:
