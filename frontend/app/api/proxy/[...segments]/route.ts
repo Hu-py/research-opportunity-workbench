@@ -34,4 +34,5 @@ async function forward(request:NextRequest,context:Context){
   }
 }
 export const dynamic="force-dynamic";
+export const maxDuration = 60;
 export {forward as GET,forward as POST,forward as PUT,forward as PATCH};
