@@ -1,7 +1,7 @@
 "use client";
 
 import {useMemo,useState} from "react";
-import {AlertCircle,ArrowUpRight,BookOpen,Check,FileText,Loader2,Plus,X} from "lucide-react";
+import {AlertCircle,ArrowUpRight,BookOpen,Check,FileText,Loader2,Plus} from "lucide-react";
 import {api} from "@/lib/api";
 import type {PersonalResearchAsset,PersonalResearchAssetKind,ResearchLine} from "@/lib/types";
 import styles from "./PersonalResearchLibrary.module.css";
@@ -53,10 +53,6 @@ export default function PersonalResearchLibrary({
  const filtered=useMemo(()=>assets.filter(item=>filter==="all"||item.kind===filter),[assets,filter]);
  const lineName=(id:string)=>lines.find(line=>line.id===id)?.name||id;
 
- async function refresh(){
-  const result=await api<{items:PersonalResearchAsset[]}>("personal-assets");
-  onChange(result.items||[]);
- }
 
  async function save(){
   if(!profileSaved){setError("请先保存个人研究画像，再录入关联资料。");return;}
