@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle, ArrowUpRight, BookOpen, Check,
   CheckCircle2, ChevronDown, ChevronRight, Download, FileText,
-  Loader2, LogOut, Menu, MessageCircle, Plus, RefreshCw, Search, Send,
+  Loader2, LogOut, Menu, MessageCircle, Plus, RefreshCw, Search,
   Settings2, ShieldCheck, SlidersHorizontal, UserRound, Users, X,
 } from "lucide-react";
 import { api } from "@/lib/api";
