@@ -1,7 +1,10 @@
 """Tests for team workspace data access and audit."""
 from sqlalchemy import select, func
 from research_workbench.core import session_factory, Profile
-from backend.team import TeamMember, TeamProfileRevision, create_member, save_team_profile, current_profile_version, login, resolve_session
+from backend.team import (TeamMember, TeamProfileRevision, PersonalResearchProfile,
+    PersonalResearchProfileRevision, create_member, save_team_profile,
+    current_profile_version, login, resolve_session, read_personal_profile,
+    save_personal_profile)
 
 def test_shared_profile_and_individual_identity():
     Factory=session_factory("sqlite:///:memory:")
@@ -17,3 +20,42 @@ def test_shared_profile_and_individual_identity():
         assert current_profile_version(db)==1
         assert db.scalar(select(func.count()).select_from(Profile))==1
         assert db.scalar(select(func.count()).select_from(TeamProfileRevision))==1
+
+
+def test_personal_profiles_are_member_scoped_and_versioned():
+    Factory=session_factory("sqlite:///:memory:")
+    with Factory() as db:
+        owner=create_member(db,"owner@example.org","Profile Owner",
+            "test-only-long-credential-123",role="admin",initial=True)
+        other=create_member(db,"other@example.org","Other Member",
+            "test-only-other-credential-123",role="researcher")
+        first={
+            "goals":"Personal research goals",
+            "methods":["network science"],
+            "excluded_terms":[],
+            "research_lines":[{
+                "id":"metro_resilience","name":"Metro resilience",
+                "problem":"Understand disruption propagation",
+                "keywords":["metro"],"search_queries":["metro resilience"],
+                "method_queries":["network science"],
+            }],
+            "evidence":[],
+        }
+        assert read_personal_profile(db,owner.id)=={
+            "profile":None,"version":0,"updated_at":None
+        }
+        saved=save_personal_profile(db,owner.id,first,expected_version=0)
+        assert saved["version"]==1
+        assert saved["profile"]==first
+        assert read_personal_profile(db,other.id)["profile"] is None
+        assert db.get(PersonalResearchProfile,owner.id).version==1
+        assert db.scalar(select(func.count()).select_from(
+            PersonalResearchProfileRevision
+        ))==1
+        try:
+            save_personal_profile(db,owner.id,first,expected_version=0)
+        except ValueError as exc:
+            assert "changed" in str(exc).lower()
+        else:
+            raise AssertionError("stale personal profile write should be rejected")
+        assert read_personal_profile(db,owner.id)["version"]==1
