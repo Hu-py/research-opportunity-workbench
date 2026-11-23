@@ -7,7 +7,7 @@ import os
 import time
 from sqlalchemy import select
 from research_workbench.core import session_factory, get_profile, ingest, propose, weekly_report
-from backend.tasks import ResearchTask, claim, next_queued, event, utc_now
+from backend.tasks import ResearchTask, claim, next_queued, event, utc_now, recover_stale_running
 from backend.agent import ResearchAgent
 from backend.task_source_scopes import task_source_context
 from backend.interests import ingest_interests
@@ -19,6 +19,8 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
             return False
         task=db.get(ResearchTask,task_id)
         if task is None: return False
+        task.error=""
+        db.commit()
         def log(step,msg): event(db,task,step,msg)
         try:
             log("start","科研任务已启动："+task.kind)
@@ -113,6 +115,9 @@ def run_task(factory, task_id: str, already_claimed=False, client=None, model_cl
 
 def execute_once(factory):
     with factory() as db:
+        recovered=recover_stale_running(db)
+        if recovered:
+            print(f"Recovered {recovered} stale task(s) after worker interruption",flush=True)
         selected=next_queued(db)
     if not selected:return False
     run_task(factory,selected,already_claimed=True)
