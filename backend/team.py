@@ -90,6 +90,16 @@ def create_member(db: Session, email: str, name: str, password: str, role: str="
                       password_hash=PASSWORD.hash(password),role=role,active=True)
     db.add(member)
     add_audit(db,"member.created",actor_id,member.id,note="role="+role)
+    # New active members inherit access to existing team conversations only.
+    # Private conversations are never shared or copied.
+    try:
+        from backend.chat_models import ChatConversation, ChatMember
+        team_chats=db.scalars(select(ChatConversation).where(ChatConversation.kind=="team")).all()
+        for conversation in team_chats:
+            if db.get(ChatMember,(conversation.id,member.id)) is None:
+                db.add(ChatMember(conversation_id=conversation.id,member_id=member.id,role="member"))
+    except ImportError:
+        pass
     db.commit()
     return member
 
