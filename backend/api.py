@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import re
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -116,6 +117,7 @@ from backend.team import (
     SESSION_SECONDS, login as member_login, resolve_session, revoke_session,
     create_member, public_member, set_member_status, add_audit,
     current_profile_version, save_team_profile,
+    read_personal_profile, save_personal_profile,
 )
 
 from backend.chat_service import (
@@ -422,6 +424,82 @@ class ProfileRequest(BaseModel):
     datasets:list[dict]|None=None
     methods:list[str]|None=None
     expected_version:int|None=None
+
+class PersonalProfileRequest(BaseModel):
+    profile:dict
+    expected_version:int=Field(ge=0)
+
+
+def validate_personal_profile(raw:dict) -> dict:
+    """Validate member-owned research lines and their linked personal evidence."""
+    if not isinstance(raw,dict):
+        raise ValueError("个人画像必须是对象")
+    lines=raw.get("research_lines")
+    if not isinstance(lines,list) or not 1<=len(lines)<=8:
+        raise ValueError("个人研究主线需要 1–8 条")
+    line_ids=set()
+    for line in lines:
+        if not isinstance(line,dict):
+            raise ValueError("研究主线格式无效")
+        ident=line.get("id")
+        if not isinstance(ident,str) or not re.fullmatch(r"[a-z][a-z0-9_]{2,54}",ident):
+            raise ValueError("研究主线 ID 格式无效")
+        if ident in line_ids:
+            raise ValueError("研究主线 ID 不能重复")
+        line_ids.add(ident)
+        if not isinstance(line.get("name"),str) or not line["name"].strip() or len(line["name"])>140:
+            raise ValueError("研究主线名称不能为空且不超过 140 字")
+        if not isinstance(line.get("problem"),str) or not line["problem"].strip() or len(line["problem"])>1000:
+            raise ValueError("研究问题不能为空且不超过 1000 字")
+        for field,limit,max_length in (
+            ("keywords",16,100),("search_queries",5,160),("method_queries",5,160)
+        ):
+            values=line.get(field,[])
+            if not isinstance(values,list) or len(values)>limit or any(
+                not isinstance(value,str) or len(value)>max_length for value in values
+            ):
+                raise ValueError(field+" 格式或数量无效")
+    payload={
+        "research_lines":lines,
+        "goals":raw.get("goals",""),
+        "methods":raw.get("methods",[]),
+        "excluded_terms":raw.get("excluded_terms",[]),
+        "evidence":raw.get("evidence",[]),
+    }
+    if not isinstance(payload["goals"],str) or len(payload["goals"])>1000:
+        raise ValueError("个人研究目标不超过 1000 字")
+    for field,limit,max_length in (("methods",30,120),("excluded_terms",30,120)):
+        values=payload[field]
+        if not isinstance(values,list) or len(values)>limit or any(
+            not isinstance(value,str) or len(value)>max_length for value in values
+        ):
+            raise ValueError(field+" 格式或数量无效")
+    evidence=payload["evidence"]
+    if not isinstance(evidence,list) or len(evidence)>40:
+        raise ValueError("个人成果与报告关联记录最多 40 条")
+    allowed_kinds={"publication","agent_report","project","dataset"}
+    for item in evidence:
+        if not isinstance(item,dict) or item.get("line_id") not in line_ids:
+            raise ValueError("成果关联了不存在的个人研究主线")
+        if item.get("kind") not in allowed_kinds:
+            raise ValueError("成果类型无效")
+        if not isinstance(item.get("id"),str) or not re.fullmatch(r"[a-z][a-z0-9_]{2,54}",item["id"]):
+            raise ValueError("成果记录 ID 格式无效")
+        if not isinstance(item.get("title"),str) or not item["title"].strip() or len(item["title"])>260:
+            raise ValueError("成果标题不能为空且不超过 260 字")
+        url=item.get("url","")
+        if not isinstance(url,str) or len(url)>1200 or (url and not url.startswith(("https://","http://"))):
+            raise ValueError("成果链接必须为有效 HTTP(S) 地址")
+        if not isinstance(item.get("note",""),str) or len(item.get("note",""))>1000:
+            raise ValueError("成果说明不超过 1000 字")
+    validate_profile({
+        "research_lines":payload["research_lines"],
+        "goals":payload["goals"],
+        "methods":payload["methods"],
+        "excluded_terms":payload["excluded_terms"],
+        "datasets":[],
+    })
+    return payload
 
 class AchievementReviewRequest(BaseModel):
     status:Literal["verified","review","rejected"]
@@ -1473,6 +1551,28 @@ def profile_update(data:ProfileRequest,db:Session=Depends(get_db),
             version=current_profile_version(db)
     except ValueError as exc:raise HTTPException(409 if "changed by another" in str(exc) else 422,str(exc)) from exc
     return {"profile":get_profile(db),"version":version}
+
+@app.get("/api/personal-profile")
+def personal_profile_get(
+    actor:TeamMember=Depends(require_team_actor),db:Session=Depends(get_db)
+):
+    """Return only the authenticated member's private research profile."""
+    return read_personal_profile(db,actor.id)
+
+
+@app.put("/api/personal-profile")
+def personal_profile_update(
+    data:PersonalProfileRequest,
+    actor:TeamMember=Depends(require_team_actor),
+    db:Session=Depends(get_db),
+):
+    """Save a versioned profile owned by the current account, never the team profile."""
+    try:
+        payload=validate_personal_profile(data.profile)
+        return save_personal_profile(db,actor.id,payload,data.expected_version)
+    except ValueError as exc:
+        conflict="changed" in str(exc).lower()
+        raise HTTPException(409 if conflict else 422,str(exc)) from exc
 
 def require_research_opportunity_enabled():
     if not team_auth_enabled():
