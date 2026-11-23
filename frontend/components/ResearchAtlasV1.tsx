@@ -460,6 +460,11 @@ export default function ResearchAtlasV1() {
     setTasks([]);
     setSourceScopes([]);
     setSourceCatalog([]);
+    setPersonalAssets([]);
+    setPersonalAssetsLoaded(false);
+    setPersonalProfileDraft(initialPersonalProfile);
+    setPersonalProfileVersion(0);
+    setPersonalProfileLoaded(false);
     setProfile(null);
     setMembers([]);
   }
