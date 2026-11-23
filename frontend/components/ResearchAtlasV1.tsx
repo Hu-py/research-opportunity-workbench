@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import type { PersonalResearchAsset, PersonalResearchProfile, Profile, ResearchLine, ResearchSourceLabel, Task, TaskSourceScope, TeamAudit, TeamMember } from "@/lib/types";
 import AcademicSourceRegistry from "@/components/AcademicSourceRegistry";
 import InterestWatchlist from "@/components/InterestWatchlist";
+import PersonalResearchLibrary from "@/components/PersonalResearchLibrary";
 import TaskSourceScopeSettings, {TaskSourceRunPicker, SourceScopeInline, sourceScopeShort} from "@/components/TaskSourceScopes";
 import type {SourceGroups} from "@/components/TaskSourceScopes";
 import styles from "./ResearchAtlasV1.module.css";
@@ -1228,6 +1229,14 @@ export default function ResearchAtlasV1() {
                   </div>
                 </>}
               </section>
+
+              <PersonalResearchLibrary
+                assets={personalAssets}
+                loaded={personalAssetsLoaded}
+                profileSaved={personalProfileVersion>0}
+                lines={personalProfileDraft.research_lines}
+                onChange={setPersonalAssets}
+              />
 
               <section className={styles.settingsCard}>
                 <div className={styles.panelHeading}><div><div className={styles.eyebrow}>REPORT SCHEDULE</div><h2>周报周期</h2></div><span className={styles.pendingLabel}>网页端暂未开放</span></div>
