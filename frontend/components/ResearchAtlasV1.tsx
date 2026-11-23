@@ -570,7 +570,7 @@ export default function ResearchAtlasV1() {
         </div>
         {recentExploreTasks.length ? recentExploreTasks.map(task => (
           <button key={task.id} className={styles.taskNavItem + (selectedTaskId === task.id ? " " + styles.taskNavActive : "")}
-            onClick={() => { setSelectedTaskId(task.id); setChatScope("private"); setMobileNavOpen(false); }}>
+            onClick={() => { setSelectedTaskId(task.id); changeSection("tasks"); setMobileNavOpen(false); }}>
             <FileText size={15} />
             <span>{task.query || "未命名研究任务"}<small>{shortDate(task.created_at)} · {statusText(task.status)}</small></span>
           </button>
@@ -614,77 +614,8 @@ export default function ResearchAtlasV1() {
         {notice && <div className={styles.alertSuccess}><CheckCircle2 size={16} /><span>{notice}</span><button onClick={() => setNotice("")} aria-label="关闭"><X size={15} /></button></div>}
 
         {section === "chat" && <section className={styles.chatPage}>
-          <PageHeader eyebrow="RESEARCH CONVERSATION" title="对话" description="围绕研究问题交流，按需调用科研分析与深度研究。" />
-          {chatScope === "private" ? <>
-            <div className={styles.capabilityNotice}>
-              <ShieldCheck size={16} />
-              <span>当前已连接真实 Research Agent，但后端仍以单次研究任务保存结果；独立私人多轮会话和私有数据隔离尚未完成。请勿将需要严格保密的内容视为私人存储。</span>
-            </div>
-            <div className={styles.modeSwitch}>
-              <button className={chatMode === "gpt" ? styles.modeActive : ""} onClick={() => setChatMode("gpt")}>
-                GPT 调用 <small>通用对话 · 待接入</small>
-              </button>
-              <button className={chatMode === "research" ? styles.modeActive : ""} onClick={() => setChatMode("research")}>
-                深度研究 <small>Research Agent · 当前可用</small>
-              </button>
-            </div>
-            {chatMode === "gpt" ? <div className={styles.teamChatPending}>
-              <div className={styles.pendingIcon}><MessageCircle size={23} /></div>
-              <div className={styles.eyebrow}>GPT CONVERSATION</div>
-              <h2>通用 GPT 多轮对话尚未接入</h2>
-              <p>当前后端提供的是定向 Research Agent 任务接口，尚未提供可持续保存的通用 GPT 对话接口。切换到「深度研究」即可使用现有真实科研任务能力。</p>
-              <button className={styles.secondaryButton} onClick={() => setChatMode("research")}>进入深度研究 <ArrowUpRight size={14} /></button>
-            </div> : <div className={styles.chatWorkspace}>
-              <div className={styles.chatMain}>
-                {selectedExploreTask ? <div className={styles.chatResult}>
-                  <div className={styles.messageUser}>
-                    <div className={styles.messageAvatar}>我</div>
-                    <div><span>研究问题</span><p>{selectedExploreTask.query}</p></div>
-                  </div>
-                  <div className={styles.messageAssistant}>
-                    <div className={styles.assistantMark}>RA</div>
-                    <div className={styles.assistantContent}>
-                      <div className={styles.assistantTitle}>Research Agent <Status status={selectedExploreTask.status} /></div>
-                      {selectedExploreTask.status === "completed" && <ReportBody markdown={selectedExploreTask.result?.answer || "任务已完成，但没有返回文本结果。"} />}
-                      {selectedExploreTask.status === "failed" && <div className={styles.inlineError}><AlertCircle size={15} />{selectedExploreTask.error || "任务执行失败"}</div>}
-                      {(selectedExploreTask.status === "queued" || selectedExploreTask.status === "running") && <div className={styles.runningState}><Loader2 size={17} className={styles.spin} />研究任务正在执行，结果会自动更新。</div>}
-                      {!!selectedExploreTask.result?.sources?.length && <div className={styles.sourceList}>
-                        <div className={styles.sourceHeading}>本次引用来源 · {selectedExploreTask.result.sources.length}</div>
-                        {selectedExploreTask.result.sources.map(paper => <a key={paper.id} href={paper.url || undefined} target="_blank" rel="noopener noreferrer">
-                          <BookOpen size={14} /><span>{paper.title}<small>{paper.venue || "来源待核验"} · {paper.published || "日期未知"}</small></span><ArrowUpRight size={13} />
-                        </a>)}
-                      </div>}
-                      <button className={styles.traceToggle} onClick={() => setShowTrace(value => !value)}>
-                        <ChevronDown size={14} />{showTrace ? "收起执行记录" : "查看执行记录"}
-                      </button>
-                      {showTrace && <div className={styles.traceList}>
-                        {selectedExploreTask.events.map((event, index) => <div key={index}><span>{dateTime(event.at)}</span><strong>{event.step}</strong><p>{event.detail}</p></div>)}
-                        {selectedExploreTask.error && <div className={styles.traceError}>{selectedExploreTask.error}</div>}
-                      </div>}
-                      {selectedExploreTask.status === "queued" && canEdit && <button className={styles.secondaryButton} onClick={() => void dispatchTask(selectedExploreTask)} disabled={busy}>请求后台执行</button>}
-                    </div>
-                  </div>
-                </div> : <EmptyState icon={MessageCircle} title="开始一项科研探索" description="描述研究问题、已有基础和希望解决的瓶颈。系统将创建一项真实研究任务，并返回文献证据与分析结果。" />}
-                <form className={styles.composer} onSubmit={event => { event.preventDefault(); void submitTask("explore", question); }}>
-                  <textarea value={question} onChange={event => setQuestion(event.target.value)} maxLength={2000}
-                    rows={3} placeholder="例如：基于我现有的研究，哪些跨学科方法可能解决当前的泛化瓶颈？" disabled={!canEdit || busy} />
-                  <TaskSourceRunPicker key={selectedTaskId || "new-research"} disabled={!canEdit || busy} onChange={setTaskSourceOverride}/>
-                  <div className={styles.composerBottom}>
-                    <span>{question.length}/2000 · 每次提交创建一项独立科研任务</span>
-                    <button className={styles.primaryButton} type="submit" disabled={!canEdit || busy || question.trim().length < 6}>
-                      {busy ? <Loader2 size={15} className={styles.spin} /> : <Send size={15} />}开始研究
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>}
-          </> : <div className={styles.teamChatPending}>
-            <div className={styles.pendingIcon}><Users size={24} /></div>
-            <div className={styles.eyebrow}>TEAM CONVERSATION</div>
-            <h2>团队共同对话界面已预留</h2>
-            <p>当前后端尚未提供团队多轮会话、成员发言记录和 @GPT 触发机制。为避免将普通研究任务误显示为共享聊天，这里暂不开放发送入口。</p>
-            <div className={styles.pendingRule}>后续按既定规则实现：普通成员消息不触发模型，只有 @GPT 或主动调用 AI 时才启动科研能力。</div>
-          </div>}
+          <PageHeader eyebrow="RESEARCH CONVERSATION" title="对话" description="私人多轮对话与团队协作会话；科研发现作为独立任务保存在研究台。" />
+          <PersistentChat scope={chatScope} member={member} canEdit={canEdit} onError={setError} />
         </section>}
 
         {section === "team-weekly" && <section>
