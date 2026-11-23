@@ -181,6 +181,9 @@ def _resolve_directed_sources_background(factory):
     """Resolve only the currently selected SC03 sources by exact OpenAlex match."""
     logger = logging.getLogger("uvicorn.error")
     try:
+        # httpx logs full request URLs at INFO, which would expose OpenAlex
+        # query-string credentials. Keep transport logs at warning or above.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
         with factory() as db:
             scope = read_scope(db, "directed_research")
             source_ids = list(dict.fromkeys(
@@ -193,12 +196,21 @@ def _resolve_directed_sources_background(factory):
                 "not_found": 0, "errors": 0,
             }
             updated = read_scope(db, "directed_research")
+            unresolved = db.scalars(
+                select(ResearchSource).where(
+                    ResearchSource.id.in_(source_ids),
+                    ResearchSource.resolution_status != "resolved",
+                )
+            ).all() if source_ids else []
+            unresolved_names = ",".join(
+                f"{row.name}:{row.resolution_status}" for row in unresolved
+            ) or "none"
         logger.info(
             "Research Opportunity source resolution: checked=%s resolved_now=%s "
-            "ambiguous=%s not_found=%s errors=%s; readiness=%s/%s",
+            "ambiguous=%s not_found=%s errors=%s; readiness=%s/%s; unresolved=%s",
             summary["checked"], summary["resolved"], summary["ambiguous"],
             summary["not_found"], summary["errors"],
-            updated["resolved_count"], updated["selected_count"],
+            updated["resolved_count"], updated["selected_count"], unresolved_names,
         )
     except Exception:
         logger.warning("Research Opportunity source resolution: failed")
