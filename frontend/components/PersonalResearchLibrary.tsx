@@ -156,7 +156,10 @@ export default function PersonalResearchLibrary({
     {filtered.length?filtered.map(item=><article className={styles.asset} key={item.id}>
      <div className={styles.assetTop}>
       <div className={styles.assetTitle}><strong>{item.title}</strong><span>{kindNames[item.kind]}</span></div>
-      <button type="button" className={styles.archive} disabled={busy} onClick={()=>void archive(item.id)}>归档</button>
+      <div className={styles.rowActions}>
+       <button type="button" className={styles.archive} disabled={busy} onClick={()=>edit(item)}>编辑</button>
+       <button type="button" className={styles.archive} disabled={busy} onClick={()=>void archive(item.id)}>归档</button>
+      </div>
      </div>
      {item.summary&&<p>{item.summary}</p>}
      <div className={styles.assetMeta}>
@@ -170,7 +173,7 @@ export default function PersonalResearchLibrary({
     </div>}
    </div>
    {open&&<div className={styles.editor}>
-    <div className={styles.subhead}><h3>新增个人科研资料</h3><span>仅当前账号可见</span></div>
+    <div className={styles.subhead}><h3>{editingId?"编辑个人科研资料":"新增个人科研资料"}</h3><span>仅当前账号可见</span></div>
     <div className={styles.grid}>
      <label>资料类型<select value={draft.kind} onChange={e=>setDraft(x=>({...x,kind:e.target.value as PersonalResearchAssetKind}))}>
       <option value="publication">论文</option><option value="agent_report">智能体报告</option>
