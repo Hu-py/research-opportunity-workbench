@@ -1193,7 +1193,7 @@ export default function ResearchAtlasV1() {
                   </label>
                   <div className={styles.sectionSubhead}><h3>个人研究主线</h3><span>{personalProfileDraft.research_lines.length} 条</span></div>
                   {personalProfileDraft.research_lines.map((line, index) => {
-                    const linkedEvidence = personalProfileDraft.evidence.filter(item => item.line_id === line.id);
+                    const linkedEvidence = personalAssets.filter(item => item.line_ids.includes(line.id));
                     return <div className={styles.lineEditor} key={line.id}>
                       <div className={styles.lineEditorTop}>
                         <strong>个人主线 {index + 1}</strong>
@@ -1210,11 +1210,13 @@ export default function ResearchAtlasV1() {
                           onChange={event => updatePersonalResearchLine(index, { method_queries: event.target.value.split("\n").map(x => x.trim()).filter(Boolean) })} /></label>
                       </div>
                       {linkedEvidence.length > 0 && <div className={styles.personalEvidenceList}>
-                        <span>关联论文与研究报告</span>
-                        {linkedEvidence.map(item => <a key={item.id} href={item.url} target="_blank" rel="noreferrer">
-                          <span>{item.title}</span><ArrowUpRight size={13} />
-                          {item.note && <small>{item.note}</small>}
-                        </a>)}
+                        <span>个人资料库中关联的成果 · {linkedEvidence.length} 项</span>
+                        {linkedEvidence.map(item => <div className={styles.personalEvidenceItem} key={item.id}>
+                          {item.url
+                            ? <a href={item.url} target="_blank" rel="noreferrer"><span>{item.title}</span><ArrowUpRight size={13} /></a>
+                            : <strong>{item.title}</strong>}
+                          <small>{item.summary || item.kind}</small>
+                        </div>)}
                       </div>}
                     </div>;
                   })}
