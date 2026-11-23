@@ -1,5 +1,13 @@
 # Research Atlas 前端设计与产品范围变更记录
 
+## 个人研究画像接入记录 — 2026-11-23
+
+- 后端 PR #132 已合并至 Render API 分支 `feat/shared-team-workspace`，Render `research-atlas-api-test` 已部署 commit `bc9596c`。
+- 新增成员级 `personal_research_profiles` 与版本历史表，按已认证的 `team_members.id` 隔离；新增 `GET/PUT /api/personal-profile`。原团队共享 `/api/profile` 不变。
+- 前端 PR #134 已合并至 `main`（commit `c04f8fd`），GitHub CI 通过；设置页新增三条个人研究主线预填、论文/报告链接、编辑与版本化保存。
+- Vercel 正式部署本次被 Hobby 每日 API 部署限额（HTTP 402，超过 100 次）阻挡；生产域名仍为旧前端版本。不要直接提升 Preview，也不要更改计费/安全设置。
+- **数据状态：** 三条主线当前是前端预填草稿，尚未写入任何成员数据库行。正式前端部署后，用户登录自己的账号，在「研究设置 → 研究画像」检查并点击「保存到我的账号」，才会写入该账号的个人画像表。不会自动写入团队画像。
+
 ## V1.0 发布部署记录 — 2026-11-23
 
 - 前端产品范围与任务专属 A/B/C 期刊配置已合并至 `main`（commit `7b1772d`）。
